@@ -1,0 +1,70 @@
+import json
+from pathlib import Path
+
+from sqlmodel import Session
+
+from app.core.time import utc_now_iso
+from app.models.voice_asset import AudioAsset, SubtitleAsset
+from app.providers.base import ProviderRenderResult
+from app.utils.files import storage_path
+from app.utils.id_generator import new_id
+from app.utils.srt import timeline_to_srt
+
+
+class AssetService:
+    def save_assets(
+        self,
+        session: Session,
+        *,
+        job_id: str,
+        provider: str,
+        model: str,
+        result: ProviderRenderResult,
+        audio_params: dict,
+        subtitle_type: str,
+    ) -> tuple[AudioAsset, SubtitleAsset | None]:
+        now = utc_now_iso()
+        audio_id = new_id("audio")
+        audio_path = Path(result.audio_path)
+        audio_asset = AudioAsset(
+            id=audio_id,
+            job_id=job_id,
+            provider=provider,
+            model=model,
+            file_path=str(audio_path),
+            file_url=f"/api/voice/assets/{audio_id}/download",
+            format=audio_path.suffix.lstrip(".") or audio_params.get("format"),
+            duration_ms=result.duration_ms,
+            sample_rate=audio_params.get("sample_rate"),
+            bitrate=audio_params.get("bitrate"),
+            channel=audio_params.get("channel"),
+            usage_characters=result.usage_characters,
+            metadata_json=json.dumps(result.metadata, ensure_ascii=False),
+            created_at=now,
+        )
+        session.add(audio_asset)
+
+        subtitle_asset = None
+        if result.timeline:
+            subtitle_id = new_id("subtitle")
+            subtitle_json_path = storage_path("subtitles", f"{subtitle_id}.json")
+            subtitle_srt_path = storage_path("subtitles", f"{subtitle_id}.srt")
+            subtitle_json_path.write_text(json.dumps(result.timeline, ensure_ascii=False, indent=2), encoding="utf-8")
+            subtitle_srt_path.write_text(timeline_to_srt(result.timeline), encoding="utf-8")
+            subtitle_asset = SubtitleAsset(
+                id=subtitle_id,
+                job_id=job_id,
+                audio_asset_id=audio_id,
+                subtitle_type=subtitle_type,
+                file_path=str(subtitle_json_path),
+                srt_path=str(subtitle_srt_path),
+                timeline_json=json.dumps(result.timeline, ensure_ascii=False),
+                created_at=now,
+            )
+            session.add(subtitle_asset)
+
+        session.commit()
+        session.refresh(audio_asset)
+        if subtitle_asset:
+            session.refresh(subtitle_asset)
+        return audio_asset, subtitle_asset
