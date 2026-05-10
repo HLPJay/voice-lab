@@ -93,3 +93,32 @@ class ProviderVoiceListResponse(BaseModel):
     voices: list[ProviderVoiceRead] = Field(default_factory=list)
     synced_at: str | None = None
     total: int = 0
+
+
+class VoiceBindingCreate(BaseModel):
+    provider: str
+    model: str
+    provider_voice_id: str
+    params: dict = Field(default_factory=dict)
+    priority: int = 1
+
+
+class VoiceBindingUpdate(BaseModel):
+    provider_voice_id: str | None = None
+    params: dict | None = None
+    priority: int | None = None
+    status: str | None = None
+
+
+class VoiceBindingRead(BaseModel):
+    id: str
+    profile_id: str
+    provider: str
+    model: str
+    provider_voice_id: str
+    provider_voice_name: str | None = None
+    params: dict = Field(default_factory=dict)
+    priority: int = 1
+    status: str = "available"
+    created_at: str
+    updated_at: str
