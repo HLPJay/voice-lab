@@ -76,7 +76,7 @@ cp .env.example .env
 ```env
 VOICE_PROVIDER=minimax
 MINIMAX_API_KEY=replace_me
-MINIMAX_BASE_URL=https://api.minimax.io
+MINIMAX_BASE_URL=https://api.minimaxi.com
 MINIMAX_T2A_PATH=/v1/t2a_v2
 MINIMAX_DEFAULT_MODEL=speech-2.8-hd
 ENABLE_MOCK_PROVIDER=false

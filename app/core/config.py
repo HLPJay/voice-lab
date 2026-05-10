@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     voice_provider: str = "minimax"
     minimax_api_key: str | None = None
-    minimax_base_url: str = "https://api.minimax.io"
+    minimax_base_url: str = "https://api.minimaxi.com"
     minimax_t2a_path: str = "/v1/t2a_v2"
     minimax_default_model: str = "speech-2.8-hd"
     minimax_timeout_seconds: int = 120

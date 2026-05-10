@@ -1,5 +1,6 @@
 import pytest
 
+from app.core.errors import ProviderNotConfigured
 from app.repositories.provider_voice_repo import upsert_provider_voice
 from app.services.voice_catalog_service import VoiceCatalogService
 
@@ -82,3 +83,39 @@ def test_provider_voices_api_reads_empty_minimax_cache_without_network(test_app)
     assert data["provider"] == "minimax"
     assert data["total"] == 0
     assert data["voices"] == []
+
+
+@pytest.mark.asyncio
+async def test_minimax_list_voices_requires_api_key():
+    from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+
+    adapter = MiniMaxSpeechAdapter()
+
+    with pytest.raises(ProviderNotConfigured):
+        await adapter.list_voices()
+
+
+def test_minimax_voice_response_conversion():
+    from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+
+    adapter = MiniMaxSpeechAdapter()
+    voices = adapter._convert_voice_response(
+        {
+            "system_voice": [
+                {
+                    "voice_id": "Chinese (Mandarin)_News_Anchor",
+                    "voice_name": "新闻女声",
+                    "description": ["一位专业、播音腔的中年女性新闻主播，标准普通话。"],
+                    "created_time": "1970-01-01",
+                }
+            ],
+            "voice_cloning": [{"voice_id": "clone_1", "description": [], "created_time": "2025-08-20"}],
+            "voice_generation": [{"voice_id": "gen_1", "description": [], "created_time": "2025-08-21"}],
+            "base_resp": {"status_code": 0, "status_msg": "success"},
+        }
+    )
+
+    assert [voice.voice_type for voice in voices] == ["system", "voice_cloning", "voice_generation"]
+    assert voices[0].provider_voice_id == "Chinese (Mandarin)_News_Anchor"
+    assert voices[0].name == "新闻女声"
+    assert voices[0].description == "一位专业、播音腔的中年女性新闻主播，标准普通话。"
