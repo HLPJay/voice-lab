@@ -18,6 +18,7 @@ voice_lab/
       voice_variants.py
       voice_jobs.py
       voice_assets.py
+      provider_voices.py   # P1: Voice Catalog
 
     core/
       __init__.py
@@ -40,6 +41,7 @@ voice_lab/
       voice_job.py
       voice_asset.py
       voice_variant.py
+      provider_voice.py       # P1: Voice Catalog
 
     repositories/
       __init__.py
@@ -47,6 +49,7 @@ voice_lab/
       voice_job_repo.py
       voice_asset_repo.py
       voice_variant_repo.py
+      provider_voice_repo.py  # P1: Voice Catalog
 
     services/
       __init__.py
@@ -56,6 +59,7 @@ voice_lab/
       text_preprocess_service.py
       asset_service.py
       job_service.py
+      voice_catalog_service.py  # P1: Voice Catalog
 
     providers/
       __init__.py
@@ -82,6 +86,8 @@ voice_lab/
     test_render_plan.py
     test_mock_adapter.py
     test_api_render.py
+    test_provider_voice.py       # P1: Voice Catalog model
+    test_voice_catalog.py         # P1: Voice Catalog service + API
 
   docs/
     VOICE_LAB_GOALS.md

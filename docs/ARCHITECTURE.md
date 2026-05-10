@@ -68,6 +68,7 @@ Provider Adapter 是厂商翻译器。
 
 1. 把内部 `RenderPlan` 翻译成厂商请求参数。
 2. 把厂商返回结果翻译成内部资产结果。
+3. （Voice Catalog）把厂商音色列表翻译成内部 `ProviderVoice` 列表。
 
 Provider Adapter 禁止：
 
@@ -134,6 +135,37 @@ Provider 绑定。
   "language_boost": "auto"
 }
 ```
+
+### ProviderVoice
+
+Provider 音色目录项。Voice Lab 中台级音色只读视图，上层业务不直接依赖 MiniMax voice_id。
+
+示例：
+
+```json
+{
+  "id": "pv_xxx",
+  "provider": "minimax",
+  "provider_voice_id": "English_expressive_narrator",
+  "voice_type": "system",
+  "name": "English Expressive Narrator",
+  "description": "Expressive English narration voice",
+  "language": "en",
+  "gender": "female",
+  "status": "available",
+  "provider_created_time": "2024-01-15T10:00:00Z",
+  "metadata_json": "{}",
+  "synced_at": "2026-05-11T12:00:00Z",
+  "created_at": "2026-05-11T12:00:00Z",
+  "updated_at": "2026-05-11T12:00:00Z"
+}
+```
+
+VoiceType 枚举：
+
+- `system`：系统音色
+- `voice_cloning`：克隆音色
+- `voice_generation`：生成音色
 
 ## 错误标准
 
