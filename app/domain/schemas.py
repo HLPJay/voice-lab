@@ -70,3 +70,26 @@ class VoiceVariantResponse(BaseModel):
 class VoiceVariantGroupResponse(BaseModel):
     group_id: str
     variants: list[VoiceVariantResponse]
+
+
+class ProviderVoiceRead(BaseModel):
+    id: str
+    provider: str
+    provider_voice_id: str
+    voice_type: str
+    name: str | None = None
+    description: str | None = None
+    language: str | None = None
+    gender: str | None = None
+    status: str = "available"
+    provider_created_time: str | None = None
+    metadata: dict = Field(default_factory=dict)
+    synced_at: str | None = None
+
+
+class ProviderVoiceListResponse(BaseModel):
+    provider: str
+    voice_type: str = "all"
+    voices: list[ProviderVoiceRead] = Field(default_factory=list)
+    synced_at: str | None = None
+    total: int = 0

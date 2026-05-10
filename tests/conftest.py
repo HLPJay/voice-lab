@@ -9,6 +9,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.errors import VoiceLabError, request_validation_error_handler, voice_lab_error_handler
 from app.core.time import utc_now_iso
+from app.models.provider_voice import ProviderVoice
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
 

@@ -7,6 +7,7 @@ from app.models.voice_profile import VoiceProfile
 from app.models.voice_asset import AudioAsset, SubtitleAsset
 from app.models.voice_job import VoiceJob
 from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
+from app.models.provider_voice import ProviderVoice
 
 
 engine = create_engine(get_settings().database_url, connect_args={"check_same_thread": False})
