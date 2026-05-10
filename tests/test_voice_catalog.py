@@ -86,8 +86,16 @@ def test_provider_voices_api_reads_empty_minimax_cache_without_network(test_app)
 
 
 @pytest.mark.asyncio
-async def test_minimax_list_voices_requires_api_key():
+async def test_minimax_list_voices_requires_api_key(monkeypatch):
+    from app.providers import minimax_speech_adapter
     from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+
+    class MissingKeySettings:
+        minimax_api_key = None
+        minimax_base_url = "https://api.minimaxi.com"
+        minimax_timeout_seconds = 120
+
+    monkeypatch.setattr(minimax_speech_adapter, "get_settings", lambda: MissingKeySettings())
 
     adapter = MiniMaxSpeechAdapter()
 
