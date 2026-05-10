@@ -1,106 +1,54 @@
 # Completeness Review
 
 检查时间：2026-05-11
+P0 可运行基线 commit：`5b8d731 fix: return not found for missing assets`
 
-本文档记录当前 Voice Lab P0 的完整性检查结果、已发现遗漏和下一步修复优先级。
+本文档记录当前 Voice Lab P0 的完整性检查结果。
 
 ## 当前总体判断
 
-项目已经具备 P0 的主要目录和代码骨架：
+P0 后端已达到可运行基线，所有接口和错误边界验收通过。
 
-- `app/main.py` 已存在。
-- `app/api/` 已存在。
-- `app/models/` 已存在。
-- `app/services/` 已存在。
-- `app/providers/` 已存在。
-- `tests/` 已存在。
-- 设计文档已覆盖目标、架构、目录、实现计划和安全控制。
-
-但当前还不能判定为 P0 完成交付，因为 pytest 尚未通过。
-
-## 已执行检查
-
-执行命令：
+## 自动测试
 
 ```bash
 pytest -q
 ```
+结果：`11 passed in 0.53s`
 
-结果摘要：
+## 已执行 P0 验收检查
 
-```text
-4 failed, 7 passed, 3 errors
-```
+| 检查项 | 结果 |
+|--------|------|
+| `GET /health` | 200 ✅ |
+| `GET /api/voice/profiles` | 200 ✅ |
+| `POST /api/voice/profiles` | 200 ✅ |
+| `POST /api/voice/render` (mock) | 200 ✅ |
+| `POST /api/voice/variants/render` (mock) | 200 ✅ |
+| `GET /api/voice/jobs/{job_id}` | 200 ✅ |
+| `GET /api/voice/assets/{asset_id}` | 200 ✅ |
+| `GET /api/voice/assets/{asset_id}/download` | 200 ✅ |
+| profile 不存在 -> PROFILE_NOT_FOUND | 404 ✅ |
+| provider=minimax 无 key -> PROVIDER_NOT_CONFIGURED | 400 ✅ |
+| job 不存在 -> JOB_NOT_FOUND | 404 ✅ |
+| asset 不存在 -> ASSET_NOT_FOUND | 404 ✅ |
+| text 超 9500 字符 -> VALIDATION_ERROR | 422 ✅ |
 
-## 阻断问题
+## 架构约束检查
 
-### 1. Python 版本与 `StrEnum` 不兼容
+- VoiceProfile -> VoiceBinding -> RenderPlan -> Provider Adapter 链路：✅
+- API 层未暴露 MiniMax voice_setting/audio_setting：✅
+- MockSpeechAdapter 保留：✅
+- 未引入 P1/P2 范围（Redis/Celery/Docker/用户系统/计费）：✅
+- storage/ 被 .gitignore 忽略：✅
+- 测试不依赖真实 MiniMax API：✅
 
-失败位置：
+## 剩余非阻断问题
 
-```text
-app/domain/enums.py
-```
+1. **空文本错误返回 FastAPI 原生 422 格式**（`{"detail": [...]}`）而非统一 error 格式（`{"error": {...}}`），不影响功能
+2. **Windows 终端显示 UTF-8 字幕内容为乱码**（GBK 终端编码问题），文件本身 UTF-8 正常
 
-错误：
-
-```text
-ImportError: cannot import name 'StrEnum' from 'enum'
-```
-
-原因：
-
-当前运行环境是 Python 3.10，而 `enum.StrEnum` 是 Python 3.11+ 才可用。
-
-修复策略二选一：
-
-1. 保持 README 的 Python 3.11+ 要求，并在当前环境升级 Python。
-2. 为了兼容 Python 3.10，把枚举改成：
-
-```python
-from enum import Enum
-
-
-class JobStatus(str, Enum):
-    pending = "pending"
-    running = "running"
-    success = "success"
-    failed = "failed"
-```
-
-推荐：
-
-P0 阶段优先兼容当前环境，使用 `str, Enum`，这样其他模块更容易跑通。
-
-### 2. Windows 下临时 SQLite 文件未释放
-
-失败位置：
-
-```text
-tests/conftest.py
-```
-
-错误：
-
-```text
-PermissionError: [WinError 32] another process is using this file
-```
-
-原因：
-
-测试 teardown 时 `os.unlink(path)` 删除临时 SQLite 文件，但 SQLAlchemy engine 可能仍持有连接。
-
-修复策略：
-
-在删除文件前调用：
-
-```python
-engine.dispose()
-```
-
-并在 `os.unlink(path)` 前确认所有 session 已关闭。
-
-## 结构检查结果
+## 文件结构检查
 
 ### 已具备
 
@@ -112,77 +60,57 @@ engine.dispose()
 - `app/api/voice_variants.py`
 - `app/api/voice_jobs.py`
 - `app/api/voice_assets.py`
+- `app/core/config.py`
+- `app/core/database.py`
+- `app/core/errors.py`
+- `app/core/time.py`
+- `app/domain/enums.py`
+- `app/domain/render_plan.py`
+- `app/domain/schemas.py`
+- `app/models/voice_profile.py`
+- `app/models/voice_binding.py`
+- `app/models/voice_job.py`
+- `app/models/voice_asset.py`
+- `app/models/voice_variant.py`
+- `app/providers/base.py`
+- `app/providers/mock_speech_adapter.py`
+- `app/providers/minimax_speech_adapter.py`
+- `app/services/text_preprocess_service.py`
+- `app/services/asset_service.py`
+- `app/services/voice_profile_service.py`
+- `app/services/voice_render_service.py`
+- `app/services/voice_variant_service.py`
+- `app/repositories/voice_profile_repo.py`
+- `app/utils/id_generator.py`
+- `app/utils/files.py`
+- `app/utils/audio.py`
+- `app/utils/srt.py`
 - `tests/conftest.py`
 - `tests/test_health.py`
+- `tests/test_text_preprocess.py`
 - `tests/test_render_plan.py`
 - `tests/test_mock_adapter.py`
 - `tests/test_api_render.py`
-- `tests/test_text_preprocess.py`
 
-### 仍建议补齐或复核
+### 建议后续补齐（非 P0）
 
-- `app/core/logging.py` 尚未看到，P0 可暂缓，但后续应补统一日志。
-- `app/repositories/voice_job_repo.py` 尚未看到，P0 可暂缓，但如果 service 复杂度上升应补。
-- `app/repositories/voice_asset_repo.py` 尚未看到，P0 可暂缓。
-- `app/repositories/voice_variant_repo.py` 尚未看到，P0 可暂缓。
-- `app/services/job_service.py` 尚未看到，P0 可暂缓。
-- `storage/` 目录可能由程序启动时自动创建，不要求提前提交。
+- `app/core/logging.py` - 统一日志
+- `app/repositories/voice_job_repo.py` - job 仓库
+- `app/repositories/voice_asset_repo.py` - asset 仓库
+- `app/repositories/voice_variant_repo.py` - variant 仓库
+- `app/services/job_service.py` - job 服务层
 
-## 安全检查结果
+## 安全检查
 
-搜索项：
-
-- `Authorization`
-- `voice_setting`
-- `audio_setting`
-- `provider_voice_id`
-- `Redis`
-- `Celery`
-- `Voice Clone`
-- `Voice Design`
+搜索项：Authorization / voice_setting / audio_setting / provider_voice_id / Redis / Celery / Voice Clone / Voice Design
 
 结论：
+- `Authorization` 仅在 MiniMax Adapter 请求头中出现，未发现日志输出
+- `voice_setting` / `audio_setting` 仅在 Provider Adapter 内部，API 层未暴露
+- Redis / Celery / Voice Clone / Voice Design 未在 P0 范围实现
 
-- `Authorization` 只在 MiniMax Adapter 请求头构造和文档约束中出现，未发现日志输出。
-- `voice_setting` / `audio_setting` 出现在 MiniMax Adapter 和文档中，未发现 API 层直接构造。
-- `Redis` / `Celery` / `Voice Clone` / `Voice Design` 只作为禁止项或后续计划出现在文档中，未发现 P0 代码实现范围外功能。
+## 结论
 
-## 下一步优先级
-
-### P0 修复优先级 1
-
-修复测试阻断：
-
-1. 将 `StrEnum` 改为兼容 Python 3.10 的 `str, Enum`。
-2. 在测试临时 SQLite teardown 前释放 engine。
-3. 重新运行 `pytest -q`。
-
-### P0 修复优先级 2
-
-验证 Mock render 闭环：
-
-1. `POST /api/voice/render` 使用 `provider=mock`。
-2. 确认返回 `status=success`。
-3. 确认 `storage/audio/YYYY-MM-DD/` 生成文件。
-4. 确认数据库写入 job 和 audio asset。
-
-### P0 修复优先级 3
-
-验证资产下载：
-
-1. 查询 asset。
-2. 下载 asset。
-3. 文件不存在返回 `ASSET_NOT_FOUND`。
-4. 不允许用户通过路径参数下载任意文件。
-
-## 是否可以进入下一阶段
-
-暂不建议进入 P1。
-
-进入 P1 的最低前提：
-
-- `pytest -q` 通过。
-- Mock render 真实跑通。
-- Asset download 真实跑通。
-- MiniMax Key 缺失时错误明确。
-
+- P0 可运行基线：✅ 已达到
+- 是否建议进入 P1：待确认
+- 是否建议 push：待确认

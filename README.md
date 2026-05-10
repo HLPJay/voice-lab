@@ -15,30 +15,33 @@ Voice Lab 是一个可扩展的声音生成中台，第一阶段面向 MiniMax `
 
 ## 当前状态
 
-本仓库当前处于 P0 后端设计与骨架阶段。
+本仓库 P0 后端已达到可运行基线（commit `5b8d731`）。
 
-已经落地：
+已落地：
 
-- FastAPI 项目目录骨架的一部分
-- 配置模块 `.env.example`
+- FastAPI 应用入口 `app/main.py`
+- API 路由目录 `app/api/`（health、profiles、render、variants、jobs、assets）
 - SQLModel 数据模型
 - 标准协议对象 `RenderPlan`
-- `MockSpeechAdapter`
-- `MiniMaxSpeechAdapter` 初版
+- `MockSpeechAdapter`（完整本地闭环）
+- `MiniMaxSpeechAdapter`（同步 T2A，需真实 API Key）
 - 文本预处理服务
-- 单条生成与多版本生成的服务层草稿
-- 资产保存服务草稿
+- 单条生成与多版本生成服务层
+- 资产保存服务
+- pytest 测试（11 passed）
+- 错误处理与 FastAPI exception handler
+- 资产下载接口
 
-尚未完成：
+P0 可运行基线验收通过：
 
-- `app/main.py`
-- API 路由目录 `app/api/`
-- pytest 测试
-- 完整启动验证
-- 下载资产接口
-- 错误处理与 FastAPI exception handler 接入
-
-本轮重点是归纳目标、定制架构标准、写清实现计划，后续实现模块应按 `docs/IMPLEMENTATION_PLAN.md` 继续开发。
+- `GET /health` ✅
+- `GET /api/voice/profiles` ✅ / `POST /api/voice/profiles` ✅
+- `POST /api/voice/render` (provider=mock) ✅
+- `POST /api/voice/variants/render` (provider=mock) ✅
+- `GET /api/voice/jobs/{job_id}` ✅
+- `GET /api/voice/assets/{asset_id}` ✅
+- `GET /api/voice/assets/{asset_id}/download` ✅
+- 错误边界：PROFILE_NOT_FOUND / PROVIDER_NOT_CONFIGURED / JOB_NOT_FOUND / ASSET_NOT_FOUND / VALIDATION_ERROR ✅
 
 ## 架构原则
 

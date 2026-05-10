@@ -21,13 +21,13 @@ voice_lab/README.md
 
 ## 当前代码状态
 
-当前代码是“设计骨架 + 服务层草稿”，不是完整可运行版本。
+P0 后端已达到可运行基线（commit `5b8d731`）。
 
-原因：
-
-- 用户已明确要求本轮收口为任务描述、架构设计和标准制定。
-- 不继续补大量 API、测试和真实运行验证。
-- 后续实现模块应从现有骨架继续，而不是推倒重来。
+已验证：
+- pytest 11/11 通过
+- uvicorn 可正常启动
+- Mock Provider 完整闭环
+- 所有 P0 接口和错误边界验收通过
 
 ## 已有代码可复用点
 
@@ -75,50 +75,40 @@ voice_lab/README.md
 
 ## 必须优先补齐的文件
 
-下一位实现者应优先补：
+以下文件在 P0 阶段已实现并验收通过：
 
 ```text
-app/main.py
-app/api/__init__.py
-app/api/health.py
-app/api/voice_profiles.py
-app/api/voice_render.py
-app/api/voice_variants.py
-app/api/voice_jobs.py
-app/api/voice_assets.py
-tests/
+app/main.py                  ✅
+app/api/__init__.py          ✅
+app/api/health.py            ✅
+app/api/voice_profiles.py    ✅
+app/api/voice_render.py      ✅
+app/api/voice_variants.py    ✅
+app/api/voice_jobs.py        ✅
+app/api/voice_assets.py      ✅
+tests/                       ✅ (11 tests passing)
 ```
 
 ## 潜在注意点
 
-1. `VoiceRenderService` 当前依赖 SQLModel session，API 层需要通过 `Depends(get_session)` 注入。
-2. `TextPreprocessService` 已对 9500 字符以上同步文本做拒绝。
-3. `MockSpeechAdapter` 返回 wav 文件，但 `RenderPlan.audio_params.format` 默认仍是 mp3；后续可选择统一 mock 文件格式或在返回资产中以实际后缀为准。
-4. MiniMax 字幕返回结构需要基于真实响应再适配一次。
-5. 错误处理器已经有草稿，但还未注册到 FastAPI app。
-6. 当前未运行 pytest，也未做启动验证。
+1. `VoiceRenderService` 通过 `Depends(get_session)` 注入 session，已正确接入 API。
+2. `TextPreprocessService` 对 9500 字符以上同步文本做拒绝，返回 VALIDATION_ERROR。
+3. `MockSpeechAdapter` 返回 wav 文件，`RenderPlan.audio_params.format` 仍为 mp3；不影响 mock 闭环。
+4. MiniMax 字幕返回结构需基于真实响应再适配（P1 范围）。
+5. 错误处理器已注册到 FastAPI app。
+6. pytest 和 uvicorn 启动验证均已通过。
 
-## 下一步建议
-
-按以下顺序接手：
-
-1. 补 `app/main.py` 和 `/health`。
-2. 注册数据库初始化、seed、storage 目录创建。
-3. 补 voice profiles API。
-4. 补 render API，先只验 `provider=mock`。
-5. 补 assets download API。
-6. 补 variants API。
-7. 补 tests，并修正服务层中暴露的问题。
-8. 最后再用真实 MiniMax Key 做人工验证。
-
-## 交接标准
-
-后续实现完成后，至少应满足：
+## 交接标准（P0 已达到）
 
 ```text
 uvicorn app.main:app --reload
 GET /health -> {"status":"ok","app":"Voice Lab"}
 POST /api/voice/render provider=mock -> success
 storage/audio/YYYY-MM-DD/ 下生成文件
-pytest 通过
+pytest -q -> 11 passed
 ```
+
+## 非阻断问题（已知）
+
+1. 空文本返回 FastAPI 原生 422 格式（`{"detail": [...]}`）而非统一 error 格式
+2. Windows 终端可能显示 UTF-8 字幕内容为乱码（GBK 终端编码），文件本身 UTF-8 正常
