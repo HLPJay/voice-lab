@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.core.database import get_session
-from app.core.errors import VoiceLabError, voice_lab_error_handler
+from app.core.errors import VoiceLabError, request_validation_error_handler, voice_lab_error_handler
 
 
 def _make_clean_app(temp_db):
@@ -18,6 +19,7 @@ def _make_clean_app(temp_db):
 
     app = FastAPI(lifespan=lifespan)
     app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 
     def override_get_session():
         with Session(engine) as sess:
@@ -74,7 +76,7 @@ def test_render_profile_not_found(temp_db):
 
 
 def test_render_empty_text(test_app):
-    """Empty text returns 422 validation error."""
+    """Empty text returns the unified validation error envelope."""
     client = TestClient(test_app)
     response = client.post(
         "/api/voice/render",
@@ -84,3 +86,6 @@ def test_render_empty_text(test_app):
         },
     )
     assert response.status_code == 422
+    data = response.json()
+    assert data["error"]["code"] == "VALIDATION_ERROR"
+    assert data["error"]["message"] == "Request validation failed"

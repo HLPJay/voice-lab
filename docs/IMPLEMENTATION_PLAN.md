@@ -72,7 +72,7 @@ GET /health -> {"status": "ok"}
 
 - Mock 请求成功返回 `job_id` 和 `audio_asset.url`。
 - profile 不存在返回 `PROFILE_NOT_FOUND`。
-- text 为空返回 FastAPI 422（空文本验收通过）。
+- text 为空返回统一 `VALIDATION_ERROR` 格式。
 - MiniMax API Key 缺失且请求 MiniMax 返回 `PROVIDER_NOT_CONFIGURED`。
 
 ### 5. 多版本试音 ✅ 已完成

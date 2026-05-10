@@ -29,6 +29,7 @@ pytest -q
 | `GET /api/voice/assets/{asset_id}` | 200 ✅ |
 | `GET /api/voice/assets/{asset_id}/download` | 200 ✅ |
 | profile 不存在 -> PROFILE_NOT_FOUND | 404 ✅ |
+| text 为空 -> VALIDATION_ERROR | 422 ✅ |
 | provider=minimax 无 key -> PROVIDER_NOT_CONFIGURED | 400 ✅ |
 | job 不存在 -> JOB_NOT_FOUND | 404 ✅ |
 | asset 不存在 -> ASSET_NOT_FOUND | 404 ✅ |
@@ -45,8 +46,7 @@ pytest -q
 
 ## 剩余非阻断问题
 
-1. **空文本错误返回 FastAPI 原生 422 格式**（`{"detail": [...]}`）而非统一 error 格式（`{"error": {...}}`），不影响功能
-2. **Windows 终端显示 UTF-8 字幕内容为乱码**（GBK 终端编码问题），文件本身 UTF-8 正常
+1. **Windows 终端显示 UTF-8 字幕内容为乱码**（GBK 终端编码问题），文件本身 UTF-8 正常
 
 ## 文件结构检查
 

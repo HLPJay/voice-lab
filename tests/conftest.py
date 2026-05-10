@@ -4,9 +4,10 @@ from contextlib import asynccontextmanager
 
 import pytest
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.core.errors import VoiceLabError, voice_lab_error_handler
+from app.core.errors import VoiceLabError, request_validation_error_handler, voice_lab_error_handler
 from app.core.time import utc_now_iso
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
@@ -77,6 +78,7 @@ def test_app(temp_db, seed_profile):
 
     app = FastAPI(lifespan=lifespan)
     app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 
     def override_get_session():
         with Session(engine) as sess:

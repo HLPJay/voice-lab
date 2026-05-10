@@ -110,5 +110,4 @@ pytest -q -> 11 passed
 
 ## 非阻断问题（已知）
 
-1. 空文本返回 FastAPI 原生 422 格式（`{"detail": [...]}`）而非统一 error 格式
-2. Windows 终端可能显示 UTF-8 字幕内容为乱码（GBK 终端编码），文件本身 UTF-8 正常
+1. Windows 终端可能显示 UTF-8 字幕内容为乱码（GBK 终端编码），文件本身 UTF-8 正常
