@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 def _asset_not_found(asset_id: str) -> None:
-    raise AssetNotFound("Asset not found", asset_id=asset_id)
+    raise AssetNotFound("Asset not found", detail=asset_id)
 
 
 @router.get("/assets/{asset_id}")
