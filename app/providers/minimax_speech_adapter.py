@@ -1,4 +1,6 @@
 import binascii
+import json as _json
+import re
 from pathlib import Path
 
 import httpx
@@ -11,6 +13,8 @@ from app.providers.base import ProviderRenderResult, SpeechProvider
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
+
+_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
 
 
 class MiniMaxSpeechAdapter(SpeechProvider):
@@ -51,6 +55,78 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                     )
                 )
         return voices
+
+    def _is_hex_string(self, value: str) -> bool:
+        if not isinstance(value, str):
+            return False
+        if len(value) % 2 != 0:
+            return False
+        return bool(_HEX_PATTERN.match(value))
+
+    async def _download_content(self, url: str, timeout: float) -> bytes:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            return response.content
+
+    async def _save_audio_from_data(
+        self,
+        data: dict,
+        output_format: str,
+        audio_params: dict,
+        timeout: float,
+    ) -> tuple[Path, str]:
+        fmt = audio_params.get("format", "mp3")
+        audio_path = storage_path("audio", f"{new_id('audio_file')}.{fmt}")
+
+        audio_url = data.get("audio_url") or data.get("url")
+        audio_hex = data.get("audio")
+
+        if output_format == "url" and audio_url:
+            content = await self._download_content(audio_url, timeout)
+            audio_path.write_bytes(content)
+        elif isinstance(audio_hex, str) and audio_hex.startswith(("http://", "https://")):
+            content = await self._download_content(audio_hex, timeout)
+            audio_path.write_bytes(content)
+        elif audio_hex and self._is_hex_string(audio_hex):
+            audio_path.write_bytes(binascii.unhexlify(audio_hex))
+        elif audio_url:
+            content = await self._download_content(audio_url, timeout)
+            audio_path.write_bytes(content)
+        else:
+            raise ProviderError(
+                "MiniMax audio save failed",
+                "No valid audio source found in response (no hex, no URL)",
+            )
+        return audio_path, fmt
+
+    async def _extract_timeline_from_subtitle_file(
+        self,
+        subtitle_file: str | list | None,
+        timeout: float,
+    ) -> tuple[list[dict], dict]:
+        timeline: list[dict] = []
+        metadata: dict = {}
+
+        if isinstance(subtitle_file, list):
+            timeline = subtitle_file
+        elif isinstance(subtitle_file, str) and subtitle_file.startswith("http"):
+            metadata["subtitle_file_url_downloaded"] = True
+            try:
+                content = await self._download_content(subtitle_file, timeout)
+                text = content.decode("utf-8")
+                parsed = _json.loads(text)
+                if isinstance(parsed, list):
+                    timeline = parsed
+                elif isinstance(parsed, dict):
+                    for key in ("sentences", "items", "timeline", "words"):
+                        if key in parsed and isinstance(parsed[key], list):
+                            timeline = parsed[key]
+                            break
+            except Exception:
+                metadata["subtitle_file_parse_failed"] = True
+
+        return timeline, metadata
 
     async def list_voices(self, voice_type: str = "all") -> list[ProviderVoiceRead]:
         settings = get_settings()
@@ -109,27 +185,24 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         trace_id = body.get("trace_id")
         data = body.get("data") or {}
-        audio_hex = data.get("audio")
-        audio_url = data.get("audio_url") or data.get("url")
-        fmt = plan.audio_params.get("format", "mp3")
-        audio_path = storage_path("audio", f"{new_id('audio_file')}.{fmt}")
+        extra = body.get("extra_info") or {}
+
         try:
-            if audio_hex:
-                audio_path.write_bytes(binascii.unhexlify(audio_hex))
-            elif audio_url:
-                async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                    audio_response = await client.get(audio_url)
-                    audio_response.raise_for_status()
-                    audio_path.write_bytes(audio_response.content)
-            else:
-                raise ValueError("MiniMax response did not contain audio hex or url")
+            audio_path, fmt = await self._save_audio_from_data(
+                data, plan.output_format, plan.audio_params, settings.minimax_timeout_seconds
+            )
         except Exception as exc:
             raise ProviderError("MiniMax audio save failed", str(exc)) from exc
 
-        extra = body.get("extra_info") or {}
-        subtitle_info = data.get("subtitle") or data.get("subtitle_file") or {}
-        timeline = subtitle_info if isinstance(subtitle_info, list) else []
+        subtitle_file = data.get("subtitle") or data.get("subtitle_file")
+        timeline, subtitle_meta = await self._extract_timeline_from_subtitle_file(
+            subtitle_file, settings.minimax_timeout_seconds
+        )
+
         duration_ms = extra.get("audio_length") or extra.get("duration_ms") or estimate_duration_ms(plan.text)
+        metadata = {"extra_info": extra}
+        metadata.update(subtitle_meta)
+
         return ProviderRenderResult(
             audio_path=str(Path(audio_path)),
             duration_ms=duration_ms,
@@ -137,5 +210,5 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             trace_id=trace_id,
             response_json=body,
             timeline=timeline,
-            metadata={"extra_info": extra},
+            metadata=metadata,
         )
