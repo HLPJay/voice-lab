@@ -1,16 +1,15 @@
 import os
 import tempfile
+from contextlib import asynccontextmanager
 
 import pytest
+from fastapi import FastAPI
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.core.database import get_session
+from app.core.errors import VoiceLabError, voice_lab_error_handler
 from app.core.time import utc_now_iso
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
-from app.models.voice_asset import AudioAsset, SubtitleAsset
-from app.models.voice_job import VoiceJob
-from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
 
 
 @pytest.fixture
@@ -20,6 +19,7 @@ def temp_db():
     engine = create_engine(f"sqlite:///{path}", connect_args={"check_same_thread": False})
     SQLModel.metadata.create_all(engine)
     yield engine, path
+    engine.dispose()
     os.unlink(path)
 
 
@@ -64,3 +64,32 @@ def seed_profile(session):
     session.add(binding)
     session.commit()
     return profile, binding
+
+
+@pytest.fixture
+def test_app(temp_db, seed_profile):
+    """Minimal FastAPI app that uses the same temp DB as seed_profile."""
+    engine, _ = temp_db
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
+
+    def override_get_session():
+        with Session(engine) as sess:
+            yield sess
+
+    from app.core.database import get_session
+    app.dependency_overrides[get_session] = override_get_session
+
+    from app.api import api_router
+    app.include_router(api_router)
+
+    @app.get("/health")
+    async def health():
+        return {"status": "ok", "app": "Voice Lab"}
+
+    return app

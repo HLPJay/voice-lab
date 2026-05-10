@@ -1,12 +1,12 @@
-from enum import StrEnum
+from enum import Enum
 
 
-class JobStatus(StrEnum):
+class JobStatus(str, Enum):
     pending = "pending"
     running = "running"
     success = "success"
     failed = "failed"
 
 
-class JobType(StrEnum):
+class JobType(str, Enum):
     sync_render = "sync_render"
