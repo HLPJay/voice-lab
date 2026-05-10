@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session
 
 from app.domain.schemas import ProviderVoiceListResponse, ProviderVoiceRead
+from app.core.errors import ValidationError
 from app.models.provider_voice import ProviderVoice
 from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
 from app.providers.mock_speech_adapter import MockSpeechAdapter
@@ -19,7 +20,7 @@ class VoiceCatalogService:
             return MockSpeechAdapter()
         if provider == "minimax":
             return MiniMaxSpeechAdapter()
-        raise ValueError(f"Unsupported provider: {provider}")
+        raise ValidationError("Unsupported voice provider", provider)
 
     def _to_read(self, item: ProviderVoice) -> ProviderVoiceRead:
         return ProviderVoiceRead(

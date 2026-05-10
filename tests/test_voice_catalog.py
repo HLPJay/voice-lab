@@ -55,3 +55,30 @@ async def test_voice_catalog_empty_cache_does_not_auto_refresh(session):
     assert response.total == 0
     assert response.synced_at is None
     assert response.voices == []
+
+
+def test_provider_voices_api_refreshes_mock_catalog(test_app):
+    from fastapi.testclient import TestClient
+
+    client = TestClient(test_app)
+    response = client.get("/api/voice/provider-voices?provider=mock&refresh=true")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "mock"
+    assert data["voice_type"] == "all"
+    assert data["total"] == 3
+    assert {voice["voice_type"] for voice in data["voices"]} == {"system", "voice_cloning", "voice_generation"}
+
+
+def test_provider_voices_api_reads_empty_minimax_cache_without_network(test_app):
+    from fastapi.testclient import TestClient
+
+    client = TestClient(test_app)
+    response = client.get("/api/voice/provider-voices?provider=minimax")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "minimax"
+    assert data["total"] == 0
+    assert data["voices"] == []
