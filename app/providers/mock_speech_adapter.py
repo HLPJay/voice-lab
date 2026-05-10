@@ -1,5 +1,6 @@
 from app.providers.base import ProviderRenderResult, SpeechProvider
 from app.domain.render_plan import RenderPlan
+from app.domain.schemas import ProviderVoiceRead
 from app.utils.audio import estimate_duration_ms, write_silent_wav
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -7,6 +8,46 @@ from app.utils.id_generator import new_id
 
 class MockSpeechAdapter(SpeechProvider):
     provider_name = "mock"
+
+    async def list_voices(self, voice_type: str = "all") -> list[ProviderVoiceRead]:
+        voices = [
+            ProviderVoiceRead(
+                id="mock_voice_system",
+                provider=self.provider_name,
+                provider_voice_id="mock_system_narrator",
+                voice_type="system",
+                name="Mock System Narrator",
+                description="A stable mock narrator voice for tests.",
+                language="zh",
+                gender="neutral",
+                metadata={"mock": True},
+            ),
+            ProviderVoiceRead(
+                id="mock_voice_clone",
+                provider=self.provider_name,
+                provider_voice_id="mock_clone_soft",
+                voice_type="voice_cloning",
+                name="Mock Clone Soft",
+                description="A mock cloned-style voice for catalog tests.",
+                language="zh",
+                gender="female",
+                metadata={"mock": True},
+            ),
+            ProviderVoiceRead(
+                id="mock_voice_generation",
+                provider=self.provider_name,
+                provider_voice_id="mock_generated_warm",
+                voice_type="voice_generation",
+                name="Mock Generated Warm",
+                description="A mock generated voice for catalog tests.",
+                language="en",
+                gender="male",
+                metadata={"mock": True},
+            ),
+        ]
+        if voice_type == "all":
+            return voices
+        return [voice for voice in voices if voice.voice_type == voice_type]
 
     async def render_sync(self, plan: RenderPlan) -> ProviderRenderResult:
         audio_id = new_id("audio_file")

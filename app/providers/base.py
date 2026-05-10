@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 
 from app.domain.render_plan import RenderPlan
+from app.domain.schemas import ProviderVoiceRead
 
 
 class ProviderRenderResult(BaseModel):
@@ -23,7 +24,7 @@ class SpeechProvider(ABC):
     async def render_sync(self, plan: RenderPlan) -> ProviderRenderResult:
         raise NotImplementedError
 
-    async def list_voices(self, voice_type: str = "all"):
+    async def list_voices(self, voice_type: str = "all") -> list[ProviderVoiceRead]:
         raise NotImplementedError
 
     async def delete_voice(self, provider_voice_id: str):
