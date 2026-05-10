@@ -16,11 +16,12 @@ Voice Lab 是一个可扩展的声音生成中台，第一阶段面向 MiniMax `
 ## 当前状态
 
 本仓库 P0 后端已达到可运行基线（commit `5b8d731`）。
+P1 Voice Catalog 已完成（commit `6dee90f`）。
 
 已落地：
 
 - FastAPI 应用入口 `app/main.py`
-- API 路由目录 `app/api/`（health、profiles、render、variants、jobs、assets）
+- API 路由目录 `app/api/`（health、profiles、render、variants、jobs、assets、provider-voices）
 - SQLModel 数据模型
 - 标准协议对象 `RenderPlan`
 - `MockSpeechAdapter`（完整本地闭环）
@@ -28,7 +29,8 @@ Voice Lab 是一个可扩展的声音生成中台，第一阶段面向 MiniMax `
 - 文本预处理服务
 - 单条生成与多版本生成服务层
 - 资产保存服务
-- pytest 测试（11 passed）
+- Voice Catalog 服务（Provider Voice 只读同步）
+- pytest 测试（23 passed）
 - 错误处理与 FastAPI exception handler
 - 资产下载接口
 
@@ -42,6 +44,11 @@ P0 可运行基线验收通过：
 - `GET /api/voice/assets/{asset_id}` ✅
 - `GET /api/voice/assets/{asset_id}/download` ✅
 - 错误边界：PROFILE_NOT_FOUND / PROVIDER_NOT_CONFIGURED / JOB_NOT_FOUND / ASSET_NOT_FOUND / VALIDATION_ERROR ✅
+
+P1 Voice Catalog 验收通过：
+
+- `GET /api/voice/provider-voices?provider=mock` ✅
+- `GET /api/voice/provider-voices?provider=minimax&refresh=true`（真实 MiniMax）✅ 返回 total=304
 
 ## 架构原则
 

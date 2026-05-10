@@ -112,29 +112,23 @@ pytest -q -> 11 passed
 
 1. Windows 终端可能显示 UTF-8 字幕内容为乱码（GBK 终端编码），文件本身 UTF-8 正常
 
-## P1 Voice Catalog 设计已落地
+## P1 Voice Catalog 已完成
 
-MiniMax Voice Management / Provider Voice Catalog 设计已写入文档，详见 `docs/IMPLEMENTATION_PLAN.md` P1 部分。
+MiniMax Voice Management / Provider Voice Catalog 已完成实现（commit `6dee90f`）。
 
-**官方 MiniMax 事实（已查证）：**
-- 端点：`POST /v1/get_voice`
-- 请求体：`{"voice_type": "all"}`
-- `voice_type` 支持：`system` / `voice_cloning` / `voice_generation` / `all`
-- 返回分组：`system_voice` / `voice_cloning` / `voice_generation`
-- voice item 字段：`voice_id` / `voice_name` / `description` / `created_time`
+**已实现功能：**
+- `GET /api/voice/provider-voices?provider=minimax&voice_type=all&refresh=true`
+- `provider_voices` 表（含 upsert + deprecated 标记策略）
+- `VoiceCatalogService`（缓存优先，refresh=true 强制拉取）
+- `MiniMaxSpeechAdapter.list_voices()` 真实调用
 
-**官方文档：** https://platform.minimaxi.com/docs/api-reference/voice-management-get
+**真实验收结果：**
+- `refresh=true&provider=minimax` 返回 `total=304`
+- `by_type={'system':303,'voice_cloning':1}`
+- pytest -q: `23 passed`
 
-**新增文件规划：**
-- `app/models/provider_voice.py`
-- `app/repositories/provider_voice_repo.py`
-- `app/services/voice_catalog_service.py`
-- `app/api/provider_voices.py`
-- `tests/test_provider_voice.py`
-- `tests/test_voice_catalog.py`
+**注意：** 自动测试不请求真实 MiniMax，真实验收需在 `.env` 配置 `MINIMAX_API_KEY`。
 
-**推荐分 4 轮实现：**
-1. ProviderVoice model + schema + repo
-2. Mock adapter + VoiceCatalogService
-3. API route + tests
-4. MiniMax adapter list_voices（人工验证）
+**风险（已知）：**
+- language/gender 字段：MiniMax Get Voice 返回中暂无稳定字段，当前标准响应中保留为 null，不做自动推断
+- 字幕真实结构：T2A 字幕返回仍待验证

@@ -124,7 +124,9 @@ GET /health -> {"status": "ok"}
 
 pytest -q 结果：`11 passed`
 
-## P1 计划：Voice Catalog（MiniMax Get Voice）
+## P1 计划：Voice Catalog（MiniMax Get Voice）✅ 已完成
+
+> 完成 commit：`6dee90f`，pytest -q：`23 passed`，真实验收：`total=304`，`by_type={'system':303,'voice_cloning':1}`
 
 ### 功能边界
 
