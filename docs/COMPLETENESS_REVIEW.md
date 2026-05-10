@@ -3,6 +3,7 @@
 检查时间：2026-05-11
 P0 可运行基线 commit：`5b8d731 fix: return not found for missing assets`
 P1 Voice Catalog commit：`6dee90f`
+P1 T2A HTTP 增强 commit：`0e5177a fix: harden minimax t2a response parsing`
 
 本文档记录当前 Voice Lab P0 和 P1 的完整性检查结果。
 
@@ -10,6 +11,7 @@ P1 Voice Catalog commit：`6dee90f`
 
 P0 后端已达到可运行基线，所有接口和错误边界验收通过。
 P1 Voice Catalog（MiniMax Get Voice）已完成，真实 MiniMax 验收通过。
+P1 T2A HTTP 增强（响应解析硬化）已完成，真实 MiniMax `output_format=url` + `subtitle_file` 验收通过。
 
 ## 自动测试
 
@@ -18,6 +20,7 @@ pytest -q
 ```
 P0 结果：`11 passed`
 P1 Voice Catalog 结果：`23 passed`（含 P0 原有 11 个）
+P1 T2A HTTP 增强后结果：`47 passed`（含 P0 11 + Voice Catalog 12 + T2A 解析 22 + 新增 2）
 
 ## 已执行 P0 验收检查
 
@@ -52,6 +55,34 @@ P1 Voice Catalog 结果：`23 passed`（含 P0 原有 11 个）
 
 **真实验收条件**：需在 `.env` 中配置 `MINIMAX_API_KEY`，然后手动调用 `GET /api/voice/provider-voices?provider=minimax&refresh=true`。
 
+## P1 T2A HTTP 增强验收（commit `0e5177a`）
+
+| 检查项 | 结果 |
+|--------|------|
+| pytest -q | `47 passed` ✅ |
+| 真实 MiniMax `output_format=url` 调用 | 200 ✅ |
+| audio_asset 创建 | ✅ |
+| audio 文件存在 + 有内容 | ✅（71412 bytes） |
+| subtitle_asset 创建（非 null） | ✅ |
+| subtitle json/srt 文件存在 | ✅ |
+| timeline 非空 | ✅（1 条） |
+| `data.audio` 存在（hex fallback） | ✅ |
+| `data.subtitle_file` URL 下载解析 | ✅ |
+| `base_resp.status_code=0` | ✅ |
+| 无 ProviderError | ✅ |
+
+**真实 T2A 响应结构**（已验证）：
+- 顶层 keys：`data`, `extra_info`, `trace_id`, `base_resp`
+- `data` keys：`audio`, `status`, `ced`, `subtitle_file`
+- `data.subtitle_file` 类型：URL 字符串（OSS），非 dict/list
+- `data.audio_url` / `data.url`：不存在
+- timeline item 字段：`text`, `pronounce_text`, `time_begin`, `time_end`, `text_begin`, `text_end`, `pronounce_text_begin`, `pronounce_text_end`, `is_final_segment`
+
+**关键发现**：
+- `output_format=url` 时 MiniMax 仍返回 `data.audio`（hex），`data.audio_url` 不存在
+- Voice Lab 优先 `audio_url` 下载，hex 作为 fallback 逻辑正确
+- `data.subtitle_file` 是 URL 字符串，需下载后按 JSON 解析
+
 ## 架构约束检查
 
 - VoiceProfile -> VoiceBinding -> RenderPlan -> Provider Adapter 链路：✅
@@ -65,7 +96,7 @@ P1 Voice Catalog 结果：`23 passed`（含 P0 原有 11 个）
 
 1. **Windows 终端显示 UTF-8 字幕内容为乱码**（GBK 终端编码问题），文件本身 UTF-8 正常
 2. **language/gender 字段**：MiniMax Get Voice 返回中暂无稳定字段，当前标准响应中保留为 null，不做自动推断
-3. **字幕真实结构**：MiniMax T2A 字幕返回结构仍待真实 T2A 请求验证
+3. ~~**字幕真实结构**：MiniMax T2A 字幕返回结构仍待真实 T2A 请求验证~~ ✅ 已验证（见 P1 T2A HTTP 增强验收）
 
 ## 文件结构检查
 
@@ -114,6 +145,7 @@ P1 Voice Catalog 结果：`23 passed`（含 P0 原有 11 个）
 - `tests/test_render_plan.py`
 - `tests/test_mock_adapter.py`
 - `tests/test_api_render.py`
+- `tests/test_minimax_speech_adapter.py`
 
 ### 建议后续补齐（非 P0）
 
@@ -136,5 +168,6 @@ P1 Voice Catalog 结果：`23 passed`（含 P0 原有 11 个）
 
 - P0 可运行基线：✅ 已达到（commit `5b8d731`）
 - P1 Voice Catalog：✅ 已完成（commit `6dee90f`），真实 MiniMax 验收通过（total=304）
-- pytest -q：`23 passed`
+- P1 T2A HTTP 增强：✅ 已完成（commit `0e5177a`），真实 MiniMax `output_format=url` 验收通过
+- pytest -q：`47 passed`
 - 是否建议 push：待确认

@@ -22,6 +22,7 @@ voice_lab/README.md
 ## 当前代码状态
 
 P0 后端已达到可运行基线（commit `5b8d731`）。
+P1 T2A HTTP 增强已完成（commit `0e5177a`）。
 
 已验证：
 - pytest 11/11 通过
@@ -94,7 +95,7 @@ tests/                       ✅ (11 tests passing)
 1. `VoiceRenderService` 通过 `Depends(get_session)` 注入 session，已正确接入 API。
 2. `TextPreprocessService` 对 9500 字符以上同步文本做拒绝，返回 VALIDATION_ERROR。
 3. `MockSpeechAdapter` 返回 wav 文件，`RenderPlan.audio_params.format` 仍为 mp3；不影响 mock 闭环。
-4. MiniMax 字幕返回结构需基于真实响应再适配（P1 范围）。
+4. MiniMax 字幕返回结构已验证：`data.subtitle_file` 为 OSS URL，`_extract_timeline_from_subtitle_file` 已支持下载 + JSON 解析 sentences/items/timeline。
 5. 错误处理器已注册到 FastAPI app。
 6. pytest 和 uvicorn 启动验证均已通过。
 
@@ -131,4 +132,26 @@ MiniMax Voice Management / Provider Voice Catalog 已完成实现（commit `6dee
 
 **风险（已知）：**
 - language/gender 字段：MiniMax Get Voice 返回中暂无稳定字段，当前标准响应中保留为 null，不做自动推断
-- 字幕真实结构：T2A 字幕返回仍待验证
+
+## P1 T2A HTTP 增强已完成
+
+T2A 响应解析硬化已完成（commit `0e5177a fix: harden minimax t2a response parsing`）。
+
+**已修复问题：**
+- `output_format=url` 时 MiniMax 仍返回 `data.audio`（hex），`data.audio_url` 不存在；Voice Lab 优先 `audio_url` 下载，hex 为 fallback
+- `data.audio` 奇长度 hex 字符串导致 `binascii.unhexlify` 崩溃 → 改为先校验再解码，非法时抛 ProviderError
+- `data.subtitle_file` 是 URL 字符串，非内嵌 dict/list；需下载后解析 JSON
+
+**真实验收结果（output_format=url）**：
+- audio_asset 创建：✅（71412 bytes，file exists）
+- subtitle_asset 创建：✅（timeline 1 条）
+- subtitle json/srt 文件存在：✅
+- `data.audio` 存在：`true`（hex）
+- `data.subtitle_file` 存在：`true`（URL）
+- `base_resp.status_code=0`：`success`
+- 无 ProviderError：✅
+
+**真实 timeline item 字段（已验证）**：
+`text`, `pronounce_text`, `time_begin`, `time_end`, `text_begin`, `text_end`, `pronounce_text_begin`, `pronounce_text_end`, `is_final_segment`
+
+**pytest -q**：`47 passed`

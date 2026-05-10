@@ -17,6 +17,7 @@ Voice Lab 是一个可扩展的声音生成中台，第一阶段面向 MiniMax `
 
 本仓库 P0 后端已达到可运行基线（commit `5b8d731`）。
 P1 Voice Catalog 已完成（commit `6dee90f`）。
+P1 T2A HTTP 增强已完成（commit `0e5177a`）。
 
 已落地：
 
@@ -30,7 +31,8 @@ P1 Voice Catalog 已完成（commit `6dee90f`）。
 - 单条生成与多版本生成服务层
 - 资产保存服务
 - Voice Catalog 服务（Provider Voice 只读同步）
-- pytest 测试（23 passed）
+- T2A 响应解析硬化（output_format=url / subtitle_file URL / hex fallback）
+- pytest 测试（47 passed，含 T2A 响应解析 22 个测试）
 - 错误处理与 FastAPI exception handler
 - 资产下载接口
 
@@ -49,6 +51,14 @@ P1 Voice Catalog 验收通过：
 
 - `GET /api/voice/provider-voices?provider=mock` ✅
 - `GET /api/voice/provider-voices?provider=minimax&refresh=true`（真实 MiniMax）✅ 返回 total=304
+
+P1 T2A HTTP 增强验收通过（commit `0e5177a`）：
+
+- `POST /api/voice/render` output_format=url + 真实 MiniMax ✅
+- audio_asset 创建，文件存在有内容 ✅
+- subtitle_asset 创建，timeline 1 条 ✅
+- subtitle json/srt 双文件存在 ✅
+- pytest -q ✅ 47 passed
 
 ## 架构原则
 

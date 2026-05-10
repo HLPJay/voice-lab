@@ -48,7 +48,16 @@
   - 支持 `model=speech-2.8-hd`
   - 支持 `output_format=hex` 和 `url`
   - 支持 `subtitle_enable=true`
-  - 缺陷：字幕返回结构未基于真实响应验证
+  - 字幕真实结构已验证（commit `0e5177a`）
+
+### P1 T2A HTTP 增强（已完成）
+
+- **同步 T2A HTTP 增强**（commit `0e5177a fix: harden minimax t2a response parsing`）
+  - `output_format=url` 模式下优先使用 `audio_url` 下载
+  - `data.audio` hex 回退逻辑（奇长度 hex 不崩溃，抛 ProviderError）
+  - `data.subtitle_file` URL 下载并解析 JSON timeline（支持 sentences/items/timeline/words 字段）
+  - `data.audio` 为 http/https URL 时直接下载
+  - 真实 T2A 响应结构已验证
 
 ### P1（推荐实现顺序依次）
 
@@ -99,10 +108,10 @@
    -> Provider Voice Catalog (GET /api/voice/provider-voices)
    -> P1 第 1-4 轮
 
-2. 同步 T2A 增强
-   -> output_format=url 自动下载
-   -> 字幕完整解析
-   -> P1/P2 过渡期
+2. 同步 T2A 增强 ✅ 已完成
+   -> output_format=url 自动下载 ✅（commit `0e5177a`）
+   -> 字幕完整解析 ✅（commit `0e5177a`）
+   -> P1/P2 过渡期 ✅
 
 3. Voice Management Delete
    -> DELETE /api/voice/provider-voices/{provider_voice_id}
@@ -166,7 +175,7 @@
 | **Delete Voice 权限要求** | T2A API Key 是否有 Delete Voice 权限？403 时返回什么错误码？ |
 | **Voice Clone 结果获取方式** | 克隆任务是同步还是异步？结果如何查询？ |
 | **异步 T2A 任务超时** | 异步任务最大等待时间？超时后如何处理？ |
-| **字幕完整结构** | MiniMax T2A 返回的 subtitle 完整字段结构未确认，依赖真实响应验证 |
+| **字幕完整结构** | ✅ 已验证：T2A 返回 `data.subtitle_file`（URL），下载后 JSON 结构含 `sentences`/`items`/`timeline`/`words` 字段，timeline item 含 text/pronounce_text/time_begin/time_end/text_begin/text_end/pronounce_text_begin/pronounce_text_end/is_final_segment |
 | **错误码完整列表** | MiniMax API 完整错误码文档未找到，实现时需逐个处理未知错误 |
 
 以下内容**确认不实现**，不追查：
