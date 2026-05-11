@@ -44,6 +44,16 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 - 错误重试（指数退避，502/503/504 + 超时自动重试）
 - 健康检查增强（数据库/存储/Provider 三维检查）
 
+### 代码审计与重构
+- resolve_binding 统一抽取（4 个 service 重复逻辑 → voice_profile_repo）
+- 共享 httpx 连接池（替代每次请求新建 AsyncClient）
+- DB 索引优化（VoiceJob + ProviderCallLog 高频查询列）
+- 中间件精简（移除与 exception_handler 重复的异常处理）
+- date_path() UTC 修正、Blob URL 内存泄漏修复
+- trial audio 下载路由、clone 上传大小限制
+- XSS 防护（data-* 属性 + 事件委托替代 inline onclick）
+- asyncio.create_task 异常捕获（done_callback 日志）
+
 ### P4：T2A WebSocket 流式语音生成
 - StreamAudioChunk 基类 + MiniMax/Mock WebSocket 适配器
 - StreamRenderService（验证 → RenderPlan → VoiceJob → 流式 chunk → 保存 AudioAsset）
@@ -139,7 +149,7 @@ python -m pytest tests/ -m e2e -x -v    # 真实 API 测试（需 API Key）
 |------|------|--------|
 | ~~P2-E T2A WebSocket~~ | ~~已在 P4 完成~~ | ~~完成~~ |
 | 多 Provider 适配 | OpenAI TTS / Azure / ElevenLabs | 中 |
-| 批量任务编排 | 多段文本→多音频→合并 | 中 |
+| ~~批量任务编排~~ | ~~已在 P6 完成~~ | ~~完成~~ |
 | 多用户/租户 | 独立平台层模块 | 按需 |
 | 额度/计费 | 独立平台层模块 | 按需 |
 | API Key 管理 | 独立平台层模块 | 按需 |
