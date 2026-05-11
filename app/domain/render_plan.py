@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+VOICE_PARAM_KEYS = frozenset({"speed", "vol", "pitch", "emotion", "timber_weights"})
 
 
 class SubtitlePlan(BaseModel):
@@ -19,3 +21,8 @@ class RenderPlan(BaseModel):
     subtitle: SubtitlePlan = Field(default_factory=SubtitlePlan)
     output_format: str = "hex"
     language_boost: str = "auto"
+
+    @field_validator("voice_params")
+    @classmethod
+    def filter_voice_params(cls, v: dict) -> dict:
+        return {k: val for k, val in v.items() if k in VOICE_PARAM_KEYS}

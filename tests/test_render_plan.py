@@ -27,3 +27,20 @@ def test_subtitle_plan_defaults():
     plan = SubtitlePlan()
     assert plan.enabled is True
     assert plan.type == "sentence"
+
+
+def test_voice_params_filters_unknown_keys():
+    plan = RenderPlan(
+        id="plan_filter",
+        text="t",
+        processed_text="t",
+        profile_id="p",
+        provider="mock",
+        model="m",
+        provider_voice_id="v",
+        voice_params={"speed": 0.88, "emotion": "sad", "api_key": "LEAK", "unknown": 42},
+    )
+    assert "speed" in plan.voice_params
+    assert "emotion" in plan.voice_params
+    assert "api_key" not in plan.voice_params
+    assert "unknown" not in plan.voice_params
