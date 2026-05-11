@@ -678,7 +678,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         task_start_msg = {
             "event": "task_start",
-            "model": settings.minimax_ws_model,
+            "model": plan.model,
             "voice_setting": voice_setting,
             "audio_setting": {
                 "format": plan.audio_params.get("format", "mp3"),
@@ -690,7 +690,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         _provider_logger.info(
             "ws_connect",
-            extra={"provider": "minimax", "url": ws_url, "model": settings.minimax_ws_model},
+            extra={"provider": "minimax", "url": ws_url, "model": plan.model},
         )
 
         start_time = time.monotonic()
