@@ -229,6 +229,18 @@
   .job-status.status-success { background: #f0fff4; color: #276749; }
   .job-status.status-failed  { background: #fff5f5; color: #c53030; }
   .job-status.status-running  { background: #fefcbf; color: #b7791f; }
+  .job-status.status-processing { background: #fefcbf; color: #b7791f; }
+
+  .poll-status {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 8px;
+  }
+
+  .poll-status .spinner {
+    border-color: rgba(90,103,216,0.3);
+    border-top-color: #5a67d8;
+  }
 
   .audio-player {
     width: 100%;
@@ -392,6 +404,7 @@
         <label>生成模式</label>
         <div class="radio-group">
           <label><input type="radio" name="genMode" value="single" checked> 单条生成</label>
+          <label><input type="radio" name="genMode" value="async"> 异步生成</label>
           <label><input type="radio" name="genMode" value="variants"> 多版本试音</label>
         </div>
         <div class="variant-count-row" id="variantCountRow">
@@ -467,7 +480,7 @@
   }
 
   function statusLabel(s) {
-    const m = { success: '已完成', failed: '失败', running: '生成中', pending: '等待中' };
+    const m = { success: '已完成', failed: '失败', running: '生成中', pending: '等待中', processing: '处理中' };
     return m[s] || s;
   }
 
@@ -518,16 +531,21 @@
     return d.innerHTML;
   }
 
+  let pollTimer = null;
+
   async function handleGenerate() {
     const text = textInput.value.trim();
     if (!text) { alert('请输入文案'); return; }
     const profileId = profileSelect.value;
     if (!profileId) { alert('请选择声音人设'); return; }
     const provider = providerSelect.value;
-    const isVariant = document.querySelector('input[name="genMode"]:checked').value === 'variants';
+    const mode = document.querySelector('input[name="genMode"]:checked').value;
+    const isVariant = mode === 'variants';
+    const isAsync = mode === 'async';
     const count = parseInt(variantCountInput.value) || 3;
     const subtitle = needSubtitle.checked;
 
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     setLoading(true);
     resultsArea.classList.remove('visible');
     resultsArea.innerHTML = '';
@@ -541,7 +559,11 @@
         ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {})
       };
 
-      const endpoint = isVariant ? '/api/voice/variants/render' : '/api/voice/render';
+      let endpoint;
+      if (isAsync) endpoint = '/api/voice/render/async';
+      else if (isVariant) endpoint = '/api/voice/variants/render';
+      else endpoint = '/api/voice/render';
+
       const resp = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -558,14 +580,101 @@
         return;
       }
 
-      renderResults(data, isVariant);
-      resultsArea.classList.add('visible');
+      if (isAsync) {
+        startAsyncPolling(data.job_id);
+      } else {
+        renderResults(data, isVariant);
+        resultsArea.classList.add('visible');
+        setLoading(false);
+      }
     } catch (e) {
       resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
       resultsArea.classList.add('visible');
-    } finally {
       setLoading(false);
     }
+  }
+
+  function startAsyncPolling(jobId) {
+    let pollCount = 0;
+    const maxPolls = 120;
+
+    resultsArea.innerHTML = `
+      <div class="card" id="asyncStatusCard">
+        <div class="result-label">异步任务</div>
+        <p>任务ID：<code>${esc(jobId)}</code></p>
+        <div class="poll-status"><span class="spinner"></span>轮询中…</div>
+      </div>`;
+    resultsArea.classList.add('visible');
+
+    async function poll() {
+      pollCount++;
+      try {
+        const resp = await fetch(`/api/voice/render/async/${jobId}/status`);
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          clearInterval(pollTimer); pollTimer = null;
+          resultsArea.innerHTML = `<div class="error-msg">查询失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+          setLoading(false);
+          return;
+        }
+
+        if (data.status === 'success') {
+          clearInterval(pollTimer); pollTimer = null;
+          renderAsyncResult(data);
+          setLoading(false);
+          return;
+        }
+
+        if (data.status === 'failed') {
+          clearInterval(pollTimer); pollTimer = null;
+          resultsArea.innerHTML = `<div class="error-msg">任务失败：${esc(data.error_message || '未知错误')}</div>`;
+          setLoading(false);
+          return;
+        }
+
+        const statusCard = document.getElementById('asyncStatusCard');
+        if (statusCard) {
+          const pollStatus = statusCard.querySelector('.poll-status');
+          if (pollStatus) pollStatus.innerHTML = `<span class="spinner"></span>轮询中… (${pollCount}/${maxPolls})`;
+        }
+
+        if (pollCount >= maxPolls) {
+          clearInterval(pollTimer); pollTimer = null;
+          resultsArea.innerHTML += `<div class="error-msg">轮询超时，请稍后手动查询</div>`;
+          setLoading(false);
+        }
+      } catch (e) {
+        clearInterval(pollTimer); pollTimer = null;
+        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+        setLoading(false);
+      }
+    }
+
+    poll();
+    pollTimer = setInterval(poll, 3000);
+  }
+
+  function renderAsyncResult(data) {
+    const audio = data.audio_asset;
+    const sub = data.subtitle_asset;
+    let html = `
+      <div class="card">
+        <div class="result-label">异步生成结果</div>
+        <span class="${statusClass(data.status)}">${statusLabel(data.status)}</span>
+        <p style="font-size:0.82rem;color:#718096;margin-top:6px">
+          任务ID：<code>${esc(data.job_id)}</code>
+          ${data.provider ? ` · Provider: ${esc(data.provider)}` : ''}
+          ${data.model ? ` · Model: ${esc(data.model)}` : ''}
+        </p>
+        ${audio ? audioPlayer(audio.id) : ''}
+        <div class="action-row">${audio ? downloadBtn(audio.id) : ''}</div>
+        ${sub && sub.timeline && sub.timeline.length > 0
+          ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(sub.timeline)}`
+          : ''}
+      </div>`;
+    resultsArea.innerHTML = html;
+    resultsArea.classList.add('visible');
   }
 
   function renderResults(data, isVariant) {
