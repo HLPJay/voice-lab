@@ -568,6 +568,7 @@
     <button class="tab-btn" data-tab="clone">声音克隆</button>
     <button class="tab-btn" data-tab="design">声音设计</button>
     <button class="tab-btn" data-tab="bindings">绑定管理</button>
+    <button class="tab-btn" data-tab="batch">批量生成</button>
   </nav>
 
   <!-- ======================== TAB: TTS ======================== -->
@@ -882,6 +883,167 @@
     </div>
   </div>
 
+  <!-- ======================== TAB: BATCH ======================== -->
+  <div class="tab-content" id="tab-batch">
+    <!-- Mode Toggle -->
+    <div class="card">
+      <div class="card-title">批量生成</div>
+      <div class="form-group full-width">
+        <div class="radio-group">
+          <label><input type="radio" name="batchMode" value="longtext" checked> 长文本模式</label>
+          <label><input type="radio" name="batchMode" value="script"> 剧本模式</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Longtext Mode -->
+    <div id="batchLongtextPanel">
+      <div class="card">
+        <div class="card-title">长文本配置</div>
+        <div class="form-group full-width">
+          <label for="batchText">待分段文本</label>
+          <textarea id="batchText" placeholder="输入长篇文章或段落文本，系统将自动分段后逐段生成音频并合并" style="min-height:120px" maxlength="50000"></textarea>
+        </div>
+        <div class="config-grid">
+          <div class="form-group">
+            <label for="batchProfile">声音人设</label>
+            <select id="batchProfile">
+              <option value="">加载中…</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="batchProvider">Provider</label>
+            <select id="batchProvider">
+              <option value="mock">mock</option>
+              <option value="minimax">minimax</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="batchStrategy">分段策略</label>
+            <select id="batchStrategy">
+              <option value="auto">自动（推荐）</option>
+              <option value="paragraph">按段落</option>
+              <option value="sentence">按句子</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="batchMaxChars">每段上限（字）</label>
+            <input type="number" id="batchMaxChars" value="2000" min="100" max="5000" step="100">
+          </div>
+          <div class="form-group">
+            <label for="batchSilence">段间静音（ms）</label>
+            <input type="number" id="batchSilence" value="300" min="0" max="3000" step="100">
+          </div>
+          <div class="form-group">
+            <label for="batchOutputFormat">音频格式</label>
+            <select id="batchOutputFormat">
+              <option value="mp3">MP3</option>
+              <option value="wav">WAV</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <label>语音参数（可选）</label>
+          <div class="param-row">
+            <div class="param-item">
+              <label for="batchSpeed">语速</label>
+              <input type="number" id="batchSpeed" step="0.05" min="0.5" max="2.0" placeholder="0.5-2.0">
+            </div>
+            <div class="param-item">
+              <label for="batchVol">音量</label>
+              <input type="number" id="batchVol" step="0.1" min="0.1" max="10.0" placeholder="0.1-10.0">
+            </div>
+            <div class="param-item">
+              <label for="batchPitch">音调</label>
+              <input type="number" id="batchPitch" step="1" min="-12" max="12" placeholder="-12~12">
+            </div>
+            <div class="param-item">
+              <label for="batchEmotion">情绪</label>
+              <select id="batchEmotion">
+                <option value="">默认</option>
+                <option value="happy">happy</option>
+                <option value="sad">sad</option>
+                <option value="angry">angry</option>
+                <option value="fearful">fearful</option>
+                <option value="disgusted">disgusted</option>
+                <option value="surprised">surprised</option>
+                <option value="neutral">neutral</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <div class="checkbox-row">
+            <input type="checkbox" id="batchNeedSubtitle" checked>
+            <label for="batchNeedSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
+          </div>
+        </div>
+        <button class="btn-primary" id="batchLongtextSubmit" onclick="handleBatchLongtextSubmit()">提交批量任务</button>
+      </div>
+    </div>
+
+    <!-- Script Mode -->
+    <div id="batchScriptPanel" style="display:none">
+      <div class="card">
+        <div class="card-title">剧本配置</div>
+        <div class="config-grid">
+          <div class="form-group">
+            <label for="batchScriptProvider">Provider</label>
+            <select id="batchScriptProvider">
+              <option value="mock">mock</option>
+              <option value="minimax">minimax</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="batchScriptSilence">段间静音（ms）</label>
+            <input type="number" id="batchScriptSilence" value="500" min="0" max="3000" step="100">
+          </div>
+          <div class="form-group">
+            <label for="batchScriptOutputFormat">音频格式</label>
+            <select id="batchScriptOutputFormat">
+              <option value="mp3">MP3</option>
+              <option value="wav">WAV</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="batchScriptNeedSubtitle">生成字幕</label>
+            <div style="margin-top:4px">
+              <input type="checkbox" id="batchScriptNeedSubtitle" checked>
+            </div>
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <label>台词列表</label>
+          <div id="scriptLines">
+            <!-- Dynamic script lines -->
+          </div>
+          <button class="btn-sm" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
+        </div>
+        <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
+      </div>
+    </div>
+
+    <!-- Progress Panel (hidden until submitted) -->
+    <div id="batchProgressPanel" style="display:none">
+      <div class="card">
+        <div class="card-title">批量进度 <span id="batchProgressTitle"></span></div>
+        <div id="batchProgressBar" style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:12px">
+          <div id="batchProgressFill" style="height:100%;background:#4c51bf;border-radius:4px;width:0%;transition:width 0.3s"></div>
+        </div>
+        <div id="batchProgressStats" style="font-size:0.85rem;color:#718096;margin-bottom:12px"></div>
+        <div id="batchSegmentTable" style="font-size:0.82rem"></div>
+        <div id="batchCompleteActions" style="display:none;margin-top:16px">
+          <button class="btn-primary" id="batchPlayBtn" onclick="handleBatchPlay()">播放合并音频</button>
+          <a id="batchDownloadLink" class="btn-sm" href="#" style="display:inline-block;margin-left:8px">下载音频</a>
+          <button class="btn-danger" id="batchRetryBtn" onclick="handleBatchRetry()" style="display:none;margin-left:8px">重试失败段</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio player for batch (hidden) -->
+    <audio id="batchAudioPlayer" style="display:none"></audio>
+  </div>
+
 </div>
 
 <script>
@@ -1042,6 +1204,11 @@
     } finally {
       _historyLoading = false;
     }
+  }
+
+  function loadMoreHistory() {
+    if (_historyLoading) return;
+    loadHistory(_historyOffset);
   }
 
   // Load history on page init
@@ -1873,6 +2040,332 @@
       handleListBindings();
     } catch (e) {
       alert('删除失败：' + e.message);
+    }
+  }
+
+  // ============================================================
+  // Batch Tab
+  // ============================================================
+
+  // Populate batch profile select when profiles are loaded
+  (async () => {
+    try {
+      const res = await fetch('/api/voice/profiles');
+      const profiles = await res.json();
+      const batchProfile = document.getElementById('batchProfile');
+      if (!batchProfile) return;
+      batchProfile.innerHTML = '';
+      if (!profiles || profiles.length === 0) {
+        batchProfile.innerHTML = '<option value="">无可用人设</option>';
+        return;
+      }
+      profiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        batchProfile.appendChild(opt);
+      });
+    } catch (e) {}
+  })();
+
+  // Batch mode switch
+  document.querySelectorAll('input[name="batchMode"]').forEach(r => {
+    r.addEventListener('change', () => {
+      const mode = document.querySelector('input[name="batchMode"]:checked').value;
+      document.getElementById('batchLongtextPanel').style.display = mode === 'longtext' ? '' : 'none';
+      document.getElementById('batchScriptPanel').style.display = mode === 'script' ? '' : 'none';
+    });
+  });
+
+  // Script lines management
+  let _scriptLineCount = 0;
+  const _scriptProfiles = {};
+
+  function addScriptLine(role = '', text = '', profileId = '') {
+    const container = document.getElementById('scriptLines');
+    const id = _scriptLineCount++;
+    const row = document.createElement('div');
+    row.id = `scriptLine_${id}`;
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
+    row.innerHTML = `
+      <input type="text" id="scriptRole_${id}" placeholder="角色名" value="${esc(role)}" style="width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+      <input type="text" id="scriptText_${id}" placeholder="台词内容" value="${esc(text)}" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+      <select id="scriptProfile_${id}" style="width:120px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+        <option value="">选择人设</option>
+      </select>
+      <button class="btn-sm" onclick="removeScriptLine(${id})" style="padding:6px 10px;color:#e53e3e">删除</button>
+    `;
+    container.appendChild(row);
+
+    // Populate profile select for this line
+    fetch('/api/voice/profiles')
+      .then(r => r.json())
+      .then(profiles => {
+        const sel = document.getElementById(`scriptProfile_${id}`);
+        profiles.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          if (p.id === profileId) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      })
+      .catch(() => {});
+  }
+
+  function removeScriptLine(id) {
+    const row = document.getElementById(`scriptLine_${id}`);
+    if (row) row.remove();
+  }
+
+  // Initialize with 3 empty script lines
+  addScriptLine();
+  addScriptLine();
+  addScriptLine();
+
+  // Batch polling state
+  let _batchPollTimer = null;
+  let _currentBatchId = null;
+
+  async function handleBatchLongtextSubmit() {
+    const text = document.getElementById('batchText').value.trim();
+    if (!text) { alert('请输入待分段文本'); return; }
+    const profileId = document.getElementById('batchProfile').value;
+    if (!profileId) { alert('请选择声音人设'); return; }
+    const provider = document.getElementById('batchProvider').value;
+    const strategy = document.getElementById('batchStrategy').value;
+    const maxChars = parseInt(document.getElementById('batchMaxChars').value) || 2000;
+    const silence = parseInt(document.getElementById('batchSilence').value) || 300;
+    const outputFormat = document.getElementById('batchOutputFormat').value;
+    const needSubtitle = document.getElementById('batchNeedSubtitle').checked;
+
+    const params = {};
+    const speed = document.getElementById('batchSpeed').value;
+    const vol = document.getElementById('batchVol').value;
+    const pitch = document.getElementById('batchPitch').value;
+    const emotion = document.getElementById('batchEmotion').value;
+    if (speed) params.speed = parseFloat(speed);
+    if (vol) params.vol = parseFloat(vol);
+    if (pitch) params.pitch = parseInt(pitch);
+    if (emotion) params.emotion = emotion;
+
+    const btn = document.getElementById('batchLongtextSubmit');
+    btn.disabled = true;
+    btn.textContent = '提交中…';
+
+    try {
+      const resp = await fetch('/api/voice/batch/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'longtext',
+          text,
+          profile_id: profileId,
+          provider,
+          segment_strategy: strategy,
+          max_segment_chars: maxChars,
+          silence_between_ms: silence,
+          output_format: outputFormat,
+          params,
+          need_subtitle: needSubtitle,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert('提交失败：' + (data.detail || JSON.stringify(data)));
+        return;
+      }
+      _currentBatchId = data.batch_id;
+      showBatchProgress(data.batch_id);
+      startBatchPoll(data.batch_id);
+    } catch (e) {
+      alert('提交失败：' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '提交批量任务';
+    }
+  }
+
+  async function handleBatchScriptSubmit() {
+    const lines = [];
+    document.querySelectorAll('[id^="scriptLine_"]').forEach(row => {
+      const id = row.id.split('_')[1];
+      const role = document.getElementById(`scriptRole_${id}`)?.value.trim() || '';
+      const text = document.getElementById(`scriptText_${id}`)?.value.trim() || '';
+      const profileId = document.getElementById(`scriptProfile_${id}`)?.value || '';
+      if (text) {
+        lines.push({ role, text, profile_id: profileId, params: {} });
+      }
+    });
+    if (lines.length === 0) { alert('请至少添加一行台词'); return; }
+    if (lines.some(l => !l.profile_id)) { alert('请为每行台词选择声音人设'); return; }
+
+    const provider = document.getElementById('batchScriptProvider').value;
+    const silence = parseInt(document.getElementById('batchScriptSilence').value) || 500;
+    const outputFormat = document.getElementById('batchScriptOutputFormat').value;
+    const needSubtitle = document.getElementById('batchScriptNeedSubtitle').checked;
+
+    const btn = document.getElementById('batchScriptSubmit');
+    btn.disabled = true;
+    btn.textContent = '提交中…';
+
+    try {
+      const resp = await fetch('/api/voice/batch/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'script',
+          script: lines,
+          provider,
+          silence_between_ms: silence,
+          output_format: outputFormat,
+          need_subtitle: needSubtitle,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert('提交失败：' + (data.detail || JSON.stringify(data)));
+        return;
+      }
+      _currentBatchId = data.batch_id;
+      showBatchProgress(data.batch_id);
+      startBatchPoll(data.batch_id);
+    } catch (e) {
+      alert('提交失败：' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '提交批量任务';
+    }
+  }
+
+  function showBatchProgress(batchId) {
+    document.getElementById('batchProgressPanel').style.display = '';
+    document.getElementById('batchProgressTitle').textContent = `(任务ID: ${batchId})`;
+    document.getElementById('batchProgressStats').textContent = '加载中…';
+    document.getElementById('batchSegmentTable').innerHTML = '';
+    document.getElementById('batchCompleteActions').style.display = 'none';
+  }
+
+  function startBatchPoll(batchId) {
+    if (_batchPollTimer) clearInterval(_batchPollTimer);
+    _batchPollTimer = setInterval(() => pollBatchStatus(batchId), 3000);
+    pollBatchStatus(batchId);  // immediate first poll
+  }
+
+  function stopBatchPoll() {
+    if (_batchPollTimer) {
+      clearInterval(_batchPollTimer);
+      _batchPollTimer = null;
+    }
+  }
+
+  async function pollBatchStatus(batchId) {
+    try {
+      const resp = await fetch(`/api/voice/batch/${batchId}/status`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      renderBatchStatus(data);
+    } catch (e) {}
+  }
+
+  function renderBatchStatus(data) {
+    const total = data.total_segments || 0;
+    const completed = data.completed_segments || 0;
+    const failed = data.failed_segments || 0;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    document.getElementById('batchProgressFill').style.width = pct + '%';
+    document.getElementById('batchProgressStats').textContent =
+      `已完成 ${completed}/${total} 段` + (failed > 0 ? `（失败 ${failed} 段）` : '');
+
+    const table = document.getElementById('batchSegmentTable');
+    if (!table) return;
+
+    const statusMap = {
+      pending: '等待',
+      running: '生成中',
+      success: '成功',
+      failed: '失败',
+    };
+    const typeMap = {
+      sync_render: '单条',
+      async_render: '异步',
+      stream_render: '流式',
+    };
+
+    let html = `<table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="text-align:left;color:#718096;font-size:0.80rem">
+          <th style="padding:4px 8px">#</th>
+          <th style="padding:4px 8px">角色</th>
+          <th style="padding:4px 8px">文本摘要</th>
+          <th style="padding:4px 8px">状态</th>
+          <th style="padding:4px 8px">时长</th>
+        </tr>
+      </thead>
+      <tbody>`;
+    data.segments.forEach(seg => {
+      const statusClass = seg.status === 'success' ? 'color:#2f855a' : seg.status === 'failed' ? 'color:#c53030' : 'color:#718096';
+      html += `<tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:6px 8px;color:#718096">${seg.index + 1}</td>
+        <td style="padding:6px 8px">${esc(seg.role || '—')}</td>
+        <td style="padding:6px 8px;color:#4a5568" title="${esc(seg.text_preview)}">${esc(seg.text_preview || '—')}</td>
+        <td style="padding:6px 8px;${statusClass}">${esc(statusMap[seg.status] || seg.status)}</td>
+        <td style="padding:6px 8px;color:#718096">${seg.duration_ms ? (seg.duration_ms / 1000).toFixed(1) + 's' : '—'}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    table.innerHTML = html;
+
+    // Show complete actions when done
+    if (data.status === 'success' || data.status === 'partial') {
+      stopBatchPoll();
+      const actions = document.getElementById('batchCompleteActions');
+      actions.style.display = '';
+
+      if (data.merged_audio) {
+        document.getElementById('batchPlayBtn').style.display = '';
+        const dlLink = document.getElementById('batchDownloadLink');
+        dlLink.href = data.merged_audio.url;
+        dlLink.style.display = '';
+      } else {
+        document.getElementById('batchPlayBtn').style.display = 'none';
+        document.getElementById('batchDownloadLink').style.display = 'none';
+      }
+
+      document.getElementById('batchRetryBtn').style.display = data.failed_segments > 0 ? '' : 'none';
+    }
+  }
+
+  async function handleBatchPlay() {
+    const batchId = _currentBatchId;
+    if (!batchId) return;
+    try {
+      const resp = await fetch(`/api/voice/batch/${batchId}/status`);
+      const data = await resp.json();
+      if (!data.merged_audio) return;
+      const audioUrl = data.merged_audio.url;
+      const player = document.getElementById('batchAudioPlayer');
+      player.src = audioUrl;
+      player.play().catch(() => {});
+    } catch (e) {}
+  }
+
+  async function handleBatchRetry() {
+    const batchId = _currentBatchId;
+    if (!batchId) return;
+    if (!confirm('确定重试失败的段？')) return;
+    try {
+      const resp = await fetch(`/api/voice/batch/${batchId}/retry`, { method: 'POST' });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert('重试失败：' + (data.detail || JSON.stringify(data)));
+        return;
+      }
+      showBatchProgress(batchId);
+      startBatchPoll(batchId);
+    } catch (e) {
+      alert('重试失败：' + e.message);
     }
   }
 </script>
