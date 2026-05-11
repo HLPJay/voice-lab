@@ -49,8 +49,3 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 @app.get("/")
 async def root():
     return RedirectResponse(url="/static/index.html")
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "app": "Voice Lab"}
