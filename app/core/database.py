@@ -2,6 +2,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import get_settings
 from app.core.time import utc_now_iso
+from app.domain.enums import BindingStatus
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
 from app.models.voice_asset import AudioAsset, SubtitleAsset
@@ -51,7 +52,7 @@ def seed_defaults() -> None:
             provider_voice_id="English_expressive_narrator",
             params_json='{"speed":0.88,"vol":1,"pitch":0,"emotion":"sad"}',
             priority=1,
-            status="available",
+            status=BindingStatus.available,
             created_at=now,
             updated_at=now,
         )

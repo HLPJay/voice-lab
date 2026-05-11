@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session, select
 
 from app.core.time import utc_now_iso
+from app.domain.enums import BindingStatus
 from app.models.voice_binding import VoiceBinding
 from app.utils.id_generator import new_id
 
@@ -15,7 +16,7 @@ def list_bindings(
 ) -> list[VoiceBinding]:
     stmt = select(VoiceBinding).where(VoiceBinding.profile_id == profile_id)
     if not include_deprecated:
-        stmt = stmt.where(VoiceBinding.status != "deprecated")
+        stmt = stmt.where(VoiceBinding.status != BindingStatus.deprecated)
     stmt = stmt.order_by(VoiceBinding.priority, VoiceBinding.created_at)
     return list(session.exec(stmt).all())
 
@@ -40,7 +41,7 @@ def find_duplicate_binding(
         .where(VoiceBinding.provider == provider)
         .where(VoiceBinding.model == model)
         .where(VoiceBinding.provider_voice_id == provider_voice_id)
-        .where(VoiceBinding.status != "deprecated")
+        .where(VoiceBinding.status != BindingStatus.deprecated)
     )
     if exclude_id:
         stmt = stmt.where(VoiceBinding.id != exclude_id)
@@ -66,7 +67,7 @@ def create_binding(
         provider_voice_id=provider_voice_id,
         params_json=json.dumps(params or {}, ensure_ascii=False),
         priority=priority,
-        status="available",
+        status=BindingStatus.available,
         created_at=now,
         updated_at=now,
     )
@@ -102,4 +103,4 @@ def update_binding(
 
 
 def deprecate_binding(session: Session, binding: VoiceBinding) -> VoiceBinding:
-    return update_binding(session, binding, status="deprecated")
+    return update_binding(session, binding, status=BindingStatus.deprecated)

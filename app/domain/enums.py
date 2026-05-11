@@ -10,3 +10,8 @@ class JobStatus(str, Enum):
 
 class JobType(str, Enum):
     sync_render = "sync_render"
+
+
+class BindingStatus(str, Enum):
+    available = "available"
+    deprecated = "deprecated"

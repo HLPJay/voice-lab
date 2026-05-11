@@ -1,5 +1,7 @@
 from sqlmodel import Field, SQLModel
 
+from app.domain.enums import BindingStatus
+
 
 class VoiceBinding(SQLModel, table=True):
     __tablename__ = "voice_bindings"
@@ -11,6 +13,6 @@ class VoiceBinding(SQLModel, table=True):
     provider_voice_id: str
     params_json: str = "{}"
     priority: int = 1
-    status: str = "available"
+    status: str = BindingStatus.available
     created_at: str
     updated_at: str

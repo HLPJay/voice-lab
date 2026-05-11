@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.domain.enums import BindingStatus
+
 
 class VoiceProfileCreate(BaseModel):
     id: str
@@ -119,6 +121,6 @@ class VoiceBindingRead(BaseModel):
     provider_voice_name: str | None = None
     params: dict = Field(default_factory=dict)
     priority: int = 1
-    status: str = "available"
+    status: str = BindingStatus.available
     created_at: str
     updated_at: str

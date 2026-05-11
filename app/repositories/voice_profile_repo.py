@@ -1,5 +1,6 @@
 from sqlmodel import Session, select
 
+from app.domain.enums import BindingStatus
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
 
@@ -17,7 +18,7 @@ def get_binding(session: Session, profile_id: str, provider: str) -> VoiceBindin
         select(VoiceBinding)
         .where(VoiceBinding.profile_id == profile_id)
         .where(VoiceBinding.provider == provider)
-        .where(VoiceBinding.status == "available")
+        .where(VoiceBinding.status == BindingStatus.available)
         .order_by(VoiceBinding.priority, VoiceBinding.created_at)
     )
     return session.exec(stmt).first()
