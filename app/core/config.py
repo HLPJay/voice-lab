@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     default_bitrate: int = 128000
     default_channel: int = 1
 
-    enable_mock_provider: bool = False
     mock_fallback_provider: str | None = "minimax"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
