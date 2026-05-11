@@ -170,19 +170,25 @@ class AsyncRenderService:
         else:
             audio_path = Path(file_url)
 
+        plan_data = json.loads(job.render_plan_json or "{}")
+        audio_params = plan_data.get("audio_params", {})
+        subtitle_config = plan_data.get("subtitle", {})
+        subtitle_type = subtitle_config.get("type", "sentence")
+
+        timeline = task_status.metadata.get("timeline", [])
+        if not timeline and subtitle_config.get("enabled"):
+            duration_s = round((task_status.duration_ms or 0) / 1000, 2)
+            timeline = [{"text": job.input_text or "", "start": 0.0, "end": duration_s}]
+
         result = ProviderRenderResult(
             audio_path=str(audio_path),
             duration_ms=task_status.duration_ms,
             usage_characters=task_status.usage_characters,
             trace_id=task_status.trace_id,
             response_json=task_status.metadata.get("raw_response", {}),
-            timeline=[],
+            timeline=timeline,
             metadata=task_status.metadata,
         )
-
-        plan_data = json.loads(job.render_plan_json or "{}")
-        audio_params = plan_data.get("audio_params", {})
-        subtitle_type = plan_data.get("subtitle", {}).get("type", "sentence")
 
         audio_asset, subtitle_asset = self.asset_service.save_assets(
             session,
