@@ -4,9 +4,9 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.core.errors import BindingNotFound, ProfileNotFound, ProviderError, UnsupportedProvider, VoiceLabError
+from app.core.errors import BindingNotFound, ProfileNotFound, ProviderError, VoiceLabError
 from app.core.time import utc_now_iso
-from app.domain.enums import JobStatus, JobType, Provider
+from app.domain.enums import JobStatus, JobType
 from app.domain.render_plan import RenderPlan, SubtitlePlan
 from app.domain.schemas import (
     AudioAssetResponse,
@@ -36,13 +36,12 @@ class VoiceRenderService:
     ) -> VoiceRenderResponse:
         settings = get_settings()
         provider = request.provider or settings.voice_provider
-        if provider not in Provider.__members__:
-            raise UnsupportedProvider(f"Unsupported provider: {provider}", provider)
+        get_provider(provider)
         profile = get_profile(session, request.profile_id)
         if not profile:
             raise ProfileNotFound("Voice profile not found", request.profile_id)
         binding = get_binding(session, request.profile_id, provider)
-        if not binding and provider == Provider.mock and settings.mock_fallback_provider:
+        if not binding and provider == "mock" and settings.mock_fallback_provider:
             binding = get_binding(session, request.profile_id, settings.mock_fallback_provider)
         if not binding:
             raise BindingNotFound("No available voice binding found", f"profile={request.profile_id}, provider={provider}")
