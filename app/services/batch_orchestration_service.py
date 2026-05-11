@@ -103,7 +103,7 @@ class BatchOrchestrationService:
             "batch_submit_longtext batch_id=%s segments=%d", batch_id, len(texts)
         )
 
-        asyncio.create_task(self._execute_with_session(batch_id, provider))
+        self._execute_with_session(batch_id, provider)
 
         return BatchSubmitResponse(
             batch_id=batch_id,
@@ -165,7 +165,7 @@ class BatchOrchestrationService:
             "batch_submit_script batch_id=%s segments=%d", batch_id, len(request.script)
         )
 
-        asyncio.create_task(self._execute_with_session(batch_id, provider))
+        self._execute_with_session(batch_id, provider)
 
         return BatchSubmitResponse(
             batch_id=batch_id,
@@ -174,14 +174,28 @@ class BatchOrchestrationService:
             status=BatchStatus.pending,
         )
 
-    async def _execute_with_session(self, batch_job_id: str, provider: str) -> None:
-        """Execute batch job with a fresh session."""
-        from app.core.database import get_session
-        session = next(get_session())
-        try:
-            await self.execute(session, batch_job_id)
-        finally:
-            session.close()
+    def _execute_with_session(self, batch_job_id: str, provider: str) -> asyncio.Task:
+        """Execute batch job with a fresh session. Returns the Task so callers can hold a reference."""
+        async def _run() -> None:
+            from app.core.database import get_session
+            session = next(get_session())
+            try:
+                await self.execute(session, batch_job_id)
+            finally:
+                session.close()
+
+        task = asyncio.create_task(_run())
+        if task is not None:
+            task.add_done_callback(self._log_task_error)
+        return task
+
+    def _log_task_error(self, task: asyncio.Task) -> None:
+        """Log any exception that occurred in a background task."""
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc:
+            self.logger.error("background_task_exc error=%s", str(exc))
 
     async def execute(self, session: Session, batch_job_id: str) -> None:
         """执行批量任务：逐段生成 → 合并 → 更新状态。"""
@@ -540,7 +554,7 @@ class BatchOrchestrationService:
         session.add(batch_job)
         session.commit()
 
-        asyncio.create_task(self._execute_with_session(batch_job_id, batch_job.provider))
+        self._execute_with_session(batch_job_id, batch_job.provider)
 
         return BatchSubmitResponse(
             batch_id=batch_job_id,

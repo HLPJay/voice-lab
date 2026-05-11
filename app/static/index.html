@@ -1059,6 +1059,16 @@
     });
   });
 
+  // Event delegation for dynamic bind-voice buttons (avoids XSS from inline onclick)
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.bind-voice-btn');
+    if (!btn) return;
+    const voiceId = btn.dataset.voiceId;
+    const name = btn.dataset.name;
+    const provider = btn.dataset.provider;
+    quickBindVoice(voiceId, name, provider);
+  });
+
   // ============================================================
   // TTS Tab
   // ============================================================
@@ -1610,7 +1620,7 @@
           <td>${esc(v.name || '-')}</td>
           <td>${typeTag(v.voice_type)}</td>
           <td>${esc(v.language || '-')}</td>
-          <td><button class="btn-sm" onclick="quickBindVoice('${esc(v.provider_voice_id)}', '${esc(v.name || '')}', '${provider}')">绑定到人设</button></td>
+          <td><button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}">绑定到人设</button></td>
         </tr>`;
       });
       html += '</tbody></table>';
@@ -1670,7 +1680,7 @@
         <td>${esc(v.name || '-')}</td>
         <td>${typeTag(v.voice_type)}</td>
         <td>${esc(v.language || '-')}</td>
-        <td><button class="btn-sm" onclick="quickBindVoice('${esc(v.provider_voice_id)}', '${esc(v.name || '')}', '${provider}')">绑定到人设</button></td>
+        <td><button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}">绑定到人设</button></td>
       </tr>`;
     });
     html += '</tbody></table>';

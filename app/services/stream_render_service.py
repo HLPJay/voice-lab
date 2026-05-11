@@ -192,7 +192,7 @@ class StreamRenderService:
             logger.error("stream_render_failed job=%s error=%s detail=%s", job.id, exc.message, getattr(exc, 'detail', None))
             error_code = getattr(exc, 'code', None) or getattr(exc, 'error_code', None) or "PROVIDER_ERROR"
             detail = getattr(exc, 'detail', None)
-            full_message = f"{exc.message}: {detail}" if detail else exc.message
+            full_message = f"{getattr(exc, 'message', str(exc))}: {detail}" if detail else getattr(exc, 'message', str(exc))
             yield {"event": "error", "code": error_code, "message": full_message}
         except Exception as exc:
             job.status = JobStatus.failed
