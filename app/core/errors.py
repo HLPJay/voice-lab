@@ -2,6 +2,10 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.logging import get_logger
+
+_error_logger = get_logger("error_handler")
+
 
 class VoiceLabError(Exception):
     status_code = 400
@@ -51,12 +55,32 @@ class AssetNotFound(VoiceLabError):
     code = "ASSET_NOT_FOUND"
 
 
-async def voice_lab_error_handler(_: Request, exc: VoiceLabError) -> JSONResponse:
+async def voice_lab_error_handler(request: Request, exc: VoiceLabError) -> JSONResponse:
+    _error_logger.warning(
+        "voice_lab_error",
+        extra={
+            "error_code": exc.code,
+            "error_message": exc.message,
+            "status_code": exc.status_code,
+            "path": request.url.path,
+            "method": request.method,
+            "job_id": exc.job_id,
+        },
+    )
     payload = {"error": {"code": exc.code, "message": exc.message, "detail": exc.detail, "job_id": exc.job_id}}
     return JSONResponse(status_code=exc.status_code, content=payload)
 
 
-async def request_validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    _error_logger.warning(
+        "validation_error",
+        extra={
+            "error_code": "VALIDATION_ERROR",
+            "path": request.url.path,
+            "method": request.method,
+            "error_count": len(exc.errors()),
+        },
+    )
     payload = {
         "error": {
             "code": "VALIDATION_ERROR",
@@ -66,3 +90,26 @@ async def request_validation_error_handler(_: Request, exc: RequestValidationErr
         }
     }
     return JSONResponse(status_code=422, content=payload)
+
+
+async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    _error_logger.error(
+        "unhandled_error",
+        extra={
+            "error_type": type(exc).__name__,
+            "error_message": str(exc)[:500],
+            "path": request.url.path,
+            "method": request.method,
+        },
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "Internal server error",
+                "detail": None,
+                "job_id": None,
+            }
+        },
+    )

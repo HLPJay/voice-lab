@@ -9,7 +9,12 @@ from fastapi.staticfiles import StaticFiles
 from app.api import api_router
 from app.core.database import create_db_and_tables, seed_defaults
 from app.core.logging import setup_logging
-from app.core.errors import VoiceLabError, request_validation_error_handler, voice_lab_error_handler
+from app.core.errors import (
+    VoiceLabError,
+    request_validation_error_handler,
+    unhandled_error_handler,
+    voice_lab_error_handler,
+)
 from app.core.middleware import RequestContextMiddleware
 from app.utils.files import ensure_storage_dirs
 
@@ -33,6 +38,7 @@ app.add_middleware(RequestContextMiddleware)
 
 app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
 app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(api_router)
 
