@@ -79,9 +79,10 @@ async def ws_render(websocket: WebSocket):
     except VoiceLabError as exc:
         logger.error("ws_error request_id=%s error=%s", request_id, exc.message)
         try:
+            error_code = getattr(exc, 'code', None) or getattr(exc, 'error_code', None) or "PROVIDER_ERROR"
             await websocket.send_json({
                 "event": "error",
-                "code": exc.error_code or "PROVIDER_ERROR",
+                "code": error_code,
                 "message": exc.message,
             })
         except Exception:

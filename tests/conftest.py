@@ -131,6 +131,30 @@ def seed_mock_binding(session, seed_profile):
 
 
 @pytest.fixture
+def ws_patched_session(session):
+    """Patch ws_render.get_session to use the test session's engine.
+
+    The WS endpoint calls `next(get_session())` directly, bypassing FastAPI's
+    dependency_overrides. We patch the ws_render module's reference so the
+    WS endpoint uses the same engine as the test session.
+    """
+    from app.api import ws_render
+    from sqlmodel import Session
+
+    # Use the SAME engine that the test's session uses
+    engine = session.bind.engine
+
+    def patched_get_session():
+        with Session(engine) as sess:
+            yield sess
+
+    original = ws_render.get_session
+    ws_render.get_session = patched_get_session
+    yield
+    ws_render.get_session = original
+
+
+@pytest.fixture
 def test_app(temp_db, seed_profile):
     """Minimal FastAPI app that uses the same temp DB as seed_profile."""
     engine, _ = temp_db
