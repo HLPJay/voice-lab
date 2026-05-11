@@ -5,12 +5,14 @@ from fastapi.exceptions import RequestValidationError
 
 from app.api import api_router
 from app.core.database import create_db_and_tables, seed_defaults
+from app.core.logging import setup_logging
 from app.core.errors import VoiceLabError, request_validation_error_handler, voice_lab_error_handler
 from app.utils.files import ensure_storage_dirs
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    setup_logging()
     create_db_and_tables()
     seed_defaults()
     ensure_storage_dirs()

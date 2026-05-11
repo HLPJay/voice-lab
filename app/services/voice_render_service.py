@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.core.errors import BindingNotFound, ProfileNotFound, ProviderError, UnsupportedProvider, VoiceLabError
 from app.core.time import utc_now_iso
 from app.domain.enums import JobStatus, JobType, Provider
@@ -26,6 +27,7 @@ class VoiceRenderService:
     def __init__(self):
         self.preprocessor = TextPreprocessService()
         self.asset_service = AssetService()
+        self.logger = get_logger("voice_render")
 
     def _provider(self, provider: str):
         if provider == "mock":
@@ -93,6 +95,10 @@ class VoiceRenderService:
         )
         session.add(job)
         session.commit()
+        self.logger.info(
+            "render_start job=%s profile=%s provider=%s model=%s text_length=%d",
+            job.id, profile.id, provider, plan.model, len(request.text),
+        )
 
         try:
             job.status = JobStatus.running
@@ -115,6 +121,10 @@ class VoiceRenderService:
             job.updated_at = utc_now_iso()
             session.add(job)
             session.commit()
+            self.logger.info(
+                "render_success job=%s provider=%s model=%s duration_ms=%s trace_id=%s characters=%s",
+                job.id, provider, plan.model, result.duration_ms, result.trace_id, result.usage_characters,
+            )
             return VoiceRenderResponse(
                 job_id=job.id,
                 status=job.status,
@@ -140,6 +150,10 @@ class VoiceRenderService:
             job.updated_at = utc_now_iso()
             session.add(job)
             session.commit()
+            self.logger.error(
+                "render_failed job=%s provider=%s error=%s",
+                job.id, provider, exc.message if hasattr(exc, "message") else str(exc),
+            )
             exc.job_id = job.id
             raise
         except Exception as exc:
@@ -148,4 +162,8 @@ class VoiceRenderService:
             job.updated_at = utc_now_iso()
             session.add(job)
             session.commit()
+            self.logger.error(
+                "render_failed job=%s provider=%s error=%s",
+                job.id, provider, exc.message if hasattr(exc, "message") else str(exc),
+            )
             raise ProviderError("Voice render failed", str(exc), job_id=job.id) from exc
