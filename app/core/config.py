@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     clone_audio_max_duration_sec: int = 300
     prompt_audio_max_duration_sec: int = 8
 
+    log_level: str = "INFO"
+    log_format: str = "json"
+    log_dir: str = "./logs"
+    log_retention_days: int = 30
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
