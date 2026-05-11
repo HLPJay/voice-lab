@@ -48,7 +48,7 @@ class SpeechProvider(ABC):
     async def list_voices(self, voice_type: str = "all") -> list[ProviderVoiceRead]:
         raise NotImplementedError
 
-    async def delete_voice(self, provider_voice_id: str):
+    async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
         raise NotImplementedError
 
     async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:

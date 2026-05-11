@@ -109,3 +109,6 @@ class MockSpeechAdapter(SpeechProvider):
             "voice_id": voice_id or f"mock_designed_{new_id('voice')}",
             "trial_audio_hex": None,
         }
+
+    async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
+        return {"voice_id": provider_voice_id, "deleted": True}

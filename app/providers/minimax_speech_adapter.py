@@ -429,3 +429,28 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "voice_id": body.get("voice_id"),
             "trial_audio_hex": body.get("trial_audio"),
         }
+
+    async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        payload = {"voice_type": voice_type, "voice_id": provider_voice_id}
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_delete_voice_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax delete voice failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax delete voice failed", base_resp.get("status_msg"))
+
+        return {"voice_id": provider_voice_id, "deleted": True}

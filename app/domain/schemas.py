@@ -232,3 +232,14 @@ class VoiceDesignResponse(BaseModel):
     trial_audio_url: str | None = None
     trial_audio_hex: str | None = None
     message: str = "设计成功"
+
+
+class VoiceDeleteRequest(BaseModel):
+    provider_voice_id: str = Field(min_length=1)
+    voice_type: str = Field(default="voice_cloning", pattern=r"^(voice_cloning|voice_generation)$")
+
+
+class VoiceDeleteResponse(BaseModel):
+    voice_id: str
+    deleted: bool = True
+    message: str = "删除成功"
