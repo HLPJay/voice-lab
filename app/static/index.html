@@ -504,6 +504,30 @@
     .tab-btn { padding: 8px 12px; font-size: 0.82rem; }
   }
 
+  /* Voice params */
+  .param-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+  }
+  .param-item {
+      flex: 1;
+      min-width: 100px;
+  }
+  .param-item label {
+      display: block;
+      font-size: 0.78rem;
+      color: #718096;
+      margin-bottom: 4px;
+  }
+  .param-item input, .param-item select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 0.85rem;
+  }
+
   /* Stream */
   .stream-progress {
     display: flex;
@@ -571,6 +595,45 @@
             <option value="minimax">minimax（正式）</option>
           </select>
         </div>
+        <div class="form-group">
+          <label for="outputFormat">音频格式</label>
+          <select id="outputFormat">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
+            <option value="flac">FLAC</option>
+            <option value="pcm">PCM</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label>语音参数（可选，不填使用绑定默认值）</label>
+          <div class="param-row">
+            <div class="param-item">
+              <label for="paramSpeed">语速</label>
+              <input type="number" id="paramSpeed" step="0.05" min="0.5" max="2.0" placeholder="0.5-2.0">
+            </div>
+            <div class="param-item">
+              <label for="paramVol">音量</label>
+              <input type="number" id="paramVol" step="0.1" min="0.1" max="10.0" placeholder="0.1-10.0">
+            </div>
+            <div class="param-item">
+              <label for="paramPitch">音调</label>
+              <input type="number" id="paramPitch" step="1" min="-12" max="12" placeholder="-12~12">
+            </div>
+            <div class="param-item">
+              <label for="paramEmotion">情绪</label>
+              <select id="paramEmotion">
+                <option value="">默认</option>
+                <option value="happy">happy</option>
+                <option value="sad">sad</option>
+                <option value="angry">angry</option>
+                <option value="fearful">fearful</option>
+                <option value="disgusted">disgusted</option>
+                <option value="surprised">surprised</option>
+                <option value="neutral">neutral</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div class="form-group full-width">
           <label>生成模式</label>
           <div class="radio-group">
@@ -584,7 +647,7 @@
             <input type="number" id="variantCount" min="1" max="5" value="3">
           </div>
         </div>
-        <div class="form-group full-width">
+        <div class="form-group full-width" id="subtitleRow">
           <div class="checkbox-row">
             <input type="checkbox" id="needSubtitle" checked>
             <label for="needSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
@@ -785,7 +848,9 @@
   });
 
   genModes.forEach(r => r.addEventListener('change', () => {
-    variantCountRow.classList.toggle('visible', r.value === 'variants');
+    const mode = document.querySelector('input[name="genMode"]:checked').value;
+    variantCountRow.classList.toggle('visible', mode === 'variants');
+    document.getElementById('subtitleRow').style.display = mode === 'stream' ? 'none' : '';
   }));
 
   (async () => {
@@ -844,6 +909,11 @@
     const isStream = mode === 'stream';
     const count = parseInt(variantCountInput.value) || 3;
     const subtitle = needSubtitle.checked;
+    const outputFormat = document.getElementById('outputFormat').value;
+    const speed = document.getElementById('paramSpeed').value;
+    const vol = document.getElementById('paramVol').value;
+    const pitch = document.getElementById('paramPitch').value;
+    const emotion = document.getElementById('paramEmotion').value;
 
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     setLoading(true);
@@ -851,7 +921,7 @@
     resultsArea.innerHTML = '';
 
     if (isStream) {
-      startStreamGenerate(text, profileId, provider, subtitle);
+      startStreamGenerate(text, profileId, provider, subtitle, outputFormat, { speed, vol, pitch, emotion });
       return;
     }
 
@@ -861,6 +931,11 @@
         profile_id: profileId,
         provider,
         need_subtitle: subtitle,
+        output_format: outputFormat,
+        ...(speed ? { speed: parseFloat(speed) } : {}),
+        ...(vol ? { vol: parseFloat(vol) } : {}),
+        ...(pitch ? { pitch: parseInt(pitch) } : {}),
+        ...(emotion ? { emotion } : {}),
         ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {})
       };
 
@@ -899,7 +974,7 @@
     }
   }
 
-  function startStreamGenerate(text, profileId, provider, subtitle) {
+  function startStreamGenerate(text, profileId, provider, subtitle, outputFormat, voiceParams) {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${proto}//${location.host}/api/voice/ws/render`;
 
@@ -921,13 +996,18 @@
     const audioChunks = [];
 
     ws.onopen = () => {
+        const { speed, vol, pitch, emotion } = voiceParams || {};
         ws.send(JSON.stringify({
             event: "start",
             text: text,
             profile_id: profileId,
             provider: provider,
-            output_format: "mp3",
+            output_format: outputFormat,
             need_subtitle: subtitle,
+            ...(speed ? { speed } : {}),
+            ...(vol ? { vol: parseFloat(vol) } : {}),
+            ...(pitch ? { pitch: parseInt(pitch) } : {}),
+            ...(emotion ? { emotion } : {}),
         }));
     };
 

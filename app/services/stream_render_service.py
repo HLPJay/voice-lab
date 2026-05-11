@@ -60,6 +60,15 @@ class StreamRenderService:
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = json.loads(binding.params_json or "{}")
+        # Apply voice parameter overrides from request
+        if request.speed is not None:
+            voice_params["speed"] = request.speed
+        if request.vol is not None:
+            voice_params["vol"] = request.vol
+        if request.pitch is not None:
+            voice_params["pitch"] = request.pitch
+        if request.emotion is not None:
+            voice_params["emotion"] = request.emotion
         audio_params = {
             "format": settings.default_audio_format,
             "sample_rate": settings.default_sample_rate,
@@ -180,8 +189,11 @@ class StreamRenderService:
             job.updated_at = utc_now_iso()
             session.add(job)
             session.commit()
-            logger.error("stream_render_failed job=%s error=%s", job.id, exc.message)
-            yield {"event": "error", "code": exc.error_code or "PROVIDER_ERROR", "message": exc.message}
+            logger.error("stream_render_failed job=%s error=%s detail=%s", job.id, exc.message, getattr(exc, 'detail', None))
+            error_code = getattr(exc, 'code', None) or getattr(exc, 'error_code', None) or "PROVIDER_ERROR"
+            detail = getattr(exc, 'detail', None)
+            full_message = f"{exc.message}: {detail}" if detail else exc.message
+            yield {"event": "error", "code": error_code, "message": full_message}
         except Exception as exc:
             job.status = JobStatus.failed
             job.error_message = str(exc)[:500]

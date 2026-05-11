@@ -26,6 +26,10 @@ class VoiceRenderRequest(BaseModel):
     provider: str | None = None
     need_subtitle: bool = True
     output_format: str = "hex"
+    speed: float | None = Field(None, ge=0.5, le=2.0)
+    vol: float | None = Field(None, ge=0.1, le=10.0)
+    pitch: int | None = Field(None, ge=-12, le=12)
+    emotion: str | None = None
 
 
 class AudioAssetResponse(BaseModel):
@@ -251,3 +255,7 @@ class StreamRenderRequest(BaseModel):
     provider: str | None = None
     output_format: str = "mp3"
     need_subtitle: bool = False
+    speed: float | None = Field(None, ge=0.5, le=2.0)
+    vol: float | None = Field(None, ge=0.1, le=10.0)
+    pitch: int | None = Field(None, ge=-12, le=12)
+    emotion: str | None = None
