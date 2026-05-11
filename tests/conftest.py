@@ -17,6 +17,19 @@ from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
 from app.models.voice_asset import AudioAsset, SubtitleAsset
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "e2e: end-to-end tests requiring real MiniMax API key")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("-m", default=None) == "e2e":
+        return
+    skip_e2e = pytest.mark.skip(reason="run with -m e2e to execute E2E tests")
+    for item in items:
+        if "e2e" in item.keywords:
+            item.add_marker(skip_e2e)
+
+
 @pytest.fixture
 def temp_db():
     fd, path = tempfile.mkstemp(suffix=".db")
@@ -99,3 +112,44 @@ def test_app(temp_db, seed_profile):
         return {"status": "ok", "app": "Voice Lab"}
 
     return app
+
+
+@pytest.fixture
+def e2e_app(temp_db, seed_profile):
+    """FastAPI app using real provider settings from .env (no DB override for providers)."""
+    engine, _ = temp_db
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+
+    def override_get_session():
+        with Session(engine) as sess:
+            yield sess
+
+    from app.core.database import get_session
+    app.dependency_overrides[get_session] = override_get_session
+
+    from app.api import api_router
+    app.include_router(api_router)
+
+    @app.get("/health")
+    async def health():
+        return {"status": "ok", "app": "Voice Lab"}
+
+    return app
+
+
+@pytest.fixture
+def minimax_api_key():
+    """Skip if no real API key configured."""
+    from app.core.config import get_settings
+    settings = get_settings()
+    key = settings.minimax_api_key
+    if not key or key == "replace_me":
+        pytest.skip("MINIMAX_API_KEY not configured")
+    return key
