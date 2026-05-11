@@ -1,0 +1,245 @@
+import json
+from pathlib import Path
+
+import httpx
+from sqlmodel import Session, select
+
+from app.core.config import get_settings
+from app.core.errors import BindingNotFound, JobNotFound, ProfileNotFound, ProviderError
+from app.core.logging import get_logger
+from app.core.time import utc_now_iso
+from app.domain.enums import JobStatus, JobType
+from app.domain.render_plan import RenderPlan, SubtitlePlan
+from app.domain.schemas import (
+    AsyncJobStatusResponse,
+    AsyncRenderRequest,
+    AsyncRenderResponse,
+    AudioAssetResponse,
+    SubtitleAssetResponse,
+)
+from app.models.voice_asset import AudioAsset, SubtitleAsset
+from app.models.voice_job import VoiceJob
+from app.providers.registry import get_provider
+from app.repositories import voice_asset_repo, voice_job_repo
+from app.repositories.voice_profile_repo import get_binding, get_profile
+from app.services.asset_service import AssetService
+from app.utils.files import storage_path
+from app.utils.id_generator import new_id
+
+
+class AsyncRenderService:
+    def __init__(self):
+        self.asset_service = AssetService()
+        self.logger = get_logger("async_render")
+
+    async def submit_task(
+        self,
+        session: Session,
+        request: AsyncRenderRequest,
+    ) -> AsyncRenderResponse:
+        """Submit an async voice generation task. Returns immediately with a job_id."""
+        settings = get_settings()
+        provider = request.provider or settings.voice_provider
+        get_provider(provider)  # validate provider
+
+        profile = get_profile(session, request.profile_id)
+        if not profile:
+            raise ProfileNotFound("Voice profile not found", request.profile_id)
+        binding = get_binding(session, request.profile_id, provider)
+        if not binding and provider == "mock" and settings.mock_fallback_provider:
+            binding = get_binding(session, request.profile_id, settings.mock_fallback_provider)
+        if not binding:
+            raise BindingNotFound(
+                "No available voice binding found",
+                f"profile={request.profile_id}, provider={provider}",
+            )
+
+        # Async mode: basic text cleaning only, no length limit
+        processed_text = request.text.strip()
+
+        voice_params = json.loads(binding.params_json or "{}")
+        audio_params = {
+            "format": settings.default_audio_format,
+            "sample_rate": settings.default_sample_rate,
+            "bitrate": settings.default_bitrate,
+            "channel": settings.default_channel,
+        }
+        plan = RenderPlan(
+            id=new_id("plan"),
+            text=request.text,
+            processed_text=processed_text,
+            profile_id=profile.id,
+            provider=provider,
+            model=binding.model,
+            provider_voice_id=binding.provider_voice_id,
+            voice_params=voice_params,
+            audio_params=audio_params,
+            subtitle=SubtitlePlan(enabled=request.need_subtitle, type="sentence"),
+            output_format=request.output_format,
+        )
+
+        adapter = get_provider(provider)
+        task_result = await adapter.create_async_task(plan)
+
+        now = utc_now_iso()
+        job = VoiceJob(
+            id=new_id("job"),
+            job_type=JobType.async_render,
+            status=JobStatus.processing,
+            provider=provider,
+            model=plan.model,
+            profile_id=profile.id,
+            binding_id=binding.id,
+            input_text=request.text,
+            processed_text=processed_text,
+            render_plan_json=plan.model_dump_json(),
+            provider_trace_id=task_result.trace_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+
+        self.logger.info(
+            "async_submit job=%s provider=%s model=%s text_length=%d task_id=%s",
+            job.id, provider, plan.model, len(request.text), task_result.provider_task_id,
+        )
+
+        job.response_json = json.dumps({
+            "provider_task_id": task_result.provider_task_id,
+            "task_metadata": task_result.metadata,
+        }, ensure_ascii=False)
+        session.add(job)
+        session.commit()
+
+        return AsyncRenderResponse(
+            job_id=job.id,
+            status=job.status,
+            provider=provider,
+            model=plan.model,
+        )
+
+    async def query_status(
+        self,
+        session: Session,
+        job_id: str,
+    ) -> AsyncJobStatusResponse:
+        """Poll async task status. Downloads and saves assets if completed."""
+        job = voice_job_repo.get_job(session, job_id)
+        if not job:
+            raise JobNotFound("Voice job not found", job_id=job_id)
+
+        if job.status in (JobStatus.success, JobStatus.failed):
+            return self._build_status_response(session, job)
+
+        response_data = json.loads(job.response_json or "{}")
+        provider_task_id = response_data.get("provider_task_id")
+        if not provider_task_id:
+            raise ProviderError("No provider task ID found for job", job_id)
+
+        adapter = get_provider(job.provider)
+        task_status = await adapter.query_async_task(provider_task_id)
+
+        if task_status.status == "success" and task_status.file_url:
+            await self._complete_job(session, job, task_status)
+        elif task_status.status == "failed":
+            job.status = JobStatus.failed
+            job.error_message = task_status.error_message or "Async task failed"
+            job.updated_at = utc_now_iso()
+            session.add(job)
+            session.commit()
+            self.logger.error("async_failed job=%s error=%s", job.id, job.error_message)
+
+        return self._build_status_response(session, job)
+
+    async def _complete_job(self, session: Session, job: VoiceJob, task_status) -> None:
+        """Download audio and save assets when async task succeeds."""
+        from app.providers.base import ProviderRenderResult
+
+        file_url = task_status.file_url
+        settings = get_settings()
+        fmt = "mp3"
+        audio_id = new_id("audio_file")
+        audio_path = storage_path("audio", f"{audio_id}.{fmt}")
+
+        if file_url.startswith(("http://", "https://")):
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                resp = await client.get(file_url)
+                resp.raise_for_status()
+                audio_path.write_bytes(resp.content)
+        else:
+            audio_path = Path(file_url)
+
+        result = ProviderRenderResult(
+            audio_path=str(audio_path),
+            duration_ms=task_status.duration_ms,
+            usage_characters=task_status.usage_characters,
+            trace_id=task_status.trace_id,
+            response_json=task_status.metadata.get("raw_response", {}),
+            timeline=[],
+            metadata=task_status.metadata,
+        )
+
+        plan_data = json.loads(job.render_plan_json or "{}")
+        audio_params = plan_data.get("audio_params", {})
+        subtitle_type = plan_data.get("subtitle", {}).get("type", "sentence")
+
+        audio_asset, subtitle_asset = self.asset_service.save_assets(
+            session,
+            job_id=job.id,
+            provider=job.provider,
+            model=job.model or "",
+            result=result,
+            audio_params=audio_params,
+            subtitle_type=subtitle_type,
+        )
+
+        job.status = JobStatus.success
+        job.provider_trace_id = task_status.trace_id
+        job.updated_at = utc_now_iso()
+        session.add(job)
+        session.commit()
+
+        self.logger.info(
+            "async_success job=%s duration_ms=%s characters=%s",
+            job.id, task_status.duration_ms, task_status.usage_characters,
+        )
+
+    def _build_status_response(self, session: Session, job: VoiceJob) -> AsyncJobStatusResponse:
+        """Build status response including asset info if job is completed."""
+        audio_asset_resp = None
+        subtitle_asset_resp = None
+
+        if job.status == JobStatus.success:
+            audio = session.exec(
+                select(AudioAsset).where(AudioAsset.job_id == job.id)
+            ).first()
+            if audio:
+                audio_asset_resp = AudioAssetResponse(
+                    id=audio.id,
+                    url=audio.file_url,
+                    duration_ms=audio.duration_ms,
+                    format=audio.format,
+                )
+
+            subtitle = session.exec(
+                select(SubtitleAsset).where(SubtitleAsset.job_id == job.id)
+            ).first()
+            if subtitle:
+                subtitle_asset_resp = SubtitleAssetResponse(
+                    id=subtitle.id,
+                    url=f"/api/voice/assets/{subtitle.id}/download",
+                    timeline=json.loads(subtitle.timeline_json or "[]"),
+                )
+
+        return AsyncJobStatusResponse(
+            job_id=job.id,
+            status=job.status,
+            provider=job.provider,
+            model=job.model,
+            audio_asset=audio_asset_resp,
+            subtitle_asset=subtitle_asset_resp,
+            error_message=job.error_message,
+            created_at=job.created_at,
+            updated_at=job.updated_at,
+        )
