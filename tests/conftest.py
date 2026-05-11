@@ -47,9 +47,11 @@ def clean_logging_setup():
 
 @pytest.fixture(autouse=True)
 def reset_httpx_shared_client():
-    """Reset the shared httpx client before each test to ensure test isolation."""
+    """Reset the shared httpx client and settings cache before each test to ensure test isolation."""
     import app.providers.minimax_speech_adapter as adapter_module
+    from app.core.config import clear_settings_cache
     adapter_module._shared_http_client = None
+    clear_settings_cache()
     yield
 
 

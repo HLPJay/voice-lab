@@ -1193,19 +1193,22 @@
         return;
       }
 
+      const fragment = document.createDocumentFragment();
+      const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
       jobs.forEach(job => {
-        const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
         const typeLabel = typeMap[job.job_type] || job.job_type;
         const textSnippet = (job.input_text || '').slice(0, 30) + ((job.input_text || '').length > 30 ? '…' : '');
         const time = job.created_at ? job.created_at.replace('T', ' ').slice(0, 19) : '';
-        listEl.innerHTML += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:0.82rem">
-          <span style="color:#718096;min-width:140px">${esc(time)}</span>
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:0.82rem';
+        div.innerHTML = `<span style="color:#718096;min-width:140px">${esc(time)}</span>
           <span class="tag" style="min-width:50px">${esc(typeLabel)}</span>
           <span class="job-status status-${job.status}">${esc(job.status)}</span>
           <span style="flex:1;color:#4a5568" title="${esc(job.input_text || '')}">${esc(textSnippet)}</span>
-          <span style="color:#a0aec0">${esc(job.provider || '')}</span>
-        </div>`;
+          <span style="color:#a0aec0">${esc(job.provider || '')}</span>`;
+        fragment.appendChild(div);
       });
+      listEl.appendChild(fragment);
 
       _historyOffset = offset + jobs.length;
       moreBtn.style.display = _historyOffset < _historyTotal ? '' : 'none';
@@ -1332,7 +1335,7 @@
             provider: provider,
             output_format: outputFormat,
             need_subtitle: subtitle,
-            ...(speed ? { speed } : {}),
+            ...(speed ? { speed: parseFloat(speed) } : {}),
             ...(vol ? { vol: parseFloat(vol) } : {}),
             ...(pitch ? { pitch: parseInt(pitch) } : {}),
             ...(emotion ? { emotion } : {}),

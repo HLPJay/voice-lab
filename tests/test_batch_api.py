@@ -104,7 +104,7 @@ def seed_profile_and_binding(session):
 def test_submit_longtext_returns_batch_id(
     client: TestClient, session: Session, seed_profile_and_binding
 ):
-    with patch("asyncio.create_task", side_effect=lambda coro: None):
+    with patch("app.api.batch.service._execute_with_session", return_value=None):
         resp = client.post(
             "/api/voice/batch/submit",
             json={
@@ -128,7 +128,7 @@ def test_submit_longtext_returns_batch_id(
 def test_submit_script_returns_batch_id(
     client: TestClient, session: Session, seed_profile_and_binding
 ):
-    with patch("asyncio.create_task", side_effect=lambda coro: None):
+    with patch("app.api.batch.service._execute_with_session", return_value=None):
         resp = client.post(
             "/api/voice/batch/submit",
             json={

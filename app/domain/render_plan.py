@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 
-VOICE_PARAM_KEYS = frozenset({"speed", "vol", "pitch", "emotion", "timber_weights"})
+VOICE_PARAM_KEYS = frozenset({"speed", "vol", "pitch", "emotion"})
 
 
 class SubtitlePlan(BaseModel):

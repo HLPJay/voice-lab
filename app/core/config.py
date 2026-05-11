@@ -36,9 +36,6 @@ class Settings(BaseSettings):
     minimax_ws_model: str = "speech-2.8-turbo"
     minimax_ws_timeout_seconds: int = 120
     clone_audio_max_size_mb: int = 20
-    clone_audio_min_duration_sec: int = 10
-    clone_audio_max_duration_sec: int = 300
-    prompt_audio_max_duration_sec: int = 8
 
     log_level: str = "INFO"
     log_format: str = "json"
@@ -54,3 +51,8 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def clear_settings_cache() -> None:
+    """Clear the settings cache. Useful in tests when env vars change."""
+    get_settings.cache_clear()

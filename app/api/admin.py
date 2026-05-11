@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from app.core.database import get_session
 from app.models.provider_call_log import ProviderCallLog
+from app.services.stats_service import StatsService
 
 router = APIRouter()
 
@@ -95,9 +96,6 @@ def list_call_logs(
     ]
 
     return CallLogListResponse(logs=logs, total=total, limit=limit, offset=offset)
-
-
-from app.services.stats_service import StatsService
 
 
 @router.get("/stats/summary")

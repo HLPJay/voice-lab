@@ -29,8 +29,8 @@ def test_submit_longtext_creates_batch_and_segments(
         max_segment_chars=2000,
     )
 
-    # Patch asyncio.create_task so the background execute() is not scheduled
-    with patch("asyncio.create_task", side_effect=lambda coro: None):
+    # Patch _execute_with_session so the background execute() is not scheduled
+    with patch.object(service, '_execute_with_session', return_value=None):
         response = asyncio.get_event_loop().run_until_complete(
             service.submit_longtext(session, request)
         )
@@ -63,7 +63,7 @@ def test_submit_script_creates_batch_and_segments(
         provider="mock",
     )
 
-    with patch("asyncio.create_task", side_effect=lambda coro: None):
+    with patch.object(service, '_execute_with_session', return_value=None):
         response = asyncio.get_event_loop().run_until_complete(
             service.submit_script(session, request)
         )
