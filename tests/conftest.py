@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.errors import VoiceLabError, request_validation_error_handler, voice_lab_error_handler
+from app.core.middleware import RequestContextMiddleware
 from app.core.time import utc_now_iso
 from app.models.provider_voice import ProviderVoice
 from app.models.voice_binding import VoiceBinding
@@ -19,6 +20,29 @@ from app.models.voice_asset import AudioAsset, SubtitleAsset
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "e2e: end-to-end tests requiring real MiniMax API key")
+
+
+@pytest.fixture(autouse=True)
+def clean_logging_setup():
+    """Ensure root logger has a default handler at INFO level for all tests.
+
+    This fixture runs after each test that has autouse=True (e.g. test_logging.py's
+    reset_logging). It restores the root logger to a usable state so that
+    modules that don't call setup_logging() (e.g. test_middleware.py) still
+    have a stream handler at INFO level.
+    """
+    import sys
+    import logging
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    # Ensure stdout handler exists
+    has_handler = any(isinstance(h, logging.StreamHandler) and h.stream in (sys.stdout, sys.stderr) for h in root.handlers)
+    if not has_handler:
+        h = logging.StreamHandler(sys.stdout)
+        h.setFormatter(logging.Formatter("%(levelname)s [%(name)s] %(message)s"))
+        root.addHandler(h)
+    yield
+    # No teardown — let each module manage its own state
 
 
 def pytest_collection_modifyitems(config, items):
@@ -94,6 +118,7 @@ def test_app(temp_db, seed_profile):
         yield
 
     app = FastAPI(lifespan=lifespan)
+    app.add_middleware(RequestContextMiddleware)
     app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
     app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 
@@ -124,6 +149,7 @@ def e2e_app(temp_db, seed_profile):
         yield
 
     app = FastAPI(lifespan=lifespan)
+    app.add_middleware(RequestContextMiddleware)
     app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
     app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 

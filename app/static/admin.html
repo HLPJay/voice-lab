@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Lab 管理面板</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #f5f7fa;
+    color: #1a1a2e;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #2d3748;
+    letter-spacing: -0.5px;
+  }
+
+  header .back-link {
+    font-size: 0.85rem;
+    color: #5a67d8;
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    background: #ebf4ff;
+    transition: background 0.15s;
+  }
+  header .back-link:hover { background: #dbeafe; }
+
+  /* Date range */
+  .date-range-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .date-range-bar label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #4a5568;
+  }
+
+  input[type="date"] {
+    padding: 7px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    background: #fff;
+  }
+  input[type="date"]:focus { outline: none; border-color: #5a67d8; }
+
+  .btn-sm {
+    padding: 7px 14px;
+    background: #5a67d8;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-sm:hover { background: #4c51bf; }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;
+  }
+
+  .card-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a0aec0;
+    margin-bottom: 14px;
+  }
+
+  /* Overview grid */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;
+    text-align: center;
+  }
+
+  .stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2d3748;
+    line-height: 1.2;
+  }
+
+  .stat-card .stat-label {
+    font-size: 0.78rem;
+    color: #718096;
+    margin-top: 4px;
+  }
+
+  .stat-card .stat-sub {
+    font-size: 0.72rem;
+    color: #a0aec0;
+    margin-top: 2px;
+  }
+
+  /* Tables */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin-top: 4px;
+  }
+
+  .data-table th {
+    text-align: left;
+    color: #a0aec0;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .data-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #f0f4f8;
+    color: #2d3748;
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #f7fafc; }
+
+  .two-col-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* Chart */
+  .chart-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+
+  .chart-tab-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: #718096;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+
+  .chart-tab-btn:hover { color: #5a67d8; }
+  .chart-tab-btn.active { color: #5a67d8; border-bottom-color: #5a67d8; }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 220px;
+  }
+
+  canvas { width: 100% !important; height: 220px !important; }
+
+  /* Badge */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+
+  .badge-success { background: #f0fff4; color: #276749; }
+  .badge-error   { background: #fff5f5; color: #c53030; }
+  .badge-running { background: #fefcbf; color: #b7791f; }
+
+  /* Loading */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(90,103,216,0.3);
+    border-top-color: #5a67d8;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 24px;
+    color: #a0aec0;
+    font-size: 0.85rem;
+  }
+
+  .error-msg {
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #c53030;
+    font-size: 0.82rem;
+    margin: 8px 0;
+  }
+
+  /* Refresh button */
+  .refresh-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
+  .btn-icon {
+    padding: 6px 12px;
+    background: #edf2f7;
+    color: #4a5568;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s;
+  }
+  .btn-icon:hover { background: #e2e8f0; }
+
+  @media (max-width: 768px) {
+    .overview-grid { grid-template-columns: 1fr 1fr; }
+    .two-col-grid { grid-template-columns: 1fr; }
+    .chart-container { height: 180px; }
+    canvas { height: 180px !important; }
+  }
+
+  @media (max-width: 480px) {
+    .overview-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Voice Lab 管理面板</h1>
+    <a class="back-link" href="/static/index.html">← 测试面板</a>
+  </header>
+
+  <!-- Date Range Selector -->
+  <div class="card">
+    <div class="date-range-bar">
+      <label>开始日期</label>
+      <input type="date" id="startDate">
+      <label>结束日期</label>
+      <input type="date" id="endDate">
+      <button class="btn-sm" onclick="loadAll()">刷新</button>
+    </div>
+  </div>
+
+  <!-- Region 1: Overview Cards -->
+  <div class="overview-grid" id="overviewGrid">
+    <div class="stat-card">
+      <div class="stat-value" id="statJobs">—</div>
+      <div class="stat-label">总任务数</div>
+      <div class="stat-sub" id="statSuccessRate">成功率 —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statSuccess">—</div>
+      <div class="stat-label">成功</div>
+      <div class="stat-sub" id="statFailed">失败 —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statChars">—</div>
+      <div class="stat-label">总字符数</div>
+      <div class="stat-sub" id="statCalls">调用 — 次</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statDuration">—</div>
+      <div class="stat-label">总音频时长</div>
+      <div class="stat-sub" id="statErrors">错误 — 次</div>
+    </div>
+  </div>
+
+  <!-- Region 2: Provider Stats + Region 3: API Stats -->
+  <div class="two-col-grid">
+    <div class="card">
+      <div class="card-title">Provider 统计</div>
+      <table class="data-table" id="providerTable">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>调用次数</th>
+            <th>平均耗时</th>
+            <th>P95 耗时</th>
+            <th>错误率</th>
+            <th>字符数</th>
+          </tr>
+        </thead>
+        <tbody id="providerBody"><tr><td colspan="6" class="empty-state">加载中…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">API 分布</div>
+      <table class="data-table" id="apiTable">
+        <thead>
+          <tr>
+            <th>API Path</th>
+            <th>调用次数</th>
+            <th>平均耗时</th>
+            <th>错误</th>
+          </tr>
+        </thead>
+        <tbody id="apiBody"><tr><td colspan="4" class="empty-state">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Region 4: Daily Trend Chart -->
+  <div class="card">
+    <div class="card-title">每日趋势</div>
+    <div class="chart-tabs">
+      <button class="chart-tab-btn active" data-metric="jobs" onclick="switchMetric('jobs')">任务数</button>
+      <button class="chart-tab-btn" data-metric="characters" onclick="switchMetric('characters')">字符数</button>
+      <button class="chart-tab-btn" data-metric="errors" onclick="switchMetric('errors')">错误数</button>
+      <button class="chart-tab-btn" data-metric="api_calls" onclick="switchMetric('api_calls')">调用次数</button>
+      <button class="chart-tab-btn" data-metric="avg_duration" onclick="switchMetric('avg_duration')">平均耗时</button>
+    </div>
+    <div class="chart-container">
+      <canvas id="trendCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Region 5: Recent Call Logs -->
+  <div class="card">
+    <div class="card-title">最近调用记录</div>
+    <div class="refresh-row">
+      <button class="btn-icon" onclick="loadLogs()">↻ 刷新</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>Provider</th>
+          <th>API</th>
+          <th>耗时</th>
+          <th>字符</th>
+          <th>状态</th>
+          <th>request_id</th>
+        </tr>
+      </thead>
+      <tbody id="logsBody"><tr><td colspan="7" class="empty-state">加载中…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Region 6: Recent Errors -->
+  <div class="card">
+    <div class="card-title">最近错误</div>
+    <div class="refresh-row">
+      <button class="btn-icon" onclick="loadErrors()">↻ 刷新</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>Provider</th>
+          <th>API</th>
+          <th>错误类型</th>
+          <th>错误信息</th>
+          <th>request_id</th>
+        </tr>
+      </thead>
+      <tbody id="errorsBody"><tr><td colspan="6" class="empty-state">加载中…</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  // ── Date helpers ──────────────────────────────────────────────
+  function toLocalDateStr(d) {
+    // YYYY-MM-DD in local timezone
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function initDates() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 6); // last 7 days
+    document.getElementById('startDate').value = toLocalDateStr(start);
+    document.getElementById('endDate').value = toLocalDateStr(end);
+  }
+
+  function getDateRange() {
+    const start = document.getElementById('startDate').value || null;
+    const end = document.getElementById('endDate').value || null;
+    return { start, end };
+  }
+
+  function buildQuery(params) {
+    const qs = [];
+    for (const [k, v] of Object.entries(params)) {
+      if (v != null) qs.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+    }
+    return qs.length ? '?' + qs.join('&') : '';
+  }
+
+  // ── Loading state ──────────────────────────────────────────────
+  let currentMetric = 'jobs';
+
+  async function loadAll() {
+    const { start, end } = getDateRange();
+    await Promise.all([loadSummary(start, end), loadDailyTrend(start, end, currentMetric), loadLogs(), loadErrors()]);
+  }
+
+  // ── Summary ────────────────────────────────────────────────────
+  async function loadSummary(start, end) {
+    try {
+      const qs = buildQuery({ start, end });
+      const resp = await fetch('/api/admin/stats/summary' + qs);
+      if (!resp.ok) throw new Error('加载失败');
+      const data = await resp.json();
+
+      const ov = data.overview || {};
+      const totalJobs = ov.total_jobs || 0;
+      const successJobs = ov.success_jobs || 0;
+      const failedJobs = ov.failed_jobs || 0;
+      const successRate = ov.success_rate || 0;
+
+      document.getElementById('statJobs').textContent = totalJobs;
+      document.getElementById('statSuccess').textContent = successJobs;
+      document.getElementById('statFailed').textContent = `失败 ${failedJobs}`;
+      document.getElementById('statSuccessRate').textContent = `成功率 ${(successRate * 100).toFixed(1)}%`;
+      document.getElementById('statChars').textContent = formatNum(ov.total_characters || 0);
+      document.getElementById('statDuration').textContent = formatDuration(ov.total_audio_duration_ms || 0);
+      document.getElementById('statCalls').textContent = `调用 ${(data.by_provider ? Object.values(data.by_provider).reduce((s, p) => s + (p.api_calls || 0), 0) : 0)} 次`;
+      document.getElementById('statErrors').textContent = `错误 ${(data.by_provider ? Object.values(data.by_provider).reduce((s, p) => s + (p.error_count || 0), 0) : 0)} 次`;
+
+      renderProviderTable(data.by_provider || {});
+      renderApiTable(data.by_api || {});
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function formatNum(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  function formatDuration(ms) {
+    if (!ms) return '0s';
+    if (ms < 1000) return ms + 'ms';
+    const s = Math.round(ms / 1000);
+    if (s < 60) return s + 's';
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}m ${sec}s`;
+  }
+
+  function renderProviderTable(byProvider) {
+    const tbody = document.getElementById('providerBody');
+    const providers = Object.entries(byProvider);
+    if (!providers.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无数据</td></tr>';
+      return;
+    }
+    tbody.innerHTML = providers.map(([p, v]) => `
+      <tr>
+        <td><strong>${esc(p)}</strong></td>
+        <td>${v.api_calls}</td>
+        <td>${v.avg_duration_ms}ms</td>
+        <td>${v.p95_duration_ms}ms</td>
+        <td>${(v.error_rate * 100).toFixed(1)}%</td>
+        <td>${formatNum(v.characters_used)}</td>
+      </tr>`).join('');
+  }
+
+  function renderApiTable(byApi) {
+    const tbody = document.getElementById('apiBody');
+    const apis = Object.entries(byApi);
+    if (!apis.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无数据</td></tr>';
+      return;
+    }
+    tbody.innerHTML = apis.map(([path, v]) => `
+      <tr>
+        <td><code style="font-size:0.78rem">${esc(path)}</code></td>
+        <td>${v.calls}</td>
+        <td>${v.avg_ms}ms</td>
+        <td>${v.errors > 0 ? `<span class="badge badge-error">${v.errors}</span>` : '0'}</td>
+      </tr>`).join('');
+  }
+
+  // ── Daily Trend ────────────────────────────────────────────────
+  async function loadDailyTrend(start, end, metric) {
+    try {
+      const qs = buildQuery({ start, end, metric });
+      const resp = await fetch('/api/admin/stats/daily' + qs);
+      if (!resp.ok) throw new Error('加载失败');
+      const data = await resp.json();
+      drawChart(data.data || [], metric);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function switchMetric(metric) {
+    currentMetric = metric;
+    document.querySelectorAll('.chart-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.metric === metric));
+    const { start, end } = getDateRange();
+    loadDailyTrend(start, end, metric);
+  }
+
+  function drawChart(data, metric) {
+    const canvas = document.getElementById('trendCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // High-DPI support
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 220 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '220px';
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = 220;
+    const PAD = { top: 20, right: 20, bottom: 40, left: 55 };
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (!data || data.length === 0) {
+      ctx.fillStyle = '#a0aec0';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('暂无数据', W / 2, H / 2);
+      return;
+    }
+
+    const values = data.map(d => d.value || 0);
+    const dates = data.map(d => d.date || '');
+    const maxVal = Math.max(...values, 1);
+    const minVal = 0;
+
+    // Grid lines
+    const gridColor = '#e2e8f0';
+    const textColor = '#a0aec0';
+    const lineColor = '#5a67d8';
+    const fillColor = 'rgba(90,103,216,0.08)';
+
+    const numYTicks = 4;
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'right';
+
+    for (let i = 0; i <= numYTicks; i++) {
+      const y = PAD.top + (H - PAD.top - PAD.bottom) * i / numYTicks;
+      const val = Math.round(minVal + (maxVal - minVal) * (numYTicks - i) / numYTicks);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(W - PAD.right, y);
+      ctx.stroke();
+      ctx.fillText(String(val), PAD.left - 6, y + 4);
+    }
+
+    // X-axis labels
+    ctx.textAlign = 'center';
+    const xStep = Math.max(1, Math.ceil(data.length / 8));
+    data.forEach((d, i) => {
+      if (i % xStep === 0 || i === data.length - 1) {
+        const x = PAD.left + (W - PAD.left - PAD.right) * i / Math.max(data.length - 1, 1);
+        ctx.fillText(d.date ? d.date.slice(5) : '', x, H - PAD.bottom + 14);
+      }
+    });
+
+    // Draw line + fill
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top - PAD.bottom;
+
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      const x = PAD.left + chartW * i / Math.max(data.length - 1, 1);
+      const y = PAD.top + chartH * (1 - (d.value || 0) / maxVal);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+
+    // Fill area
+    ctx.lineTo(PAD.left + chartW, PAD.top + chartH);
+    ctx.lineTo(PAD.left, PAD.top + chartH);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      const x = PAD.left + chartW * i / Math.max(data.length - 1, 1);
+      const y = PAD.top + chartH * (1 - (d.value || 0) / maxVal);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Dots
+    data.forEach((d, i) => {
+      const x = PAD.left + chartW * i / Math.max(data.length - 1, 1);
+      const y = PAD.top + chartH * (1 - (d.value || 0) / maxVal);
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = lineColor;
+      ctx.fill();
+    });
+  }
+
+  // ── Recent Logs ────────────────────────────────────────────────
+  async function loadLogs() {
+    const tbody = document.getElementById('logsBody');
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><span class="spinner"></span>加载中…</td></tr>';
+    try {
+      const resp = await fetch('/api/admin/call-logs?limit=20');
+      if (!resp.ok) throw new Error();
+      const data = await resp.json();
+      const logs = data.logs || [];
+
+      if (!logs.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无数据</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = logs.map(log => `
+        <tr>
+          <td style="white-space:nowrap">${esc((log.created_at || '').slice(0, 19))}</td>
+          <td>${esc(log.provider)}</td>
+          <td><code style="font-size:0.75rem">${esc(log.api_path)}</code></td>
+          <td>${log.duration_ms != null ? log.duration_ms + 'ms' : '—'}</td>
+          <td>${log.usage_characters != null ? log.usage_characters : '—'}</td>
+          <td>${statusBadge(log)}</td>
+          <td><code style="font-size:0.72rem;color:#718096">${esc(log.request_id || '-')}</code></td>
+        </tr>`).join('');
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state error-msg">加载失败</td></tr>';
+    }
+  }
+
+  function statusBadge(log) {
+    if (log.error_type) return `<span class="badge badge-error">${esc(log.error_type)}</span>`;
+    if (log.status_code === 200) return '<span class="badge badge-success">200</span>';
+    if (log.status_code) return `<span class="badge badge-running">${log.status_code}</span>`;
+    return '—';
+  }
+
+  // ── Recent Errors ──────────────────────────────────────────────
+  async function loadErrors() {
+    const tbody = document.getElementById('errorsBody');
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><span class="spinner"></span>加载中…</td></tr>';
+    try {
+      const resp = await fetch('/api/admin/call-logs?status=error&limit=10');
+      if (!resp.ok) throw new Error();
+      const data = await resp.json();
+      const logs = data.logs || [];
+
+      if (!logs.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无错误记录</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = logs.map(log => `
+        <tr>
+          <td style="white-space:nowrap">${esc((log.created_at || '').slice(0, 19))}</td>
+          <td>${esc(log.provider)}</td>
+          <td><code style="font-size:0.75rem">${esc(log.api_path)}</code></td>
+          <td><span class="badge badge-error">${esc(log.error_type || 'unknown')}</span></td>
+          <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(log.error_message || '')}">${esc(log.error_message || '-')}</td>
+          <td><code style="font-size:0.72rem;color:#718096">${esc(log.request_id || '-')}</code></td>
+        </tr>`).join('');
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state error-msg">加载失败</td></tr>';
+    }
+  }
+
+  // ── Utilities ─────────────────────────────────────────────────
+  function esc(s) {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  // ── Init ───────────────────────────────────────────────────────
+  initDates();
+  loadAll();
+
+  // Redraw chart on resize
+  window.addEventListener('resize', () => {
+    const { start, end } = getDateRange();
+    loadDailyTrend(start, end, currentMetric);
+  });
+</script>
+</body>
+</html>

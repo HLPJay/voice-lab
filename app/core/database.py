@@ -9,9 +9,14 @@ from app.models.voice_asset import AudioAsset, SubtitleAsset
 from app.models.voice_job import VoiceJob
 from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
 from app.models.provider_voice import ProviderVoice
+from app.models.provider_call_log import ProviderCallLog  # noqa: F401
 
 
 engine = create_engine(get_settings().database_url, connect_args={"check_same_thread": False})
+
+
+def get_engine():
+    return engine
 
 
 def create_db_and_tables() -> None:

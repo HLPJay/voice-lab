@@ -274,7 +274,7 @@ class TestRenderSync:
 
         with patch("httpx.AsyncClient") as MockClient:
             mock_instance = AsyncMock()
-            mock_instance.post.return_value = FakeResponse(body)
+            mock_instance.request.return_value = FakeResponse(body)
             mock_instance.__aenter__.return_value = mock_instance
             mock_instance.__aexit__.return_value = None
             MockClient.return_value = mock_instance
@@ -305,7 +305,7 @@ class TestRenderSync:
 
         with patch("httpx.AsyncClient") as MockClient:
             mock_instance = AsyncMock()
-            mock_instance.post.return_value = FakeResponse(body)
+            mock_instance.request.return_value = FakeResponse(body)
             mock_instance.__aenter__.return_value = mock_instance
             mock_instance.__aexit__.return_value = None
             MockClient.return_value = mock_instance
@@ -336,7 +336,7 @@ class TestRenderSync:
 
         with patch("httpx.AsyncClient") as MockClient:
             mock_instance = AsyncMock()
-            mock_instance.post.return_value = FakeResponse(body)
+            mock_instance.request.return_value = FakeResponse(body)
             mock_instance.__aenter__.return_value = mock_instance
             mock_instance.__aexit__.return_value = None
             MockClient.return_value = mock_instance
@@ -365,7 +365,7 @@ class TestRenderSync:
 
         with patch("httpx.AsyncClient") as MockClient:
             mock_instance = AsyncMock()
-            mock_instance.post.return_value = FakeResponse(body)
+            mock_instance.request.return_value = FakeResponse(body)
             mock_instance.__aenter__.return_value = mock_instance
             mock_instance.__aexit__.return_value = None
             MockClient.return_value = mock_instance
@@ -389,7 +389,7 @@ class TestRenderSync:
 
         with patch("httpx.AsyncClient") as MockClient:
             mock_instance = AsyncMock()
-            mock_instance.post.return_value = FakeResponse(body)
+            mock_instance.request.return_value = FakeResponse(body)
             mock_instance.__aenter__.return_value = mock_instance
             mock_instance.__aexit__.return_value = None
             MockClient.return_value = mock_instance

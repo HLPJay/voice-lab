@@ -1,25 +1,243 @@
+import asyncio
 import binascii
 import json as _json
 import re
+import time
 from pathlib import Path
 
 import httpx
 
 from app.core.config import get_settings
+from app.core.context import get_job_id, get_request_id
 from app.core.errors import ProviderError, ProviderNotConfigured
+from app.core.logging import get_logger
+from app.core.time import utc_now_iso
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
+from app.models.provider_call_log import ProviderCallLog
 from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 
 _HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
+_provider_logger = get_logger("provider.minimax")
+_retry_logger = get_logger("retry")
 
 
 class MiniMaxSpeechAdapter(SpeechProvider):
     provider_name = "minimax"
+
+    @property
+    def _base_url(self) -> str:
+        return get_settings().minimax_base_url.rstrip("/")
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        timeout: int | None = None,
+        **kwargs,
+    ) -> httpx.Response:
+        """Make an HTTP request to MiniMax API with automatic retry.
+
+        Retries on httpx.TimeoutException, httpx.NetworkError, and 502/503/504
+        responses with exponential backoff. Logs every attempt (provider_request)
+        but only the final result (provider_response / provider_error). Audit log
+        is written only once for the final result.
+        """
+        settings = get_settings()
+        url = f"{self._base_url}{path}"
+        request_timeout = timeout if timeout is not None else settings.minimax_timeout_seconds
+        max_attempts = settings.provider_retry_max_attempts
+        backoff_base = settings.provider_retry_backoff_base
+        retryable_exceptions = (httpx.TimeoutException, httpx.NetworkError)
+        retryable_status_codes = (502, 503, 504)
+
+        overall_start = time.monotonic()
+        response: httpx.Response | None = None
+        final_response: httpx.Response | None = None
+        final_error: Exception | None = None
+        final_status_code: int | None = None
+        final_error_type: str | None = None
+        final_error_message: str | None = None
+
+        for attempt in range(1, max_attempts + 1):
+            attempt_start = time.monotonic()
+            response = None
+
+            _provider_logger.debug(
+                "provider_request",
+                extra={
+                    "provider": self.provider_name,
+                    "method": method,
+                    "path": path,
+                    "attempt": attempt,
+                    "max_attempts": max_attempts,
+                },
+            )
+
+            try:
+                async with httpx.AsyncClient(timeout=request_timeout) as client:
+                    response = await client.request(
+                        method,
+                        url,
+                        headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                        **kwargs,
+                    )
+                attempt_duration_ms = round((time.monotonic() - attempt_start) * 1000)
+
+                if response.status_code in retryable_status_codes and attempt < max_attempts:
+                    wait_seconds = backoff_base * (2 ** (attempt - 1))
+                    _retry_logger.warning(
+                        "retry_status_code",
+                        extra={
+                            "attempt": attempt,
+                            "max_attempts": max_attempts,
+                            "status_code": response.status_code,
+                            "wait_seconds": wait_seconds,
+                            "path": path,
+                            "method": method,
+                        },
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
+
+                # Final response (success or non-retryable status)
+                final_response = response
+                final_status_code = response.status_code
+                total_duration_ms = round((time.monotonic() - overall_start) * 1000)
+
+                _provider_logger.info(
+                    "provider_response",
+                    extra={
+                        "provider": self.provider_name,
+                        "method": method,
+                        "path": path,
+                        "status_code": final_status_code,
+                        "duration_ms": total_duration_ms,
+                        "attempts": attempt,
+                    },
+                )
+                self._save_call_log(
+                    method=method,
+                    path=path,
+                    status_code=final_status_code,
+                    duration_ms=total_duration_ms,
+                    error_type=None,
+                    error_message=None,
+                )
+                return response
+
+            except retryable_exceptions as exc:
+                attempt_duration_ms = round((time.monotonic() - attempt_start) * 1000)
+                final_error = exc
+                final_error_type = type(exc).__name__
+                final_error_message = str(exc)
+
+                if attempt < max_attempts:
+                    wait_seconds = backoff_base * (2 ** (attempt - 1))
+                    _retry_logger.warning(
+                        "retry_exception",
+                        extra={
+                            "attempt": attempt,
+                            "max_attempts": max_attempts,
+                            "error_type": final_error_type,
+                            "error_message": final_error_message[:200],
+                            "wait_seconds": wait_seconds,
+                            "path": path,
+                            "method": method,
+                        },
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
+
+                # Exhausted retries
+                total_duration_ms = round((time.monotonic() - overall_start) * 1000)
+                _provider_logger.error(
+                    "provider_error",
+                    extra={
+                        "provider": self.provider_name,
+                        "method": method,
+                        "path": path,
+                        "error_type": final_error_type,
+                        "error_message": final_error_message,
+                        "duration_ms": total_duration_ms,
+                        "attempts": attempt,
+                    },
+                )
+                self._save_call_log(
+                    method=method,
+                    path=path,
+                    status_code=None,
+                    duration_ms=total_duration_ms,
+                    error_type=final_error_type,
+                    error_message=final_error_message,
+                )
+                raise
+
+            except Exception as exc:
+                # Non-retryable exception — fail immediately
+                total_duration_ms = round((time.monotonic() - overall_start) * 1000)
+                error_type = type(exc).__name__
+                error_message = str(exc)
+                _provider_logger.error(
+                    "provider_error",
+                    extra={
+                        "provider": self.provider_name,
+                        "method": method,
+                        "path": path,
+                        "error_type": error_type,
+                        "error_message": error_message,
+                        "duration_ms": total_duration_ms,
+                        "attempts": 1,
+                    },
+                )
+                self._save_call_log(
+                    method=method,
+                    path=path,
+                    status_code=None,
+                    duration_ms=total_duration_ms,
+                    error_type=error_type,
+                    error_message=error_message,
+                )
+                raise
+
+    def _save_call_log(
+        self,
+        *,
+        method: str,
+        path: str,
+        status_code: int | None,
+        duration_ms: int,
+        error_type: str | None,
+        error_message: str | None,
+    ) -> None:
+        """Write audit record to provider_call_logs. Failures are logged but never raised."""
+        try:
+            from app.core.database import get_engine
+            from sqlmodel import Session
+
+            log_entry = ProviderCallLog(
+                id=new_id("calllog"),
+                request_id=get_request_id() or None,
+                job_id=get_job_id() or None,
+                provider=self.provider_name,
+                api_path=path,
+                method=method,
+                status_code=status_code,
+                duration_ms=duration_ms,
+                error_type=error_type,
+                error_message=(error_message or "")[:500],
+                created_at=utc_now_iso(),
+            )
+            with Session(get_engine()) as session:
+                session.add(log_entry)
+                session.commit()
+        except Exception as exc:
+            _provider_logger.warning("call_log_save_failed", extra={"error": str(exc)})
 
     def _description_to_text(self, value) -> str | None:
         if isinstance(value, list):
@@ -151,16 +369,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
             raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY or use provider=mock")
 
-        url = settings.minimax_base_url.rstrip("/") + "/v1/get_voice"
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
-                    json={"voice_type": voice_type},
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("POST", "/v1/get_voice", json={"voice_type": voice_type})
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax voice list request failed", str(exc)) from exc
 
@@ -188,16 +400,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "subtitle_enable": plan.subtitle.enabled,
             "subtitle_type": plan.subtitle.type,
         }
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_t2a_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("POST", settings.minimax_t2a_path, json=payload)
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax request failed", str(exc)) from exc
 
@@ -250,16 +456,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "subtitle_enable": plan.subtitle.enabled,
             "subtitle_type": plan.subtitle.type,
         }
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_async_t2a_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("POST", settings.minimax_async_t2a_path, json=payload)
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax async task creation failed", str(exc)) from exc
 
@@ -285,16 +485,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
             raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
 
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_async_query_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.get(
-                    url,
-                    params={"task_id": provider_task_id},
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("GET", settings.minimax_async_query_path, params={"task_id": provider_task_id})
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax async task query failed", str(exc)) from exc
 
@@ -309,7 +503,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if status == "success" and not file_url:
             file_id = body.get("file_id")
             if file_id:
-                file_url = await self._retrieve_file_url(file_id, settings)
+                file_url = await self._retrieve_file_url(file_id)
 
         return AsyncTaskStatus(
             task_id=provider_task_id,
@@ -322,17 +516,11 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             metadata={"raw_response": body},
         )
 
-    async def _retrieve_file_url(self, file_id: int, settings) -> str | None:
-        url = settings.minimax_base_url.rstrip("/") + "/v1/files/retrieve"
+    async def _retrieve_file_url(self, file_id: int) -> str | None:
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.get(
-                    url,
-                    params={"file_id": file_id},
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("GET", "/v1/files/retrieve", params={"file_id": file_id})
+            response.raise_for_status()
+            body = response.json()
         except Exception:
             return None
         file_info = body.get("file") or {}
@@ -346,17 +534,15 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if purpose not in ("voice_clone", "prompt_audio"):
             raise ProviderError("Invalid purpose", f"purpose must be 'voice_clone' or 'prompt_audio', got '{purpose}'")
 
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_file_upload_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
-                    data={"purpose": purpose},
-                    files={"file": (filename, file_data)},
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request(
+                "POST",
+                settings.minimax_file_upload_path,
+                data={"purpose": purpose},
+                files={"file": (filename, file_data)},
+            )
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax file upload failed", str(exc)) from exc
 
@@ -391,16 +577,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if prompt_file_id is not None and prompt_text is not None:
             payload["clone_prompt"] = {"prompt_audio": prompt_file_id, "prompt_text": prompt_text}
 
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_voice_clone_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("POST", settings.minimax_voice_clone_path, json=payload)
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax voice clone failed", str(exc)) from exc
 
@@ -430,16 +610,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if voice_id is not None:
             payload["voice_id"] = voice_id
 
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_voice_design_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("POST", settings.minimax_voice_design_path, json=payload)
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax voice design failed", str(exc)) from exc
 
@@ -458,16 +632,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
 
         payload = {"voice_type": voice_type, "voice_id": provider_voice_id}
-        url = settings.minimax_base_url.rstrip("/") + settings.minimax_delete_voice_path
         try:
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                )
-                response.raise_for_status()
-                body = response.json()
+            response = await self._request("POST", settings.minimax_delete_voice_path, json=payload)
+            response.raise_for_status()
+            body = response.json()
         except Exception as exc:
             raise ProviderError("MiniMax delete voice failed", str(exc)) from exc
 
