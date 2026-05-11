@@ -7,11 +7,14 @@ from pathlib import Path
 import httpx
 
 from app.core.config import get_settings
+from app.core.context import get_job_id, get_request_id
 from app.core.errors import ProviderError, ProviderNotConfigured
 from app.core.logging import get_logger
+from app.core.time import utc_now_iso
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
+from app.models.provider_call_log import ProviderCallLog
 from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
@@ -55,6 +58,11 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         )
 
         start = time.monotonic()
+        status_code: int | None = None
+        error_type: str | None = None
+        error_message: str | None = None
+        response: httpx.Response | None = None
+
         try:
             async with httpx.AsyncClient(timeout=request_timeout) as client:
                 response = await client.request(
@@ -64,6 +72,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                     **kwargs,
                 )
             duration_ms = round((time.monotonic() - start) * 1000)
+            status_code = response.status_code
 
             _provider_logger.info(
                 "provider_response",
@@ -71,26 +80,78 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                     "provider": self.provider_name,
                     "method": method,
                     "path": path,
-                    "status_code": response.status_code,
+                    "status_code": status_code,
                     "duration_ms": duration_ms,
                 },
             )
 
+            self._save_call_log(
+                method=method,
+                path=path,
+                status_code=status_code,
+                duration_ms=duration_ms,
+                error_type=None,
+                error_message=None,
+            )
             return response
         except Exception as exc:
             duration_ms = round((time.monotonic() - start) * 1000)
+            error_type = type(exc).__name__
+            error_message = str(exc)
             _provider_logger.error(
                 "provider_error",
                 extra={
                     "provider": self.provider_name,
                     "method": method,
                     "path": path,
-                    "error_type": type(exc).__name__,
-                    "error_message": str(exc),
+                    "error_type": error_type,
+                    "error_message": error_message,
                     "duration_ms": duration_ms,
                 },
             )
+            self._save_call_log(
+                method=method,
+                path=path,
+                status_code=None,
+                duration_ms=duration_ms,
+                error_type=error_type,
+                error_message=error_message,
+            )
             raise
+
+    def _save_call_log(
+        self,
+        *,
+        method: str,
+        path: str,
+        status_code: int | None,
+        duration_ms: int,
+        error_type: str | None,
+        error_message: str | None,
+    ) -> None:
+        """Write audit record to provider_call_logs. Failures are logged but never raised."""
+        try:
+            from app.core.database import get_engine
+            from sqlmodel import Session
+
+            log_entry = ProviderCallLog(
+                id=new_id("calllog"),
+                request_id=get_request_id() or None,
+                job_id=get_job_id() or None,
+                provider=self.provider_name,
+                api_path=path,
+                method=method,
+                status_code=status_code,
+                duration_ms=duration_ms,
+                error_type=error_type,
+                error_message=(error_message or "")[:500],
+                created_at=utc_now_iso(),
+            )
+            with Session(get_engine()) as session:
+                session.add(log_entry)
+                session.commit()
+        except Exception as exc:
+            _provider_logger.warning("call_log_save_failed", extra={"error": str(exc)})
 
     def _description_to_text(self, value) -> str | None:
         if isinstance(value, list):
