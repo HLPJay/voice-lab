@@ -1,13 +1,12 @@
-import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.errors import AssetNotFound
-from app.models.voice_asset import AudioAsset, SubtitleAsset
+from app.repositories import voice_asset_repo
 
 router = APIRouter()
 
@@ -21,7 +20,7 @@ async def get_asset(
     asset_id: str,
     session: Session = Depends(get_session),
 ):
-    audio = session.get(AudioAsset, asset_id)
+    audio = voice_asset_repo.get_audio_asset(session, asset_id)
     if audio:
         return {
             "asset_id": audio.id,
@@ -35,7 +34,7 @@ async def get_asset(
             "download_url": audio.file_url,
             "created_at": audio.created_at,
         }
-    subtitle = session.get(SubtitleAsset, asset_id)
+    subtitle = voice_asset_repo.get_subtitle_asset(session, asset_id)
     if subtitle:
         return {
             "asset_id": subtitle.id,
@@ -54,7 +53,7 @@ async def download_asset(
     asset_id: str,
     session: Session = Depends(get_session),
 ):
-    audio = session.get(AudioAsset, asset_id)
+    audio = voice_asset_repo.get_audio_asset(session, asset_id)
     if audio:
         path = Path(audio.file_path)
         if not path.exists():
@@ -64,7 +63,7 @@ async def download_asset(
             media_type="audio/wav" if audio.format == "wav" else "audio/mpeg",
             filename=f"{asset_id}.{audio.format}",
         )
-    subtitle = session.get(SubtitleAsset, asset_id)
+    subtitle = voice_asset_repo.get_subtitle_asset(session, asset_id)
     if subtitle:
         srt_path = subtitle.srt_path
         path = Path(srt_path) if srt_path else None
