@@ -77,13 +77,15 @@ async def ws_render(websocket: WebSocket):
     except WebSocketDisconnect:
         logger.info("ws_disconnected request_id=%s", request_id)
     except VoiceLabError as exc:
-        logger.error("ws_error request_id=%s error=%s", request_id, exc.message)
+        logger.error("ws_error request_id=%s error=%s detail=%s", request_id, exc.message, getattr(exc, 'detail', None))
         try:
             error_code = getattr(exc, 'code', None) or getattr(exc, 'error_code', None) or "PROVIDER_ERROR"
+            detail = getattr(exc, 'detail', None)
+            full_message = f"{exc.message}: {detail}" if detail else exc.message
             await websocket.send_json({
                 "event": "error",
                 "code": error_code,
-                "message": exc.message,
+                "message": full_message,
             })
         except Exception:
             pass

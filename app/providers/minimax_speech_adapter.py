@@ -705,7 +705,9 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                 msg = _json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
                 if msg.get("event") == "task_failed":
                     base_resp = msg.get("base_resp", {})
-                    raise ProviderError("WebSocket task_start failed", base_resp.get("status_msg", str(msg)))
+                    status_msg = base_resp.get("status_msg", str(msg))
+                    _provider_logger.error("ws_task_start_failed status_msg=%s base_resp=%s", status_msg, base_resp)
+                    raise ProviderError("WebSocket task_start failed", status_msg)
 
                 await ws.send(_json.dumps({"event": "task_continue", "text": plan.processed_text}))
                 await ws.send(_json.dumps({"event": "task_finish"}))
@@ -738,7 +740,9 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
                     elif event == "task_failed":
                         base_resp = msg.get("base_resp", {})
-                        raise ProviderError("WebSocket task failed", base_resp.get("status_msg", str(msg)))
+                        status_msg = base_resp.get("status_msg", str(msg))
+                        _provider_logger.error("ws_task_failed status_msg=%s base_resp=%s", status_msg, base_resp)
+                        raise ProviderError("WebSocket task failed", status_msg)
 
             duration_ms = round((time.monotonic() - start_time) * 1000)
             _provider_logger.info(
