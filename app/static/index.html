@@ -503,6 +503,27 @@
     .tab-nav { gap: 0; }
     .tab-btn { padding: 8px 12px; font-size: 0.82rem; }
   }
+
+  /* Stream */
+  .stream-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+    font-size: 0.9rem;
+    color: #4a5568;
+  }
+
+  .stream-stats {
+    display: flex;
+    gap: 24px;
+    font-size: 0.82rem;
+    color: #718096;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #f7fafc;
+    border-radius: 6px;
+  }
 </style>
 </head>
 <body>
@@ -555,6 +576,7 @@
           <div class="radio-group">
             <label><input type="radio" name="genMode" value="single" checked> 单条生成</label>
             <label><input type="radio" name="genMode" value="async"> 异步生成</label>
+            <label><input type="radio" name="genMode" value="stream"> 流式生成</label>
             <label><input type="radio" name="genMode" value="variants"> 多版本试音</label>
           </div>
           <div class="variant-count-row" id="variantCountRow">
@@ -819,6 +841,7 @@
     const mode = document.querySelector('input[name="genMode"]:checked').value;
     const isVariant = mode === 'variants';
     const isAsync = mode === 'async';
+    const isStream = mode === 'stream';
     const count = parseInt(variantCountInput.value) || 3;
     const subtitle = needSubtitle.checked;
 
@@ -826,6 +849,11 @@
     setLoading(true);
     resultsArea.classList.remove('visible');
     resultsArea.innerHTML = '';
+
+    if (isStream) {
+      startStreamGenerate(text, profileId, provider, subtitle);
+      return;
+    }
 
     try {
       const payload = {
@@ -869,6 +897,124 @@
       resultsArea.classList.add('visible');
       setLoading(false);
     }
+  }
+
+  function startStreamGenerate(text, profileId, provider, subtitle) {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${proto}//${location.host}/api/voice/ws/render`;
+
+    resultsArea.innerHTML = `
+        <div class="card" id="streamStatusCard">
+            <div class="result-label">流式生成</div>
+            <div class="stream-progress">
+                <span class="spinner"></span>
+                <span id="streamStatusText">连接中…</span>
+            </div>
+            <div class="stream-stats" id="streamStats" style="display:none">
+                <span>已接收: <strong id="streamChunkCount">0</strong> 个片段</span>
+                <span>已接收时长: <strong id="streamDuration">0</strong> ms</span>
+            </div>
+        </div>`;
+    resultsArea.classList.add('visible');
+
+    const ws = new WebSocket(wsUrl);
+    const audioChunks = [];
+
+    ws.onopen = () => {
+        ws.send(JSON.stringify({
+            event: "start",
+            text: text,
+            profile_id: profileId,
+            provider: provider,
+            output_format: "mp3",
+            need_subtitle: subtitle,
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        switch (msg.event) {
+            case "connected":
+                document.getElementById('streamStatusText').textContent =
+                    `已连接 (${msg.request_id})`;
+                break;
+            case "started":
+                document.getElementById('streamStatusText').textContent =
+                    `生成中… (${msg.provider} / ${msg.model})`;
+                document.getElementById('streamStats').style.display = '';
+                break;
+            case "audio_chunk":
+                audioChunks.push(msg.audio_base64);
+                document.getElementById('streamChunkCount').textContent =
+                    audioChunks.length;
+                if (msg.duration_ms) {
+                    const el = document.getElementById('streamDuration');
+                    el.textContent = parseInt(el.textContent || '0') + msg.duration_ms;
+                }
+                break;
+            case "completed":
+                renderStreamResult(msg, audioChunks);
+                setLoading(false);
+                ws.close();
+                break;
+            case "error":
+                resultsArea.innerHTML = `<div class="error-msg">流式生成失败：[${esc(msg.code)}] ${esc(msg.message)}</div>`;
+                resultsArea.classList.add('visible');
+                setLoading(false);
+                ws.close();
+                break;
+        }
+    };
+
+    ws.onerror = () => {
+        resultsArea.innerHTML = `<div class="error-msg">WebSocket 连接失败</div>`;
+        resultsArea.classList.add('visible');
+        setLoading(false);
+    };
+
+    ws.onclose = (event) => {
+        if (event.code !== 1000 && !resultsArea.querySelector('.result-section') && !resultsArea.querySelector('.error-msg')) {
+            resultsArea.innerHTML = `<div class="error-msg">连接断开 (code: ${event.code})</div>`;
+            resultsArea.classList.add('visible');
+            setLoading(false);
+        }
+    };
+  }
+
+  function renderStreamResult(completed, audioChunks) {
+    const binaryParts = audioChunks.map(b64 => {
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    });
+    const blob = new Blob(binaryParts, { type: 'audio/mpeg' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const asset = completed.audio_asset;
+    resultsArea.innerHTML = `
+        <div class="result-section">
+            <div class="result-label">流式生成结果</div>
+            <span class="job-status status-success">已完成</span>
+            <p style="font-size:0.82rem;color:#718096;margin-top:6px">
+                任务ID：<code>${esc(completed.job_id)}</code>
+                · 片段数: ${completed.total_chunks}
+                · 总时长: ${completed.total_duration_ms} ms
+                · 字符数: ${completed.total_characters}
+            </p>
+            <audio class="audio-player" controls preload="auto">
+                <source src="${blobUrl}" type="audio/mpeg">
+                您的浏览器不支持音频播放
+            </audio>
+            <div class="action-row">
+                ${asset ? `<a class="btn-sm" href="/api/voice/assets/${asset.id}/download" download>下载(服务端)</a>` : ''}
+                <a class="btn-sm" href="${blobUrl}" download="stream_audio.mp3">下载(本地缓存)</a>
+            </div>
+        </div>`;
+    resultsArea.classList.add('visible');
   }
 
   function startAsyncPolling(jobId) {
