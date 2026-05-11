@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旁白试音台</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #f5f7fa;
+    color: #1a1a2e;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2d3748;
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    font-size: 0.875rem;
+    color: #718096;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a0aec0;
+    margin-bottom: 14px;
+  }
+
+  /* Textarea */
+  .textarea-wrap {
+    position: relative;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    resize: vertical;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: #5a67d8;
+  }
+
+  .char-count {
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    font-size: 0.75rem;
+    color: #a0aec0;
+    pointer-events: none;
+  }
+
+  /* Config grid */
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #4a5568;
+  }
+
+  select, input[type="number"], input[type="text"] {
+    padding: 9px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  select:focus, input:focus {
+    outline: none;
+    border-color: #5a67d8;
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    padding: 9px 0;
+  }
+
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 400;
+    cursor: pointer;
+    color: #2d3748;
+  }
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #5a67d8;
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 0;
+  }
+
+  .variant-count-row {
+    display: none;
+    padding: 9px 0 0;
+  }
+
+  .variant-count-row.visible {
+    display: block;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: #5a67d8;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+    margin-top: 16px;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #4c51bf;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* Results */
+  .results-area {
+    display: none;
+  }
+
+  .results-area.visible {
+    display: block;
+  }
+
+  .result-section {
+    margin-bottom: 28px;
+  }
+
+  .result-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .result-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a0aec0;
+    margin-bottom: 10px;
+  }
+
+  .job-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: #ebf8ff;
+    color: #2b6cb0;
+  }
+
+  .job-status.status-success { background: #f0fff4; color: #276749; }
+  .job-status.status-failed  { background: #fff5f5; color: #c53030; }
+  .job-status.status-running  { background: #fefcbf; color: #b7791f; }
+
+  .audio-player {
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 8px;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-sm {
+    padding: 6px 14px;
+    background: #edf2f7;
+    color: #2d3748;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s;
+  }
+
+  .btn-sm:hover { background: #e2e8f0; }
+
+  /* Variant cards */
+  .variants-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .variant-card {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .variant-card .variant-meta {
+    font-size: 0.78rem;
+    color: #718096;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .variant-card .variant-meta span {
+    background: #edf2f7;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .variant-card audio {
+    width: 100%;
+    margin-top: 8px;
+    height: 36px;
+  }
+
+  .variant-card .action-row {
+    margin-top: 8px;
+  }
+
+  /* Error */
+  .error-msg {
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #c53030;
+    font-size: 0.875rem;
+    margin-top: 10px;
+  }
+
+  /* Timeline */
+  .timeline-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.82rem;
+  }
+
+  .timeline-table th {
+    text-align: left;
+    color: #a0aec0;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .timeline-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #f0f4f8;
+    color: #2d3748;
+  }
+
+  .timeline-table tr:last-child td { border-bottom: none; }
+
+  /* Loading spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  .loading .spinner { border-color: rgba(90,103,216,0.3); border-top-color: #5a67d8; }
+
+  @media (max-width: 500px) {
+    .config-grid { grid-template-columns: 1fr; }
+    .variants-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>旁白试音台</h1>
+    <p>快速生成旁白，对比不同音色版本</p>
+  </header>
+
+  <!-- Area 1: Text Input -->
+  <div class="card">
+    <div class="card-title">文案输入</div>
+    <div class="textarea-wrap">
+      <textarea id="textInput" placeholder="输入文案..." maxlength="9500"></textarea>
+      <span class="char-count" id="charCount">0 / 9500</span>
+    </div>
+  </div>
+
+  <!-- Area 2: Config Panel -->
+  <div class="card">
+    <div class="card-title">配置</div>
+    <div class="config-grid">
+      <div class="form-group">
+        <label for="profileSelect">声音人设</label>
+        <select id="profileSelect">
+          <option value="">加载中…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="providerSelect">Provider</label>
+        <select id="providerSelect">
+          <option value="mock">mock（模拟）</option>
+          <option value="minimax">minimax（正式）</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <label>生成模式</label>
+        <div class="radio-group">
+          <label><input type="radio" name="genMode" value="single" checked> 单条生成</label>
+          <label><input type="radio" name="genMode" value="variants"> 多版本试音</label>
+        </div>
+        <div class="variant-count-row" id="variantCountRow">
+          <label for="variantCount">版本数量（1-5）</label>
+          <input type="number" id="variantCount" min="1" max="5" value="3">
+        </div>
+      </div>
+      <div class="form-group full-width">
+        <div class="checkbox-row">
+          <input type="checkbox" id="needSubtitle" checked>
+          <label for="needSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Area 3: Action Button -->
+  <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
+
+  <!-- Area 4: Results -->
+  <div class="results-area" id="resultsArea"></div>
+
+</div>
+
+<script>
+  const textInput = document.getElementById('textInput');
+  const charCount = document.getElementById('charCount');
+  const profileSelect = document.getElementById('profileSelect');
+  const providerSelect = document.getElementById('providerSelect');
+  const genModes = document.getElementsByName('genMode');
+  const variantCountRow = document.getElementById('variantCountRow');
+  const variantCountInput = document.getElementById('variantCount');
+  const needSubtitle = document.getElementById('needSubtitle');
+  const generateBtn = document.getElementById('generateBtn');
+  const resultsArea = document.getElementById('resultsArea');
+
+  // Character counter
+  textInput.addEventListener('input', () => {
+    charCount.textContent = `${textInput.value.length} / 9500`;
+  });
+
+  // Show/hide variant count
+  genModes.forEach(r => r.addEventListener('change', () => {
+    variantCountRow.classList.toggle('visible', r.value === 'variants');
+  }));
+
+  // Load profiles on page load
+  (async () => {
+    try {
+      const res = await fetch('/api/voice/profiles');
+      const data = await res.json();
+      profileSelect.innerHTML = '';
+      if (!data.profiles || data.profiles.length === 0) {
+        profileSelect.innerHTML = '<option value="">无可用人设</option>';
+        return;
+      }
+      data.profiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        profileSelect.appendChild(opt);
+      });
+    } catch (e) {
+      profileSelect.innerHTML = '<option value="">加载失败</option>';
+    }
+  })();
+
+  function setLoading(on) {
+    generateBtn.disabled = on;
+    generateBtn.innerHTML = on
+      ? '<span class="spinner"></span>生成中…'
+      : '生成';
+  }
+
+  function statusLabel(s) {
+    const m = { success: '已完成', failed: '失败', running: '生成中', pending: '等待中' };
+    return m[s] || s;
+  }
+
+  function statusClass(s) {
+    return 'job-status status-' + s;
+  }
+
+  function audioPlayer(assetId, downloadUrl) {
+    return `
+      <audio class="audio-player" controls preload="none">
+        <source src="/api/voice/assets/${assetId}/download" type="audio/mpeg">
+        您的浏览器不支持音频播放
+      </audio>`;
+  }
+
+  function downloadBtn(assetId) {
+    return `<a class="btn-sm" href="/api/voice/assets/${assetId}/download" download>下载</a>`;
+  }
+
+  function timelineTable(timeline) {
+    if (!timeline || timeline.length === 0) return '';
+    let html = `<table class="timeline-table"><thead><tr><th>时间</th><th>文本</th></tr></thead><tbody>`;
+    timeline.forEach(item => {
+      const start = formatTime(item.start);
+      const end = formatTime(item.end);
+      html += `<tr><td>${start} → ${end}</td><td>${esc(item.text || '')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function formatTime(seconds) {
+    if (seconds == null) return '--';
+    const s = Math.floor(seconds);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const ms = Math.round((seconds - s) * 1000);
+    if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+    return `${m}:${pad(s)},${pad(ms)}`;
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  async function handleGenerate() {
+    const text = textInput.value.trim();
+    if (!text) { alert('请输入文案'); return; }
+    const profileId = profileSelect.value;
+    if (!profileId) { alert('请选择声音人设'); return; }
+    const provider = providerSelect.value;
+    const isVariant = document.querySelector('input[name="genMode"]:checked').value === 'variants';
+    const count = parseInt(variantCountInput.value) || 3;
+    const subtitle = needSubtitle.checked;
+
+    setLoading(true);
+    resultsArea.classList.remove('visible');
+    resultsArea.innerHTML = '';
+
+    try {
+      const payload = {
+        text,
+        profile_id: profileId,
+        provider,
+        need_subtitle: subtitle,
+        ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {})
+      };
+
+      const endpoint = isVariant ? '/api/voice/variants/render' : '/api/voice/render';
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        const msg = data.detail || JSON.stringify(data);
+        resultsArea.innerHTML = `<div class="error-msg">请求失败：${esc(msg)}</div>`;
+        resultsArea.classList.add('visible');
+        setLoading(false);
+        return;
+      }
+
+      renderResults(data, isVariant);
+      resultsArea.classList.add('visible');
+    } catch (e) {
+      resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+      resultsArea.classList.add('visible');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResults(data, isVariant) {
+    if (isVariant) {
+      let html = '<div class="result-section"><div class="result-label">版本列表</div>';
+      html += `<div class="variants-grid">`;
+      data.variants.forEach((v, i) => {
+        html += `
+          <div class="variant-card">
+            <div class="variant-meta">
+              <span>版本 ${i + 1}</span>
+              ${v.speed != null ? `<span>语速 ${v.speed}</span>` : ''}
+              ${v.emotion ? `<span>情绪 ${v.emotion}</span>` : ''}
+            </div>
+            ${v.audio_asset_id ? audioPlayer(v.audio_asset_id) : '<p style="font-size:0.82rem;color:#a0aec0">无音频</p>'}
+            <div class="action-row">
+              ${v.audio_asset_id ? downloadBtn(v.audio_asset_id) : ''}
+            </div>
+          </div>`;
+      });
+      html += '</div></div>';
+      resultsArea.innerHTML = html;
+    } else {
+      const job = data;
+      const audio = job.audio_asset;
+      const subtitle = job.subtitle_asset;
+      let html = `
+        <div class="result-section">
+          <div class="result-label">生成结果</div>
+          <span class="${statusClass(job.status)}">${statusLabel(job.status)}</span>
+          ${audio ? audioPlayer(audio.id) : ''}
+          <div class="action-row">${audio ? downloadBtn(audio.id) : ''}</div>
+          ${subtitle && subtitle.timeline && subtitle.timeline.length > 0
+            ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(subtitle.timeline)}`
+            : ''}
+        </div>`;
+      resultsArea.innerHTML = html;
+    }
+  }
+</script>
+</body>
+</html>

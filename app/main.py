@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import api_router
 from app.core.database import create_db_and_tables, seed_defaults
@@ -29,6 +32,14 @@ app.add_exception_handler(VoiceLabError, voice_lab_error_handler)
 app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 
 app.include_router(api_router)
+
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/static/index.html")
 
 
 @app.get("/health")
