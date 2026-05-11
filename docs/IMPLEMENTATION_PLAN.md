@@ -534,9 +534,8 @@ CREATE TABLE voice_bindings (
 ### P2-F: 统一测试面板 ✅
 - 4-Tab前端（`bb862d7`）
 
-### P2-E: T2A WebSocket（未实现）
-- 低优先，需额外架构设计（连接管理、流式响应）
-- 不在P2主体范围内
+### P2-E: T2A WebSocket（已移至 P4 完成）
+- 独立为 P4 实现，含完整 WebSocket 流式链路
 
 ### 未纳入P2的项目
 - 多用户、额度统计、API Key管理、对象存储、队列Worker、评测反馈、视频模块
@@ -566,6 +565,42 @@ CREATE TABLE voice_bindings (
 - 数据库/存储/Provider 三维检查（GET /health/detail）（`9bedc54`）
 
 pytest：181 passed, 6 skipped (e2e)
+
+---
+
+## P4 计划 ✅ 已完成
+
+### P4-A: Provider 基类 + WebSocket 适配器 ✅
+- StreamAudioChunk 模型 + SpeechProvider.render_stream() 签名（`ebec791`）
+- MiniMax WebSocket 适配器（WSS 连接 + task_start/continue/finish 协议）
+- Mock 流式适配器（3 chunk 模拟）
+- WebSocket 配置项（ws_url / ws_model / ws_timeout）
+- websockets>=13.0 依赖
+
+### P4-B: StreamRenderService ✅
+- StreamRenderRequest schema + JobType.stream_render 枚举（`2b6b710`）
+- 流式 Service：验证 → RenderPlan → VoiceJob → yield started/audio_chunk/completed
+- 音频 chunk 拼接保存为 AudioAsset
+- 错误 yield error 事件 + job 状态更新
+
+### P4-C: WebSocket API 端点 ✅
+- `/api/voice/ws/render` WebSocket 端点（`9e90e3e`）
+- 消息协议：start → connected → started → audio_chunk × N → completed
+- 输入校验（event 类型、text 非空、text 长度 ≤ 10000）
+- 错误处理（VoiceLabError / 通用异常 / 客户端断连）
+
+### P4-D: 前端流式播放器 ✅
+- T2A Tab 新增"流式生成"radio 选项（`d7ef300`）
+- WebSocket 连接 + 实时进度（片段计数 / 累计时长）
+- base64 chunk 拼接为 Blob URL 一次性播放
+- 服务端下载 + 本地缓存下载双链接
+
+### P4-E: 集成测试 + Bug 修复 ✅
+- 8 个端到端集成测试（`8a52ac8`）
+- 修复 ws_render.py error_code 属性名不一致 bug
+- ws_patched_session fixture 解决 WS 端点 session 隔离
+
+pytest：206 passed, 6 skipped (e2e)
 
 ## 禁止事项
 

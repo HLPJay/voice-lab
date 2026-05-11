@@ -7,9 +7,9 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 ## 当前状态
 
 - **分支**：main（稳定）/ dev（开发）
-- **测试**：181 passed, 6 skipped (e2e)
+- **测试**：206 passed, 6 skipped (e2e)
 - **Python**：3.11+
-- **技术栈**：FastAPI + SQLModel + SQLite + httpx
+- **技术栈**：FastAPI + SQLModel + SQLite + httpx + websockets
 
 ## 已完成阶段
 
@@ -44,6 +44,13 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 - 错误重试（指数退避，502/503/504 + 超时自动重试）
 - 健康检查增强（数据库/存储/Provider 三维检查）
 
+### P4：T2A WebSocket 流式语音生成
+- StreamAudioChunk 基类 + MiniMax/Mock WebSocket 适配器
+- StreamRenderService（验证 → RenderPlan → VoiceJob → 流式 chunk → 保存 AudioAsset）
+- WebSocket 端点 `/api/voice/ws/render`（消息流：connected → started → audio_chunk × N → completed）
+- 前端流式播放器（T2A Tab 新增"流式生成"模式，base64 chunk 拼接后播放）
+- 集成测试（8 个端到端测试覆盖完整链路 + 边界条件）
+
 ## API 端点一览
 
 ### 语音生成
@@ -51,6 +58,7 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 POST /api/voice/render                        同步 T2A
 POST /api/voice/render/async                  异步 T2A 提交
 GET  /api/voice/render/async/{id}/status      异步状态轮询
+WS   /api/voice/ws/render                     流式 T2A（WebSocket）
 POST /api/voice/variants/render               多版本试音
 ```
 
@@ -88,7 +96,7 @@ GET  /api/admin/stats/daily                   每日趋势
 
 ## 前端入口
 
-- 测试面板：`/static/index.html`（4-Tab：T2A / 音色管理 / 克隆 / 设计）
+- 测试面板：`/static/index.html`（4-Tab：T2A / 音色管理 / 克隆 / 设计，T2A 支持单条/异步/流式/多版本四种模式）
 - 管理面板：`/static/admin.html`（统计仪表板 + 调用日志 + 趋势图）
 
 ## 启动方式
@@ -102,7 +110,7 @@ uvicorn app.main:app --reload
 ## 测试
 
 ```bash
-python -m pytest tests/ -x -q           # Mock 测试（181 passed）
+python -m pytest tests/ -x -q           # Mock 测试（206 passed）
 python -m pytest tests/ -m e2e -x -v    # 真实 API 测试（需 API Key）
 ```
 
@@ -110,7 +118,7 @@ python -m pytest tests/ -m e2e -x -v    # 真实 API 测试（需 API Key）
 
 | 项目 | 说明 | 优先级 |
 |------|------|--------|
-| P2-E T2A WebSocket | 流式推送，需连接管理设计 | 低 |
+| ~~P2-E T2A WebSocket~~ | ~~已在 P4 完成~~ | ~~完成~~ |
 | 多 Provider 适配 | OpenAI TTS / Azure / ElevenLabs | 中 |
 | 批量任务编排 | 多段文本→多音频→合并 | 中 |
 | 多用户/租户 | 独立平台层模块 | 按需 |
