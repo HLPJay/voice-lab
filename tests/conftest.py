@@ -109,6 +109,28 @@ def seed_profile(session):
 
 
 @pytest.fixture
+def seed_mock_binding(session, seed_profile):
+    """Add a mock provider binding for the seeded profile."""
+    profile, _ = seed_profile
+    now = utc_now_iso()
+    binding = VoiceBinding(
+        id="binding_mock_deep_night_programmer",
+        profile_id=profile.id,
+        provider="mock",
+        model="speech-2.8-hd",
+        provider_voice_id="mock_voice",
+        params_json='{}',
+        priority=1,
+        status="available",
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(binding)
+    session.commit()
+    return binding
+
+
+@pytest.fixture
 def test_app(temp_db, seed_profile):
     """Minimal FastAPI app that uses the same temp DB as seed_profile."""
     engine, _ = temp_db

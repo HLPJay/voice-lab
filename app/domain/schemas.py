@@ -243,3 +243,11 @@ class VoiceDeleteResponse(BaseModel):
     voice_id: str
     deleted: bool = True
     message: str = "删除成功"
+
+
+class StreamRenderRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=10000)
+    profile_id: str = "deep_night_programmer"
+    provider: str | None = None
+    output_format: str = "mp3"
+    need_subtitle: bool = False

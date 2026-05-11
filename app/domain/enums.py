@@ -12,6 +12,7 @@ class JobStatus(str, Enum):
 class JobType(str, Enum):
     sync_render = "sync_render"
     async_render = "async_render"
+    stream_render = "stream_render"
 
 
 class BindingStatus(str, Enum):
