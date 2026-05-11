@@ -187,12 +187,32 @@ VoiceType 枚举：
 - `VALIDATION_ERROR`
 - `PROFILE_NOT_FOUND`
 - `BINDING_NOT_FOUND`
+- `UNSUPPORTED_PROVIDER` (400)
 - `PROVIDER_NOT_CONFIGURED`
 - `PROVIDER_ERROR`
 - `AUDIO_SAVE_ERROR`
 - `SUBTITLE_SAVE_ERROR`
 - `JOB_NOT_FOUND`
 - `ASSET_NOT_FOUND`
+
+## 领域枚举
+
+系统级枚举定义在 `app/domain/enums.py`：
+
+- `JobStatus`：pending / running / success / failed
+- `JobType`：sync_render
+- `BindingStatus`：available / deprecated
+- `Provider`：mock / minimax
+
+VoiceBinding.status 和相关查询必须使用 `BindingStatus` 枚举常量，禁止魔法字符串。
+Provider 校验在 render 入口前置执行，未知 provider 返回 `UNSUPPORTED_PROVIDER`。
+
+## 声音参数白名单
+
+RenderPlan 对 voice_params 执行白名单过滤，仅允许以下 key：
+`speed`、`vol`、`pitch`、`emotion`、`timber_weights`。
+
+任何不在白名单中的 key 会在 RenderPlan 构造时被静默丢弃，防止 params_json 中的意外数据注入到 Provider API 请求中。
 
 ## 文件资产标准
 

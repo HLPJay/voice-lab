@@ -5,6 +5,7 @@ P0 可运行基线 commit：`5b8d731 fix: return not found for missing assets`
 P1 Voice Catalog commit：`6dee90f`
 P1 T2A HTTP 增强 commit：`0e5177a fix: harden minimax t2a response parsing`
 P1 VoiceBinding 管理 API commit：`e7aa95d feat: expose voice binding management api`
+P1 集成一致性审查 commit：`2412dfe fix: add Provider enum and correct unsupported provider error code`
 
 本文档记录当前 Voice Lab P0 和 P1 的完整性检查结果。
 
@@ -13,7 +14,8 @@ P1 VoiceBinding 管理 API commit：`e7aa95d feat: expose voice binding manageme
 P0 后端已达到可运行基线，所有接口和错误边界验收通过。
 P1 Voice Catalog（MiniMax Get Voice）已完成，真实 MiniMax 验收通过。
 P1 T2A HTTP 增强（响应解析硬化）已完成，真实 MiniMax `output_format=url` + `subtitle_file` 验收通过。
-P1 VoiceBinding 管理 API 已完成，pytest 77 passed。
+P1 VoiceBinding 管理 API 已完成。
+P1 集成一致性审查已完成，pytest 82 passed。
 
 ## 自动测试
 
@@ -110,6 +112,29 @@ P1 VoiceBinding 管理后结果：`77 passed`（含 P0 11 + Voice Catalog 12 + T
 - 删除为软删除（status=deprecated），不删除 provider_voice
 - binding ID 使用 new_id("binding") 全局唯一，不依赖 voice_id
 
+## P1 集成一致性审查（commit `932bd91` ~ `2412dfe`）
+
+| 检查项 | 结果 |
+|--------|------|
+| pytest -q | `82 passed` ✅ |
+| priority 排序 tiebreaker（created_at） | 已修复 ✅ |
+| render binding 选择测试（T1/T2/T3） | 已补齐 ✅ |
+| BindingStatus 枚举替代魔法字符串 | 已完成 ✅ |
+| job 表 binding_id 可观测性字段 | 已添加 ✅ |
+| voice_params 白名单过滤 | 已添加 ✅ |
+| Provider 枚举 + UNSUPPORTED_PROVIDER 错误码 | 已添加 ✅ |
+| deprecated binding 被 render 排除 | 已验证 ✅ |
+| 多 binding 按 priority 选择 | 已验证 ✅ |
+| render API 无 provider_voice_id 字段 | 已验证 ✅ |
+
+**审查轮 commit 清单：**
+- `932bd91` fix: add created_at tiebreaker to binding priority sort
+- `4f0d622` test: cover render binding selection edge cases
+- `f093f10` refactor: introduce BindingStatus enum to replace magic strings
+- `5d6325f` feat: record binding_id in voice job for traceability
+- `2a3fbc7` fix: filter voice params through whitelist in RenderPlan
+- `2412dfe` fix: add Provider enum and correct unsupported provider error code
+
 ## 架构约束检查
 
 - VoiceProfile -> VoiceBinding -> RenderPlan -> Provider Adapter 链路：✅
@@ -197,5 +222,6 @@ P1 VoiceBinding 管理后结果：`77 passed`（含 P0 11 + Voice Catalog 12 + T
 - P1 Voice Catalog：✅ 已完成（commit `6dee90f`），真实 MiniMax 验收通过（total=304）
 - P1 T2A HTTP 增强：✅ 已完成（commit `0e5177a`），真实 MiniMax `output_format=url` 验收通过
 - P1 VoiceBinding 管理 API：✅ 已完成（commit `e7aa95d`）
-- pytest -q：`77 passed`
+- P1 集成一致性审查：✅ 已完成（commit `932bd91` ~ `2412dfe`）
+- pytest -q：`82 passed`
 - 是否建议 push：待确认

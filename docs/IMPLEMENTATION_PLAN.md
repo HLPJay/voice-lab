@@ -122,7 +122,7 @@ GET /health -> {"status": "ok"}
 - 测试数据库使用临时 SQLite。
 - 测试 storage 使用临时目录。
 
-pytest -q 结果：`11 passed`
+pytest -q 结果：`82 passed`（含 P1 集成审查轮新增测试）
 
 ## P1 计划：Voice Catalog（MiniMax Get Voice）✅ 已完成
 
@@ -482,6 +482,32 @@ CREATE TABLE voice_bindings (
 4. **跨 profile 不冲突**：同一 provider_voice_id 可绑定到不同 profile
 5. **软删除策略**：DELETE 只设置 status=deprecated，不物理删除
 6. **binding ID 全局唯一**：使用 new_id("binding")，不依赖 voice_id 派生
+
+## P1 集成一致性审查 ✅ 已完成
+
+> 完成 commit：`2412dfe`，pytest -q：`82 passed`
+
+### 审查目标
+
+确认 render 链路是否真正遵守 VoiceBinding 管理结果，并补齐缺失的防护和测试。
+
+### 完成项
+
+| 项目 | Commit | 说明 |
+|---|---|---|
+| priority tiebreaker | `932bd91` | ORDER BY priority, created_at 防止同 priority 时行为不确定 |
+| binding 选择测试 | `4f0d622` | T1: 全 deprecated → 404, T2: 多 binding 按 priority, T3: deprecated 被跳过 |
+| BindingStatus 枚举 | `f093f10` | 替代魔法字符串，统一 voice_profile_repo 和 voice_binding_repo 查询条件 |
+| job binding_id | `5d6325f` | VoiceJob 记录实际选用的 binding，提高可观测性 |
+| voice_params 白名单 | `2a3fbc7` | RenderPlan validator 过滤非法 key，防止数据注入到 Provider API |
+| Provider 枚举 + 错误码 | `2412dfe` | 未知 provider 返回 400 UNSUPPORTED_PROVIDER，不再误用 BINDING_NOT_FOUND |
+
+### 非阻断遗留
+
+- ProviderVoice status 仍用魔法字符串（独立领域，后续可独立枚举化）
+- mock fallback 逻辑（provider=mock 时 fallback 到 minimax binding）建议后续加配置开关
+
+---
 
 ## P2 计划
 
