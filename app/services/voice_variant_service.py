@@ -3,6 +3,7 @@ from sqlmodel import Session
 from app.core.time import utc_now_iso
 from app.domain.schemas import VoiceRenderRequest, VoiceVariantGroupResponse, VoiceVariantRenderRequest, VoiceVariantResponse
 from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
+from app.repositories import voice_variant_repo
 from app.services.voice_render_service import VoiceRenderService
 from app.utils.id_generator import new_id
 
@@ -21,8 +22,7 @@ class VoiceVariantService:
         ][: request.variant_count]
         now = utc_now_iso()
         group = VoiceVariantGroup(id=new_id("variant_group"), scene=request.scene, input_text=request.text, created_at=now, updated_at=now)
-        session.add(group)
-        session.commit()
+        group = voice_variant_repo.create_group(session, group)
         responses: list[VoiceVariantResponse] = []
         for combo in combos:
             render_response = await self.render_service.render_voice(
@@ -45,8 +45,7 @@ class VoiceVariantService:
                 emotion=combo["emotion"],
                 created_at=utc_now_iso(),
             )
-            session.add(variant)
-            session.commit()
+            variant = voice_variant_repo.create_variant(session, variant)
             responses.append(
                 VoiceVariantResponse(
                     variant_id=variant.id,
