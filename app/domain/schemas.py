@@ -219,3 +219,16 @@ class VoiceCloneResponse(BaseModel):
     duration_ms: int | None = None
     usage_characters: int | None = None
     message: str = "克隆成功"
+
+
+class VoiceDesignRequest(BaseModel):
+    prompt: str = Field(min_length=1, description="音色描述，如'成熟女性，温柔知性'")
+    preview_text: str = Field(min_length=1, max_length=500, description="试听文本")
+    voice_id: str | None = None
+
+
+class VoiceDesignResponse(BaseModel):
+    voice_id: str
+    trial_audio_url: str | None = None
+    trial_audio_hex: str | None = None
+    message: str = "设计成功"

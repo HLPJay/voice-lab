@@ -29,6 +29,8 @@ class Settings(BaseSettings):
 
     minimax_file_upload_path: str = "/v1/files/upload"
     minimax_voice_clone_path: str = "/v1/voice_clone"
+
+    minimax_voice_design_path: str = "/v1/voice_design"
     clone_audio_max_size_mb: int = 20
     clone_audio_min_duration_sec: int = 10
     clone_audio_max_duration_sec: int = 300

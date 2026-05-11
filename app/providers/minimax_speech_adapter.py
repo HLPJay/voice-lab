@@ -398,3 +398,34 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "duration_ms": extra.get("audio_length"),
             "usage_characters": extra.get("usage_characters"),
         }
+
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        payload: dict = {"prompt": prompt, "preview_text": preview_text}
+        if voice_id is not None:
+            payload["voice_id"] = voice_id
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_voice_design_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax voice design failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax voice design failed", base_resp.get("status_msg"))
+
+        return {
+            "voice_id": body.get("voice_id"),
+            "trial_audio_hex": body.get("trial_audio"),
+        }

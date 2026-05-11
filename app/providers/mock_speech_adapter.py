@@ -103,3 +103,9 @@ class MockSpeechAdapter(SpeechProvider):
             "usage_characters": None,
             "message": "mock clone success",
         }
+
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
+        return {
+            "voice_id": voice_id or f"mock_designed_{new_id('voice')}",
+            "trial_audio_hex": None,
+        }
