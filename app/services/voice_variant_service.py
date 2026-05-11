@@ -12,7 +12,6 @@ class VoiceVariantService:
         self.render_service = VoiceRenderService()
 
     async def render_variants(self, session: Session, request: VoiceVariantRenderRequest) -> VoiceVariantGroupResponse:
-        profile_id = "deep_night_programmer"
         combos = [
             {"speed": 0.85, "emotion": "sad"},
             {"speed": 0.92, "emotion": "calm"},
@@ -30,7 +29,7 @@ class VoiceVariantService:
                 session,
                 VoiceRenderRequest(
                     text=request.text,
-                    profile_id=profile_id,
+                    profile_id=request.profile_id,
                     provider=request.provider,
                     need_subtitle=request.need_subtitle,
                 ),
@@ -40,7 +39,7 @@ class VoiceVariantService:
                 id=new_id("variant"),
                 group_id=group.id,
                 job_id=render_response.job_id,
-                profile_id=profile_id,
+                profile_id=request.profile_id,
                 audio_asset_id=render_response.audio_asset.id if render_response.audio_asset else None,
                 speed=combo["speed"],
                 emotion=combo["emotion"],
@@ -52,7 +51,7 @@ class VoiceVariantService:
                 VoiceVariantResponse(
                     variant_id=variant.id,
                     job_id=variant.job_id,
-                    profile_id=profile_id,
+                    profile_id=request.profile_id,
                     speed=variant.speed,
                     emotion=variant.emotion,
                     audio_asset_id=variant.audio_asset_id,

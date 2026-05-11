@@ -53,6 +53,7 @@ class VoiceRenderResponse(BaseModel):
 class VoiceVariantRenderRequest(BaseModel):
     text: str = Field(min_length=1)
     scene: str = "deep_night_monologue"
+    profile_id: str = "deep_night_programmer"
     variant_count: int = Field(default=3, ge=1, le=5)
     need_subtitle: bool = True
     provider: str | None = None

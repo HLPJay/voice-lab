@@ -11,7 +11,10 @@ from app.core.errors import VoiceLabError, request_validation_error_handler, voi
 from app.core.time import utc_now_iso
 from app.models.provider_voice import ProviderVoice
 from app.models.voice_binding import VoiceBinding
+from app.models.voice_job import VoiceJob
 from app.models.voice_profile import VoiceProfile
+from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
+from app.models.voice_asset import AudioAsset, SubtitleAsset
 
 
 @pytest.fixture
