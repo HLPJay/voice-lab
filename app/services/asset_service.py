@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.core.time import utc_now_iso
 from app.models.voice_asset import AudioAsset, SubtitleAsset
+from app.repositories import voice_asset_repo
 from app.providers.base import ProviderRenderResult
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -42,8 +43,6 @@ class AssetService:
             metadata_json=json.dumps(result.metadata, ensure_ascii=False),
             created_at=now,
         )
-        session.add(audio_asset)
-
         subtitle_asset = None
         if result.timeline:
             subtitle_id = new_id("subtitle")
@@ -61,10 +60,7 @@ class AssetService:
                 timeline_json=json.dumps(result.timeline, ensure_ascii=False),
                 created_at=now,
             )
-            session.add(subtitle_asset)
-
-        session.commit()
-        session.refresh(audio_asset)
+        audio_asset = voice_asset_repo.create_audio_asset(session, audio_asset)
         if subtitle_asset:
-            session.refresh(subtitle_asset)
+            subtitle_asset = voice_asset_repo.create_subtitle_asset(session, subtitle_asset)
         return audio_asset, subtitle_asset
