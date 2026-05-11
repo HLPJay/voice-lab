@@ -376,3 +376,67 @@ class TestRenderSync:
             with pytest.raises(ProviderError) as exc_info:
                 await self.adapter.render_sync(plan)
             assert "MiniMax audio save failed" in str(exc_info.value.message)
+
+
+class TestParseRenderResponse:
+    """Tests for _save_audio_from_data covering output_format=url response combinations."""
+
+    adapter = MiniMaxSpeechAdapter()
+
+    @pytest.mark.asyncio
+    async def test_parse_response_audio_url_only(self):
+        """audio_url only (no audio hex), output_format=url: downloads from URL."""
+        data = {"audio_url": "https://example.com/audio.mp3"}
+        fake_content = b"audio from url only"
+        with patch.object(self.adapter, "_download_content", new_callable=AsyncMock) as mock_dl:
+            mock_dl.return_value = fake_content
+            path, fmt = await self.adapter._save_audio_from_data(
+                data, "url", {"format": "mp3"}, 30.0
+            )
+            assert path.exists()
+            assert path.read_bytes() == fake_content
+            mock_dl.assert_called_once_with("https://example.com/audio.mp3", 30.0)
+
+    @pytest.mark.asyncio
+    async def test_parse_response_audio_hex_and_url(self):
+        """Both audio hex and audio_url exist, output_format=url: URL takes priority over hex."""
+        data = {
+            "audio": "48656c6c6f",  # valid hex "Hello"
+            "audio_url": "https://example.com/audio.mp3",
+        }
+        fake_content = b"audio from url priority"
+        with patch.object(self.adapter, "_download_content", new_callable=AsyncMock) as mock_dl:
+            mock_dl.return_value = fake_content
+            path, fmt = await self.adapter._save_audio_from_data(
+                data, "url", {"format": "mp3"}, 30.0
+            )
+            assert path.exists()
+            assert path.read_bytes() == fake_content
+            # Verifies URL is used, not hex
+            mock_dl.assert_called_once_with("https://example.com/audio.mp3", 30.0)
+
+    @pytest.mark.asyncio
+    async def test_parse_response_hex_format_prefers_hex_over_url(self):
+        """Both audio hex and audio_url exist, output_format=hex: hex takes priority."""
+        data = {
+            "audio": "48656c6c6f",  # valid hex "Hello"
+            "audio_url": "https://example.com/audio.mp3",
+        }
+        with patch.object(self.adapter, "_download_content", new_callable=AsyncMock) as mock_dl:
+            path, fmt = await self.adapter._save_audio_from_data(
+                data, "hex", {"format": "mp3"}, 30.0
+            )
+            assert path.exists()
+            assert path.read_bytes() == b"Hello"
+            mock_dl.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_parse_response_no_audio(self):
+        """Neither audio hex nor audio_url exists: raises ProviderError."""
+        data = {}
+        from app.core.errors import ProviderError
+        with pytest.raises(ProviderError) as exc_info:
+            await self.adapter._save_audio_from_data(
+                data, "url", {"format": "mp3"}, 30.0
+            )
+        assert "No valid audio source" in str(exc_info.value) or "audio" in str(exc_info.value).lower()
