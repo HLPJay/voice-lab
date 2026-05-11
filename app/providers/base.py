@@ -59,3 +59,9 @@ class SpeechProvider(ABC):
 
     async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
         raise NotImplementedError
+
+    async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
+        raise NotImplementedError
+
+    async def clone_voice(self, request: dict) -> dict:
+        raise NotImplementedError

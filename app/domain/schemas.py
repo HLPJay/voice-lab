@@ -191,3 +191,31 @@ class AsyncJobStatusResponse(BaseModel):
     error_message: str | None = None
     created_at: str
     updated_at: str
+
+
+class VoiceCloneUploadResponse(BaseModel):
+    file_id: int
+    filename: str
+    purpose: str
+    bytes: int | None = None
+    created_at: str | None = None
+
+
+class VoiceCloneRequest(BaseModel):
+    voice_id: str = Field(min_length=8, max_length=256, pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$")
+    file_id: int
+    prompt_file_id: int | None = None
+    prompt_text: str | None = None
+    preview_text: str | None = None
+    model: str | None = None
+    language_boost: str | None = None
+    need_noise_reduction: bool = False
+    need_volume_normalization: bool = False
+
+
+class VoiceCloneResponse(BaseModel):
+    voice_id: str
+    demo_audio_url: str | None = None
+    duration_ms: int | None = None
+    usage_characters: int | None = None
+    message: str = "克隆成功"

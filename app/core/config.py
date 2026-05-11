@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     async_poll_interval_seconds: int = 5
     async_max_wait_seconds: int = 600
 
+    minimax_file_upload_path: str = "/v1/files/upload"
+    minimax_voice_clone_path: str = "/v1/voice_clone"
+    clone_audio_max_size_mb: int = 20
+    clone_audio_min_duration_sec: int = 10
+    clone_audio_max_duration_sec: int = 300
+    prompt_audio_max_duration_sec: int = 8
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
