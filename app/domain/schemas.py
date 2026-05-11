@@ -125,3 +125,41 @@ class VoiceBindingRead(BaseModel):
     status: str = BindingStatus.available
     created_at: str
     updated_at: str
+
+
+class VoiceJobRead(BaseModel):
+    job_id: str
+    job_type: str
+    status: str
+    provider: str | None = None
+    model: str | None = None
+    profile_id: str | None = None
+    input_text: str | None = None
+    processed_text: str | None = None
+    provider_trace_id: str | None = None
+    error_message: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class AudioAssetRead(BaseModel):
+    asset_id: str
+    type: str = "audio"
+    file_path: str
+    format: str | None = None
+    duration_ms: int | None = None
+    provider: str | None = None
+    model: str | None = None
+    usage_characters: int | None = None
+    download_url: str | None = None
+    created_at: str
+
+
+class SubtitleAssetRead(BaseModel):
+    asset_id: str
+    type: str = "subtitle"
+    file_path: str | None = None
+    srt_path: str | None = None
+    subtitle_type: str | None = None
+    timeline: list[dict] = Field(default_factory=list)
+    created_at: str

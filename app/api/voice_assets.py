@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
@@ -6,6 +7,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.errors import AssetNotFound
+from app.domain.schemas import AudioAssetRead, SubtitleAssetRead
 from app.repositories import voice_asset_repo
 
 router = APIRouter()
@@ -15,36 +17,34 @@ def _asset_not_found(asset_id: str) -> None:
     raise AssetNotFound("Asset not found", detail=asset_id)
 
 
-@router.get("/assets/{asset_id}")
+@router.get("/assets/{asset_id}", response_model=AudioAssetRead | SubtitleAssetRead)
 async def get_asset(
     asset_id: str,
     session: Session = Depends(get_session),
 ):
     audio = voice_asset_repo.get_audio_asset(session, asset_id)
     if audio:
-        return {
-            "asset_id": audio.id,
-            "type": "audio",
-            "file_path": audio.file_path,
-            "format": audio.format,
-            "duration_ms": audio.duration_ms,
-            "provider": audio.provider,
-            "model": audio.model,
-            "usage_characters": audio.usage_characters,
-            "download_url": audio.file_url,
-            "created_at": audio.created_at,
-        }
+        return AudioAssetRead(
+            asset_id=audio.id,
+            file_path=audio.file_path,
+            format=audio.format,
+            duration_ms=audio.duration_ms,
+            provider=audio.provider,
+            model=audio.model,
+            usage_characters=audio.usage_characters,
+            download_url=audio.file_url,
+            created_at=audio.created_at,
+        )
     subtitle = voice_asset_repo.get_subtitle_asset(session, asset_id)
     if subtitle:
-        return {
-            "asset_id": subtitle.id,
-            "type": "subtitle",
-            "file_path": subtitle.file_path,
-            "srt_path": subtitle.srt_path,
-            "subtitle_type": subtitle.subtitle_type,
-            "timeline": subtitle.timeline_json,
-            "created_at": subtitle.created_at,
-        }
+        return SubtitleAssetRead(
+            asset_id=subtitle.id,
+            file_path=subtitle.file_path,
+            srt_path=subtitle.srt_path,
+            subtitle_type=subtitle.subtitle_type,
+            timeline=json.loads(subtitle.timeline_json),
+            created_at=subtitle.created_at,
+        )
     _asset_not_found(asset_id)
 
 
