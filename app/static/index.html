@@ -567,6 +567,7 @@
     <button class="tab-btn" data-tab="voices">音色管理</button>
     <button class="tab-btn" data-tab="clone">声音克隆</button>
     <button class="tab-btn" data-tab="design">声音设计</button>
+    <button class="tab-btn" data-tab="bindings">绑定管理</button>
   </nav>
 
   <!-- ======================== TAB: TTS ======================== -->
@@ -814,6 +815,60 @@
     </div>
   </div>
 
+  <!-- ======================== TAB: BINDINGS ======================== -->
+  <div class="tab-content" id="tab-bindings">
+    <div class="card">
+      <div class="card-title">声音绑定列表</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="bindingProfileSelect">声音人设</label>
+          <select id="bindingProfileSelect">
+            <option value="">加载中…</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="handleListBindings()">查询</button>
+      <div id="bindingListResults"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">创建绑定</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="newBindingProfile">声音人设</label>
+          <select id="newBindingProfile">
+            <option value="">加载中…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="newBindingProvider">Provider</label>
+          <select id="newBindingProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="newBindingModel">Model</label>
+          <input type="text" id="newBindingModel" value="speech-2.8-hd" placeholder="speech-2.8-hd">
+        </div>
+        <div class="form-group">
+          <label for="newBindingVoiceId">Provider Voice ID</label>
+          <input type="text" id="newBindingVoiceId" placeholder="如 Wise_Woman">
+        </div>
+        <div class="form-group">
+          <label for="newBindingPriority">优先级</label>
+          <input type="number" id="newBindingPriority" value="1" min="1" max="99">
+        </div>
+        <div class="form-group full-width">
+          <label for="newBindingParams">参数（JSON，可选）</label>
+          <input type="text" id="newBindingParams" placeholder='{"speed": 0.9}'>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="handleCreateBinding()">创建</button>
+      <div id="createBindingResult"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -867,6 +922,20 @@
         opt.value = p.id;
         opt.textContent = p.name;
         profileSelect.appendChild(opt);
+      });
+
+      // Also populate binding tab selects
+      const bindingSelects = ['bindingProfileSelect', 'newBindingProfile'];
+      bindingSelects.forEach(selectId => {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = '';
+        profiles.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
       });
     } catch (e) {
       profileSelect.innerHTML = '<option value="">加载失败</option>';
@@ -1523,6 +1592,118 @@
     } finally {
       btn.disabled = false;
       btn.innerHTML = '生成设计';
+    }
+  }
+
+  // ============================================================
+  // Bindings Tab
+  // ============================================================
+  async function handleListBindings() {
+    const profileId = document.getElementById('bindingProfileSelect').value;
+    const resultDiv = document.getElementById('bindingListResults');
+    if (!profileId) {
+      resultDiv.innerHTML = '<div class="error-msg">请先选择人设</div>';
+      return;
+    }
+    resultDiv.innerHTML = '<div style="font-size:0.85rem;color:#718096">加载中…</div>';
+    try {
+      const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`);
+      const bindings = await resp.json();
+      if (!Array.isArray(bindings) || bindings.length === 0) {
+        resultDiv.innerHTML = '<div style="font-size:0.85rem;color:#718096">暂无绑定记录</div>';
+        return;
+      }
+      let html = `<table style="width:100%;font-size:0.82rem;border-collapse:collapse;margin-top:12px">
+        <thead>
+          <tr style="background:#f7fafc;text-align:left">
+            <th style="padding:6px 8px;border-bottom:1px solid #e2e8f0">Provider</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e2e8f0">Model</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e2e8f0">Voice ID</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e2e8f0">优先级</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e2e8f0">状态</th>
+            <th style="padding:6px 8px;border-bottom:1px solid #e2e8f0">操作</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      bindings.forEach(b => {
+        html += `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${esc(b.provider || '')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${esc(b.model || '')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><code>${esc(b.provider_voice_id || '')}</code></td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${esc(b.priority || '')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0"><span class="job-status status-${b.status === 'available' ? 'success' : 'failed'}">${esc(b.status || '')}</span></td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">
+            <button class="btn-sm" onclick="handleDeleteBinding('${esc(b.id)}')">删除</button>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      resultDiv.innerHTML = html;
+    } catch (e) {
+      resultDiv.innerHTML = `<div class="error-msg">查询失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  async function handleCreateBinding() {
+    const profileId = document.getElementById('newBindingProfile').value;
+    const provider = document.getElementById('newBindingProvider').value;
+    const model = document.getElementById('newBindingModel').value.trim();
+    const voiceId = document.getElementById('newBindingVoiceId').value.trim();
+    const priority = parseInt(document.getElementById('newBindingPriority').value) || 1;
+    const paramsStr = document.getElementById('newBindingParams').value.trim();
+    const resultDiv = document.getElementById('createBindingResult');
+
+    if (!profileId) { resultDiv.innerHTML = '<div class="error-msg">请选择人设</div>'; return; }
+    if (!model) { resultDiv.innerHTML = '<div class="error-msg">请填写 Model</div>'; return; }
+    if (!voiceId) { resultDiv.innerHTML = '<div class="error-msg">请填写 Provider Voice ID</div>'; return; }
+
+    let params = {};
+    if (paramsStr) {
+      try { params = JSON.parse(paramsStr); }
+      catch (e) { resultDiv.innerHTML = `<div class="error-msg">参数 JSON 格式错误：${esc(e.message)}</div>`; return; }
+    }
+
+    try {
+      const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          model,
+          provider_voice_id: voiceId,
+          priority,
+          params,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        resultDiv.innerHTML = `<div class="error-msg">创建失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        return;
+      }
+      resultDiv.innerHTML = '<div style="color:#2f855a;font-size:0.85rem">绑定创建成功</div>';
+      document.getElementById('newBindingVoiceId').value = '';
+      document.getElementById('newBindingParams').value = '';
+      // Refresh list if same profile is selected
+      if (document.getElementById('bindingProfileSelect').value === profileId) {
+        handleListBindings();
+      }
+    } catch (e) {
+      resultDiv.innerHTML = `<div class="error-msg">创建失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  async function handleDeleteBinding(bindingId) {
+    if (!confirm('确定删除该绑定？')) return;
+    try {
+      const resp = await fetch(`/api/voice/bindings/${bindingId}`, { method: 'DELETE' });
+      if (!resp.ok) {
+        const data = await resp.json();
+        alert('删除失败：' + (data.detail || '未知错误'));
+        return;
+      }
+      handleListBindings();
+    } catch (e) {
+      alert('删除失败：' + e.message);
     }
   }
 </script>
