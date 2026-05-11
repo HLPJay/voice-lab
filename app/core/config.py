@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     minimax_ws_model: str = "speech-2.8-turbo"
     minimax_ws_timeout_seconds: int = 120
     clone_audio_max_size_mb: int = 20
+    batch_max_concurrency: int = 5
 
     log_level: str = "INFO"
     log_format: str = "json"

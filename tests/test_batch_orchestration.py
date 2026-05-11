@@ -293,3 +293,63 @@ def test_get_status_returns_progress(service, session: Session):
     assert response.segments[0].status == BatchStatus.success
     assert response.segments[1].status == BatchStatus.success
     assert response.segments[2].status == BatchStatus.pending
+
+
+def test_execute_batch_concurrent_respects_order(
+    service, session: Session, seed_profile, seed_mock_binding
+):
+    """Concurrent execution preserves segment order in merged output."""
+    now = utc_now_iso()
+    batch_id = "batch_test_concurrent"
+    batch_job = BatchJob(
+        id=batch_id,
+        mode="longtext",
+        status=BatchStatus.pending,
+        provider="mock",
+        output_format="mp3",
+        total_segments=5,
+        silence_between_ms=0,
+        config_json=json.dumps({
+            "text": "一二三四五",
+            "profile_id": "deep_night_programmer",
+            "need_subtitle": False,
+        }),
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(batch_job)
+
+    for i in range(5):
+        seg = BatchSegment(
+            id=f"seg_conc_{i}",
+            batch_job_id=batch_id,
+            index=i,
+            text=f"并发测试段落{i}。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+    session.commit()
+
+    asyncio.get_event_loop().run_until_complete(
+        service.execute(session, batch_id)
+    )
+
+    session.expire_all()
+    segments = list(session.exec(
+        select(BatchSegment).where(BatchSegment.batch_job_id == batch_id)
+        .order_by(BatchSegment.index)
+    ).all())
+
+    assert len(segments) == 5
+    assert all(s.status == BatchStatus.success for s in segments)
+    assert [s.index for s in segments] == [0, 1, 2, 3, 4]
+    assert all(s.audio_asset_id is not None for s in segments)
+
+    session.refresh(batch_job)
+    assert batch_job.status == BatchStatus.success
+    assert batch_job.completed_segments == 5
+    assert batch_job.merged_audio_asset_id is not None

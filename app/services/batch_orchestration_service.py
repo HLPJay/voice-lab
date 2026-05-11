@@ -187,8 +187,50 @@ class BatchOrchestrationService:
         if exc:
             self.logger.error("background_task_exc error=%s", str(exc))
 
+    async def _process_segment_isolated(
+        self,
+        semaphore: asyncio.Semaphore,
+        segment_id: str,
+        provider: str,
+        output_format: str,
+        config: dict,
+        db_engine,
+    ) -> tuple[str, str, str | None]:
+        """在独立 Session 中处理单个 segment，返回 (segment_id, status, error_message)。"""
+        async with semaphore:
+            from sqlmodel import Session as SqlSession
+            session = SqlSession(db_engine)
+            try:
+                segment = session.get(BatchSegment, segment_id)
+                if not segment:
+                    return (segment_id, BatchStatus.failed, "Segment not found")
+
+                segment = await self._process_segment(
+                    session, segment, provider, output_format, config
+                )
+                session.commit()
+                return (segment_id, segment.status, None)
+            except Exception as exc:
+                self.logger.error(
+                    "segment_failed segment_id=%s error=%s", segment_id, str(exc)
+                )
+                try:
+                    segment = session.get(BatchSegment, segment_id)
+                    if segment:
+                        segment.status = BatchStatus.failed
+                        segment.error_message = str(exc)[:500]
+                        segment.updated_at = utc_now_iso()
+                        session.add(segment)
+                        session.commit()
+                except Exception:
+                    pass
+                return (segment_id, BatchStatus.failed, str(exc)[:500])
+            finally:
+                session.close()
+
     async def execute(self, session: Session, batch_job_id: str) -> None:
-        """执行批量任务：逐段生成 → 合并 → 更新状态。"""
+        """执行批量任务：并发生成 → 合并 → 更新状态。"""
+        db_engine = session.bind
         batch_job = session.get(BatchJob, batch_job_id)
         if not batch_job:
             self.logger.error("batch_execute batch_job_id=%s not found", batch_job_id)
@@ -216,64 +258,56 @@ class BatchOrchestrationService:
         output_format = batch_job.output_format or "mp3"
         silence_ms = batch_job.silence_between_ms or 300
 
+        semaphore = asyncio.Semaphore(settings.batch_max_concurrency)
+        pending_tasks = []
+
+        for segment in segments:
+            if segment.status == BatchStatus.success:
+                continue
+            pending_tasks.append(
+                self._process_segment_isolated(
+                    semaphore, segment.id, provider, output_format, config, db_engine
+                )
+            )
+
+        if pending_tasks:
+            await asyncio.gather(*pending_tasks)
+
+        session.expire_all()
+
+        segments = list(session.exec(
+            select(BatchSegment).where(
+                BatchSegment.batch_job_id == batch_job_id
+            ).order_by(BatchSegment.index)
+        ).all())
+
         success_audio_paths = []
         success_timelines = []
         success_durations = []
 
         for segment in segments:
-            if segment.status == BatchStatus.success:
-                if segment.audio_asset_id:
-                    audio_asset = session.get(AudioAsset, segment.audio_asset_id)
-                    if audio_asset:
-                        success_audio_paths.append(audio_asset.file_path)
-                        subtitle_asset = session.exec(
-                            select(SubtitleAsset).where(
-                                SubtitleAsset.audio_asset_id == segment.audio_asset_id
-                            ).limit(1)
-                        ).one_or_none()
-                        timeline = json.loads(subtitle_asset.timeline_json) if subtitle_asset else []
-                        success_timelines.append(timeline)
-                        success_durations.append(segment.duration_ms or 0)
-                continue
+            if segment.status == BatchStatus.success and segment.audio_asset_id:
+                audio_asset = session.get(AudioAsset, segment.audio_asset_id)
+                if audio_asset:
+                    success_audio_paths.append(audio_asset.file_path)
+                    subtitle_asset = session.exec(
+                        select(SubtitleAsset).where(
+                            SubtitleAsset.audio_asset_id == segment.audio_asset_id
+                        ).limit(1)
+                    ).one_or_none()
+                    timeline = json.loads(subtitle_asset.timeline_json) if subtitle_asset else []
+                    success_timelines.append(timeline)
+                    success_durations.append(segment.duration_ms or 0)
 
-            try:
-                segment = await self._process_segment(
-                    session, segment, provider, output_format, config
-                )
-                session.commit()
-
-                if segment.status == BatchStatus.success and segment.audio_asset_id:
-                    audio_asset = session.get(AudioAsset, segment.audio_asset_id)
-                    if audio_asset:
-                        success_audio_paths.append(audio_asset.file_path)
-                        subtitle_asset = session.exec(
-                            select(SubtitleAsset).where(
-                                SubtitleAsset.audio_asset_id == segment.audio_asset_id
-                            ).limit(1)
-                        ).one_or_none()
-                        timeline = json.loads(subtitle_asset.timeline_json) if subtitle_asset else []
-                        success_timelines.append(timeline)
-                        success_durations.append(segment.duration_ms or 0)
-            except Exception as exc:
-                self.logger.error(
-                    "segment_failed batch_id=%s segment_id=%s error=%s",
-                    batch_job_id, segment.id, str(exc),
-                )
-                segment.status = BatchStatus.failed
-                segment.error_message = str(exc)[:500]
-                segment.updated_at = utc_now_iso()
-                session.add(segment)
-                session.commit()
-
-            batch_job.completed_segments = sum(
-                1 for s in segments if s.status == BatchStatus.success
-            )
-            batch_job.failed_segments = sum(
-                1 for s in segments if s.status == BatchStatus.failed
-            )
-            batch_job.updated_at = utc_now_iso()
-            session.add(batch_job)
-            session.commit()
+        batch_job.completed_segments = sum(
+            1 for s in segments if s.status == BatchStatus.success
+        )
+        batch_job.failed_segments = sum(
+            1 for s in segments if s.status == BatchStatus.failed
+        )
+        batch_job.updated_at = utc_now_iso()
+        session.add(batch_job)
+        session.commit()
 
         merged_audio_path = None
         total_duration_ms = None
