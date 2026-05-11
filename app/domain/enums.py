@@ -4,12 +4,14 @@ from enum import Enum
 class JobStatus(str, Enum):
     pending = "pending"
     running = "running"
+    processing = "processing"
     success = "success"
     failed = "failed"
 
 
 class JobType(str, Enum):
     sync_render = "sync_render"
+    async_render = "async_render"
 
 
 class BindingStatus(str, Enum):

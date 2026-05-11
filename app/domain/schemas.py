@@ -163,3 +163,31 @@ class SubtitleAssetRead(BaseModel):
     subtitle_type: str | None = None
     timeline: list[dict] = Field(default_factory=list)
     created_at: str
+
+
+class AsyncRenderRequest(BaseModel):
+    text: str = Field(min_length=1)
+    profile_id: str = "deep_night_programmer"
+    provider: str | None = None
+    need_subtitle: bool = True
+    output_format: str = "hex"
+
+
+class AsyncRenderResponse(BaseModel):
+    job_id: str
+    status: str
+    provider: str
+    model: str
+    message: str = "任务已提交"
+
+
+class AsyncJobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    provider: str | None = None
+    model: str | None = None
+    audio_asset: AudioAssetResponse | None = None
+    subtitle_asset: SubtitleAssetResponse | None = None
+    error_message: str | None = None
+    created_at: str
+    updated_at: str

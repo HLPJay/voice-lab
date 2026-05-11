@@ -22,6 +22,11 @@ class Settings(BaseSettings):
 
     mock_fallback_provider: str | None = "minimax"
 
+    minimax_async_t2a_path: str = "/v1/t2a_async_v2"
+    minimax_async_query_path: str = "/v1/query/t2a_async_query_v2"
+    async_poll_interval_seconds: int = 5
+    async_max_wait_seconds: int = 600
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
