@@ -782,7 +782,7 @@
         </div>
         <div class="form-group">
           <label for="cloneModel">model（可选）</label>
-          <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-02-hd">
+          <input type="text" id="cloneModel" placeholder="可选（不填则使用 API 默认模型）">
         </div>
         <div class="form-group full-width">
           <div class="checkbox-row">
@@ -1766,7 +1766,7 @@
   // ============================================================
   const cloneModelInput = document.getElementById('cloneModel');
   const clonePreviewTextInput = document.getElementById('clonePreviewText');
-  if (cloneModelInput && !cloneModelInput.value) cloneModelInput.value = 'speech-2.8-hd';
+  // clone model 留空，让 MiniMax API 使用默认模型
   if (clonePreviewTextInput && !clonePreviewTextInput.value) {
     clonePreviewTextInput.value = '你好，这是一段声音克隆的试听文本，用于验证克隆效果。';
   }

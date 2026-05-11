@@ -623,8 +623,6 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             payload["voice_id"] = voice_id
         if model:
             payload["model"] = model
-        else:
-            payload["model"] = settings.minimax_default_model
 
         try:
             response = await self._request("POST", settings.minimax_voice_design_path, json=payload)
