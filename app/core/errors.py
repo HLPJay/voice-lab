@@ -24,6 +24,7 @@ class ProfileNotFound(VoiceLabError):
 
 
 class BindingNotFound(VoiceLabError):
+    status_code = 404
     code = "BINDING_NOT_FOUND"
 
 
