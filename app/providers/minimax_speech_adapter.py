@@ -1,3 +1,4 @@
+import asyncio
 import binascii
 import json as _json
 import re
@@ -22,6 +23,7 @@ from app.utils.id_generator import new_id
 
 _HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
 _provider_logger = get_logger("provider.minimax")
+_retry_logger = get_logger("retry")
 
 
 class MiniMaxSpeechAdapter(SpeechProvider):
@@ -39,85 +41,169 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         timeout: int | None = None,
         **kwargs,
     ) -> httpx.Response:
-        """Make an HTTP request to MiniMax API with logging and timing.
+        """Make an HTTP request to MiniMax API with automatic retry.
 
-        Logs provider_request before the call, provider_response after success,
-        and provider_error on exception. Does not swallow exceptions.
+        Retries on httpx.TimeoutException, httpx.NetworkError, and 502/503/504
+        responses with exponential backoff. Logs every attempt (provider_request)
+        but only the final result (provider_response / provider_error). Audit log
+        is written only once for the final result.
         """
         settings = get_settings()
         url = f"{self._base_url}{path}"
         request_timeout = timeout if timeout is not None else settings.minimax_timeout_seconds
+        max_attempts = settings.provider_retry_max_attempts
+        backoff_base = settings.provider_retry_backoff_base
+        retryable_exceptions = (httpx.TimeoutException, httpx.NetworkError)
+        retryable_status_codes = (502, 503, 504)
 
-        _provider_logger.debug(
-            "provider_request",
-            extra={
-                "provider": self.provider_name,
-                "method": method,
-                "path": path,
-            },
-        )
-
-        start = time.monotonic()
-        status_code: int | None = None
-        error_type: str | None = None
-        error_message: str | None = None
+        overall_start = time.monotonic()
         response: httpx.Response | None = None
+        final_response: httpx.Response | None = None
+        final_error: Exception | None = None
+        final_status_code: int | None = None
+        final_error_type: str | None = None
+        final_error_message: str | None = None
 
-        try:
-            async with httpx.AsyncClient(timeout=request_timeout) as client:
-                response = await client.request(
-                    method,
-                    url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
-                    **kwargs,
+        for attempt in range(1, max_attempts + 1):
+            attempt_start = time.monotonic()
+            response = None
+
+            _provider_logger.debug(
+                "provider_request",
+                extra={
+                    "provider": self.provider_name,
+                    "method": method,
+                    "path": path,
+                    "attempt": attempt,
+                    "max_attempts": max_attempts,
+                },
+            )
+
+            try:
+                async with httpx.AsyncClient(timeout=request_timeout) as client:
+                    response = await client.request(
+                        method,
+                        url,
+                        headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                        **kwargs,
+                    )
+                attempt_duration_ms = round((time.monotonic() - attempt_start) * 1000)
+
+                if response.status_code in retryable_status_codes and attempt < max_attempts:
+                    wait_seconds = backoff_base * (2 ** (attempt - 1))
+                    _retry_logger.warning(
+                        "retry_status_code",
+                        extra={
+                            "attempt": attempt,
+                            "max_attempts": max_attempts,
+                            "status_code": response.status_code,
+                            "wait_seconds": wait_seconds,
+                            "path": path,
+                            "method": method,
+                        },
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
+
+                # Final response (success or non-retryable status)
+                final_response = response
+                final_status_code = response.status_code
+                total_duration_ms = round((time.monotonic() - overall_start) * 1000)
+
+                _provider_logger.info(
+                    "provider_response",
+                    extra={
+                        "provider": self.provider_name,
+                        "method": method,
+                        "path": path,
+                        "status_code": final_status_code,
+                        "duration_ms": total_duration_ms,
+                        "attempts": attempt,
+                    },
                 )
-            duration_ms = round((time.monotonic() - start) * 1000)
-            status_code = response.status_code
+                self._save_call_log(
+                    method=method,
+                    path=path,
+                    status_code=final_status_code,
+                    duration_ms=total_duration_ms,
+                    error_type=None,
+                    error_message=None,
+                )
+                return response
 
-            _provider_logger.info(
-                "provider_response",
-                extra={
-                    "provider": self.provider_name,
-                    "method": method,
-                    "path": path,
-                    "status_code": status_code,
-                    "duration_ms": duration_ms,
-                },
-            )
+            except retryable_exceptions as exc:
+                attempt_duration_ms = round((time.monotonic() - attempt_start) * 1000)
+                final_error = exc
+                final_error_type = type(exc).__name__
+                final_error_message = str(exc)
 
-            self._save_call_log(
-                method=method,
-                path=path,
-                status_code=status_code,
-                duration_ms=duration_ms,
-                error_type=None,
-                error_message=None,
-            )
-            return response
-        except Exception as exc:
-            duration_ms = round((time.monotonic() - start) * 1000)
-            error_type = type(exc).__name__
-            error_message = str(exc)
-            _provider_logger.error(
-                "provider_error",
-                extra={
-                    "provider": self.provider_name,
-                    "method": method,
-                    "path": path,
-                    "error_type": error_type,
-                    "error_message": error_message,
-                    "duration_ms": duration_ms,
-                },
-            )
-            self._save_call_log(
-                method=method,
-                path=path,
-                status_code=None,
-                duration_ms=duration_ms,
-                error_type=error_type,
-                error_message=error_message,
-            )
-            raise
+                if attempt < max_attempts:
+                    wait_seconds = backoff_base * (2 ** (attempt - 1))
+                    _retry_logger.warning(
+                        "retry_exception",
+                        extra={
+                            "attempt": attempt,
+                            "max_attempts": max_attempts,
+                            "error_type": final_error_type,
+                            "error_message": final_error_message[:200],
+                            "wait_seconds": wait_seconds,
+                            "path": path,
+                            "method": method,
+                        },
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
+
+                # Exhausted retries
+                total_duration_ms = round((time.monotonic() - overall_start) * 1000)
+                _provider_logger.error(
+                    "provider_error",
+                    extra={
+                        "provider": self.provider_name,
+                        "method": method,
+                        "path": path,
+                        "error_type": final_error_type,
+                        "error_message": final_error_message,
+                        "duration_ms": total_duration_ms,
+                        "attempts": attempt,
+                    },
+                )
+                self._save_call_log(
+                    method=method,
+                    path=path,
+                    status_code=None,
+                    duration_ms=total_duration_ms,
+                    error_type=final_error_type,
+                    error_message=final_error_message,
+                )
+                raise
+
+            except Exception as exc:
+                # Non-retryable exception — fail immediately
+                total_duration_ms = round((time.monotonic() - overall_start) * 1000)
+                error_type = type(exc).__name__
+                error_message = str(exc)
+                _provider_logger.error(
+                    "provider_error",
+                    extra={
+                        "provider": self.provider_name,
+                        "method": method,
+                        "path": path,
+                        "error_type": error_type,
+                        "error_message": error_message,
+                        "duration_ms": total_duration_ms,
+                        "attempts": 1,
+                    },
+                )
+                self._save_call_log(
+                    method=method,
+                    path=path,
+                    status_code=None,
+                    duration_ms=total_duration_ms,
+                    error_type=error_type,
+                    error_message=error_message,
+                )
+                raise
 
     def _save_call_log(
         self,

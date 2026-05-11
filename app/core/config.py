@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     log_dir: str = "./logs"
     log_retention_days: int = 30
 
+    provider_retry_max_attempts: int = 3
+    provider_retry_backoff_base: float = 1.0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
