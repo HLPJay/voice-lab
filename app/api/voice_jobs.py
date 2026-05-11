@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends
+from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.errors import JobNotFound
-from app.models.voice_job import VoiceJob
+from app.repositories import voice_job_repo
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ async def get_job(
     job_id: str,
     session: Session = Depends(get_session),
 ):
-    job = session.get(VoiceJob, job_id)
+    job = voice_job_repo.get_job(session, job_id)
     if not job:
         raise JobNotFound("Voice job not found", job_id=job_id)
     return {
