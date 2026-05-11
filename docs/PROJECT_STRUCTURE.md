@@ -14,6 +14,7 @@ voice_lab/
       __init__.py
       health.py
       voice_profiles.py
+      voice_bindings.py   # P1: VoiceBinding 管理
       voice_render.py
       voice_variants.py
       voice_jobs.py
@@ -46,6 +47,7 @@ voice_lab/
     repositories/
       __init__.py
       voice_profile_repo.py
+      voice_binding_repo.py   # P1: VoiceBinding 管理
       voice_job_repo.py
       voice_asset_repo.py
       voice_variant_repo.py
@@ -54,6 +56,7 @@ voice_lab/
     services/
       __init__.py
       voice_profile_service.py
+      voice_binding_service.py  # P1: VoiceBinding 管理
       voice_render_service.py
       voice_variant_service.py
       text_preprocess_service.py
@@ -88,6 +91,8 @@ voice_lab/
     test_api_render.py
     test_provider_voice.py       # P1: Voice Catalog model
     test_voice_catalog.py         # P1: Voice Catalog service + API
+    test_voice_binding_service.py  # P1: VoiceBinding service
+    test_api_voice_bindings.py     # P1: VoiceBinding API
 
   docs/
     VOICE_LAB_GOALS.md

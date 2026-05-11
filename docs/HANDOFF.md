@@ -23,12 +23,14 @@ voice_lab/README.md
 
 P0 后端已达到可运行基线（commit `5b8d731`）。
 P1 T2A HTTP 增强已完成（commit `0e5177a`）。
+P1 VoiceBinding 管理 API 已完成（commit `e7aa95d`）。
 
 已验证：
-- pytest 11/11 通过
+- pytest 77/77 通过
 - uvicorn 可正常启动
 - Mock Provider 完整闭环
 - 所有 P0 接口和错误边界验收通过
+- VoiceBinding CRUD + 软删除验收通过
 
 ## 已有代码可复用点
 
@@ -155,3 +157,29 @@ T2A 响应解析硬化已完成（commit `0e5177a fix: harden minimax t2a respon
 `text`, `pronounce_text`, `time_begin`, `time_end`, `text_begin`, `text_end`, `pronounce_text_begin`, `pronounce_text_end`, `is_final_segment`
 
 **pytest -q**：`47 passed`
+
+## P1 VoiceBinding 管理 API 已完成
+
+VoiceBinding 管理 API 已完成（commit `e7aa95d` feat: expose voice binding management api）。
+
+**已实现功能：**
+- `GET /api/voice/profiles/{profile_id}/bindings` - 列出绑定
+- `POST /api/voice/profiles/{profile_id}/bindings` - 创建绑定
+- `PATCH /api/voice/bindings/{binding_id}` - 更新绑定
+- `DELETE /api/voice/bindings/{binding_id}` - 软删除（status=deprecated）
+
+**设计约束：**
+- render API 仍不接受 provider_voice_id，必须通过 binding 管理
+- provider_voice_id 必须存在且 status=available 才能绑定
+- duplicate 判断：profile_id + provider + model + provider_voice_id
+- 同 provider_voice_id 可绑定不同 profile（同 voice_id 不同 profile 不冲突）
+- 同一 profile 内 provider_voice_id 不可重复
+- binding ID 使用 new_id("binding") 全局唯一
+
+**pytest -q**：`77 passed`（新增 VoiceBinding 测试 30 个）
+
+**后续风险（已知）：**
+- 还没有前端选择音色 UI
+- 还没有绑定操作审计日志
+- 还没有 binding 使用统计
+- 还没有物理删除策略，P1 只做软删除

@@ -18,11 +18,12 @@ Voice Lab 是一个可扩展的声音生成中台，第一阶段面向 MiniMax `
 本仓库 P0 后端已达到可运行基线（commit `5b8d731`）。
 P1 Voice Catalog 已完成（commit `6dee90f`）。
 P1 T2A HTTP 增强已完成（commit `0e5177a`）。
+P1 VoiceBinding 管理 API 已完成（commit `e7aa95d`）。
 
 已落地：
 
 - FastAPI 应用入口 `app/main.py`
-- API 路由目录 `app/api/`（health、profiles、render、variants、jobs、assets、provider-voices）
+- API 路由目录 `app/api/`（health、profiles、bindings、render、variants、jobs、assets、provider-voices）
 - SQLModel 数据模型
 - 标准协议对象 `RenderPlan`
 - `MockSpeechAdapter`（完整本地闭环）
@@ -31,8 +32,9 @@ P1 T2A HTTP 增强已完成（commit `0e5177a`）。
 - 单条生成与多版本生成服务层
 - 资产保存服务
 - Voice Catalog 服务（Provider Voice 只读同步）
+- VoiceBinding 管理服务（CRUD，软删除）
 - T2A 响应解析硬化（output_format=url / subtitle_file URL / hex fallback）
-- pytest 测试（47 passed，含 T2A 响应解析 22 个测试）
+- pytest 测试（77 passed，含 VoiceBinding 30 个测试）
 - 错误处理与 FastAPI exception handler
 - 资产下载接口
 
@@ -59,6 +61,14 @@ P1 T2A HTTP 增强验收通过（commit `0e5177a`）：
 - subtitle_asset 创建，timeline 1 条 ✅
 - subtitle json/srt 双文件存在 ✅
 - pytest -q ✅ 47 passed
+
+P1 VoiceBinding 管理 API 验收通过（commit `e7aa95d`）：
+
+- `GET /api/voice/profiles/{profile_id}/bindings` ✅
+- `POST /api/voice/profiles/{profile_id}/bindings` ✅
+- `PATCH /api/voice/bindings/{binding_id}` ✅
+- `DELETE /api/voice/bindings/{binding_id}`（软删除 deprecated）✅
+- pytest -q ✅ 77 passed（新增 VoiceBinding 测试 30 个）
 
 ## 架构原则
 

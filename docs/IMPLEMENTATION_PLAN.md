@@ -381,6 +381,108 @@ async def test_minimax_voice_type_conversion():
 - 增加简单旁白试音台前端。
 - 增加 Provider 能力注册表。
 
+## P1 VoiceBinding 管理 API ✅ 已完成
+
+> 完成 commit：`e7aa95d`，pytest -q：`77 passed`
+
+### 功能边界
+
+**做：**
+- VoiceBinding CRUD 管理：GET/POST/PATCH/DELETE
+- binding 软删除（status=deprecated）
+- duplicate 检查：profile_id + provider + model + provider_voice_id
+- provider_voice 可用性验证（必须存在且 status=available）
+- 跨 profile 绑定同一 provider_voice_id（不同 profile 不冲突）
+- binding 列表排除 deprecated 状态
+
+**不做：**
+- render API 直接接受 provider_voice_id（必须通过 binding）
+- binding 使用统计
+- binding 操作审计日志
+- 物理删除（只做软删除）
+- 前端音色选择 UI
+
+---
+
+### 推荐 API
+
+```
+GET  /api/voice/profiles/{profile_id}/bindings
+POST /api/voice/profiles/{profile_id}/bindings
+PATCH /api/voice/bindings/{binding_id}
+DELETE /api/voice/bindings/{binding_id}
+```
+
+---
+
+### 请求/响应结构
+
+**VoiceBindingCreate（POST body）：**
+```json
+{
+  "provider": "minimax",
+  "model": "speech-2.8-hd",
+  "provider_voice_id": "Voice_Alpha",
+  "params": {"speed": 0.88},
+  "priority": 1
+}
+```
+
+**VoiceBindingRead（响应）：**
+```json
+{
+  "id": "binding_xxx",
+  "profile_id": "profile_xxx",
+  "provider": "minimax",
+  "model": "speech-2.8-hd",
+  "provider_voice_id": "Voice_Alpha",
+  "provider_voice_name": "Voice Alpha",
+  "params": {"speed": 0.88},
+  "priority": 1,
+  "status": "available",
+  "created_at": "2026-05-11T12:00:00Z",
+  "updated_at": "2026-05-11T12:00:00Z"
+}
+```
+
+**错误响应：**
+- `404` / `PROFILE_NOT_FOUND`：profile 不存在
+- `404` / `BINDING_NOT_FOUND`：binding 不存在
+- `422` / `VALIDATION_ERROR`：duplicate binding 或 provider_voice 不可用
+
+---
+
+### 数据库设计
+
+**voice_bindings 表（当前 SQLModel 实际字段）：**
+```sql
+CREATE TABLE voice_bindings (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    provider_voice_id TEXT NOT NULL,
+    params_json TEXT DEFAULT '{}',
+    priority INTEGER DEFAULT 1,
+    status TEXT DEFAULT 'available',
+    created_at TEXT,
+    updated_at TEXT
+);
+```
+
+当前 P1 没有新增数据库唯一约束或迁移脚本；重复绑定由 `VoiceBindingService` 在创建/更新时做服务层校验，检查范围为 `profile_id + provider + model + provider_voice_id`。后续如果引入 Alembic 或生产级并发写入，再评估是否增加数据库唯一索引。
+
+---
+
+### 核心设计约束
+
+1. **render API 不直接接受 provider_voice_id**：上层业务通过 binding 配置音色，不直接传递 voice_id
+2. **provider_voice 必须可用**：创建/更新 binding 时验证 provider_voice 存在且 status=available
+3. **duplicate 检查范围**：同一 profile 内 (provider + model + provider_voice_id) 不可重复
+4. **跨 profile 不冲突**：同一 provider_voice_id 可绑定到不同 profile
+5. **软删除策略**：DELETE 只设置 status=deprecated，不物理删除
+6. **binding ID 全局唯一**：使用 new_id("binding")，不依赖 voice_id 派生
+
 ## P2 计划
 
 - Voice Design。
