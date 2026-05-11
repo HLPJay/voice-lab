@@ -442,13 +442,13 @@
   (async () => {
     try {
       const res = await fetch('/api/voice/profiles');
-      const data = await res.json();
+      const profiles = await res.json();
       profileSelect.innerHTML = '';
-      if (!data.profiles || data.profiles.length === 0) {
+      if (!profiles || profiles.length === 0) {
         profileSelect.innerHTML = '<option value="">无可用人设</option>';
         return;
       }
-      data.profiles.forEach(p => {
+      profiles.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = p.name;
