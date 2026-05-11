@@ -48,8 +48,8 @@ class VoiceRenderService:
         if not profile:
             raise ProfileNotFound("Voice profile not found", request.profile_id)
         binding = get_binding(session, request.profile_id, provider)
-        if not binding and provider == "mock":
-            binding = get_binding(session, request.profile_id, "minimax")
+        if not binding and provider == Provider.mock and settings.mock_fallback_provider:
+            binding = get_binding(session, request.profile_id, settings.mock_fallback_provider)
         if not binding:
             raise BindingNotFound("No available voice binding found", f"profile={request.profile_id}, provider={provider}")
 
