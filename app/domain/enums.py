@@ -13,6 +13,15 @@ class JobType(str, Enum):
     sync_render = "sync_render"
     async_render = "async_render"
     stream_render = "stream_render"
+    batch_render = "batch_render"
+
+
+class BatchStatus(str, Enum):
+    pending = "pending"
+    running = "running"
+    success = "success"
+    partial = "partial"
+    failed = "failed"
 
 
 class BindingStatus(str, Enum):

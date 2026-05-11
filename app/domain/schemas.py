@@ -259,3 +259,68 @@ class StreamRenderRequest(BaseModel):
     vol: float | None = Field(None, ge=0.1, le=10.0)
     pitch: int | None = Field(None, ge=-12, le=12)
     emotion: str | None = None
+
+
+# ─── Batch Job Schemas ───────────────────────────────────────────────────────
+
+
+class LongtextBatchRequest(BaseModel):
+    mode: str = "longtext"
+    text: str = Field(min_length=1)
+    profile_id: str = "deep_night_programmer"
+    provider: str | None = None
+    output_format: str = "mp3"
+    segment_strategy: str = "auto"  # auto/paragraph/sentence
+    max_segment_chars: int = Field(default=2000, ge=100, le=5000)
+    silence_between_ms: int = Field(default=300, ge=0, le=3000)
+    params: dict = Field(default_factory=dict)
+    need_subtitle: bool = True
+
+
+class ScriptLine(BaseModel):
+    role: str
+    text: str = Field(min_length=1)
+    profile_id: str
+    params: dict = Field(default_factory=dict)
+
+
+class ScriptBatchRequest(BaseModel):
+    mode: str = "script"
+    script: list[ScriptLine] = Field(min_length=1, max_length=200)
+    provider: str | None = None
+    output_format: str = "mp3"
+    silence_between_ms: int = Field(default=500, ge=0, le=3000)
+    need_subtitle: bool = True
+
+
+class BatchSubmitResponse(BaseModel):
+    batch_id: str
+    mode: str
+    total_segments: int
+    status: str
+    message: str = "批量任务已提交"
+
+
+class BatchSegmentStatus(BaseModel):
+    index: int
+    role: str | None = None
+    text_preview: str  # 前30字
+    status: str
+    duration_ms: int | None = None
+    audio_asset_id: str | None = None
+    error_message: str | None = None
+
+
+class BatchStatusResponse(BaseModel):
+    batch_id: str
+    mode: str
+    status: str
+    total_segments: int
+    completed_segments: int
+    failed_segments: int
+    segments: list[BatchSegmentStatus]
+    merged_audio: dict | None = None  # {"id": "audio_xxx", "url": "/api/voice/assets/xxx/download"}
+    merged_subtitle: dict | None = None
+    total_duration_ms: int | None = None
+    created_at: str
+    updated_at: str
