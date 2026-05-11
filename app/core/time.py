@@ -6,4 +6,4 @@ def utc_now_iso() -> str:
 
 
 def date_path() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")

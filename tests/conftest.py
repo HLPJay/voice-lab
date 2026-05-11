@@ -45,6 +45,14 @@ def clean_logging_setup():
     # No teardown — let each module manage its own state
 
 
+@pytest.fixture(autouse=True)
+def reset_httpx_shared_client():
+    """Reset the shared httpx client before each test to ensure test isolation."""
+    import app.providers.minimax_speech_adapter as adapter_module
+    adapter_module._shared_http_client = None
+    yield
+
+
 def pytest_collection_modifyitems(config, items):
     if config.getoption("-m", default=None) == "e2e":
         return

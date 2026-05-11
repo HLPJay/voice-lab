@@ -1392,6 +1392,12 @@
   }
 
   function renderStreamResult(completed, audioChunks) {
+    // Revoke previous blob URL to avoid memory leak
+    if (window._streamBlobUrl) {
+      URL.revokeObjectURL(window._streamBlobUrl);
+      window._streamBlobUrl = null;
+    }
+
     const binaryParts = audioChunks.map(b64 => {
         const binary = atob(b64);
         const bytes = new Uint8Array(binary.length);
@@ -1402,6 +1408,7 @@
     });
     const blob = new Blob(binaryParts, { type: 'audio/mpeg' });
     const blobUrl = URL.createObjectURL(blob);
+    window._streamBlobUrl = blobUrl;
 
     const asset = completed.audio_asset;
     resultsArea.innerHTML = `

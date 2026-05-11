@@ -65,7 +65,7 @@ def _make_crash_app():
 def test_unhandled_error_returns_500_json():
     """未捕获异常返回统一 500 JSON 格式"""
     app = _make_crash_app()
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
 
     resp = client.get("/test/crash")
     assert resp.status_code == 500
@@ -80,7 +80,7 @@ def test_unhandled_error_returns_500_json():
 def test_unhandled_error_produces_error_log(caplog):
     """未捕获异常触发 ERROR 日志"""
     app = _make_crash_app()
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
 
     caplog.set_level(logging.ERROR, "error_handler")
     resp = client.get("/test/crash")
@@ -98,7 +98,7 @@ def test_unhandled_error_produces_error_log(caplog):
 def test_unhandled_error_does_not_leak_internals():
     """500 响应不泄露内部堆栈"""
     app = _make_crash_app()
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
 
     resp = client.get("/test/crash")
     assert resp.status_code == 500

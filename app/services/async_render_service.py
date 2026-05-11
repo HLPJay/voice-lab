@@ -5,7 +5,7 @@ import httpx
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
-from app.core.errors import BindingNotFound, JobNotFound, ProfileNotFound, ProviderError
+from app.core.errors import JobNotFound, ProviderError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.domain.enums import JobStatus, JobType
@@ -21,7 +21,7 @@ from app.models.voice_asset import AudioAsset, SubtitleAsset
 from app.models.voice_job import VoiceJob
 from app.providers.registry import get_provider
 from app.repositories import voice_asset_repo, voice_job_repo
-from app.repositories.voice_profile_repo import get_binding, get_profile
+from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -42,17 +42,7 @@ class AsyncRenderService:
         provider = request.provider or settings.voice_provider
         get_provider(provider)  # validate provider
 
-        profile = get_profile(session, request.profile_id)
-        if not profile:
-            raise ProfileNotFound("Voice profile not found", request.profile_id)
-        binding = get_binding(session, request.profile_id, provider)
-        if not binding and provider == "mock" and settings.mock_fallback_provider:
-            binding = get_binding(session, request.profile_id, settings.mock_fallback_provider)
-        if not binding:
-            raise BindingNotFound(
-                "No available voice binding found",
-                f"profile={request.profile_id}, provider={provider}",
-            )
+        binding, resolved_provider = resolve_binding(session, request.profile_id, provider)
 
         # Async mode: basic text cleaning only, no length limit
         processed_text = request.text.strip()
@@ -68,7 +58,7 @@ class AsyncRenderService:
             id=new_id("plan"),
             text=request.text,
             processed_text=processed_text,
-            profile_id=profile.id,
+            profile_id=binding.profile_id,
             provider=provider,
             model=binding.model,
             provider_voice_id=binding.provider_voice_id,
@@ -88,7 +78,7 @@ class AsyncRenderService:
             status=JobStatus.processing,
             provider=provider,
             model=plan.model,
-            profile_id=profile.id,
+            profile_id=binding.profile_id,
             binding_id=binding.id,
             input_text=request.text,
             processed_text=processed_text,

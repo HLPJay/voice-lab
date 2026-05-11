@@ -4,7 +4,7 @@ import json
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
-from app.core.errors import BindingNotFound, ProfileNotFound, VoiceLabError
+from app.core.errors import ProfileNotFound, VoiceLabError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.domain.enums import BatchStatus, JobStatus, JobType
@@ -21,7 +21,7 @@ from app.models.voice_asset import AudioAsset, SubtitleAsset
 from app.models.voice_job import VoiceJob
 from app.providers.registry import get_provider
 from app.repositories import voice_asset_repo, voice_job_repo
-from app.repositories.voice_profile_repo import get_binding, get_profile
+from app.repositories.voice_profile_repo import get_profile, resolve_binding
 from app.services.asset_service import AssetService
 from app.services.audio_merge_service import AudioMergeService
 from app.services.text_segment_service import TextSegmentService
@@ -47,17 +47,7 @@ class BatchOrchestrationService:
         provider = request.provider or settings.voice_provider
         get_provider(provider)
 
-        profile = get_profile(session, request.profile_id)
-        if not profile:
-            raise ProfileNotFound("Voice profile not found", request.profile_id)
-        binding = get_binding(session, request.profile_id, provider)
-        if not binding and provider == "mock" and settings.mock_fallback_provider:
-            binding = get_binding(session, request.profile_id, settings.mock_fallback_provider)
-        if not binding:
-            raise BindingNotFound(
-                "No available voice binding found",
-                f"profile={request.profile_id}, provider={provider}",
-            )
+        resolve_binding(session, request.profile_id, provider)
 
         texts = self.segmenter.segment(
             request.text, strategy=request.segment_strategy, max_chars=request.max_segment_chars
@@ -375,15 +365,7 @@ class BatchOrchestrationService:
     ) -> BatchSegment:
         """Process a single segment: render audio and save asset."""
         settings = get_settings()
-
-        binding = get_binding(session, segment.profile_id, provider)
-        if not binding and provider == "mock" and settings.mock_fallback_provider:
-            binding = get_binding(session, segment.profile_id, settings.mock_fallback_provider)
-        if not binding:
-            raise BindingNotFound(
-                "No available voice binding found",
-                f"profile={segment.profile_id}, provider={provider}",
-            )
+        binding, _resolved_provider = resolve_binding(session, segment.profile_id, provider)
 
         voice_params = json.loads(binding.params_json or "{}")
         segment_params = json.loads(segment.params_json or "{}")

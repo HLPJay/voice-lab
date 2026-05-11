@@ -7,7 +7,7 @@ class ProviderCallLog(SQLModel, table=True):
     id: str = Field(primary_key=True)
     request_id: str | None = None
     job_id: str | None = None
-    provider: str
+    provider: str = Field(index=True)
     api_path: str
     method: str
     status_code: int | None = None
@@ -16,4 +16,4 @@ class ProviderCallLog(SQLModel, table=True):
     usage_characters: int | None = None
     error_type: str | None = None
     error_message: str | None = None
-    created_at: str
+    created_at: str = Field(index=True)

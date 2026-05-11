@@ -167,8 +167,9 @@ async def test_adapter_retries_on_timeout(caplog):
         with patch("app.providers.minimax_speech_adapter.httpx.AsyncClient") as MockAsyncClient:
             mock_instance = AsyncMock()
             mock_instance.request = AsyncMock(side_effect=mock_request)
-            MockAsyncClient.return_value.__aenter__.return_value = mock_instance
-            MockAsyncClient.return_value.__aexit__.return_value = None
+            MockAsyncClient.return_value = mock_instance
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
 
             resp = await adapter._request("POST", "/v1/test")
 
@@ -204,8 +205,9 @@ async def test_adapter_no_retry_on_400(caplog):
         with patch("app.providers.minimax_speech_adapter.httpx.AsyncClient") as MockAsyncClient:
             mock_instance = AsyncMock()
             mock_instance.request = AsyncMock(side_effect=mock_request)
-            MockAsyncClient.return_value.__aenter__.return_value = mock_instance
-            MockAsyncClient.return_value.__aexit__.return_value = None
+            MockAsyncClient.return_value = mock_instance
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
 
             resp = await adapter._request("POST", "/v1/test")
 
@@ -242,8 +244,9 @@ async def test_adapter_retry_502_then_200(caplog):
         with patch("app.providers.minimax_speech_adapter.httpx.AsyncClient") as MockAsyncClient:
             mock_instance = AsyncMock()
             mock_instance.request = AsyncMock(side_effect=mock_request)
-            MockAsyncClient.return_value.__aenter__.return_value = mock_instance
-            MockAsyncClient.return_value.__aexit__.return_value = None
+            MockAsyncClient.return_value = mock_instance
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
 
             resp = await adapter._request("POST", "/v1/test")
 
@@ -288,8 +291,9 @@ async def test_adapter_audit_written_once(test_app):
         with patch("app.providers.minimax_speech_adapter.httpx.AsyncClient") as MockAsyncClient:
             mock_instance = AsyncMock()
             mock_instance.request = AsyncMock(side_effect=mock_request)
-            MockAsyncClient.return_value.__aenter__.return_value = mock_instance
-            MockAsyncClient.return_value.__aexit__.return_value = None
+            MockAsyncClient.return_value = mock_instance
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
 
             with patch.object(adapter, "_save_call_log", side_effect=capture_save_log):
                 resp = await adapter._request("POST", "/v1/test")

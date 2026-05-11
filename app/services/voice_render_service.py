@@ -4,7 +4,7 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.core.errors import BindingNotFound, ProfileNotFound, ProviderError, VoiceLabError
+from app.core.errors import ProviderError, VoiceLabError
 from app.core.time import utc_now_iso
 from app.domain.enums import JobStatus, JobType
 from app.domain.render_plan import RenderPlan, SubtitlePlan
@@ -16,7 +16,7 @@ from app.domain.schemas import (
 )
 from app.models.voice_job import VoiceJob
 from app.providers.registry import get_provider
-from app.repositories.voice_profile_repo import get_binding, get_profile
+from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.id_generator import new_id
@@ -37,14 +37,7 @@ class VoiceRenderService:
         settings = get_settings()
         provider = request.provider or settings.voice_provider
         get_provider(provider)
-        profile = get_profile(session, request.profile_id)
-        if not profile:
-            raise ProfileNotFound("Voice profile not found", request.profile_id)
-        binding = get_binding(session, request.profile_id, provider)
-        if not binding and provider == "mock" and settings.mock_fallback_provider:
-            binding = get_binding(session, request.profile_id, settings.mock_fallback_provider)
-        if not binding:
-            raise BindingNotFound("No available voice binding found", f"profile={request.profile_id}, provider={provider}")
+        binding, resolved_provider = resolve_binding(session, request.profile_id, provider)
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = json.loads(binding.params_json or "{}")
@@ -60,7 +53,7 @@ class VoiceRenderService:
             id=new_id("plan"),
             text=request.text,
             processed_text=processed_text,
-            profile_id=profile.id,
+            profile_id=binding.profile_id,
             provider=provider,
             model=binding.model,
             provider_voice_id=binding.provider_voice_id,
@@ -76,7 +69,7 @@ class VoiceRenderService:
             status=JobStatus.pending,
             provider=provider,
             model=plan.model,
-            profile_id=profile.id,
+            profile_id=binding.profile_id,
             binding_id=binding.id,
             input_text=request.text,
             processed_text=processed_text,
@@ -88,7 +81,7 @@ class VoiceRenderService:
         session.commit()
         self.logger.info(
             "render_start job=%s profile=%s provider=%s model=%s text_length=%d",
-            job.id, profile.id, provider, plan.model, len(request.text),
+            job.id, binding.profile_id, provider, plan.model, len(request.text),
         )
 
         try:

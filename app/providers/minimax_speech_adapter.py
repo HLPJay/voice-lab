@@ -27,6 +27,16 @@ _HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
 _provider_logger = get_logger("provider.minimax")
 _retry_logger = get_logger("retry")
 
+# Shared httpx client for connection reuse
+_shared_http_client: httpx.AsyncClient | None = None
+
+
+def _get_shared_http_client(timeout: int) -> httpx.AsyncClient:
+    global _shared_http_client
+    if _shared_http_client is None:
+        _shared_http_client = httpx.AsyncClient(timeout=timeout, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20))
+    return _shared_http_client
+
 
 class MiniMaxSpeechAdapter(SpeechProvider):
     provider_name = "minimax"
@@ -82,13 +92,13 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             )
 
             try:
-                async with httpx.AsyncClient(timeout=request_timeout) as client:
-                    response = await client.request(
-                        method,
-                        url,
-                        headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
-                        **kwargs,
-                    )
+                client = _get_shared_http_client(request_timeout)
+                response = await client.request(
+                    method,
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                    **kwargs,
+                )
                 attempt_duration_ms = round((time.monotonic() - attempt_start) * 1000)
 
                 if response.status_code in retryable_status_codes and attempt < max_attempts:
