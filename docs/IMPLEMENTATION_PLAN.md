@@ -509,18 +509,37 @@ CREATE TABLE voice_bindings (
 
 ---
 
-## P2 计划
+## P2 计划 ✅ 主体已完成
 
-- Voice Design。
-- 异步长文本 T2A。
-- Voice Clone。
-- 多用户。
-- 额度统计。
-- API Key 管理。
-- 对象存储。
-- 队列 Worker。
-- 评测反馈系统。
-- 视频模块集成。
+### P2-A: 异步长文本T2A ✅
+- 枚举/Schema/Config扩展（`01eb244`）
+- Provider基类 + Mock异步实现（`e5d49d8`）
+- MiniMax异步Adapter（`cbb9ba5`）
+- AsyncRenderService（`d12d1df`）
+- API端点 + 测试（`508242f`）
+- 前端异步UI（`924fa0f`）
+
+### P2-C: Voice Clone ✅
+- Schema/Config/Provider基类（`f78439f`）
+- MiniMax/Mock Adapter（`b44859a`）
+- Service + API + 测试（`9ab6291`）
+
+### P2-D: Voice Design ✅
+- Schema/Config/Adapter（`76b27ac`）
+- Service + API + 测试（`9ed1e6a`）
+
+### P2-B: Voice Delete ✅
+- 全栈实现（`82dce61`）
+
+### P2-F: 统一测试面板 ✅
+- 4-Tab前端（`bb862d7`）
+
+### P2-E: T2A WebSocket（未实现）
+- 低优先，需额外架构设计（连接管理、流式响应）
+- 不在P2主体范围内
+
+### 未纳入P2的项目
+- 多用户、额度统计、API Key管理、对象存储、队列Worker、评测反馈、视频模块
 
 ## 禁止事项
 

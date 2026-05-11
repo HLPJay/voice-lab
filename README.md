@@ -20,6 +20,26 @@ P1 Voice Catalog 已完成（commit `6dee90f`）。
 P1 T2A HTTP 增强已完成（commit `0e5177a`）。
 P1 VoiceBinding 管理 API 已完成（commit `e7aa95d`）。
 
+P2 异步T2A已完成（commit `924fa0f`）：
+- `POST /api/voice/render/async` 提交异步生成 ✅
+- `GET /api/voice/render/async/{job_id}/status` 轮询状态 ✅
+- 前端异步生成模式 ✅
+
+P2 Voice Clone已完成（commit `9ab6291`）：
+- `POST /api/voice/clone/upload` 上传克隆/Prompt音频 ✅
+- `POST /api/voice/clone/create` 执行声音克隆 ✅
+
+P2 Voice Design已完成（commit `9ed1e6a`）：
+- `POST /api/voice/design/create` 文字描述生成声音 ✅
+
+P2 Voice Delete已完成（commit `82dce61`）：
+- `POST /api/voice/voices/delete` 删除克隆/设计声音 ✅
+
+P2 统一测试面板已完成（commit `bb862d7`）：
+- 4-Tab前端：T2A生成 / 音色管理 / 声音克隆 / 声音设计 ✅
+
+pytest：116 passed
+
 已落地：
 
 - FastAPI 应用入口 `app/main.py`
@@ -106,7 +126,17 @@ MINIMAX_API_KEY=replace_me
 MINIMAX_BASE_URL=https://api.minimaxi.com
 MINIMAX_T2A_PATH=/v1/t2a_v2
 MINIMAX_DEFAULT_MODEL=speech-2.8-hd
-ENABLE_MOCK_PROVIDER=false
+# P2 新增
+MINIMAX_ASYNC_T2A_PATH=/v1/t2a_async_v2
+MINIMAX_ASYNC_QUERY_PATH=/v1/query/t2a_async_query_v2
+MINIMAX_FILE_UPLOAD_PATH=/v1/files/upload
+MINIMAX_VOICE_CLONE_PATH=/v1/voice_clone
+MINIMAX_VOICE_DESIGN_PATH=/v1/voice_design
+MINIMAX_DELETE_VOICE_PATH=/v1/delete_voice
+CLONE_AUDIO_MAX_SIZE_MB=20
+CLONE_AUDIO_MIN_DURATION_SEC=10
+CLONE_AUDIO_MAX_DURATION_SEC=300
+PROMPT_AUDIO_MAX_DURATION_SEC=8
 ```
 
 如果没有 `MINIMAX_API_KEY`，系统必须允许使用 `provider=mock` 跑通流程；但当显式请求 `provider=minimax` 时，必须返回明确的 `PROVIDER_NOT_CONFIGURED` 错误。
@@ -124,6 +154,17 @@ POST /api/voice/variants/render
 GET  /api/voice/jobs/{job_id}
 GET  /api/voice/assets/{asset_id}
 GET  /api/voice/assets/{asset_id}/download
+```
+
+# P2 新增
+
+```text
+POST /api/voice/render/async
+GET  /api/voice/render/async/{job_id}/status
+POST /api/voice/clone/upload
+POST /api/voice/clone/create
+POST /api/voice/design/create
+POST /api/voice/voices/delete
 ```
 
 ## Mock 调用示例
