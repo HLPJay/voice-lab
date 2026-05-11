@@ -7,7 +7,7 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 ## 当前状态
 
 - **分支**：main（稳定）/ dev（开发）
-- **测试**：206 passed, 6 skipped (e2e)
+- **测试**：210 passed, 6 skipped (e2e)
 - **Python**：3.11+
 - **技术栈**：FastAPI + SQLModel + SQLite + httpx + websockets
 
@@ -51,6 +51,13 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 - 前端流式播放器（T2A Tab 新增"流式生成"模式，base64 chunk 拼接后播放）
 - 集成测试（8 个端到端测试覆盖完整链路 + 边界条件）
 
+### P5：前端产品功能增强
+- T2A 参数调节（语速/音量/音调/情绪）+ 音频格式选择 + 流式模式字幕隐藏
+- 绑定管理 Tab（查看/创建/删除 VoiceBinding，第 5 个 Tab）
+- 音色列表增强（搜索过滤 + 一键绑定到人设 + 50 条截断）
+- Job 列表 API（GET /api/voice/jobs 过滤/分页）+ T2A 历史记录面板
+- 流式错误 detail 传播（MiniMax 原始 status_msg 透传到前端和日志）
+
 ## API 端点一览
 
 ### 语音生成
@@ -60,6 +67,7 @@ POST /api/voice/render/async                  异步 T2A 提交
 GET  /api/voice/render/async/{id}/status      异步状态轮询
 WS   /api/voice/ws/render                     流式 T2A（WebSocket）
 POST /api/voice/variants/render               多版本试音
+GET  /api/voice/jobs                          任务列表（过滤/分页）
 ```
 
 ### 声音管理
@@ -96,7 +104,7 @@ GET  /api/admin/stats/daily                   每日趋势
 
 ## 前端入口
 
-- 测试面板：`/static/index.html`（4-Tab：T2A / 音色管理 / 克隆 / 设计，T2A 支持单条/异步/流式/多版本四种模式）
+- 测试面板：`/static/index.html`（5-Tab：T2A / 音色管理 / 克隆 / 设计 / 绑定管理，T2A 支持单条/异步/流式/多版本四种模式 + 语音参数调节 + 历史记录）
 - 管理面板：`/static/admin.html`（统计仪表板 + 调用日志 + 趋势图）
 
 ## 启动方式
@@ -110,7 +118,7 @@ uvicorn app.main:app --reload
 ## 测试
 
 ```bash
-python -m pytest tests/ -x -q           # Mock 测试（206 passed）
+python -m pytest tests/ -x -q           # Mock 测试（210 passed）
 python -m pytest tests/ -m e2e -x -v    # 真实 API 测试（需 API Key）
 ```
 

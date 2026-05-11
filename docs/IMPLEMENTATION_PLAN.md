@@ -602,6 +602,34 @@ pytest：181 passed, 6 skipped (e2e)
 
 pytest：206 passed, 6 skipped (e2e)
 
+---
+
+## P5 计划 ✅ 已完成
+
+### Hotfix: 流式错误 detail 传播 ✅
+- ws_render.py + stream_render_service.py: error 事件拼接 exc.detail（`64666cb`）
+- minimax_speech_adapter.py: task_failed 时记录完整 status_msg 和 base_resp
+
+### P5-A: T2A 参数调节 + 流式 UI 修正 ✅
+- VoiceRenderRequest / StreamRenderRequest 新增 speed/vol/pitch/emotion（`d859397`）
+- voice_render.py 提取 voice_overrides 传给 service
+- 前端：音频格式下拉框、语音参数控件、流式模式隐藏字幕
+
+### P5-B: 绑定管理 Tab ✅
+- 第 5 个 Tab：查询/创建/删除 VoiceBinding（`9d80517`）
+- 表格展示 + JSON 参数校验 + 创建后自动刷新列表
+
+### P5-C: 音色列表增强 ✅
+- 搜索过滤（name/voice_id/description）+ 一键绑定到人设（`4085a15`）
+- 前端截断显示前 50 条 + renderVoiceTable 复用
+
+### P5-D: 历史记录 + Job 列表 API ✅
+- GET /api/voice/jobs 列表端点（过滤/分页）（`f6617a6`）
+- T2A Tab 可折叠历史记录 + 加载更多
+- 4 个测试
+
+pytest：210 passed, 6 skipped (e2e)
+
 ## 禁止事项
 
 - 不要把 MiniMax API Key 写死在代码里。
