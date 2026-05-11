@@ -768,6 +768,8 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                 path=settings.minimax_ws_url,
                 status_code=200,
                 duration_ms=duration_ms,
+                error_type=None,
+                error_message=None,
             )
 
         except ProviderError:
