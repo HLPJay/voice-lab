@@ -684,6 +684,9 @@
         </div>
       </div>
       <button class="btn-primary" id="listVoicesBtn" onclick="handleListVoices()">查询音色</button>
+      <div class="form-group" style="margin-top:12px">
+        <input type="text" id="voiceSearch" placeholder="输入关键词过滤音色（名称 / voice_id / 描述）…" oninput="filterVoiceList()" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem">
+      </div>
       <div id="voiceListResults"></div>
     </div>
 
@@ -1352,22 +1355,107 @@
       };
 
       let html = `<table class="voice-table">
-        <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th></tr></thead><tbody>`;
-      voices.forEach(v => {
+        <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>操作</th></tr></thead><tbody>`;
+      voices.slice(0, 50).forEach(v => {
         html += `<tr>
           <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
           <td>${esc(v.name || '-')}</td>
           <td>${typeTag(v.voice_type)}</td>
           <td>${esc(v.language || '-')}</td>
+          <td><button class="btn-sm" onclick="quickBindVoice('${esc(v.provider_voice_id)}', '${esc(v.name || '')}', '${provider}')">绑定到人设</button></td>
         </tr>`;
       });
       html += '</tbody></table>';
+      if (voices.length > 50) {
+        html += `<p style="font-size:0.78rem;color:#718096;margin-top:8px">显示前 50 条（共 ${voices.length} 条），请用搜索过滤</p>`;
+      }
       resultsEl.innerHTML = html;
+      // Store for filtering
+      window._loadedVoices = voices;
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
     } finally {
       btn.disabled = false;
       btn.innerHTML = '查询音色';
+    }
+  }
+
+  function filterVoiceList() {
+    const voices = window._loadedVoices || [];
+    const keyword = document.getElementById('voiceSearch').value.trim().toLowerCase();
+    const provider = document.getElementById('voiceProvider').value;
+    const resultsEl = document.getElementById('voiceListResults');
+
+    if (!keyword) {
+      renderVoiceTable(voices.slice(0, 50), provider, voices.length);
+      return;
+    }
+
+    const filtered = voices.filter(v => {
+      const name = (v.name || '').toLowerCase();
+      const voiceId = (v.provider_voice_id || '').toLowerCase();
+      const desc = (v.description || '').toLowerCase();
+      return name.includes(keyword) || voiceId.includes(keyword) || desc.includes(keyword);
+    });
+    renderVoiceTable(filtered, provider, voices.length);
+  }
+
+  function renderVoiceTable(voices, provider, total) {
+    const resultsEl = document.getElementById('voiceListResults');
+    const typeTag = t => {
+      if (t === 'system') return '<span class="tag tag-system">系统</span>';
+      if (t === 'voice_cloning') return '<span class="tag tag-clone">克隆</span>';
+      if (t === 'voice_generation') return '<span class="tag tag-generation">设计</span>';
+      return `<span class="tag">${esc(t)}</span>`;
+    };
+
+    if (voices.length === 0) {
+      resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px">未找到匹配的音色</p>';
+      return;
+    }
+
+    let html = `<table class="voice-table">
+      <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>操作</th></tr></thead><tbody>`;
+    voices.forEach(v => {
+      html += `<tr>
+        <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
+        <td>${esc(v.name || '-')}</td>
+        <td>${typeTag(v.voice_type)}</td>
+        <td>${esc(v.language || '-')}</td>
+        <td><button class="btn-sm" onclick="quickBindVoice('${esc(v.provider_voice_id)}', '${esc(v.name || '')}', '${provider}')">绑定到人设</button></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    if (total > 50 && !document.getElementById('voiceSearch').value.trim()) {
+      html += `<p style="font-size:0.78rem;color:#718096;margin-top:8px">显示前 50 条（共 ${total} 条），请用搜索过滤</p>`;
+    }
+    resultsEl.innerHTML = html;
+  }
+
+  async function quickBindVoice(voiceId, voiceName, provider) {
+    const profileId = prompt('输入要绑定的 profile_id', 'deep_night_programmer');
+    if (!profileId) return;
+
+    try {
+      const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: provider,
+          model: 'speech-2.8-hd',
+          provider_voice_id: voiceId,
+          params: {},
+          priority: 1,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert('绑定失败：' + (data.detail || JSON.stringify(data)));
+        return;
+      }
+      alert('绑定成功！\n音色：' + voiceName + '\n人设：' + profileId);
+    } catch (e) {
+      alert('绑定失败：' + e.message);
     }
   }
 
