@@ -18,6 +18,6 @@ def get_binding(session: Session, profile_id: str, provider: str) -> VoiceBindin
         .where(VoiceBinding.profile_id == profile_id)
         .where(VoiceBinding.provider == provider)
         .where(VoiceBinding.status == "available")
-        .order_by(VoiceBinding.priority)
+        .order_by(VoiceBinding.priority, VoiceBinding.created_at)
     )
     return session.exec(stmt).first()
