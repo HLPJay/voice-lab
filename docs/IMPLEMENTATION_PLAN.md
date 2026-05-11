@@ -541,6 +541,32 @@ CREATE TABLE voice_bindings (
 ### 未纳入P2的项目
 - 多用户、额度统计、API Key管理、对象存储、队列Worker、评测反馈、视频模块
 
+---
+
+## P3 计划 ✅ 已完成
+
+### P3-A: 结构化日志 + 请求上下文 ✅
+- A1: 结构化日志基础设施（JSON/text 双格式 + TimedRotatingFileHandler）（`04e1f87`）
+- A2: 请求上下文中间件（request_id contextvars + ASGI 原生中间件）（`736f0f6`）
+- A3: Provider 调用日志（_request() 统一包装 9 个 HTTP 调用）（`0e7b5c1`）
+- A4: 错误处理增强（自动日志 + unhandled 500 + ASGI 重写）（`4ff5d20`）
+
+### P3-B: Provider 调用审计 ✅
+- B1-B2: 审计表模型 + 自动写入（provider_call_logs 表）（`d554353`）
+- B3: 审计查询 API（GET /api/admin/call-logs 过滤/分页）（`9b95d78`）
+
+### P3-C: 用量统计与报告 ✅
+- C1-C2: 统计聚合 API（summary + daily trend）（`7dec9ca`）
+- C3: 管理面板 admin.html（Canvas 折线图 + 统计表格）（`872e12b`）
+
+### P3-D: 错误重试 ✅
+- D1-D2: 指数退避重试（1s→2s→4s，502/503/504 + 超时/网络错误）（`fd402e6`）
+
+### P3-E: 健康检查增强 ✅
+- 数据库/存储/Provider 三维检查（GET /health/detail）（`9bedc54`）
+
+pytest：181 passed, 6 skipped (e2e)
+
 ## 禁止事项
 
 - 不要把 MiniMax API Key 写死在代码里。
