@@ -630,6 +630,33 @@ pytest：206 passed, 6 skipped (e2e)
 
 pytest：210 passed, 6 skipped (e2e)
 
+---
+
+## P6 计划 ✅ 已完成
+
+### P6-A: 数据模型 + 文本分段 ✅
+- BatchJob + BatchSegment SQLModel 表（`602d402`）
+- JobType.batch_render + BatchStatus 枚举
+- LongtextBatchRequest / ScriptBatchRequest / ScriptLine schemas
+- TextSegmentService: auto/paragraph/sentence 三种策略
+- 8 个测试
+
+### P6-B: 编排 Service + 音频合并 ✅
+- BatchOrchestrationService: submit/execute/get_status/retry_failed（`571ac87`）
+- AudioMergeService: pydub 合并 + 段间静音 + 字幕时间轴偏移
+- 串行执行 + 单段失败不阻断 + partial 状态
+- 10 个测试
+
+### P6-C: API 端点 ✅
+- POST /api/voice/batch/submit + GET status + GET download + POST retry（`30d2bae`）
+- 6 个测试
+
+### P6-D: 前端批量任务面板 ✅
+- 第 6 个 Tab：长文本模式 + 剧本模式（`67bbbff`）
+- 进度轮询 + 分段表格 + 合并音频播放 + 重试
+
+pytest：234 passed, 6 skipped (e2e)
+
 ## 禁止事项
 
 - 不要把 MiniMax API Key 写死在代码里。

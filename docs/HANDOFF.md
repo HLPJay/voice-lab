@@ -7,7 +7,7 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 ## 当前状态
 
 - **分支**：main（稳定）/ dev（开发）
-- **测试**：210 passed, 6 skipped (e2e)
+- **测试**：234 passed, 6 skipped (e2e)
 - **Python**：3.11+
 - **技术栈**：FastAPI + SQLModel + SQLite + httpx + websockets
 
@@ -58,6 +58,13 @@ Voice Lab 是一个可扩展的声音生成中台，已完成 P0-P3 四个阶段
 - Job 列表 API（GET /api/voice/jobs 过滤/分页）+ T2A 历史记录面板
 - 流式错误 detail 传播（MiniMax 原始 status_msg 透传到前端和日志）
 
+### P6：批量编排引擎（长文本 + 多角色剧本）
+- 文本分段服务（auto/paragraph/sentence 三种策略）
+- 批量编排 Service（串行生成 + 单段失败不阻断 + retry 重试）
+- 音频合并（pydub 拼接 + 段间静音 + 字幕时间轴偏移）
+- 批量 API（submit/status/download/retry 四个端点）
+- 前端批量生成 Tab（长文本模式 + 剧本模式 + 进度轮询 + 合并播放）
+
 ## API 端点一览
 
 ### 语音生成
@@ -68,6 +75,10 @@ GET  /api/voice/render/async/{id}/status      异步状态轮询
 WS   /api/voice/ws/render                     流式 T2A（WebSocket）
 POST /api/voice/variants/render               多版本试音
 GET  /api/voice/jobs                          任务列表（过滤/分页）
+POST /api/voice/batch/submit                  批量任务提交（长文本/剧本）
+GET  /api/voice/batch/{id}/status             批量任务进度
+GET  /api/voice/batch/{id}/download           批量合并音频下载
+POST /api/voice/batch/{id}/retry              重试失败段
 ```
 
 ### 声音管理
@@ -104,7 +115,7 @@ GET  /api/admin/stats/daily                   每日趋势
 
 ## 前端入口
 
-- 测试面板：`/static/index.html`（5-Tab：T2A / 音色管理 / 克隆 / 设计 / 绑定管理，T2A 支持单条/异步/流式/多版本四种模式 + 语音参数调节 + 历史记录）
+- 测试面板：`/static/index.html`（6-Tab：T2A / 音色管理 / 克隆 / 设计 / 绑定管理 / 批量生成）
 - 管理面板：`/static/admin.html`（统计仪表板 + 调用日志 + 趋势图）
 
 ## 启动方式
@@ -118,7 +129,7 @@ uvicorn app.main:app --reload
 ## 测试
 
 ```bash
-python -m pytest tests/ -x -q           # Mock 测试（210 passed）
+python -m pytest tests/ -x -q           # Mock 测试（234 passed）
 python -m pytest tests/ -m e2e -x -v    # 真实 API 测试（需 API Key）
 ```
 
