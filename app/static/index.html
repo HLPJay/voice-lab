@@ -21,8 +21,18 @@
   }
 
   header {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  header .title-block {
+    text-align: center;
+    flex: 1;
+    min-width: 200px;
   }
 
   header h1 {
@@ -37,6 +47,21 @@
     color: #718096;
     margin-top: 4px;
   }
+
+  .header-link {
+    font-size: 0.85rem;
+    color: #5a67d8;
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    background: #ebf4ff;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .header-link:hover { background: #dbeafe; }
 
   /* Tab navigation */
   .tab-nav {
@@ -484,11 +509,11 @@
 <div class="container">
 
   <header>
-    <div>
+    <div class="title-block">
       <h1>Voice Lab 测试面板</h1>
       <p>MiniMax 语音接口测试与验证平台</p>
     </div>
-    <a href="/static/admin.html" class="back-link" style="font-size:0.85rem;color:#5a67d8;text-decoration:none;padding:6px 14px;border:1px solid #c7d2fe;border-radius:6px;background:#ebf4ff;transition:background 0.15s">管理面板 →</a>
+    <a href="/static/admin.html" class="header-link">管理面板 →</a>
   </header>
 
   <!-- Tab Navigation -->

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
 
     minimax_voice_design_path: str = "/v1/voice_design"
     minimax_delete_voice_path: str = "/v1/delete_voice"
+    minimax_ws_url: str = "wss://api.minimaxi.com/ws/v1/t2a_v2"
+    minimax_ws_model: str = "speech-2.8-turbo"
+    minimax_ws_timeout_seconds: int = 120
     clone_audio_max_size_mb: int = 20
     clone_audio_min_duration_sec: int = 10
     clone_audio_max_duration_sec: int = 300

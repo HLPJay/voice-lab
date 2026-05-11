@@ -81,7 +81,7 @@ async def health_detail(session: Session = Depends(get_session)) -> dict:
     error_rate_24h = 0.0
 
     try:
-        # Last call
+        # Last call (all time)
         last_row = session.exec(
             select(ProviderCallLog.created_at, ProviderCallLog.status_code)
             .where(ProviderCallLog.provider == "minimax")
@@ -92,23 +92,29 @@ async def health_detail(session: Session = Depends(get_session)) -> dict:
         if last_row:
             last_call_at = last_row[0]
             last_status_code = last_row[1]
-            total_calls_24h = session.exec(
-                select(func.count(ProviderCallLog.id))
-                .where(ProviderCallLog.provider == "minimax")
-            ).one() or 0
 
-            error_count_24h = session.exec(
-                select(func.count(ProviderCallLog.id))
-                .where(ProviderCallLog.provider == "minimax")
-                .where(ProviderCallLog.error_type.isnot(None))
-            ).one() or 0
+        # 24-hour window
+        cutoff_24h = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 86400))
 
-            if total_calls_24h > 0:
-                error_rate_24h = round(error_count_24h / total_calls_24h, 3)
-                if error_rate_24h > 0.5:
-                    provider_status = "degraded"
-                else:
-                    provider_status = "healthy"
+        total_calls_24h = session.exec(
+            select(func.count(ProviderCallLog.id))
+            .where(ProviderCallLog.provider == "minimax")
+            .where(ProviderCallLog.created_at >= cutoff_24h)
+        ).scalar_one() or 0
+
+        error_count_24h = session.exec(
+            select(func.count(ProviderCallLog.id))
+            .where(ProviderCallLog.provider == "minimax")
+            .where(ProviderCallLog.created_at >= cutoff_24h)
+            .where(ProviderCallLog.error_type.isnot(None))
+        ).scalar_one() or 0
+
+        if total_calls_24h > 0:
+            error_rate_24h = round(error_count_24h / total_calls_24h, 3)
+            if error_rate_24h > 0.5:
+                provider_status = "degraded"
+            else:
+                provider_status = "healthy"
     except Exception:
         pass
 

@@ -4,8 +4,10 @@ import json as _json
 import re
 import time
 from pathlib import Path
+from typing import AsyncGenerator
 
 import httpx
+import websockets
 
 from app.core.config import get_settings
 from app.core.context import get_job_id, get_request_id
@@ -16,7 +18,7 @@ from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
 from app.models.provider_call_log import ProviderCallLog
-from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
+from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider, StreamAudioChunk
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -644,3 +646,132 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             raise ProviderError("MiniMax delete voice failed", base_resp.get("status_msg"))
 
         return {"voice_id": provider_voice_id, "deleted": True}
+
+    async def render_stream(self, plan: RenderPlan) -> AsyncGenerator[StreamAudioChunk, None]:
+        """Connect to MiniMax WebSocket and stream audio chunks."""
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        ws_url = settings.minimax_ws_url
+        headers = {"Authorization": f"Bearer {settings.minimax_api_key}"}
+        voice_params = plan.voice_params or {}
+
+        voice_setting: dict = {
+            "voice_id": plan.provider_voice_id,
+            "speed": voice_params.get("speed", 1.0),
+            "vol": voice_params.get("vol", 1.0),
+            "pitch": voice_params.get("pitch", 0),
+        }
+        if voice_params.get("emotion"):
+            voice_setting["emotion"] = voice_params["emotion"]
+
+        task_start_msg = {
+            "event": "task_start",
+            "model": settings.minimax_ws_model,
+            "voice_setting": voice_setting,
+            "audio_setting": {
+                "format": plan.audio_params.get("format", "mp3"),
+                "sample_rate": plan.audio_params.get("sample_rate", 32000),
+                "bitrate": plan.audio_params.get("bitrate", 128000),
+                "channel": plan.audio_params.get("channel", 1),
+            },
+        }
+
+        _provider_logger.info(
+            "ws_connect",
+            extra={"provider": "minimax", "url": ws_url, "model": settings.minimax_ws_model},
+        )
+
+        start_time = time.monotonic()
+        chunk_index = 0
+
+        try:
+            async with websockets.connect(
+                ws_url,
+                additional_headers=headers,
+                close_timeout=10,
+                open_timeout=settings.minimax_ws_timeout_seconds,
+            ) as ws:
+                msg = _json.loads(await ws.recv())
+                if msg.get("event") != "connected_success":
+                    raise ProviderError("WebSocket connection failed", str(msg))
+
+                await ws.send(_json.dumps(task_start_msg))
+
+                msg = _json.loads(await ws.recv())
+                if msg.get("event") == "task_failed":
+                    base_resp = msg.get("base_resp", {})
+                    raise ProviderError("WebSocket task_start failed", base_resp.get("status_msg", str(msg)))
+
+                await ws.send(_json.dumps({"event": "task_continue", "text": plan.processed_text}))
+                await ws.send(_json.dumps({"event": "task_finish"}))
+
+                async for raw_msg in ws:
+                    msg = _json.loads(raw_msg)
+                    event = msg.get("event")
+
+                    if event == "task_continued":
+                        data = msg.get("data", {})
+                        audio_hex = data.get("audio", "")
+                        extra_info = data.get("extra_info", {})
+
+                        if audio_hex:
+                            audio_bytes = binascii.unhexlify(audio_hex)
+                            yield StreamAudioChunk(
+                                chunk_index=chunk_index,
+                                audio_data=audio_bytes,
+                                duration_ms=extra_info.get("audio_length"),
+                                audio_size=extra_info.get("audio_size"),
+                                is_final=msg.get("is_final", False),
+                                usage_characters=extra_info.get("usage_characters"),
+                                trace_id=msg.get("trace_id"),
+                                metadata=extra_info,
+                            )
+                            chunk_index += 1
+
+                    elif event == "task_finished":
+                        break
+
+                    elif event == "task_failed":
+                        base_resp = msg.get("base_resp", {})
+                        raise ProviderError("WebSocket task failed", base_resp.get("status_msg", str(msg)))
+
+            duration_ms = round((time.monotonic() - start_time) * 1000)
+            _provider_logger.info(
+                "ws_complete",
+                extra={
+                    "provider": "minimax",
+                    "chunks": chunk_index,
+                    "duration_ms": duration_ms,
+                },
+            )
+            self._save_call_log(
+                method="WS",
+                path=settings.minimax_ws_url,
+                status_code=200,
+                duration_ms=duration_ms,
+            )
+
+        except ProviderError:
+            raise
+        except Exception as exc:
+            duration_ms = round((time.monotonic() - start_time) * 1000)
+            _provider_logger.error(
+                "ws_error",
+                extra={
+                    "provider": "minimax",
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc)[:200],
+                    "duration_ms": duration_ms,
+                },
+            )
+            self._save_call_log(
+                method="WS",
+                path=settings.minimax_ws_url,
+                status_code=None,
+                duration_ms=duration_ms,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+            raise ProviderError("MiniMax WebSocket failed", str(exc)) from exc

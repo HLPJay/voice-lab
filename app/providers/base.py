@@ -1,8 +1,24 @@
 from abc import ABC, abstractmethod
+from typing import AsyncGenerator
+
 from pydantic import BaseModel, Field
 
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
+
+
+class StreamAudioChunk(BaseModel):
+    """Single audio chunk from streaming T2A."""
+    chunk_index: int
+    audio_data: bytes
+    duration_ms: int | None = None
+    audio_size: int | None = None
+    is_final: bool = False
+    usage_characters: int | None = None
+    trace_id: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class ProviderRenderResult(BaseModel):
@@ -65,3 +81,10 @@ class SpeechProvider(ABC):
 
     async def clone_voice(self, request: dict) -> dict:
         raise NotImplementedError
+
+    async def render_stream(
+        self, plan: RenderPlan
+    ) -> AsyncGenerator[StreamAudioChunk, None]:
+        """Stream audio chunks from T2A provider."""
+        raise NotImplementedError
+        yield  # make it a valid async generator

@@ -1,4 +1,9 @@
-from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
+import asyncio
+import struct
+from pathlib import Path
+from typing import AsyncGenerator
+
+from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider, StreamAudioChunk
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
 from app.utils.audio import estimate_duration_ms, write_silent_wav
@@ -112,3 +117,40 @@ class MockSpeechAdapter(SpeechProvider):
 
     async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
         return {"voice_id": provider_voice_id, "deleted": True}
+
+    async def render_stream(self, plan: RenderPlan) -> AsyncGenerator[StreamAudioChunk, None]:
+        """Mock streaming: yield 3 small audio chunks from a synthetic WAV."""
+        sample_rate = plan.audio_params.get("sample_rate", 32000)
+        num_channels = plan.audio_params.get("channel", 1)
+        bits_per_sample = 16
+        duration_ms = 300
+        num_samples = int(sample_rate * duration_ms / 1000)
+        byte_rate = sample_rate * num_channels * bits_per_sample // 8
+        block_align = num_channels * bits_per_sample // 8
+        data_size = num_samples * block_align
+
+        wav_header = struct.pack(
+            "<4sI4s4sIHHIIHH4sI",
+            b"RIFF", 36 + data_size, b"WAVE",
+            b"fmt ", 16, 1, num_channels, sample_rate,
+            byte_rate, block_align, bits_per_sample,
+            b"data", data_size,
+        )
+        silence = b"\x00" * data_size
+        wav_data = wav_header + silence
+
+        total = len(wav_data)
+        chunk_size = total // 3
+        for i in range(3):
+            start = i * chunk_size
+            end = total if i == 2 else (i + 1) * chunk_size
+            await asyncio.sleep(0.05)
+            yield StreamAudioChunk(
+                chunk_index=i,
+                audio_data=wav_data[start:end],
+                duration_ms=duration_ms,
+                audio_size=end - start,
+                is_final=(i == 2),
+                usage_characters=len(plan.processed_text) if i == 2 else 0,
+                trace_id="mock_stream_trace",
+            )
