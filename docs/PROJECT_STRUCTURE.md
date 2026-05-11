@@ -20,6 +20,10 @@ voice_lab/
       voice_jobs.py
       voice_assets.py
       provider_voices.py   # P1: Voice Catalog
+      async_render.py       # P2: 异步T2A
+      voice_clone.py        # P2: 声音克隆
+      voice_design.py       # P2: 声音设计
+      voice_delete.py       # P2: 声音删除
 
     core/
       __init__.py
@@ -63,10 +67,15 @@ voice_lab/
       asset_service.py
       job_service.py
       voice_catalog_service.py  # P1: Voice Catalog
+      async_render_service.py    # P2: 异步T2A服务
+      voice_clone_service.py     # P2: 声音克隆服务
+      voice_design_service.py    # P2: 声音设计服务
+      voice_delete_service.py    # P2: 声音删除服务
 
     providers/
       __init__.py
       base.py
+      registry.py            # P1: Provider注册表
       minimax_speech_adapter.py
       mock_speech_adapter.py
 
@@ -89,10 +98,16 @@ voice_lab/
     test_render_plan.py
     test_mock_adapter.py
     test_api_render.py
-    test_provider_voice.py       # P1: Voice Catalog model
-    test_voice_catalog.py         # P1: Voice Catalog service + API
-    test_voice_binding_service.py  # P1: VoiceBinding service
-    test_api_voice_bindings.py     # P1: VoiceBinding API
+    test_provider_voice.py            # P1: Voice Catalog model
+    test_voice_catalog.py            # P1: Voice Catalog service + API
+    test_voice_binding_service.py    # P1: VoiceBinding service
+    test_api_voice_bindings.py       # P1: VoiceBinding API
+    test_asset_service.py            # P1: 资产服务测试
+    test_voice_variant_service.py    # P1: 变体服务测试
+    test_async_render.py              # P2: 异步T2A测试
+    test_voice_clone.py               # P2: 声音克隆测试
+    test_voice_design.py              # P2: 声音设计测试
+    test_voice_delete.py              # P2: 声音删除测试
 
   docs/
     VOICE_LAB_GOALS.md

@@ -22,6 +22,21 @@ class Settings(BaseSettings):
 
     mock_fallback_provider: str | None = "minimax"
 
+    minimax_async_t2a_path: str = "/v1/t2a_async_v2"
+    minimax_async_query_path: str = "/v1/query/t2a_async_query_v2"
+    async_poll_interval_seconds: int = 5
+    async_max_wait_seconds: int = 600
+
+    minimax_file_upload_path: str = "/v1/files/upload"
+    minimax_voice_clone_path: str = "/v1/voice_clone"
+
+    minimax_voice_design_path: str = "/v1/voice_design"
+    minimax_delete_voice_path: str = "/v1/delete_voice"
+    clone_audio_max_size_mb: int = 20
+    clone_audio_min_duration_sec: int = 10
+    clone_audio_max_duration_sec: int = 300
+    prompt_audio_max_duration_sec: int = 8
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

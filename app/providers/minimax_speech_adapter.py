@@ -10,7 +10,7 @@ from app.core.errors import ProviderError, ProviderNotConfigured
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
-from app.providers.base import ProviderRenderResult, SpeechProvider
+from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -230,3 +230,227 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             timeline=timeline,
             metadata=metadata,
         )
+
+    async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        voice_setting = {"voice_id": plan.provider_voice_id, **plan.voice_params}
+        if not voice_setting.get("emotion"):
+            voice_setting.pop("emotion", None)
+        payload = {
+            "model": plan.model,
+            "text": plan.processed_text,
+            "stream": False,
+            "language_boost": plan.language_boost,
+            "output_format": plan.output_format,
+            "voice_setting": voice_setting,
+            "audio_setting": plan.audio_params,
+            "subtitle_enable": plan.subtitle.enabled,
+            "subtitle_type": plan.subtitle.type,
+        }
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_async_t2a_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax async task creation failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax async task creation failed", base_resp.get("status_msg"))
+
+        task_id = body.get("task_id")
+        if not task_id:
+            raise ProviderError("MiniMax async task creation failed", "No task_id in response")
+
+        return AsyncTaskResult(
+            task_id=task_id,
+            provider_task_id=task_id,
+            status="processing",
+            trace_id=body.get("trace_id"),
+            metadata={"extra_info": body.get("extra_info") or {}},
+        )
+
+    async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_async_query_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.get(
+                    url,
+                    params={"task_id": provider_task_id},
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax async task query failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax async task query failed", base_resp.get("status_msg"))
+
+        status = body.get("status", "processing")
+        file_url = body.get("file_url") or body.get("audio_url")
+        extra = body.get("extra_info") or {}
+
+        return AsyncTaskStatus(
+            task_id=provider_task_id,
+            status=status,
+            file_url=file_url,
+            duration_ms=extra.get("audio_length") or extra.get("duration_ms"),
+            usage_characters=extra.get("usage_characters"),
+            trace_id=body.get("trace_id"),
+            error_message=base_resp.get("status_msg") if status == "failed" else None,
+            metadata={"raw_response": body},
+        )
+
+    async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        if purpose not in ("voice_clone", "prompt_audio"):
+            raise ProviderError("Invalid purpose", f"purpose must be 'voice_clone' or 'prompt_audio', got '{purpose}'")
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_file_upload_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                    data={"purpose": purpose},
+                    files={"file": (filename, file_data)},
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax file upload failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax file upload failed", base_resp.get("status_msg"))
+
+        file_info = body.get("file") or {}
+        return {
+            "file_id": file_info.get("file_id"),
+            "filename": file_info.get("filename"),
+            "purpose": file_info.get("purpose", purpose),
+            "bytes": file_info.get("bytes"),
+            "created_at": file_info.get("created_at"),
+        }
+
+    async def clone_voice(self, request: dict) -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        payload = {
+            "file_id": request["file_id"],
+            "voice_id": request["voice_id"],
+        }
+        for key in ("text", "model", "language_boost", "need_noise_reduction", "need_volume_normalization"):
+            if key in request and request[key] is not None:
+                payload[key] = request[key]
+
+        prompt_file_id = request.get("prompt_file_id")
+        prompt_text = request.get("prompt_text")
+        if prompt_file_id is not None and prompt_text is not None:
+            payload["clone_prompt"] = {"prompt_audio": prompt_file_id, "prompt_text": prompt_text}
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_voice_clone_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax voice clone failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax voice clone failed", base_resp.get("status_msg"))
+
+        input_sensitive = body.get("input_sensitive") or {}
+        sensitive_type = input_sensitive.get("type")
+        if sensitive_type is not None and sensitive_type != 0:
+            raise ProviderError("内容安全检测未通过", f"input_sensitive.type={sensitive_type}")
+
+        extra = body.get("extra_info") or {}
+        return {
+            "voice_id": body.get("voice_id"),
+            "demo_audio_url": body.get("demo_audio"),
+            "duration_ms": extra.get("audio_length"),
+            "usage_characters": extra.get("usage_characters"),
+        }
+
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        payload: dict = {"prompt": prompt, "preview_text": preview_text}
+        if voice_id is not None:
+            payload["voice_id"] = voice_id
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_voice_design_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax voice design failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax voice design failed", base_resp.get("status_msg"))
+
+        return {
+            "voice_id": body.get("voice_id"),
+            "trial_audio_hex": body.get("trial_audio"),
+        }
+
+    async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        payload = {"voice_type": voice_type, "voice_id": provider_voice_id}
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_delete_voice_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax delete voice failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax delete voice failed", base_resp.get("status_msg"))
+
+        return {"voice_id": provider_voice_id, "deleted": True}

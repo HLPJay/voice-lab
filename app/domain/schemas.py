@@ -163,3 +163,83 @@ class SubtitleAssetRead(BaseModel):
     subtitle_type: str | None = None
     timeline: list[dict] = Field(default_factory=list)
     created_at: str
+
+
+class AsyncRenderRequest(BaseModel):
+    text: str = Field(min_length=1)
+    profile_id: str = "deep_night_programmer"
+    provider: str | None = None
+    need_subtitle: bool = True
+    output_format: str = "hex"
+
+
+class AsyncRenderResponse(BaseModel):
+    job_id: str
+    status: str
+    provider: str
+    model: str
+    message: str = "任务已提交"
+
+
+class AsyncJobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    provider: str | None = None
+    model: str | None = None
+    audio_asset: AudioAssetResponse | None = None
+    subtitle_asset: SubtitleAssetResponse | None = None
+    error_message: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class VoiceCloneUploadResponse(BaseModel):
+    file_id: int
+    filename: str
+    purpose: str
+    bytes: int | None = None
+    created_at: str | None = None
+
+
+class VoiceCloneRequest(BaseModel):
+    voice_id: str = Field(min_length=8, max_length=256, pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$")
+    file_id: int
+    prompt_file_id: int | None = None
+    prompt_text: str | None = None
+    preview_text: str | None = None
+    model: str | None = None
+    language_boost: str | None = None
+    need_noise_reduction: bool = False
+    need_volume_normalization: bool = False
+
+
+class VoiceCloneResponse(BaseModel):
+    voice_id: str
+    demo_audio_url: str | None = None
+    duration_ms: int | None = None
+    usage_characters: int | None = None
+    message: str = "克隆成功"
+
+
+class VoiceDesignRequest(BaseModel):
+    prompt: str = Field(min_length=1, description="音色描述，如'成熟女性，温柔知性'")
+    preview_text: str = Field(min_length=1, max_length=500, description="试听文本")
+    voice_id: str | None = None
+
+
+class VoiceDesignResponse(BaseModel):
+    voice_id: str
+    trial_audio_url: str | None = None
+    trial_audio_hex: str | None = None
+    message: str = "设计成功"
+
+
+class VoiceDeleteRequest(BaseModel):
+    provider_voice_id: str = Field(min_length=1)
+    voice_type: str = Field(default="voice_cloning", pattern=r"^(voice_cloning|voice_generation)$")
+
+
+class VoiceDeleteResponse(BaseModel):
+    voice_id: str
+    deleted: bool = True
+    message: str = "删除成功"

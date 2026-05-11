@@ -14,29 +14,29 @@
 |------|------|------|--------------|
 | 同步 T2A HTTP | `/speech-t2a-http` | 同步生成音频，返回 hex 或 url | P0 已实现基础（`MiniMaxSpeechAdapter.render_sync`） |
 | T2A WebSocket | `/speech-t2a-websocket` | WebSocket 流式生成 | P2 暂不实现 |
-| 异步 T2A 创建任务 | `/speech-t2a-async-create` | 提交长文本异步任务 | P2 推荐 |
-| 异步 T2A 查询任务 | `/speech-t2a-async-query` | 查询异步任务状态和结果 | P2 推荐 |
+| 异步 T2A 创建任务 | `/speech-t2a-async-create` | 提交长文本异步任务 | P2 ✅ 已实现（`AsyncRenderService.submit_task`） |
+| 异步 T2A 查询任务 | `/speech-t2a-async-query` | 查询异步任务状态和结果 | P2 ✅ 已实现（`AsyncRenderService.query_status`） |
 
 ### Voice Management
 
 | 接口 | 路径 | 说明 | Voice Lab 归属 |
 |------|------|------|--------------|
-| Get Voice（音色列表） | `/voice-management-get` | 获取可用音色列表 | P1 推荐 |
-| Delete Voice | `/voice-management-delete` | 删除音色 | P2 推荐（需授权确认） |
+| Get Voice（音色列表） | `/voice-management-get` | 获取可用音色列表 | P1 ✅ 已实现（`VoiceCatalogService`） |
+| Delete Voice | `/voice-management-delete` | 删除音色 | P2 ✅ 已实现（`VoiceDeleteService`） |
 
 ### Voice Design
 
 | 接口 | 路径 | 说明 | Voice Lab 归属 |
 |------|------|------|--------------|
-| Voice Design | `/voice-design-design` | 创建声音设计 | P2 暂不实现 |
+| Voice Design | `/voice-design-design` | 创建声音设计 | P2 ✅ 已实现（`VoiceDesignService`） |
 
 ### Voice Clone
 
 | 接口 | 路径 | 说明 | Voice Lab 归属 |
 |------|------|------|--------------|
-| 上传复刻音频 | `/voice-cloning-uploadcloneaudio` | 上传待克隆音频 | P2 暂不实现 |
-| 上传 Prompt 音频 | `/voice-cloning-uploadprompt` | 上传参考音频 | P2 暂不实现 |
-| 创建克隆 | `/voice-cloning-clone` | 执行克隆任务 | P2 暂不实现 |
+| 上传复刻音频 | `/voice-cloning-uploadcloneaudio` | 上传待克隆音频 | P2 ✅ 已实现（`VoiceCloneService.upload_audio`） |
+| 上传 Prompt 音频 | `/voice-cloning-uploadprompt` | 上传参考音频 | P2 ✅ 已实现（purpose=prompt_audio） |
+| 创建克隆 | `/voice-cloning-clone` | 执行克隆任务 | P2 ✅ 已实现（`VoiceCloneService.clone_voice`） |
 
 ---
 
@@ -73,31 +73,30 @@
    - 删除后 `voice_id` 不可复用
    - 必须增加授权确认步骤
 
-### P2（后续推荐）
+### P2（主体已完成）
 
-1. **异步 T2A**（长文本）
+1. **异步 T2A**（长文本）✅ 已实现
    - 创建：`POST /v1/t2a_async_v2`
    - 查询：`GET /v1/query/t2a_async_query_v2?task_id=...`
    - 状态：`processing` / `success` / `failed` / `expired`
-   - 成功后通过 `file_id` 走文件检索/下载流程
-   - 需要任务队列和状态管理
+   - 成功后通过 `file_url` 下载并保存资产
 
-2. **同步 T2A HTTP 增强**
-   - `output_format=url` 自动下载落地
-   - 字幕结构完整解析（JSON / SRT）
+2. **Voice Design** ✅ 已实现
+   - 端点：`POST /v1/voice_design`
+   - 返回 `voice_id` 和 `trial_audio_hex`
 
-3. **Voice Design**
-   - 完整实现需多步调用
-   - P2 后期
+3. **Voice Clone** ✅ 已实现
+   - 三步：上传音频 → 上传 prompt（可选）→ 创建克隆
+   - 上传：`POST /v1/files/upload`
+   - 克隆：`POST /v1/voice_clone`
 
-4. **Voice Clone**
-   - 三步：上传音频 → 上传 prompt → 创建克隆
-   - 需要文件存储和任务管理
-   - 必须增加用户授权确认
+4. **Voice Delete** ✅ 已实现
+   - 端点：`POST /v1/delete_voice`
+   - 只允许删除 `voice_cloning` 和 `voice_generation` 类型
 
-5. **T2A WebSocket**
+5. **T2A WebSocket**（未实现）
    - 流式生成，用于实时场景
-   - 不进入 P1
+   - 不在 P2 主体范围
 
 ---
 
@@ -175,14 +174,15 @@
 | **Delete Voice 权限要求** | T2A API Key 是否有 Delete Voice 权限？403 时返回什么错误码？ |
 | **Voice Clone 结果获取方式** | 克隆任务是同步还是异步？结果如何查询？ |
 | **异步 T2A 任务超时** | 异步任务最大等待时间？超时后如何处理？ |
+| **Voice Clone详细参数** | ✅ 已实现：file_id / prompt_file_id / prompt_text / preview_text / need_noise_reduction / need_volume_normalization |
+| **Voice Design完整流程** | ✅ 已实现：prompt / preview_text / 可选 voice_id |
 | **字幕完整结构** | ✅ 已验证：T2A 返回 `data.subtitle_file`（URL），下载后 JSON 结构含 `sentences`/`items`/`timeline`/`words` 字段，timeline item 含 text/pronounce_text/time_begin/time_end/text_begin/text_end/pronounce_text_begin/pronounce_text_end/is_final_segment |
 | **错误码完整列表** | MiniMax API 完整错误码文档未找到，实现时需逐个处理未知错误 |
 
 以下内容**确认不实现**，不追查：
 
 - T2A WebSocket 文档（不在近期计划）
-- Voice Design 完整流程（无实现计划）
-- Voice Clone 详细参数（无实现计划）
+- 多用户、额度统计、API Key 管理、对象存储、队列 Worker、评测反馈、视频模块
 
 ---
 

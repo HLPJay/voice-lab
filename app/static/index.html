@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>旁白试音台</title>
+<title>Voice Lab 测试面板</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,7 +22,7 @@
 
   header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
 
   header h1 {
@@ -37,6 +37,40 @@
     color: #718096;
     margin-top: 4px;
   }
+
+  /* Tab navigation */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: #718096;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: #5a67d8; }
+
+  .tab-btn.active {
+    color: #5a67d8;
+    border-bottom-color: #5a67d8;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
 
   .card {
     background: #fff;
@@ -57,13 +91,11 @@
   }
 
   /* Textarea */
-  .textarea-wrap {
-    position: relative;
-  }
+  .textarea-wrap { position: relative; }
 
   textarea {
     width: 100%;
-    min-height: 140px;
+    min-height: 100px;
     padding: 14px;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
@@ -74,10 +106,7 @@
     font-family: inherit;
   }
 
-  textarea:focus {
-    outline: none;
-    border-color: #5a67d8;
-  }
+  textarea:focus { outline: none; border-color: #5a67d8; }
 
   .char-count {
     position: absolute;
@@ -101,9 +130,7 @@
     gap: 6px;
   }
 
-  .form-group.full-width {
-    grid-column: 1 / -1;
-  }
+  .form-group.full-width { grid-column: 1 / -1; }
 
   label {
     font-size: 0.8rem;
@@ -111,7 +138,7 @@
     color: #4a5568;
   }
 
-  select, input[type="number"], input[type="text"] {
+  select, input[type="number"], input[type="text"], input[type="file"] {
     padding: 9px 12px;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
@@ -122,9 +149,12 @@
     appearance: none;
   }
 
-  select:focus, input:focus {
-    outline: none;
-    border-color: #5a67d8;
+  select:focus, input:focus { outline: none; border-color: #5a67d8; }
+
+  input[type="file"] {
+    appearance: none;
+    padding: 7px 12px;
+    cursor: pointer;
   }
 
   .radio-group {
@@ -162,9 +192,7 @@
     padding: 9px 0 0;
   }
 
-  .variant-count-row.visible {
-    display: block;
-  }
+  .variant-count-row.visible { display: block; }
 
   /* Buttons */
   .btn-primary {
@@ -181,31 +209,34 @@
     margin-top: 16px;
   }
 
-  .btn-primary:hover:not(:disabled) {
-    background: #4c51bf;
+  .btn-primary:hover:not(:disabled) { background: #4c51bf; }
+  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .btn-danger { background: #e53e3e; }
+  .btn-danger:hover:not(:disabled) { background: #c53030; }
+
+  .btn-sm {
+    padding: 6px 14px;
+    background: #edf2f7;
+    color: #2d3748;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s;
   }
 
-  .btn-primary:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
+  .btn-sm:hover { background: #e2e8f0; }
 
   /* Results */
-  .results-area {
-    display: none;
-  }
+  .results-area { display: none; }
+  .results-area.visible { display: block; }
 
-  .results-area.visible {
-    display: block;
-  }
-
-  .result-section {
-    margin-bottom: 28px;
-  }
-
-  .result-section:last-child {
-    margin-bottom: 0;
-  }
+  .result-section { margin-bottom: 28px; }
+  .result-section:last-child { margin-bottom: 0; }
 
   .result-label {
     font-size: 0.75rem;
@@ -229,6 +260,13 @@
   .job-status.status-success { background: #f0fff4; color: #276749; }
   .job-status.status-failed  { background: #fff5f5; color: #c53030; }
   .job-status.status-running  { background: #fefcbf; color: #b7791f; }
+  .job-status.status-processing { background: #fefcbf; color: #b7791f; }
+
+  .poll-status {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 8px;
+  }
 
   .audio-player {
     width: 100%;
@@ -242,22 +280,6 @@
     margin-top: 10px;
     flex-wrap: wrap;
   }
-
-  .btn-sm {
-    padding: 6px 14px;
-    background: #edf2f7;
-    color: #2d3748;
-    border: 1px solid #cbd5e0;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    transition: background 0.15s;
-  }
-
-  .btn-sm:hover { background: #e2e8f0; }
 
   /* Variant cards */
   .variants-grid {
@@ -294,9 +316,7 @@
     height: 36px;
   }
 
-  .variant-card .action-row {
-    margin-top: 8px;
-  }
+  .variant-card .action-row { margin-top: 8px; }
 
   /* Error */
   .error-msg {
@@ -305,6 +325,17 @@
     border-radius: 8px;
     padding: 12px 16px;
     color: #c53030;
+    font-size: 0.875rem;
+    margin-top: 10px;
+  }
+
+  /* Success */
+  .success-msg {
+    background: #f0fff4;
+    border: 1px solid #9ae6b4;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #276749;
     font-size: 0.875rem;
     margin-top: 10px;
   }
@@ -333,6 +364,77 @@
 
   .timeline-table tr:last-child td { border-bottom: none; }
 
+  /* Voice list table */
+  .voice-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 0.82rem;
+  }
+
+  .voice-table th {
+    text-align: left;
+    color: #a0aec0;
+    font-weight: 500;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .voice-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #f0f4f8;
+    color: #2d3748;
+  }
+
+  .voice-table tr:last-child td { border-bottom: none; }
+
+  .voice-table tr:hover td { background: #f7fafc; }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+
+  .tag-system { background: #ebf8ff; color: #2b6cb0; }
+  .tag-clone { background: #faf5ff; color: #6b46c1; }
+  .tag-generation { background: #fffaf0; color: #c05621; }
+
+  /* Step indicator */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.82rem;
+    color: #718096;
+  }
+
+  .step-indicator .step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #718096;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .step-indicator .step-num.done {
+    background: #c6f6d5;
+    color: #276749;
+  }
+
+  .step-indicator .step-num.active {
+    background: #5a67d8;
+    color: #fff;
+  }
+
   /* Loading spinner */
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner {
@@ -348,9 +450,33 @@
 
   .loading .spinner { border-color: rgba(90,103,216,0.3); border-top-color: #5a67d8; }
 
-  @media (max-width: 500px) {
+  /* Audio hex player */
+  .hex-player {
+    margin-top: 10px;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.82rem;
+    color: #4a5568;
+  }
+
+  .hex-player audio { width: 100%; margin-top: 8px; height: 36px; }
+
+  /* Delete form row */
+  .delete-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  @media (max-width: 600px) {
     .config-grid { grid-template-columns: 1fr; }
     .variants-grid { grid-template-columns: 1fr; }
+    .delete-form-row { grid-template-columns: 1fr 1fr; }
+    .tab-nav { gap: 0; }
+    .tab-btn { padding: 8px 12px; font-size: 0.82rem; }
   }
 </style>
 </head>
@@ -358,65 +484,241 @@
 <div class="container">
 
   <header>
-    <h1>旁白试音台</h1>
-    <p>快速生成旁白，对比不同音色版本</p>
+    <h1>Voice Lab 测试面板</h1>
+    <p>MiniMax 语音接口测试与验证平台</p>
   </header>
 
-  <!-- Area 1: Text Input -->
-  <div class="card">
-    <div class="card-title">文案输入</div>
-    <div class="textarea-wrap">
-      <textarea id="textInput" placeholder="输入文案..." maxlength="9500"></textarea>
-      <span class="char-count" id="charCount">0 / 9500</span>
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="tts">T2A 生成</button>
+    <button class="tab-btn" data-tab="voices">音色管理</button>
+    <button class="tab-btn" data-tab="clone">声音克隆</button>
+    <button class="tab-btn" data-tab="design">声音设计</button>
+  </nav>
+
+  <!-- ======================== TAB: TTS ======================== -->
+  <div class="tab-content active" id="tab-tts">
+    <div class="card">
+      <div class="card-title">文案输入</div>
+      <div class="textarea-wrap">
+        <textarea id="textInput" placeholder="输入文案..." maxlength="9500"></textarea>
+        <span class="char-count" id="charCount">0 / 9500</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">配置</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="profileSelect">声音人设</label>
+          <select id="profileSelect">
+            <option value="">加载中…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="providerSelect">Provider</label>
+          <select id="providerSelect">
+            <option value="mock">mock（模拟）</option>
+            <option value="minimax">minimax（正式）</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label>生成模式</label>
+          <div class="radio-group">
+            <label><input type="radio" name="genMode" value="single" checked> 单条生成</label>
+            <label><input type="radio" name="genMode" value="async"> 异步生成</label>
+            <label><input type="radio" name="genMode" value="variants"> 多版本试音</label>
+          </div>
+          <div class="variant-count-row" id="variantCountRow">
+            <label for="variantCount">版本数量（1-5）</label>
+            <input type="number" id="variantCount" min="1" max="5" value="3">
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <div class="checkbox-row">
+            <input type="checkbox" id="needSubtitle" checked>
+            <label for="needSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
+    <div class="results-area" id="resultsArea"></div>
+  </div>
+
+  <!-- ======================== TAB: VOICES ======================== -->
+  <div class="tab-content" id="tab-voices">
+    <div class="card">
+      <div class="card-title">音色列表查询</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="voiceProvider">Provider</label>
+          <select id="voiceProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="voiceType">音色类型</label>
+          <select id="voiceType">
+            <option value="all">全部</option>
+            <option value="system">系统音色</option>
+            <option value="voice_cloning">克隆音色</option>
+            <option value="voice_generation">设计音色</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" id="listVoicesBtn" onclick="handleListVoices()">查询音色</button>
+      <div id="voiceListResults"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">删除音色</div>
+      <div class="delete-form-row">
+        <div class="form-group">
+          <label for="deleteProvider">Provider</label>
+          <select id="deleteProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="deleteVoiceId">voice_id</label>
+          <input type="text" id="deleteVoiceId" placeholder="输入 voice_id">
+        </div>
+        <div class="form-group">
+          <label for="deleteVoiceType">音色类型</label>
+          <select id="deleteVoiceType">
+            <option value="voice_cloning">voice_cloning</option>
+            <option value="voice_generation">voice_generation</option>
+          </select>
+        </div>
+        <button class="btn-primary btn-danger" style="margin-top:0" onclick="handleDeleteVoice()">删除</button>
+      </div>
+      <div id="deleteResults"></div>
     </div>
   </div>
 
-  <!-- Area 2: Config Panel -->
-  <div class="card">
-    <div class="card-title">配置</div>
-    <div class="config-grid">
-      <div class="form-group">
-        <label for="profileSelect">声音人设</label>
-        <select id="profileSelect">
-          <option value="">加载中…</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="providerSelect">Provider</label>
-        <select id="providerSelect">
-          <option value="mock">mock（模拟）</option>
-          <option value="minimax">minimax（正式）</option>
-        </select>
-      </div>
-      <div class="form-group full-width">
-        <label>生成模式</label>
-        <div class="radio-group">
-          <label><input type="radio" name="genMode" value="single" checked> 单条生成</label>
-          <label><input type="radio" name="genMode" value="variants"> 多版本试音</label>
+  <!-- ======================== TAB: CLONE ======================== -->
+  <div class="tab-content" id="tab-clone">
+    <div class="card">
+      <div class="card-title">步骤 1：上传克隆音频</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="cloneProvider">Provider</label>
+          <select id="cloneProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
         </div>
-        <div class="variant-count-row" id="variantCountRow">
-          <label for="variantCount">版本数量（1-5）</label>
-          <input type="number" id="variantCount" min="1" max="5" value="3">
+        <div class="form-group">
+          <label for="clonePurpose">用途</label>
+          <select id="clonePurpose">
+            <option value="voice_clone">voice_clone（克隆）</option>
+            <option value="prompt_audio">prompt_audio（提示音）</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label for="cloneFile">选择音频文件（.mp3/.m4a/.wav）</label>
+          <input type="file" id="cloneFile" accept=".mp3,.m4a,.wav,audio/*">
         </div>
       </div>
-      <div class="form-group full-width">
-        <div class="checkbox-row">
-          <input type="checkbox" id="needSubtitle" checked>
-          <label for="needSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
+      <button class="btn-primary" id="uploadBtn" onclick="handleUploadAudio()">上传</button>
+      <div id="uploadResult"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">步骤 2：执行克隆</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="cloneVoiceId">voice_id（自定义标识）</label>
+          <input type="text" id="cloneVoiceId" placeholder="如 my_voice_01" value="">
+        </div>
+        <div class="form-group">
+          <label for="cloneFileId">file_id（上传后自动填充）</label>
+          <input type="number" id="cloneFileId" placeholder="从步骤1获取" value="">
+        </div>
+        <div class="form-group">
+          <label for="clonePromptFileId">prompt_file_id（可选）</label>
+          <input type="number" id="clonePromptFileId" placeholder="prompt音频file_id">
+        </div>
+        <div class="form-group">
+          <label for="clonePromptText">prompt_text（可选）</label>
+          <input type="text" id="clonePromptText" placeholder="提示文本">
+        </div>
+        <div class="form-group">
+          <label for="clonePreviewText">preview_text（试听文本）</label>
+          <input type="text" id="clonePreviewText" placeholder="试听用短文本">
+        </div>
+        <div class="form-group">
+          <label for="cloneModel">model（可选）</label>
+          <input type="text" id="cloneModel" placeholder="如 speech-02-hd">
+        </div>
+        <div class="form-group full-width">
+          <div class="checkbox-row">
+            <input type="checkbox" id="needNoiseReduction">
+            <label for="needNoiseReduction" style="font-weight:400;cursor:pointer">降噪（need_noise_reduction）</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="needVolumeNormalization">
+            <label for="needVolumeNormalization" style="font-weight:400;cursor:pointer">音量标准化（need_volume_normalization）</label>
+          </div>
         </div>
       </div>
+      <button class="btn-primary" id="cloneBtn" onclick="handleCloneVoice()">克隆</button>
+      <div id="cloneResult"></div>
     </div>
   </div>
 
-  <!-- Area 3: Action Button -->
-  <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
-
-  <!-- Area 4: Results -->
-  <div class="results-area" id="resultsArea"></div>
+  <!-- ======================== TAB: DESIGN ======================== -->
+  <div class="tab-content" id="tab-design">
+    <div class="card">
+      <div class="card-title">声音设计</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="designProvider">Provider</label>
+          <select id="designProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="designVoiceId">voice_id（可选，自定义标识）</label>
+          <input type="text" id="designVoiceId" placeholder="不填则自动生成">
+        </div>
+        <div class="form-group full-width">
+          <label for="designPrompt">prompt（音色描述）</label>
+          <textarea id="designPrompt" placeholder="如：成熟女性，温柔知性，声音清晰，语速适中" style="min-height:80px"></textarea>
+        </div>
+        <div class="form-group full-width">
+          <label for="designPreviewText">preview_text（试听文本，500字以内）</label>
+          <textarea id="designPreviewText" placeholder="输入试听文本，建议20-100字" style="min-height:80px" maxlength="500"></textarea>
+        </div>
+      </div>
+      <button class="btn-primary" id="designBtn" onclick="handleDesignVoice()">生成设计</button>
+      <div id="designResult"></div>
+    </div>
+  </div>
 
 </div>
 
 <script>
+  // ============================================================
+  // Tab switching
+  // ============================================================
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ============================================================
+  // TTS Tab
+  // ============================================================
   const textInput = document.getElementById('textInput');
   const charCount = document.getElementById('charCount');
   const profileSelect = document.getElementById('profileSelect');
@@ -428,17 +730,14 @@
   const generateBtn = document.getElementById('generateBtn');
   const resultsArea = document.getElementById('resultsArea');
 
-  // Character counter
   textInput.addEventListener('input', () => {
     charCount.textContent = `${textInput.value.length} / 9500`;
   });
 
-  // Show/hide variant count
   genModes.forEach(r => r.addEventListener('change', () => {
     variantCountRow.classList.toggle('visible', r.value === 'variants');
   }));
 
-  // Load profiles on page load
   (async () => {
     try {
       const res = await fetch('/api/voice/profiles');
@@ -467,7 +766,7 @@
   }
 
   function statusLabel(s) {
-    const m = { success: '已完成', failed: '失败', running: '生成中', pending: '等待中' };
+    const m = { success: '已完成', failed: '失败', running: '生成中', pending: '等待中', processing: '处理中' };
     return m[s] || s;
   }
 
@@ -475,15 +774,201 @@
     return 'job-status status-' + s;
   }
 
-  function audioPlayer(assetId, downloadUrl) {
-    return `
-      <audio class="audio-player" controls preload="none">
-        <source src="/api/voice/assets/${assetId}/download" type="audio/mpeg">
-        您的浏览器不支持音频播放
-      </audio>`;
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
   }
 
-  function downloadBtn(assetId) {
+  let pollTimer = null;
+
+  async function handleGenerate() {
+    const text = textInput.value.trim();
+    if (!text) { alert('请输入文案'); return; }
+    const profileId = profileSelect.value;
+    if (!profileId) { alert('请选择声音人设'); return; }
+    const provider = providerSelect.value;
+    const mode = document.querySelector('input[name="genMode"]:checked').value;
+    const isVariant = mode === 'variants';
+    const isAsync = mode === 'async';
+    const count = parseInt(variantCountInput.value) || 3;
+    const subtitle = needSubtitle.checked;
+
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    setLoading(true);
+    resultsArea.classList.remove('visible');
+    resultsArea.innerHTML = '';
+
+    try {
+      const payload = {
+        text,
+        profile_id: profileId,
+        provider,
+        need_subtitle: subtitle,
+        ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {})
+      };
+
+      let endpoint;
+      if (isAsync) endpoint = '/api/voice/render/async';
+      else if (isVariant) endpoint = '/api/voice/variants/render';
+      else endpoint = '/api/voice/render';
+
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        const msg = data.detail || JSON.stringify(data);
+        resultsArea.innerHTML = `<div class="error-msg">请求失败：${esc(msg)}</div>`;
+        resultsArea.classList.add('visible');
+        setLoading(false);
+        return;
+      }
+
+      if (isAsync) {
+        startAsyncPolling(data.job_id);
+      } else {
+        renderResults(data, isVariant);
+        resultsArea.classList.add('visible');
+        setLoading(false);
+      }
+    } catch (e) {
+      resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+      resultsArea.classList.add('visible');
+      setLoading(false);
+    }
+  }
+
+  function startAsyncPolling(jobId) {
+    let pollCount = 0;
+    const maxPolls = 120;
+
+    resultsArea.innerHTML = `
+      <div class="card" id="asyncStatusCard">
+        <div class="result-label">异步任务</div>
+        <p>任务ID：<code>${esc(jobId)}</code></p>
+        <div class="poll-status"><span class="spinner"></span>轮询中…</div>
+      </div>`;
+    resultsArea.classList.add('visible');
+
+    async function poll() {
+      pollCount++;
+      try {
+        const resp = await fetch(`/api/voice/render/async/${jobId}/status`);
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          clearInterval(pollTimer); pollTimer = null;
+          resultsArea.innerHTML = `<div class="error-msg">查询失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+          setLoading(false);
+          return;
+        }
+
+        if (data.status === 'success') {
+          clearInterval(pollTimer); pollTimer = null;
+          renderAsyncResult(data);
+          setLoading(false);
+          return;
+        }
+
+        if (data.status === 'failed') {
+          clearInterval(pollTimer); pollTimer = null;
+          resultsArea.innerHTML = `<div class="error-msg">任务失败：${esc(data.error_message || '未知错误')}</div>`;
+          setLoading(false);
+          return;
+        }
+
+        const statusCard = document.getElementById('asyncStatusCard');
+        if (statusCard) {
+          const pollStatus = statusCard.querySelector('.poll-status');
+          if (pollStatus) pollStatus.innerHTML = `<span class="spinner"></span>轮询中… (${pollCount}/${maxPolls})`;
+        }
+
+        if (pollCount >= maxPolls) {
+          clearInterval(pollTimer); pollTimer = null;
+          resultsArea.innerHTML += `<div class="error-msg">轮询超时，请稍后手动查询</div>`;
+          setLoading(false);
+        }
+      } catch (e) {
+        clearInterval(pollTimer); pollTimer = null;
+        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+        setLoading(false);
+      }
+    }
+
+    poll();
+    pollTimer = setInterval(poll, 3000);
+  }
+
+  function renderAsyncResult(data) {
+    const audio = data.audio_asset;
+    const sub = data.subtitle_asset;
+    let html = `
+      <div class="card">
+        <div class="result-label">异步生成结果</div>
+        <span class="${statusClass(data.status)}">${statusLabel(data.status)}</span>
+        <p style="font-size:0.82rem;color:#718096;margin-top:6px">
+          任务ID：<code>${esc(data.job_id)}</code>
+          ${data.provider ? ` · Provider: ${esc(data.provider)}` : ''}
+          ${data.model ? ` · Model: ${esc(data.model)}` : ''}
+        </p>
+        ${audio ? audioPlayerHtml(audio.id) : ''}
+        <div class="action-row">${audio ? downloadBtnHtml(audio.id) : ''}</div>
+        ${sub && sub.timeline && sub.timeline.length > 0
+          ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(sub.timeline)}`
+          : ''}
+      </div>`;
+    resultsArea.innerHTML = html;
+    resultsArea.classList.add('visible');
+  }
+
+  function renderResults(data, isVariant) {
+    if (isVariant) {
+      let html = '<div class="result-section"><div class="result-label">版本列表</div>';
+      html += `<div class="variants-grid">`;
+      data.variants.forEach((v, i) => {
+        html += `
+          <div class="variant-card">
+            <div class="variant-meta">
+              <span>版本 ${i + 1}</span>
+              ${v.speed != null ? `<span>语速 ${v.speed}</span>` : ''}
+              ${v.emotion ? `<span>情绪 ${v.emotion}</span>` : ''}
+            </div>
+            ${v.audio_asset_id ? audioPlayerHtml(v.audio_asset_id) : '<p style="font-size:0.82rem;color:#a0aec0">无音频</p>'}
+            <div class="action-row">${v.audio_asset_id ? downloadBtnHtml(v.audio_asset_id) : ''}</div>
+          </div>`;
+      });
+      html += '</div></div>';
+      resultsArea.innerHTML = html;
+    } else {
+      const job = data;
+      const audio = job.audio_asset;
+      const subtitle = job.subtitle_asset;
+      let html = `
+        <div class="result-section">
+          <div class="result-label">生成结果</div>
+          <span class="${statusClass(job.status)}">${statusLabel(job.status)}</span>
+          ${audio ? audioPlayerHtml(audio.id) : ''}
+          <div class="action-row">${audio ? downloadBtnHtml(audio.id) : ''}</div>
+          ${subtitle && subtitle.timeline && subtitle.timeline.length > 0
+            ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(subtitle.timeline)}`
+            : ''}
+        </div>`;
+      resultsArea.innerHTML = html;
+    }
+  }
+
+  function audioPlayerHtml(assetId) {
+    return `<audio class="audio-player" controls preload="none">
+      <source src="/api/voice/assets/${assetId}/download" type="audio/mpeg">
+      您的浏览器不支持音频播放</audio>`;
+  }
+
+  function downloadBtnHtml(assetId) {
     return `<a class="btn-sm" href="/api/voice/assets/${assetId}/download" download>下载</a>`;
   }
 
@@ -502,107 +987,288 @@
   function formatTime(seconds) {
     if (seconds == null) return '--';
     const s = Math.floor(seconds);
-    const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
     const ms = Math.round((seconds - s) * 1000);
-    if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
-    return `${m}:${pad(s)},${pad(ms)}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
   }
 
-  function pad(n) { return String(n).padStart(2, '0'); }
+  // ============================================================
+  // Voices Tab
+  // ============================================================
+  async function handleListVoices() {
+    const provider = document.getElementById('voiceProvider').value;
+    const voiceType = document.getElementById('voiceType').value;
+    const resultsEl = document.getElementById('voiceListResults');
+    const btn = document.getElementById('listVoicesBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>加载中…';
+    resultsEl.innerHTML = '';
 
-  function esc(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+    try {
+      const url = `/api/voice/provider-voices?provider=${encodeURIComponent(provider)}&voice_type=${encodeURIComponent(voiceType)}&refresh=true`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        resultsEl.innerHTML = `<div class="error-msg">查询失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        return;
+      }
+
+      const voices = data.voices || [];
+      if (voices.length === 0) {
+        resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px">未找到音色</p>';
+        return;
+      }
+
+      const typeTag = t => {
+        if (t === 'system') return '<span class="tag tag-system">系统</span>';
+        if (t === 'voice_cloning') return '<span class="tag tag-clone">克隆</span>';
+        if (t === 'voice_generation') return '<span class="tag tag-generation">设计</span>';
+        return `<span class="tag">${esc(t)}</span>`;
+      };
+
+      let html = `<table class="voice-table">
+        <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th></tr></thead><tbody>`;
+      voices.forEach(v => {
+        html += `<tr>
+          <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
+          <td>${esc(v.name || '-')}</td>
+          <td>${typeTag(v.voice_type)}</td>
+          <td>${esc(v.language || '-')}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      resultsEl.innerHTML = html;
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '查询音色';
+    }
   }
 
-  async function handleGenerate() {
-    const text = textInput.value.trim();
-    if (!text) { alert('请输入文案'); return; }
-    const profileId = profileSelect.value;
-    if (!profileId) { alert('请选择声音人设'); return; }
-    const provider = providerSelect.value;
-    const isVariant = document.querySelector('input[name="genMode"]:checked').value === 'variants';
-    const count = parseInt(variantCountInput.value) || 3;
-    const subtitle = needSubtitle.checked;
+  async function handleDeleteVoice() {
+    const provider = document.getElementById('deleteProvider').value;
+    const voiceId = document.getElementById('deleteVoiceId').value.trim();
+    const voiceType = document.getElementById('deleteVoiceType').value;
+    const resultsEl = document.getElementById('deleteResults');
 
-    setLoading(true);
-    resultsArea.classList.remove('visible');
-    resultsArea.innerHTML = '';
+    if (!voiceId) {
+      resultsEl.innerHTML = `<div class="error-msg">请输入 voice_id</div>`;
+      return;
+    }
+
+    resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>删除中…</p>';
+
+    try {
+      const resp = await fetch(`/api/voice/voices/delete?provider=${encodeURIComponent(provider)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_voice_id: voiceId, voice_type: voiceType })
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        resultsEl.innerHTML = `<div class="error-msg">删除失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        return;
+      }
+
+      resultsEl.innerHTML = `<div class="success-msg">
+        删除成功：voice_id=<code>${esc(data.voice_id)}</code>
+      </div>`;
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ============================================================
+  // Clone Tab
+  // ============================================================
+  async function handleUploadAudio() {
+    const provider = document.getElementById('cloneProvider').value;
+    const purpose = document.getElementById('clonePurpose').value;
+    const fileInput = document.getElementById('cloneFile');
+    const resultsEl = document.getElementById('uploadResult');
+    const btn = document.getElementById('uploadBtn');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      resultsEl.innerHTML = `<div class="error-msg">请先选择音频文件</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>上传中…';
+    resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>上传中…</p>';
+
+    try {
+      const formData = new FormData();
+      formData.append('purpose', purpose);
+      formData.append('provider', provider);
+      formData.append('file', fileInput.files[0]);
+
+      const resp = await fetch('/api/voice/clone/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        resultsEl.innerHTML = `<div class="error-msg">上传失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        return;
+      }
+
+      // Auto-fill file_id in step 2
+      document.getElementById('cloneFileId').value = data.file_id;
+
+      resultsEl.innerHTML = `<div class="success-msg">
+        上传成功：file_id=<code>${data.file_id}</code>，文件名=${esc(data.filename)}，大小=${data.bytes} bytes
+      </div>`;
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '上传';
+    }
+  }
+
+  async function handleCloneVoice() {
+    const provider = document.getElementById('cloneProvider').value;
+    const voiceId = document.getElementById('cloneVoiceId').value.trim();
+    const fileId = document.getElementById('cloneFileId').value.trim();
+    const promptFileId = document.getElementById('clonePromptFileId').value.trim();
+    const promptText = document.getElementById('clonePromptText').value.trim();
+    const previewText = document.getElementById('clonePreviewText').value.trim();
+    const model = document.getElementById('cloneModel').value.trim();
+    const needNoiseReduction = document.getElementById('needNoiseReduction').checked;
+    const needVolumeNormalization = document.getElementById('needVolumeNormalization').checked;
+    const resultsEl = document.getElementById('cloneResult');
+    const btn = document.getElementById('cloneBtn');
+
+    if (!voiceId) {
+      resultsEl.innerHTML = `<div class="error-msg">请输入 voice_id</div>`;
+      return;
+    }
+    if (!fileId) {
+      resultsEl.innerHTML = `<div class="error-msg">请先上传音频获取 file_id，或手动输入</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>克隆中…';
+    resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>克隆中…</p>';
 
     try {
       const payload = {
-        text,
-        profile_id: profileId,
-        provider,
-        need_subtitle: subtitle,
-        ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {})
+        voice_id: voiceId,
+        file_id: parseInt(fileId),
+        need_noise_reduction: needNoiseReduction,
+        need_volume_normalization: needVolumeNormalization,
       };
+      if (promptFileId) payload.prompt_file_id = parseInt(promptFileId);
+      if (promptText) payload.prompt_text = promptText;
+      if (previewText) payload.preview_text = previewText;
+      if (model) payload.model = model;
 
-      const endpoint = isVariant ? '/api/voice/variants/render' : '/api/voice/render';
-      const resp = await fetch(endpoint, {
+      const resp = await fetch(`/api/voice/clone/create?provider=${encodeURIComponent(provider)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
       const data = await resp.json();
 
       if (!resp.ok) {
-        const msg = data.detail || JSON.stringify(data);
-        resultsArea.innerHTML = `<div class="error-msg">请求失败：${esc(msg)}</div>`;
-        resultsArea.classList.add('visible');
-        setLoading(false);
+        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(data.detail || JSON.stringify(data))}</div>`;
         return;
       }
 
-      renderResults(data, isVariant);
-      resultsArea.classList.add('visible');
+      let html = `<div class="success-msg">
+        克隆成功：voice_id=<code>${esc(data.voice_id)}</code>，${data.message || ''}
+      </div>`;
+      if (data.demo_audio_url) {
+        html += `<div style="margin-top:10px">
+          <audio class="audio-player" controls preload="none">
+            <source src="${esc(data.demo_audio_url)}" type="audio/mpeg">
+            您的浏览器不支持音频播放</audio>
+        </div>`;
+      }
+      resultsEl.innerHTML = html;
     } catch (e) {
-      resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
-      resultsArea.classList.add('visible');
+      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
     } finally {
-      setLoading(false);
+      btn.disabled = false;
+      btn.innerHTML = '克隆';
     }
   }
 
-  function renderResults(data, isVariant) {
-    if (isVariant) {
-      let html = '<div class="result-section"><div class="result-label">版本列表</div>';
-      html += `<div class="variants-grid">`;
-      data.variants.forEach((v, i) => {
-        html += `
-          <div class="variant-card">
-            <div class="variant-meta">
-              <span>版本 ${i + 1}</span>
-              ${v.speed != null ? `<span>语速 ${v.speed}</span>` : ''}
-              ${v.emotion ? `<span>情绪 ${v.emotion}</span>` : ''}
-            </div>
-            ${v.audio_asset_id ? audioPlayer(v.audio_asset_id) : '<p style="font-size:0.82rem;color:#a0aec0">无音频</p>'}
-            <div class="action-row">
-              ${v.audio_asset_id ? downloadBtn(v.audio_asset_id) : ''}
-            </div>
-          </div>`;
+  // ============================================================
+  // Design Tab
+  // ============================================================
+  async function handleDesignVoice() {
+    const provider = document.getElementById('designProvider').value;
+    const voiceId = document.getElementById('designVoiceId').value.trim() || null;
+    const prompt = document.getElementById('designPrompt').value.trim();
+    const previewText = document.getElementById('designPreviewText').value.trim();
+    const resultsEl = document.getElementById('designResult');
+    const btn = document.getElementById('designBtn');
+
+    if (!prompt) {
+      resultsEl.innerHTML = `<div class="error-msg">请输入音色描述（prompt）</div>`;
+      return;
+    }
+    if (!previewText) {
+      resultsEl.innerHTML = `<div class="error-msg">请输入试听文本（preview_text）</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>生成中…';
+    resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>生成中…</p>';
+
+    try {
+      const payload = { prompt, preview_text: previewText };
+      if (voiceId) payload.voice_id = voiceId;
+
+      const resp = await fetch(`/api/voice/design/create?provider=${encodeURIComponent(provider)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      html += '</div></div>';
-      resultsArea.innerHTML = html;
-    } else {
-      const job = data;
-      const audio = job.audio_asset;
-      const subtitle = job.subtitle_asset;
-      let html = `
-        <div class="result-section">
-          <div class="result-label">生成结果</div>
-          <span class="${statusClass(job.status)}">${statusLabel(job.status)}</span>
-          ${audio ? audioPlayer(audio.id) : ''}
-          <div class="action-row">${audio ? downloadBtn(audio.id) : ''}</div>
-          ${subtitle && subtitle.timeline && subtitle.timeline.length > 0
-            ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(subtitle.timeline)}`
-            : ''}
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        return;
+      }
+
+      let html = `<div class="success-msg">
+        设计成功：voice_id=<code>${esc(data.voice_id)}</code>，${data.message || ''}
+      </div>`;
+
+      if (data.trial_audio_hex) {
+        // Decode hex to binary and play if possible
+        html += `<div class="hex-player">
+          <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">
+            试听音频（hex原始数据，mock模式下为null）
+          </div>
+          <div style="font-family:monospace;font-size:0.72rem;color:#a0aec0;word-break:break-all;max-height:60px;overflow:hidden">
+            ${esc(data.trial_audio_hex.substring(0, 200))}${data.trial_audio_hex.length > 200 ? '…' : ''}
+          </div>
         </div>`;
-      resultsArea.innerHTML = html;
+      } else if (data.trial_audio_url) {
+        html += `<div style="margin-top:10px">
+          <audio class="audio-player" controls preload="none">
+            <source src="${esc(data.trial_audio_url)}" type="audio/mpeg">
+            您的浏览器不支持音频播放</audio>
+        </div>`;
+      }
+
+      resultsEl.innerHTML = html;
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '生成设计';
     }
   }
 </script>

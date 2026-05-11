@@ -24,13 +24,18 @@ voice_lab/README.md
 P0 后端已达到可运行基线（commit `5b8d731`）。
 P1 T2A HTTP 增强已完成（commit `0e5177a`）。
 P1 VoiceBinding 管理 API 已完成（commit `e7aa95d`）。
+P2 异步 T2A 已完成（commit `924fa0f`）。
+P2 Voice Clone 已完成（commit `9ab6291`）。
+P2 Voice Design 已完成（commit `9ed1e6a`）。
+P2 Voice Delete 已完成（commit `82dce61`）。
+P2 统一测试面板已完成（commit `bb862d7`）。
 
 已验证：
-- pytest 77/77 通过
+- pytest 116/116 通过
 - uvicorn 可正常启动
 - Mock Provider 完整闭环
-- 所有 P0 接口和错误边界验收通过
-- VoiceBinding CRUD + 软删除验收通过
+- 所有 P0+P1+P2 接口和错误边界验收通过
+- 前端 4-Tab 面板（T2A生成 / 音色管理 / 声音克隆 / 声音设计）
 
 ## 已有代码可复用点
 
@@ -183,3 +188,83 @@ VoiceBinding 管理 API 已完成（commit `e7aa95d` feat: expose voice binding 
 - 还没有绑定操作审计日志
 - 还没有 binding 使用统计
 - 还没有物理删除策略，P1 只做软删除
+
+## P2 异步 T2A 已完成
+
+**已实现功能：**
+- `POST /api/voice/render/async` - 提交异步任务，立即返回 job_id
+- `GET /api/voice/render/async/{job_id}/status` - 轮询状态，成功后返回 audio_asset
+- `AsyncRenderService.submit_task` + `query_status` + `_complete_job`
+- `MiniMaxSpeechAdapter.create_async_task` + `query_async_task`
+- `MockSpeechAdapter.create_async_task` + `query_async_task`（返回 success + 静默 wav）
+- 前端异步模式：选中"异步生成"Radio，生成后自动轮询，每3秒一次，最多120次
+
+**pytest -q**：`+6 test_async_render.py` → `116 passed`
+
+## P2 Voice Clone 已完成
+
+**已实现功能：**
+- `POST /api/voice/clone/upload` - multipart 文件上传（purpose=voice_clone/prompt_audio）
+- `POST /api/voice/clone/create` - 执行克隆（file_id / voice_id / prompt_file_id / preview_text 等）
+- `VoiceCloneUploadResponse` / `VoiceCloneRequest` / `VoiceCloneResponse` Schema
+- `MiniMaxSpeechAdapter.upload_voice_file` + `clone_voice`
+- `MockSpeechAdapter.upload_voice_file` + `clone_voice`（返回固定 file_id=99999）
+- 内容安全检测：`input_sensitive.type != 0` 时抛 ProviderError
+
+**pytest -q**：`+6 test_voice_clone.py`
+
+## P2 Voice Design 已完成
+
+**已实现功能：**
+- `POST /api/voice/design/create` - 文字描述生成声音（prompt + preview_text）
+- `VoiceDesignRequest` / `VoiceDesignResponse` Schema
+- `MiniMaxSpeechAdapter.design_voice` - POST `/v1/voice_design`
+- `MockSpeechAdapter.design_voice` - 返回 mock_designed_<id>
+- `VoiceDesignService` - 若有 trial_audio_hex 则转存为音频文件
+
+**pytest -q**：`+4 test_voice_design.py`
+
+## P2 Voice Delete 已完成
+
+**已实现功能：**
+- `POST /api/voice/voices/delete` - 删除克隆/设计音色
+- `VoiceDeleteRequest`（voice_id 必填，voice_type 正则 `^(voice_cloning|voice_generation)$`）
+- `MiniMaxSpeechAdapter.delete_voice` - POST `/v1/delete_voice`
+- `MockSpeechAdapter.delete_voice` - 返回 `{"voice_id": ..., "deleted": True}`
+- `VoiceDeleteService` - voice_type 双重校验，禁止删除 system 音色
+
+**pytest -q**：`+4 test_voice_delete.py`
+
+## P2 统一测试面板已完成
+
+**前端 4-Tab 布局（`app/static/index.html`）：**
+- Tab1: T2A 生成 - 同步/异步/多版本生成（原有逻辑完整保留）
+- Tab2: 音色管理 - 查询音色列表（`refresh=true`）+ 删除音色
+- Tab3: 声音克隆 - 步骤1上传音频 + 步骤2执行克隆，file_id 自动联动
+- Tab4: 声音设计 - prompt + preview_text 生成音色
+
+**关键约束：**
+- 音色查询首次必须 `refresh=true`（缓存为空时返回空列表）
+- 克隆步骤1成功后 file_id 自动填入步骤2表单
+- 所有 Tab 独立 provider 选择器
+
+## P2-E: T2A WebSocket（未实现）
+
+低优先，需额外架构设计（连接管理、流式响应），不在 P2 主体范围内。
+
+## 前端测试面板使用说明
+
+启动：`uvicorn app.main:app --reload`，访问 `http://127.0.0.1:8000/`
+
+| Tab | 接口 | 说明 |
+|-----|------|------|
+| T2A 生成 | `POST /api/voice/render` | 同步生成 |
+| T2A 生成 | `POST /api/voice/render/async` | 异步提交 + 轮询 |
+| T2A 生成 | `POST /api/voice/variants/render` | 多版本生成 |
+| 音色管理 | `GET /api/voice/provider-voices?refresh=true` | 查询音色 |
+| 音色管理 | `POST /api/voice/voices/delete` | 删除音色 |
+| 声音克隆 | `POST /api/voice/clone/upload` | 上传音频 |
+| 声音克隆 | `POST /api/voice/clone/create` | 执行克隆 |
+| 声音设计 | `POST /api/voice/design/create` | 文字生成声音 |
+
+所有功能均支持 `provider=mock`（无需真实 API Key）。

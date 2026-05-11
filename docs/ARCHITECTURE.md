@@ -4,14 +4,20 @@
 
 ```text
 产品应用层
-  旁白试音台 / 音色库 / 情绪 MV / 播客
+  Voice Lab 测试面板（4-Tab）/ 音色库 / 情绪 MV / 播客
 
 对外 API 层
   /api/voice/render
+  /api/voice/render/async
+  /api/voice/render/async/{job_id}/status
   /api/voice/variants/render
   /api/voice/profiles
   /api/voice/assets
   /api/voice/jobs
+  /api/voice/clone/upload
+  /api/voice/clone/create
+  /api/voice/design/create
+  /api/voice/voices/delete
 
 业务调度层
   选择人设 / 选择模型 / 生成计划 / 任务编排
@@ -69,6 +75,10 @@ Provider Adapter 是厂商翻译器。
 1. 把内部 `RenderPlan` 翻译成厂商请求参数。
 2. 把厂商返回结果翻译成内部资产结果。
 3. （Voice Catalog）把厂商音色列表翻译成内部 `ProviderVoice` 列表。
+4. Voice Clone（上传+克隆）
+5. Voice Design（设计声音）
+6. Voice Delete（删除声音）
+7. Async T2A（异步任务创建+查询）
 
 Provider Adapter 禁止：
 
@@ -199,8 +209,8 @@ VoiceType 枚举：
 
 系统级枚举定义在 `app/domain/enums.py`：
 
-- `JobStatus`：pending / running / success / failed
-- `JobType`：sync_render
+- `JobStatus`：pending / running / processing / success / failed
+- `JobType`：sync_render / async_render
 - `BindingStatus`：available / deprecated
 - `Provider`：mock / minimax
 

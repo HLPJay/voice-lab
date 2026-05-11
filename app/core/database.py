@@ -56,6 +56,19 @@ def seed_defaults() -> None:
             created_at=now,
             updated_at=now,
         )
+        mock_binding = VoiceBinding(
+            id="binding_mock_deep_night_programmer",
+            profile_id=profile.id,
+            provider="mock",
+            model="mock-tts",
+            provider_voice_id="mock_voice_default",
+            params_json='{"speed":0.88,"emotion":"neutral"}',
+            priority=1,
+            status=BindingStatus.available,
+            created_at=now,
+            updated_at=now,
+        )
         session.add(profile)
         session.add(binding)
+        session.add(mock_binding)
         session.commit()

@@ -1,4 +1,4 @@
-from app.providers.base import ProviderRenderResult, SpeechProvider
+from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
 from app.utils.audio import estimate_duration_ms, write_silent_wav
@@ -64,3 +64,51 @@ class MockSpeechAdapter(SpeechProvider):
             timeline=timeline,
             metadata={"mock": True, "plan_id": plan.id},
         )
+
+    async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:
+        task_id = new_id("async_task")
+        return AsyncTaskResult(
+            task_id=task_id,
+            provider_task_id=f"mock_provider_{task_id}",
+            status="processing",
+            trace_id="mock_async_trace",
+        )
+
+    async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
+        audio_path = storage_path("audio", f"{new_id('audio_file')}.wav")
+        write_silent_wav(audio_path, duration_ms=2000, sample_rate=16000)
+        return AsyncTaskStatus(
+            task_id=provider_task_id,
+            status="success",
+            file_url=str(audio_path),
+            duration_ms=2000,
+            usage_characters=100,
+            trace_id="mock_async_trace",
+        )
+
+    async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
+        return {
+            "file_id": 99999,
+            "filename": filename,
+            "purpose": purpose,
+            "bytes": len(file_data),
+            "created_at": 1700000000,
+        }
+
+    async def clone_voice(self, request: dict) -> dict:
+        return {
+            "voice_id": request["voice_id"],
+            "demo_audio_url": None,
+            "duration_ms": None,
+            "usage_characters": None,
+            "message": "mock clone success",
+        }
+
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
+        return {
+            "voice_id": voice_id or f"mock_designed_{new_id('voice')}",
+            "trial_audio_hex": None,
+        }
+
+    async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
+        return {"voice_id": provider_voice_id, "deleted": True}
