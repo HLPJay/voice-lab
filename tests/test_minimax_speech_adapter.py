@@ -151,16 +151,33 @@ class TestExtractTimelineFromSubtitleFile:
     adapter = MiniMaxSpeechAdapter()
 
     @pytest.mark.asyncio
+    async def test_subtitle_minimax_real_fields(self):
+        """Real MiniMax field names: time_begin/time_end in milliseconds."""
+        timeline_data = [{"text": "你好", "time_begin": 0, "time_end": 1500, "pronounce_text": "ni hao"}]
+        timeline, metadata = await self.adapter._extract_timeline_from_subtitle_file(
+            timeline_data, 30.0
+        )
+        assert timeline[0]["text"] == "你好"
+        assert timeline[0]["start"] == 0.0
+        assert timeline[0]["end"] == 1.5
+        assert "pronounce_text" not in timeline[0]
+        assert "time_begin" not in timeline[0]
+
+    @pytest.mark.asyncio
     async def test_subtitle_list(self):
+        # start=0, end=1000ms → normalized to start=0.0, end=1.0 (seconds)
         timeline_data = [{"text": "hello", "start": 0, "end": 1000}]
         timeline, metadata = await self.adapter._extract_timeline_from_subtitle_file(
             timeline_data, 30.0
         )
-        assert timeline == timeline_data
+        assert timeline[0]["text"] == "hello"
+        assert timeline[0]["start"] == 0.0
+        assert timeline[0]["end"] == 1.0
         assert metadata == {}
 
     @pytest.mark.asyncio
     async def test_subtitle_url_json_list(self):
+        # start=0, end=1000ms → normalized to start=0.0, end=1.0 (seconds)
         fake_timeline = [{"text": "hello", "start": 0, "end": 1000}]
         fake_content = json.dumps(fake_timeline).encode("utf-8")
 
@@ -169,7 +186,9 @@ class TestExtractTimelineFromSubtitleFile:
             timeline, metadata = await self.adapter._extract_timeline_from_subtitle_file(
                 "https://example.com/subtitles.json", 30.0
             )
-            assert timeline == fake_timeline
+            assert timeline[0]["text"] == "hello"
+            assert timeline[0]["start"] == 0.0
+            assert timeline[0]["end"] == 1.0
             assert metadata.get("subtitle_file_url_downloaded") is True
 
     @pytest.mark.asyncio
@@ -353,7 +372,10 @@ class TestRenderSync:
 
             result = await self.adapter.render_sync(plan)
 
-            assert result.timeline == timeline
+            # Normalized: start/end converted from ms to seconds
+            assert result.timeline[0]["text"] == "inline"
+            assert result.timeline[0]["start"] == 0.0
+            assert result.timeline[0]["end"] == 1.0
 
     @pytest.mark.asyncio
     async def test_invalid_hex_raises_provider_error(self):
@@ -440,3 +462,19 @@ class TestParseRenderResponse:
                 data, "url", {"format": "mp3"}, 30.0
             )
         assert "No valid audio source" in str(exc_info.value) or "audio" in str(exc_info.value).lower()
+
+
+class TestSrtIntegration:
+    """Verify that normalized timeline produces correct SRT output."""
+
+    def test_srt_from_normalized_timeline(self):
+        from app.utils.srt import timeline_to_srt
+        timeline = [
+            {"text": "你好世界", "start": 0.0, "end": 1.5},
+            {"text": "再见", "start": 1.5, "end": 2.5},
+        ]
+        srt = timeline_to_srt(timeline)
+        assert "00:00:00,000 --> 00:00:01,500" in srt
+        assert "00:00:01,500 --> 00:00:02,500" in srt
+        assert "你好世界" in srt
+        assert "再见" in srt

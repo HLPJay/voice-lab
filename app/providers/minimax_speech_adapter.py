@@ -100,6 +100,22 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             )
         return audio_path, fmt
 
+    def _normalize_timeline(self, raw_timeline: list[dict]) -> list[dict]:
+        """Convert MiniMax timeline items to internal standard format (start/end in seconds).
+
+        MiniMax returns time_begin/time_end in milliseconds. The internal standard
+        uses start/end in seconds. Also normalizes field names and drops extra keys.
+        """
+        normalized = []
+        for item in raw_timeline:
+            entry = {
+                "text": item.get("text", ""),
+                "start": item.get("time_begin", item.get("start", 0)) / 1000,
+                "end": item.get("time_end", item.get("end", 0)) / 1000,
+            }
+            normalized.append(entry)
+        return normalized
+
     async def _extract_timeline_from_subtitle_file(
         self,
         subtitle_file: str | list | None,
@@ -126,6 +142,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             except Exception:
                 metadata["subtitle_file_parse_failed"] = True
 
+        timeline = self._normalize_timeline(timeline)
         return timeline, metadata
 
     async def list_voices(self, voice_type: str = "all") -> list[ProviderVoiceRead]:
