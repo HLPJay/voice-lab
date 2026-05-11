@@ -108,3 +108,28 @@ def list_call_logs(
     ]
 
     return CallLogListResponse(logs=logs, total=total, limit=limit, offset=offset)
+
+
+from app.services.stats_service import StatsService
+
+
+@router.get("/stats/summary")
+def get_stats_summary(
+    start: str | None = Query(None, description="开始日期 YYYY-MM-DD"),
+    end: str | None = Query(None, description="结束日期 YYYY-MM-DD"),
+    session: Session = Depends(get_session),
+):
+    service = StatsService()
+    return service.get_summary(session, start, end)
+
+
+@router.get("/stats/daily")
+def get_stats_daily(
+    metric: str = Query("jobs", description="指标名：jobs/characters/errors/api_calls/avg_duration"),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
+    session: Session = Depends(get_session),
+):
+    service = StatsService()
+    data = service.get_daily_trend(session, start, end, metric)
+    return {"metric": metric, "data": data}
