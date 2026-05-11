@@ -1,38 +1,50 @@
+import datetime
 import logging
 import os
 import sys
+import zoneinfo
 from logging.handlers import TimedRotatingFileHandler
 
 from pythonjsonlogger.json import JsonFormatter
 
 from app.core.config import get_settings
+from app.core.context import get_request_id
 
 
 class StructuredJsonFormatter(JsonFormatter):
-    """JSON formatter with custom field mapping."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._rename_fields = {
-            "asctime": "timestamp",
-            "levelname": "level",
-            "name": "logger",
-        }
+    """JSON formatter with custom field mapping for pythonjsonlogger 4.x."""
 
     def add_fields(self, log_data: dict, record: logging.LogRecord, message_dict: dict) -> None:
-        super().add_fields(log_data, record, message_dict)
-        for old_name, new_name in self._rename_fields.items():
-            if old_name in record.__dict__:
-                log_data[new_name] = record.__dict__.pop(old_name)
-        if "request_id" not in log_data:
-            log_data["request_id"] = ""
+        # Pre-inject request_id before anything else
+        if not log_data.get("request_id"):
+            log_data["request_id"] = get_request_id()
+        # Manually set the standard fields with our desired names
+        # (bypassing pythonjsonlogger's required_fields mechanism which would
+        # try record.__dict__.get('level') returning None for all of them)
+        log_data["timestamp"] = datetime.datetime.fromtimestamp(
+            record.created, tz=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        log_data["level"] = record.levelname
+        log_data["logger"] = record.name
+        log_data["message"] = record.getMessage()
+        # Merge any extra fields passed via extra={...}
+        for key, value in record.__dict__.items():
+            if key.startswith("_"):
+                continue
+            if key in (
+                "args", "asctime", "created", "exc_info", "exc_text",
+                "filename", "funcName", "levelname", "levelno", "lineno",
+                "module", "msecs", "message", "msg", "name", "pathname",
+                "process", "processName", "relativeCreated", "stack_info",
+                "thread", "threadName", "request_id",
+            ):
+                continue
+            log_data[key] = value
 
 
 def _build_formatter(fmt: str) -> logging.Formatter | StructuredJsonFormatter:
     if fmt == "json":
-        return StructuredJsonFormatter(
-            "%(timestamp)s %(level)s %(logger)s %(message)s"
-        )
+        return StructuredJsonFormatter()
     return logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 

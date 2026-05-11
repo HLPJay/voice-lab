@@ -17,9 +17,10 @@ def _make_settings(ld, lf="json"):
     return FakeSettings()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def reset_logging():
     """Reset logging handlers before each test so setup_logging starts clean."""
+    import sys
     root = logging.getLogger()
     for h in list(root.handlers):
         root.removeHandler(h)
@@ -28,6 +29,7 @@ def reset_logging():
     for h in list(root.handlers):
         root.removeHandler(h)
     root.setLevel(logging.WARNING)
+    sys.stdout.flush()
 
 
 def test_setup_logging_creates_log_dir(tmp_path, monkeypatch):
