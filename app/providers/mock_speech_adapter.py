@@ -1,4 +1,4 @@
-from app.providers.base import ProviderRenderResult, SpeechProvider
+from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
 from app.utils.audio import estimate_duration_ms, write_silent_wav
@@ -63,4 +63,25 @@ class MockSpeechAdapter(SpeechProvider):
             response_json={"mock": True},
             timeline=timeline,
             metadata={"mock": True, "plan_id": plan.id},
+        )
+
+    async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:
+        task_id = new_id("async_task")
+        return AsyncTaskResult(
+            task_id=task_id,
+            provider_task_id=f"mock_provider_{task_id}",
+            status="processing",
+            trace_id="mock_async_trace",
+        )
+
+    async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
+        audio_path = storage_path("audio", f"{new_id('audio_file')}.wav")
+        write_silent_wav(audio_path, duration_ms=2000, sample_rate=16000)
+        return AsyncTaskStatus(
+            task_id=provider_task_id,
+            status="success",
+            file_url=str(audio_path),
+            duration_ms=2000,
+            usage_characters=100,
+            trace_id="mock_async_trace",
         )

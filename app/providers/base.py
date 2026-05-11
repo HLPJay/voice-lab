@@ -17,6 +17,27 @@ class ProviderRenderResult(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
+class AsyncTaskResult(BaseModel):
+    """Result returned immediately after creating an async T2A task."""
+    task_id: str
+    provider_task_id: str
+    status: str = "processing"
+    trace_id: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class AsyncTaskStatus(BaseModel):
+    """Status result from polling an async T2A task."""
+    task_id: str
+    status: str
+    file_url: str | None = None
+    duration_ms: int | None = None
+    usage_characters: int | None = None
+    trace_id: str | None = None
+    error_message: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
 class SpeechProvider(ABC):
     provider_name: str
 
@@ -33,5 +54,8 @@ class SpeechProvider(ABC):
     async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None):
         raise NotImplementedError
 
-    async def create_async_tts_job(self, plan: RenderPlan):
+    async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:
+        raise NotImplementedError
+
+    async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
         raise NotImplementedError
