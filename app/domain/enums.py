@@ -15,3 +15,8 @@ class JobType(str, Enum):
 class BindingStatus(str, Enum):
     available = "available"
     deprecated = "deprecated"
+
+
+class Provider(str, Enum):
+    mock = "mock"
+    minimax = "minimax"

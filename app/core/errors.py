@@ -28,6 +28,11 @@ class BindingNotFound(VoiceLabError):
     code = "BINDING_NOT_FOUND"
 
 
+class UnsupportedProvider(VoiceLabError):
+    status_code = 400
+    code = "UNSUPPORTED_PROVIDER"
+
+
 class ProviderNotConfigured(VoiceLabError):
     code = "PROVIDER_NOT_CONFIGURED"
 

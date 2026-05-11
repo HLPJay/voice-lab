@@ -3,9 +3,9 @@ import json
 from sqlmodel import Session
 
 from app.core.config import get_settings
-from app.core.errors import BindingNotFound, ProfileNotFound, ProviderError, VoiceLabError
+from app.core.errors import BindingNotFound, ProfileNotFound, ProviderError, UnsupportedProvider, VoiceLabError
 from app.core.time import utc_now_iso
-from app.domain.enums import JobStatus, JobType
+from app.domain.enums import JobStatus, JobType, Provider
 from app.domain.render_plan import RenderPlan, SubtitlePlan
 from app.domain.schemas import (
     AudioAssetResponse,
@@ -32,7 +32,7 @@ class VoiceRenderService:
             return MockSpeechAdapter()
         if provider == "minimax":
             return MiniMaxSpeechAdapter()
-        raise BindingNotFound(f"Unsupported provider: {provider}")
+        raise UnsupportedProvider(f"Unsupported provider: {provider}", provider)
 
     async def render_voice(
         self,
@@ -42,6 +42,8 @@ class VoiceRenderService:
     ) -> VoiceRenderResponse:
         settings = get_settings()
         provider = request.provider or settings.voice_provider
+        if provider not in Provider.__members__:
+            raise UnsupportedProvider(f"Unsupported provider: {provider}", provider)
         profile = get_profile(session, request.profile_id)
         if not profile:
             raise ProfileNotFound("Voice profile not found", request.profile_id)

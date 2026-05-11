@@ -153,6 +153,18 @@ def _make_app_with_session(engine):
     return app
 
 
+def test_render_unsupported_provider(test_app):
+    """Unsupported provider returns UNSUPPORTED_PROVIDER, not BINDING_NOT_FOUND."""
+    client = TestClient(test_app)
+    resp = client.post("/api/voice/render", json={
+        "text": "测试",
+        "profile_id": "deep_night_programmer",
+        "provider": "openai",
+    })
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "UNSUPPORTED_PROVIDER"
+
+
 def test_render_all_bindings_deprecated(temp_db):
     """T1: All bindings deprecated -> BINDING_NOT_FOUND."""
     engine, _ = temp_db
