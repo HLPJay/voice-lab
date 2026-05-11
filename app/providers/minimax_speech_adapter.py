@@ -7,6 +7,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.errors import ProviderError, ProviderNotConfigured
+from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
 from app.providers.base import ProviderRenderResult, SpeechProvider
@@ -49,7 +50,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                         description=self._description_to_text(item.get("description")),
                         language=item.get("language"),
                         gender=item.get("gender"),
-                        status="available",
+                        status=ProviderVoiceStatus.available,
                         provider_created_time=item.get("created_time"),
                         metadata={"raw": item},
                     )

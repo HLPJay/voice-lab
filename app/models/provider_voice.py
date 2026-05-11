@@ -1,5 +1,7 @@
 from sqlmodel import Field, SQLModel, UniqueConstraint
 
+from app.domain.enums import ProviderVoiceStatus
+
 
 class ProviderVoice(SQLModel, table=True):
     __tablename__ = "provider_voices"
@@ -13,7 +15,7 @@ class ProviderVoice(SQLModel, table=True):
     description: str | None = None
     language: str | None = None
     gender: str | None = None
-    status: str = Field(default="available", index=True)
+    status: str = Field(default=ProviderVoiceStatus.available, index=True)
     provider_created_time: str | None = None
     metadata_json: str = "{}"
     synced_at: str | None = None

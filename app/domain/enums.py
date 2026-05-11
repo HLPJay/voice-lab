@@ -20,3 +20,8 @@ class BindingStatus(str, Enum):
 class Provider(str, Enum):
     mock = "mock"
     minimax = "minimax"
+
+
+class ProviderVoiceStatus(str, Enum):
+    available = "available"
+    deprecated = "deprecated"

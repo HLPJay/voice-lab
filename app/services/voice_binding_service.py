@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session
 
 from app.core.errors import BindingNotFound, ProfileNotFound, ValidationError
+from app.domain.enums import ProviderVoiceStatus
 from app.domain.schemas import VoiceBindingCreate, VoiceBindingRead, VoiceBindingUpdate
 from app.models.voice_binding import VoiceBinding
 from app.repositories.provider_voice_repo import get_provider_voice
@@ -60,7 +61,7 @@ class VoiceBindingService:
             raise ProfileNotFound("Voice profile not found", profile_id)
 
         pv = get_provider_voice(session, provider=request.provider, provider_voice_id=request.provider_voice_id)
-        if not pv or pv.status != "available":
+        if not pv or pv.status != ProviderVoiceStatus.available:
             raise ValidationError(
                 "Provider voice not found or not available",
                 f"provider={request.provider}, provider_voice_id={request.provider_voice_id}",
@@ -102,7 +103,7 @@ class VoiceBindingService:
 
         if request.provider_voice_id is not None:
             pv = get_provider_voice(session, provider=binding.provider, provider_voice_id=request.provider_voice_id)
-            if not pv or pv.status != "available":
+            if not pv or pv.status != ProviderVoiceStatus.available:
                 raise ValidationError(
                     "Provider voice not found or not available",
                     f"provider={binding.provider}, provider_voice_id={request.provider_voice_id}",

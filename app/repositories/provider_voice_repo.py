@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session, select
 
 from app.core.time import utc_now_iso
+from app.domain.enums import ProviderVoiceStatus
 from app.models.provider_voice import ProviderVoice
 from app.utils.id_generator import new_id
 
@@ -18,7 +19,7 @@ def list_provider_voices(
     if voice_type != "all":
         stmt = stmt.where(ProviderVoice.voice_type == voice_type)
     if not include_deprecated:
-        stmt = stmt.where(ProviderVoice.status == "available")
+        stmt = stmt.where(ProviderVoice.status == ProviderVoiceStatus.available)
     stmt = stmt.order_by(ProviderVoice.voice_type, ProviderVoice.name)
     return list(session.exec(stmt).all())
 
@@ -42,7 +43,7 @@ def upsert_provider_voice(
     description: str | None = None,
     language: str | None = None,
     gender: str | None = None,
-    status: str = "available",
+    status: str = ProviderVoiceStatus.available,
     provider_created_time: str | None = None,
     metadata: dict | None = None,
     synced_at: str | None = None,
@@ -88,7 +89,7 @@ def mark_missing_provider_voices_deprecated(
     for item in existing:
         if item.provider_voice_id in seen_provider_voice_ids:
             continue
-        item.status = "deprecated"
+        item.status = ProviderVoiceStatus.deprecated
         item.synced_at = mark_time
         item.updated_at = now
         session.add(item)
