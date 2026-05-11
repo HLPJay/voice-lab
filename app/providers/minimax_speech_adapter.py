@@ -10,7 +10,7 @@ from app.core.errors import ProviderError, ProviderNotConfigured
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
-from app.providers.base import ProviderRenderResult, SpeechProvider
+from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -229,4 +229,89 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             response_json=body,
             timeline=timeline,
             metadata=metadata,
+        )
+
+    async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        voice_setting = {"voice_id": plan.provider_voice_id, **plan.voice_params}
+        if not voice_setting.get("emotion"):
+            voice_setting.pop("emotion", None)
+        payload = {
+            "model": plan.model,
+            "text": plan.processed_text,
+            "stream": False,
+            "language_boost": plan.language_boost,
+            "output_format": plan.output_format,
+            "voice_setting": voice_setting,
+            "audio_setting": plan.audio_params,
+            "subtitle_enable": plan.subtitle.enabled,
+            "subtitle_type": plan.subtitle.type,
+        }
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_async_t2a_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax async task creation failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax async task creation failed", base_resp.get("status_msg"))
+
+        task_id = body.get("task_id")
+        if not task_id:
+            raise ProviderError("MiniMax async task creation failed", "No task_id in response")
+
+        return AsyncTaskResult(
+            task_id=task_id,
+            provider_task_id=task_id,
+            status="processing",
+            trace_id=body.get("trace_id"),
+            metadata={"extra_info": body.get("extra_info") or {}},
+        )
+
+    async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_async_query_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.get(
+                    url,
+                    params={"task_id": provider_task_id},
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax async task query failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax async task query failed", base_resp.get("status_msg"))
+
+        status = body.get("status", "processing")
+        file_url = body.get("file_url") or body.get("audio_url")
+        extra = body.get("extra_info") or {}
+
+        return AsyncTaskStatus(
+            task_id=provider_task_id,
+            status=status,
+            file_url=file_url,
+            duration_ms=extra.get("audio_length") or extra.get("duration_ms"),
+            usage_characters=extra.get("usage_characters"),
+            trace_id=body.get("trace_id"),
+            error_message=base_resp.get("status_msg") if status == "failed" else None,
+            metadata={"raw_response": body},
         )
