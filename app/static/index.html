@@ -659,6 +659,16 @@
 
     <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
     <div class="results-area" id="resultsArea"></div>
+
+    <div class="card" style="margin-top:16px" id="historyCard">
+      <div class="card-title" style="cursor:pointer" onclick="toggleHistory()" id="historyToggle">
+        历史记录 ▾
+      </div>
+      <div id="historyArea" style="display:none">
+        <div id="historyList"></div>
+        <button class="btn-sm" id="loadMoreHistory" onclick="loadMoreHistory()" style="display:none;margin-top:8px">加载更多</button>
+      </div>
+    </div>
   </div>
 
   <!-- ======================== TAB: VOICES ======================== -->
@@ -969,6 +979,74 @@
 
   let pollTimer = null;
 
+  // ============================================================
+  // History
+  // ============================================================
+  let _historyOffset = 0;
+  let _historyTotal = 0;
+  let _historyLoading = false;
+
+  function toggleHistory() {
+    const area = document.getElementById('historyArea');
+    const toggle = document.getElementById('historyToggle');
+    const isOpen = area.style.display !== 'none';
+    area.style.display = isOpen ? 'none' : '';
+    toggle.textContent = isOpen ? '历史记录 ▾' : '历史记录 ▴';
+    if (!isOpen && !_historyOffset) {
+      loadHistory(0);
+    }
+  }
+
+  async function loadHistory(offset = 0) {
+    if (_historyLoading) return;
+    const listEl = document.getElementById('historyList');
+    const moreBtn = document.getElementById('loadMoreHistory');
+    if (offset === 0) {
+      _historyOffset = 0;
+      _historyTotal = 0;
+      listEl.innerHTML = '<div style="font-size:0.82rem;color:#718096">加载中…</div>';
+    }
+    _historyLoading = true;
+    try {
+      const resp = await fetch(`/api/voice/jobs?limit=10&offset=${offset}`);
+      const data = await resp.json();
+      if (!resp.ok) return;
+      _historyTotal = data.total || 0;
+      const jobs = data.jobs || [];
+
+      if (offset === 0) listEl.innerHTML = '';
+      if (jobs.length === 0 && offset === 0) {
+        listEl.innerHTML = '<div style="font-size:0.82rem;color:#718096">暂无历史记录</div>';
+        moreBtn.style.display = 'none';
+        return;
+      }
+
+      jobs.forEach(job => {
+        const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
+        const typeLabel = typeMap[job.job_type] || job.job_type;
+        const textSnippet = (job.input_text || '').slice(0, 30) + ((job.input_text || '').length > 30 ? '…' : '');
+        const time = job.created_at ? job.created_at.replace('T', ' ').slice(0, 19) : '';
+        listEl.innerHTML += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:0.82rem">
+          <span style="color:#718096;min-width:140px">${esc(time)}</span>
+          <span class="tag" style="min-width:50px">${esc(typeLabel)}</span>
+          <span class="job-status status-${job.status}">${esc(job.status)}</span>
+          <span style="flex:1;color:#4a5568" title="${esc(job.input_text || '')}">${esc(textSnippet)}</span>
+          <span style="color:#a0aec0">${esc(job.provider || '')}</span>
+        </div>`;
+      });
+
+      _historyOffset = offset + jobs.length;
+      moreBtn.style.display = _historyOffset < _historyTotal ? '' : 'none';
+    } catch (e) {
+      if (offset === 0) listEl.innerHTML = '<div style="font-size:0.82rem;color:#c53030">加载失败</div>';
+    } finally {
+      _historyLoading = false;
+    }
+  }
+
+  // Load history on page init
+  loadHistory(0);
+
   async function handleGenerate() {
     const text = textInput.value.trim();
     if (!text) { alert('请输入文案'); return; }
@@ -1038,6 +1116,7 @@
         renderResults(data, isVariant);
         resultsArea.classList.add('visible');
         setLoading(false);
+        loadHistory(0);
       }
     } catch (e) {
       resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
@@ -1108,6 +1187,7 @@
             case "completed":
                 renderStreamResult(msg, audioChunks);
                 setLoading(false);
+                loadHistory(0);
                 ws.close();
                 break;
             case "error":
@@ -1198,6 +1278,7 @@
           clearInterval(pollTimer); pollTimer = null;
           renderAsyncResult(data);
           setLoading(false);
+          loadHistory(0);
           return;
         }
 
