@@ -597,6 +597,7 @@
             <option value="minimax">minimax（正式）</option>
           </select>
         </div>
+        <div id="bindingStatus" style="margin-top:4px;min-height:20px"></div>
         <div class="form-group">
           <label for="outputFormat">音频格式</label>
           <select id="outputFormat">
@@ -777,11 +778,11 @@
         </div>
         <div class="form-group">
           <label for="clonePreviewText">preview_text（试听文本）</label>
-          <input type="text" id="clonePreviewText" placeholder="试听用短文本">
+          <input type="text" id="clonePreviewText" value="你好，这是一段声音克隆的试听文本，用于验证克隆效果。" placeholder="试听用短文本">
         </div>
         <div class="form-group">
           <label for="cloneModel">model（可选）</label>
-          <input type="text" id="cloneModel" placeholder="如 speech-02-hd">
+          <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-02-hd">
         </div>
         <div class="form-group full-width">
           <div class="checkbox-row">
@@ -821,7 +822,7 @@
         </div>
         <div class="form-group full-width">
           <label for="designPreviewText">preview_text（试听文本，500字以内）</label>
-          <textarea id="designPreviewText" placeholder="输入试听文本，建议20-100字" style="min-height:80px" maxlength="500"></textarea>
+          <textarea id="designPreviewText" style="min-height:80px" maxlength="500">你好，这是一段声音设计的试听文本。</textarea>
         </div>
       </div>
       <button class="btn-primary" id="designBtn" onclick="handleDesignVoice()">生成设计</button>
@@ -831,6 +832,43 @@
 
   <!-- ======================== TAB: BINDINGS ======================== -->
   <div class="tab-content" id="tab-bindings">
+    <div class="card">
+      <div class="card-title">创建人设</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="newProfileId">人设 ID（英文标识）</label>
+          <input type="text" id="newProfileId" placeholder="如 narrator_female">
+        </div>
+        <div class="form-group">
+          <label for="newProfileName">人设名称</label>
+          <input type="text" id="newProfileName" placeholder="如 女性旁白">
+        </div>
+        <div class="form-group full-width">
+          <label for="newProfileDesc">描述（可选）</label>
+          <input type="text" id="newProfileDesc" placeholder="温柔知性的女性旁白音色">
+        </div>
+        <div class="form-group">
+          <label for="newProfileGender">性别风格（可选）</label>
+          <select id="newProfileGender">
+            <option value="">不指定</option>
+            <option value="male">male</option>
+            <option value="female">female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="newProfileAge">年龄风格（可选）</label>
+          <select id="newProfileAge">
+            <option value="">不指定</option>
+            <option value="young">young</option>
+            <option value="middle_aged">middle_aged</option>
+            <option value="elderly">elderly</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="handleCreateProfile()">创建人设</button>
+      <div id="createProfileResult"></div>
+    </div>
+
     <div class="card">
       <div class="card-title">声音绑定列表</div>
       <div class="config-grid">
@@ -863,11 +901,20 @@
         </div>
         <div class="form-group">
           <label for="newBindingModel">Model</label>
-          <input type="text" id="newBindingModel" value="speech-2.8-hd" placeholder="speech-2.8-hd">
+          <select id="newBindingModel" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px">
+            <option value="speech-2.8-hd" selected>speech-2.8-hd（高清）</option>
+            <option value="speech-2.8-turbo">speech-2.8-turbo（快速）</option>
+            <option value="speech-2.6-hd">speech-2.6-hd（低延迟高清）</option>
+            <option value="speech-2.6-turbo">speech-2.6-turbo（低延迟快速）</option>
+            <option value="speech-02-hd">speech-02-hd（经典高清）</option>
+            <option value="speech-02-turbo">speech-02-turbo（经典快速）</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="newBindingVoiceId">Provider Voice ID</label>
-          <input type="text" id="newBindingVoiceId" placeholder="如 Wise_Woman">
+          <select id="newBindingVoiceId" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px">
+            <option value="">请先选择 Provider</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="newBindingPriority">优先级</label>
@@ -1055,9 +1102,111 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      const tab = btn.dataset.tab;
+      document.getElementById('tab-' + tab).classList.add('active');
+      // Tab switch callbacks for data refresh
+      if (tab === 'bindings') {
+        loadProfiles(true).then(() => {
+          populateProfileSelect(document.getElementById('bindingProfileSelect'));
+          populateProfileSelect(document.getElementById('newBindingProfile'));
+        });
+        const provider = document.getElementById('newBindingProvider').value;
+        if (provider) refreshBindingVoiceSelect(provider);
+      }
+      if (tab === 'tts') {
+        loadProfiles(true).then(() => {
+          populateProfileSelect(profileSelect);
+          checkBindingStatus();
+        });
+      }
+      if (tab === 'batch') {
+        loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
+      }
     });
   });
+
+  // ============================================================
+  // Global data cache
+  // ============================================================
+  let _cachedProfiles = null;
+  let _cachedVoices = {};
+
+  async function loadProfiles(forceRefresh = false) {
+    if (_cachedProfiles && !forceRefresh) return _cachedProfiles;
+    const res = await fetch('/api/voice/profiles');
+    _cachedProfiles = await res.json();
+    return _cachedProfiles;
+  }
+
+  async function loadVoices(provider, forceRefresh = false) {
+    if (!provider) return [];
+    if (_cachedVoices[provider] && !forceRefresh) return _cachedVoices[provider];
+    const res = await fetch(`/api/voice/provider-voices?provider=${encodeURIComponent(provider)}`);
+    const data = await res.json();
+    _cachedVoices[provider] = data.voices || data || [];
+    return _cachedVoices[provider];
+  }
+
+  function populateProfileSelect(selectEl, selectedId = '') {
+    selectEl.innerHTML = '';
+    const profiles = _cachedProfiles;
+    if (!profiles || profiles.length === 0) {
+      selectEl.innerHTML = '<option value="">无可用人设</option>';
+      return;
+    }
+    profiles.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      if (p.id === selectedId) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  async function populateVoiceSelect(selectEl, provider, selectedVoiceId = '') {
+    selectEl.innerHTML = '<option value="">加载音色中…</option>';
+    try {
+      const voices = await loadVoices(provider);
+      selectEl.innerHTML = '<option value="">选择音色</option>';
+      voices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.provider_voice_id;
+        opt.textContent = `${v.name || v.provider_voice_id} (${v.voice_type || ''})`;
+        if (v.provider_voice_id === selectedVoiceId) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    } catch (e) {
+      selectEl.innerHTML = '<option value="">加载失败</option>';
+    }
+  }
+
+  // ============================================================
+  // Unified bindVoice function (used across multiple call sites)
+  // ============================================================
+  async function bindVoiceToProfile(voiceId, provider, profileId, model = 'speech-2.8-hd') {
+    const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: provider,
+        model: model,
+        provider_voice_id: voiceId,
+        params: {},
+        priority: 1,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || JSON.stringify(data));
+    return data;
+  }
+
+  // ============================================================
+  // Hide mock options unless ?dev=1
+  // ============================================================
+  const showMock = new URLSearchParams(location.search).has('dev');
+  if (!showMock) {
+    document.querySelectorAll('select option[value="mock"]').forEach(opt => opt.remove());
+  }
 
   // Event delegation for dynamic bind-voice buttons (avoids XSS from inline onclick)
   document.addEventListener('click', e => {
@@ -1093,39 +1242,19 @@
     document.getElementById('subtitleRow').style.display = mode === 'stream' ? 'none' : '';
   }));
 
-  (async () => {
-    try {
-      const res = await fetch('/api/voice/profiles');
-      const profiles = await res.json();
-      profileSelect.innerHTML = '';
-      if (!profiles || profiles.length === 0) {
-        profileSelect.innerHTML = '<option value="">无可用人设</option>';
-        return;
-      }
-      profiles.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name;
-        profileSelect.appendChild(opt);
-      });
+  // Load profiles into cache and populate all profile selects
+  loadProfiles().then(profiles => {
+    populateProfileSelect(profileSelect);
+    populateProfileSelect(document.getElementById('bindingProfileSelect'));
+    populateProfileSelect(document.getElementById('newBindingProfile'));
+    populateProfileSelect(document.getElementById('batchProfile'));
+  }).catch(() => {
+    profileSelect.innerHTML = '<option value="">加载失败</option>';
+  });
 
-      // Also populate binding tab selects
-      const bindingSelects = ['bindingProfileSelect', 'newBindingProfile'];
-      bindingSelects.forEach(selectId => {
-        const sel = document.getElementById(selectId);
-        if (!sel) return;
-        sel.innerHTML = '';
-        profiles.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          sel.appendChild(opt);
-        });
-      });
-    } catch (e) {
-      profileSelect.innerHTML = '<option value="">加载失败</option>';
-    }
-  })();
+  // T2A Tab: also load binding status when provider changes
+  providerSelect.addEventListener('change', checkBindingStatus);
+  profileSelect.addEventListener('change', checkBindingStatus);
 
   function setLoading(on) {
     generateBtn.disabled = on;
@@ -1588,6 +1717,69 @@
   }
 
   // ============================================================
+  // TTS Tab: binding status check
+  // ============================================================
+  async function checkBindingStatus() {
+    const profileId = profileSelect.value;
+    const provider = providerSelect.value;
+    const statusEl = document.getElementById('bindingStatus');
+    if (!statusEl) return;
+    if (!profileId || !provider) {
+      statusEl.innerHTML = '';
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`);
+      const bindings = await resp.json();
+      const matched = (bindings || []).filter(b => b.provider === provider && b.status === 'available');
+      if (matched.length > 0) {
+        const b = matched[0];
+        statusEl.innerHTML = `<span style="font-size:0.78rem;color:#2f855a">✓ 已绑定: ${esc(b.provider_voice_id)} (${esc(b.model)})</span>`;
+      } else {
+        statusEl.innerHTML = `<span style="font-size:0.78rem;color:#e53e3e">✗ ${esc(provider)} 下无可用绑定，请到「绑定管理」创建</span>`;
+      }
+    } catch (e) {
+      statusEl.innerHTML = '';
+    }
+  }
+
+  // ============================================================
+  // Bindings Tab: voice select refresh on provider change
+  // ============================================================
+  async function refreshBindingVoiceSelect(provider) {
+    const voiceSel = document.getElementById('newBindingVoiceId');
+    if (!voiceSel) return;
+    await populateVoiceSelect(voiceSel, provider);
+  }
+
+  document.getElementById('newBindingProvider').addEventListener('change', (e) => {
+    delete _cachedVoices[e.target.value];
+    refreshBindingVoiceSelect(e.target.value);
+  });
+
+  // Initialize voice select for binding creation with current provider
+  const initBindingProvider = document.getElementById('newBindingProvider').value;
+  if (initBindingProvider) refreshBindingVoiceSelect(initBindingProvider);
+
+  // ============================================================
+  // Clone Tab: default values
+  // ============================================================
+  const cloneModelInput = document.getElementById('cloneModel');
+  const clonePreviewTextInput = document.getElementById('clonePreviewText');
+  if (cloneModelInput && !cloneModelInput.value) cloneModelInput.value = 'speech-2.8-hd';
+  if (clonePreviewTextInput && !clonePreviewTextInput.value) {
+    clonePreviewTextInput.value = '你好，这是一段声音克隆的试听文本，用于验证克隆效果。';
+  }
+
+  // ============================================================
+  // Design Tab: default values
+  // ============================================================
+  const designPreviewTextInput = document.getElementById('designPreviewText');
+  if (designPreviewTextInput && !designPreviewTextInput.value) {
+    designPreviewTextInput.value = '你好，这是一段声音设计的试听文本。';
+  }
+
+  // ============================================================
   // Voices Tab
   // ============================================================
   async function handleListVoices() {
@@ -1615,6 +1807,9 @@
         return;
       }
 
+      // Load binding info for all profiles
+      const voiceBindMap = await loadAllBindings();
+
       const typeTag = t => {
         if (t === 'system') return '<span class="tag tag-system">系统</span>';
         if (t === 'voice_cloning') return '<span class="tag tag-clone">克隆</span>';
@@ -1623,13 +1818,18 @@
       };
 
       let html = `<table class="voice-table">
-        <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>操作</th></tr></thead><tbody>`;
+        <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>绑定状态</th><th>操作</th></tr></thead><tbody>`;
       voices.slice(0, 50).forEach(v => {
+        const boundProfiles = voiceBindMap[v.provider_voice_id];
+        const bindStatusHtml = boundProfiles && boundProfiles.length > 0
+          ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`
+          : `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
         html += `<tr>
           <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
           <td>${esc(v.name || '-')}</td>
           <td>${typeTag(v.voice_type)}</td>
           <td>${esc(v.language || '-')}</td>
+          <td>${bindStatusHtml}</td>
           <td><button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}">绑定到人设</button></td>
         </tr>`;
       });
@@ -1640,6 +1840,7 @@
       resultsEl.innerHTML = html;
       // Store for filtering
       window._loadedVoices = voices;
+      window._voiceBindMap = voiceBindMap;
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
     } finally {
@@ -1655,7 +1856,7 @@
     const resultsEl = document.getElementById('voiceListResults');
 
     if (!keyword) {
-      renderVoiceTable(voices.slice(0, 50), provider, voices.length);
+      renderVoiceTable(voices.slice(0, 50), provider, voices.length, window._voiceBindMap || {});
       return;
     }
 
@@ -1665,10 +1866,10 @@
       const desc = (v.description || '').toLowerCase();
       return name.includes(keyword) || voiceId.includes(keyword) || desc.includes(keyword);
     });
-    renderVoiceTable(filtered, provider, voices.length);
+    renderVoiceTable(filtered, provider, voices.length, window._voiceBindMap || {});
   }
 
-  function renderVoiceTable(voices, provider, total) {
+  function renderVoiceTable(voices, provider, total, voiceBindMap = {}) {
     const resultsEl = document.getElementById('voiceListResults');
     const typeTag = t => {
       if (t === 'system') return '<span class="tag tag-system">系统</span>';
@@ -1683,13 +1884,18 @@
     }
 
     let html = `<table class="voice-table">
-      <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>操作</th></tr></thead><tbody>`;
+      <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>绑定状态</th><th>操作</th></tr></thead><tbody>`;
     voices.forEach(v => {
+      const boundProfiles = voiceBindMap[v.provider_voice_id];
+      const bindStatusHtml = boundProfiles && boundProfiles.length > 0
+        ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`
+        : `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
       html += `<tr>
         <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
         <td>${esc(v.name || '-')}</td>
         <td>${typeTag(v.voice_type)}</td>
         <td>${esc(v.language || '-')}</td>
+        <td>${bindStatusHtml}</td>
         <td><button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}">绑定到人设</button></td>
       </tr>`;
     });
@@ -1701,30 +1907,70 @@
   }
 
   async function quickBindVoice(voiceId, voiceName, provider) {
-    const profileId = prompt('输入要绑定的 profile_id', 'deep_night_programmer');
-    if (!profileId) return;
+    const existingPanel = document.getElementById('quickBindPanel');
+    if (existingPanel) existingPanel.remove();
 
-    try {
-      const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: provider,
-          model: 'speech-2.8-hd',
-          provider_voice_id: voiceId,
-          params: {},
-          priority: 1,
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        alert('绑定失败：' + (data.detail || JSON.stringify(data)));
-        return;
-      }
-      alert('绑定成功！\n音色：' + voiceName + '\n人设：' + profileId);
-    } catch (e) {
-      alert('绑定失败：' + e.message);
+    const profiles = await loadProfiles();
+    if (!profiles || profiles.length === 0) {
+      alert('没有可用的人设，请先在绑定管理中创建人设');
+      return;
     }
+
+    const panel = document.createElement('div');
+    panel.id = 'quickBindPanel';
+    panel.style.cssText = 'padding:12px;background:#f7fafc;border-radius:8px;margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    panel.innerHTML = `
+      <span style="font-size:0.82rem">将 <code>${esc(voiceId)}</code> 绑定到：</span>
+      <select id="quickBindProfileSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px"></select>
+      <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
+        <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+        <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+        <option value="speech-2.6-hd">speech-2.6-hd</option>
+        <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+      </select>
+      <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
+      <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>
+      <div id="quickBindMsg" style="width:100%;font-size:0.82rem"></div>
+    `;
+
+    document.getElementById('voiceListResults').appendChild(panel);
+    populateProfileSelect(document.getElementById('quickBindProfileSel'));
+
+    document.getElementById('quickBindCancel').onclick = () => panel.remove();
+    document.getElementById('quickBindConfirm').onclick = async () => {
+      const profileId = document.getElementById('quickBindProfileSel').value;
+      const model = document.getElementById('quickBindModelSel').value;
+      if (!profileId) return;
+      try {
+        await bindVoiceToProfile(voiceId, provider, profileId, model);
+        document.getElementById('quickBindMsg').innerHTML =
+          `<span style="color:#2f855a">绑定成功: ${esc(voiceName)} → ${esc(profileId)}</span>`;
+      } catch (e) {
+        document.getElementById('quickBindMsg').innerHTML =
+          `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
+      }
+    };
+  }
+
+  async function loadAllBindings() {
+    const profiles = await loadProfiles();
+    if (!profiles || profiles.length === 0) return {};
+    const voiceBindMap = {};
+    for (const p of profiles) {
+      try {
+        const resp = await fetch(`/api/voice/profiles/${p.id}/bindings`);
+        const bindings = await resp.json();
+        if (Array.isArray(bindings)) {
+          bindings.forEach(b => {
+            if (b.status === 'available') {
+              if (!voiceBindMap[b.provider_voice_id]) voiceBindMap[b.provider_voice_id] = [];
+              voiceBindMap[b.provider_voice_id].push(p.name);
+            }
+          });
+        }
+      } catch (e) {}
+    }
+    return voiceBindMap;
   }
 
   async function handleDeleteVoice() {
@@ -1753,8 +1999,14 @@
         return;
       }
 
+      // Clear voice cache for this provider so next query reflects deletion
+      delete _cachedVoices[provider];
+
       resultsEl.innerHTML = `<div class="success-msg">
         删除成功：voice_id=<code>${esc(data.voice_id)}</code>
+      </div>
+      <div style="font-size:0.82rem;color:#ed8936;margin-top:8px">
+        注意：如果该音色已绑定到人设，请到「绑定管理」Tab 检查并清理失效绑定。
       </div>`;
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
@@ -1871,7 +2123,90 @@
             您的浏览器不支持音频播放</audio>
         </div>`;
       }
+
+      // Quick bind panel
+      html += `<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="cloneBindProfile" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:120px"></select>
+          <select id="cloneBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+            <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+            <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+            <option value="speech-2.6-hd">speech-2.6-hd</option>
+            <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          </select>
+          <button class="btn-primary" id="cloneBindBtn" style="margin:0;white-space:nowrap">绑定</button>
+        </div>
+        <div id="cloneBindResult" style="margin-top:6px;font-size:0.82rem"></div>
+      </div>`;
+
+      // Quick preview block
+      html += `<div style="margin-top:12px;padding:12px;background:#f0fff4;border-radius:8px">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速试听</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="cloneQuickText" placeholder="输入试听文本" value="你好，这是一段测试语音。"
+            style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem">
+          <button class="btn-primary" id="cloneQuickBtn" style="margin:0;white-space:nowrap">试听</button>
+        </div>
+        <div id="cloneQuickResult" style="margin-top:8px"></div>
+      </div>`;
+
       resultsEl.innerHTML = html;
+
+      setTimeout(() => {
+        const sel = document.getElementById('cloneBindProfile');
+        if (sel) populateProfileSelect(sel);
+        const btn = document.getElementById('cloneBindBtn');
+        if (btn) {
+          btn.onclick = async () => {
+            const profileId = document.getElementById('cloneBindProfile').value;
+            const model = document.getElementById('cloneBindModel').value;
+            if (!profileId) { alert('请选择人设'); return; }
+            const resultDiv = document.getElementById('cloneBindResult');
+            try {
+              await bindVoiceToProfile(data.voice_id, provider, profileId, model);
+              resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+            } catch (e) {
+              resultDiv.innerHTML = `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
+            }
+          };
+        }
+        const quickBtn = document.getElementById('cloneQuickBtn');
+        if (quickBtn) {
+          quickBtn.onclick = async () => {
+            const text = document.getElementById('cloneQuickText').value.trim();
+            if (!text) return;
+            const resultDiv = document.getElementById('cloneQuickResult');
+            const profileId = document.getElementById('cloneBindProfile').value;
+            if (!profileId) {
+              resultDiv.innerHTML = '<span style="color:#ed8936;font-size:0.82rem">请先在上方绑定到人设后再试听</span>';
+              return;
+            }
+            resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
+            try {
+              const resp = await fetch('/api/voice/render', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, profile_id: profileId, provider }),
+              });
+              const rd = await resp.json();
+              if (!resp.ok) {
+                resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">试听失败: ${esc(rd.error?.message || JSON.stringify(rd))}</span>`;
+                return;
+              }
+              if (rd.audio_asset && rd.audio_asset.url) {
+                resultDiv.innerHTML = `<audio class="audio-player" controls autoplay>
+                  <source src="${esc(rd.audio_asset.url)}" type="audio/mpeg">
+                </audio>`;
+              } else {
+                resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';
+              }
+            } catch (e) {
+              resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">网络错误: ${esc(e.message)}</span>`;
+            }
+          };
+        }
+      }, 0);
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
     } finally {
@@ -1925,7 +2260,6 @@
       </div>`;
 
       if (data.trial_audio_hex) {
-        // Decode hex to binary and play if possible
         html += `<div class="hex-player">
           <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">
             试听音频（hex原始数据，mock模式下为null）
@@ -1942,7 +2276,89 @@
         </div>`;
       }
 
+      // Quick bind panel
+      html += `<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="designBindProfile" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:120px"></select>
+          <select id="designBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+            <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+            <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+            <option value="speech-2.6-hd">speech-2.6-hd</option>
+            <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          </select>
+          <button class="btn-primary" id="designBindBtn" style="margin:0;white-space:nowrap">绑定</button>
+        </div>
+        <div id="designBindResult" style="margin-top:6px;font-size:0.82rem"></div>
+      </div>`;
+
+      // Quick preview block
+      html += `<div style="margin-top:12px;padding:12px;background:#f0fff4;border-radius:8px">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速试听</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="designQuickText" placeholder="输入试听文本" value="你好，这是一段测试语音。"
+            style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem">
+          <button class="btn-primary" id="designQuickBtn" style="margin:0;white-space:nowrap">试听</button>
+        </div>
+        <div id="designQuickResult" style="margin-top:8px"></div>
+      </div>`;
+
       resultsEl.innerHTML = html;
+
+      setTimeout(() => {
+        const sel = document.getElementById('designBindProfile');
+        if (sel) populateProfileSelect(sel);
+        const btn = document.getElementById('designBindBtn');
+        if (btn) {
+          btn.onclick = async () => {
+            const profileId = document.getElementById('designBindProfile').value;
+            const model = document.getElementById('designBindModel').value;
+            if (!profileId) { alert('请选择人设'); return; }
+            const resultDiv = document.getElementById('designBindResult');
+            try {
+              await bindVoiceToProfile(data.voice_id, provider, profileId, model);
+              resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+            } catch (e) {
+              resultDiv.innerHTML = `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
+            }
+          };
+        }
+        const quickBtn = document.getElementById('designQuickBtn');
+        if (quickBtn) {
+          quickBtn.onclick = async () => {
+            const text = document.getElementById('designQuickText').value.trim();
+            if (!text) return;
+            const resultDiv = document.getElementById('designQuickResult');
+            const profileId = document.getElementById('designBindProfile').value;
+            if (!profileId) {
+              resultDiv.innerHTML = '<span style="color:#ed8936;font-size:0.82rem">请先在上方绑定到人设后再试听</span>';
+              return;
+            }
+            resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
+            try {
+              const resp = await fetch('/api/voice/render', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, profile_id: profileId, provider }),
+              });
+              const rd = await resp.json();
+              if (!resp.ok) {
+                resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">试听失败: ${esc(rd.error?.message || JSON.stringify(rd))}</span>`;
+                return;
+              }
+              if (rd.audio_asset && rd.audio_asset.url) {
+                resultDiv.innerHTML = `<audio class="audio-player" controls autoplay>
+                  <source src="${esc(rd.audio_asset.url)}" type="audio/mpeg">
+                </audio>`;
+              } else {
+                resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';
+              }
+            } catch (e) {
+              resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">网络错误: ${esc(e.message)}</span>`;
+            }
+          };
+        }
+      }, 0);
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
     } finally {
@@ -2003,15 +2419,15 @@
   async function handleCreateBinding() {
     const profileId = document.getElementById('newBindingProfile').value;
     const provider = document.getElementById('newBindingProvider').value;
-    const model = document.getElementById('newBindingModel').value.trim();
-    const voiceId = document.getElementById('newBindingVoiceId').value.trim();
+    const model = document.getElementById('newBindingModel').value;
+    const voiceId = document.getElementById('newBindingVoiceId').value;
     const priority = parseInt(document.getElementById('newBindingPriority').value) || 1;
     const paramsStr = document.getElementById('newBindingParams').value.trim();
     const resultDiv = document.getElementById('createBindingResult');
 
     if (!profileId) { resultDiv.innerHTML = '<div class="error-msg">请选择人设</div>'; return; }
-    if (!model) { resultDiv.innerHTML = '<div class="error-msg">请填写 Model</div>'; return; }
-    if (!voiceId) { resultDiv.innerHTML = '<div class="error-msg">请填写 Provider Voice ID</div>'; return; }
+    if (!provider) { resultDiv.innerHTML = '<div class="error-msg">请选择 Provider</div>'; return; }
+    if (!voiceId) { resultDiv.innerHTML = '<div class="error-msg">请选择要绑定的音色</div>'; return; }
 
     let params = {};
     if (paramsStr) {
@@ -2048,6 +2464,53 @@
     }
   }
 
+  async function handleCreateProfile() {
+    const id = document.getElementById('newProfileId').value.trim();
+    const name = document.getElementById('newProfileName').value.trim();
+    const description = document.getElementById('newProfileDesc').value.trim();
+    const genderStyle = document.getElementById('newProfileGender').value;
+    const ageStyle = document.getElementById('newProfileAge').value;
+    const resultDiv = document.getElementById('createProfileResult');
+
+    if (!id || !name) {
+      resultDiv.innerHTML = '<div class="error-msg">请填写人设 ID 和名称</div>';
+      return;
+    }
+
+    try {
+      const payload = { id, name };
+      if (description) payload.description = description;
+      if (genderStyle) payload.gender_style = genderStyle;
+      if (ageStyle) payload.age_style = ageStyle;
+
+      const resp = await fetch('/api/voice/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        resultDiv.innerHTML = `<div class="error-msg">创建失败: ${esc(data.detail || JSON.stringify(data))}</div>`;
+        return;
+      }
+      resultDiv.innerHTML = `<div class="success-msg">创建成功: ${esc(data.name)} (${esc(data.id)})</div>`;
+
+      // 刷新全局人设缓存并更新所有人设下拉
+      await loadProfiles(true);
+      populateProfileSelect(document.getElementById('bindingProfileSelect'));
+      populateProfileSelect(document.getElementById('newBindingProfile'));
+      populateProfileSelect(profileSelect);
+      populateProfileSelect(document.getElementById('batchProfile'));
+
+      // 清空输入
+      document.getElementById('newProfileId').value = '';
+      document.getElementById('newProfileName').value = '';
+      document.getElementById('newProfileDesc').value = '';
+    } catch (e) {
+      resultDiv.innerHTML = `<div class="error-msg">网络错误: ${esc(e.message)}</div>`;
+    }
+  }
+
   async function handleDeleteBinding(bindingId) {
     if (!confirm('确定删除该绑定？')) return;
     try {
@@ -2068,25 +2531,9 @@
   // ============================================================
 
   // Populate batch profile select when profiles are loaded
-  (async () => {
-    try {
-      const res = await fetch('/api/voice/profiles');
-      const profiles = await res.json();
-      const batchProfile = document.getElementById('batchProfile');
-      if (!batchProfile) return;
-      batchProfile.innerHTML = '';
-      if (!profiles || profiles.length === 0) {
-        batchProfile.innerHTML = '<option value="">无可用人设</option>';
-        return;
-      }
-      profiles.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name;
-        batchProfile.appendChild(opt);
-      });
-    } catch (e) {}
-  })();
+  loadProfiles().then(() => {
+    populateProfileSelect(document.getElementById('batchProfile'));
+  });
 
   // Batch mode switch
   document.querySelectorAll('input[name="batchMode"]').forEach(r => {
@@ -2117,20 +2564,13 @@
     `;
     container.appendChild(row);
 
-    // Populate profile select for this line
-    fetch('/api/voice/profiles')
-      .then(r => r.json())
-      .then(profiles => {
-        const sel = document.getElementById(`scriptProfile_${id}`);
-        profiles.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          if (p.id === profileId) opt.selected = true;
-          sel.appendChild(opt);
-        });
-      })
-      .catch(() => {});
+    // Populate profile select using cache (no per-line fetch)
+    const sel = document.getElementById(`scriptProfile_${id}`);
+    if (_cachedProfiles) {
+      populateProfileSelect(sel, profileId);
+    } else {
+      loadProfiles().then(() => populateProfileSelect(sel, profileId));
+    }
   }
 
   function removeScriptLine(id) {
