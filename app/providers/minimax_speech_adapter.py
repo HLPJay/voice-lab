@@ -270,6 +270,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         task_id = body.get("task_id")
         if not task_id:
             raise ProviderError("MiniMax async task creation failed", "No task_id in response")
+        task_id = str(task_id)
 
         return AsyncTaskResult(
             task_id=task_id,
@@ -301,9 +302,14 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if base_resp.get("status_code") not in (None, 0):
             raise ProviderError("MiniMax async task query failed", base_resp.get("status_msg"))
 
-        status = body.get("status", "processing")
+        status = (body.get("status") or "processing").lower()
         file_url = body.get("file_url") or body.get("audio_url")
         extra = body.get("extra_info") or {}
+
+        if status == "success" and not file_url:
+            file_id = body.get("file_id")
+            if file_id:
+                file_url = await self._retrieve_file_url(file_id, settings)
 
         return AsyncTaskStatus(
             task_id=provider_task_id,
@@ -315,6 +321,22 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             error_message=base_resp.get("status_msg") if status == "failed" else None,
             metadata={"raw_response": body},
         )
+
+    async def _retrieve_file_url(self, file_id: int, settings) -> str | None:
+        url = settings.minimax_base_url.rstrip("/") + "/v1/files/retrieve"
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.get(
+                    url,
+                    params={"file_id": file_id},
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception:
+            return None
+        file_info = body.get("file") or {}
+        return file_info.get("download_url")
 
     async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
         settings = get_settings()
