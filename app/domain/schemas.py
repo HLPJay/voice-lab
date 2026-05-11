@@ -229,6 +229,7 @@ class VoiceDesignRequest(BaseModel):
     prompt: str = Field(min_length=1, description="音色描述，如'成熟女性，温柔知性'")
     preview_text: str = Field(min_length=1, max_length=500, description="试听文本")
     voice_id: str | None = None
+    model: str | None = None
 
 
 class VoiceDesignResponse(BaseModel):

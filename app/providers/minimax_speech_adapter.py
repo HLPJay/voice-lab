@@ -613,7 +613,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "usage_characters": extra.get("usage_characters"),
         }
 
-    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None, model: str | None = None) -> dict:
         settings = get_settings()
         if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
             raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
@@ -621,6 +621,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         payload: dict = {"prompt": prompt, "preview_text": preview_text}
         if voice_id is not None:
             payload["voice_id"] = voice_id
+        if model:
+            payload["model"] = model
+        else:
+            payload["model"] = settings.minimax_default_model
 
         try:
             response = await self._request("POST", settings.minimax_voice_design_path, json=payload)
