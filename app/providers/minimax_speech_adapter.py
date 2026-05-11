@@ -315,3 +315,86 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             error_message=base_resp.get("status_msg") if status == "failed" else None,
             metadata={"raw_response": body},
         )
+
+    async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        if purpose not in ("voice_clone", "prompt_audio"):
+            raise ProviderError("Invalid purpose", f"purpose must be 'voice_clone' or 'prompt_audio', got '{purpose}'")
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_file_upload_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                    data={"purpose": purpose},
+                    files={"file": (filename, file_data)},
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax file upload failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax file upload failed", base_resp.get("status_msg"))
+
+        file_info = body.get("file") or {}
+        return {
+            "file_id": file_info.get("file_id"),
+            "filename": file_info.get("filename"),
+            "purpose": file_info.get("purpose", purpose),
+            "bytes": file_info.get("bytes"),
+            "created_at": file_info.get("created_at"),
+        }
+
+    async def clone_voice(self, request: dict) -> dict:
+        settings = get_settings()
+        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+
+        payload = {
+            "file_id": request["file_id"],
+            "voice_id": request["voice_id"],
+        }
+        for key in ("text", "model", "language_boost", "need_noise_reduction", "need_volume_normalization"):
+            if key in request and request[key] is not None:
+                payload[key] = request[key]
+
+        prompt_file_id = request.get("prompt_file_id")
+        prompt_text = request.get("prompt_text")
+        if prompt_file_id is not None and prompt_text is not None:
+            payload["clone_prompt"] = {"prompt_audio": prompt_file_id, "prompt_text": prompt_text}
+
+        url = settings.minimax_base_url.rstrip("/") + settings.minimax_voice_clone_path
+        try:
+            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.minimax_api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                body = response.json()
+        except Exception as exc:
+            raise ProviderError("MiniMax voice clone failed", str(exc)) from exc
+
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            raise ProviderError("MiniMax voice clone failed", base_resp.get("status_msg"))
+
+        input_sensitive = body.get("input_sensitive") or {}
+        sensitive_type = input_sensitive.get("type")
+        if sensitive_type is not None and sensitive_type != 0:
+            raise ProviderError("内容安全检测未通过", f"input_sensitive.type={sensitive_type}")
+
+        extra = body.get("extra_info") or {}
+        return {
+            "voice_id": body.get("voice_id"),
+            "demo_audio_url": body.get("demo_audio"),
+            "duration_ms": extra.get("audio_length"),
+            "usage_characters": extra.get("usage_characters"),
+        }

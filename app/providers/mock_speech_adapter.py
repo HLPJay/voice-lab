@@ -85,3 +85,21 @@ class MockSpeechAdapter(SpeechProvider):
             usage_characters=100,
             trace_id="mock_async_trace",
         )
+
+    async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
+        return {
+            "file_id": 99999,
+            "filename": filename,
+            "purpose": purpose,
+            "bytes": len(file_data),
+            "created_at": 1700000000,
+        }
+
+    async def clone_voice(self, request: dict) -> dict:
+        return {
+            "voice_id": request["voice_id"],
+            "demo_audio_url": None,
+            "duration_ms": None,
+            "usage_characters": None,
+            "message": "mock clone success",
+        }
