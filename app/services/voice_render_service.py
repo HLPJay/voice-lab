@@ -82,6 +82,7 @@ class VoiceRenderService:
             provider=provider,
             model=plan.model,
             profile_id=profile.id,
+            binding_id=binding.id,
             input_text=request.text,
             processed_text=processed_text,
             render_plan_json=plan.model_dump_json(),

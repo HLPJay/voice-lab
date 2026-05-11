@@ -10,6 +10,7 @@ class VoiceJob(SQLModel, table=True):
     provider: str | None = None
     model: str | None = None
     profile_id: str | None = None
+    binding_id: str | None = None
     input_text: str | None = None
     processed_text: str | None = None
     render_plan_json: str | None = None
