@@ -2,6 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.core.database import get_session
@@ -45,45 +46,31 @@ def list_call_logs(
     offset: int = 0,
     session: Session = Depends(get_session),
 ) -> CallLogListResponse:
-    query = select(ProviderCallLog)
-
+    # Build filter conditions once (used for both count and data query)
+    conditions = []
     if provider is not None:
-        query = query.where(ProviderCallLog.provider == provider)
+        conditions.append(ProviderCallLog.provider == provider)
     if api_path is not None:
-        query = query.where(ProviderCallLog.api_path == api_path)
+        conditions.append(ProviderCallLog.api_path == api_path)
     if job_id is not None:
-        query = query.where(ProviderCallLog.job_id == job_id)
+        conditions.append(ProviderCallLog.job_id == job_id)
     if start is not None:
-        query = query.where(ProviderCallLog.created_at >= start)
+        conditions.append(ProviderCallLog.created_at >= start)
     if end is not None:
-        query = query.where(ProviderCallLog.created_at < end)
+        conditions.append(ProviderCallLog.created_at < end)
     if status == "success":
-        query = query.where(ProviderCallLog.status_code.isnot(None))
-        query = query.where(ProviderCallLog.error_type.is_(None))
+        conditions.append(ProviderCallLog.status_code.isnot(None))
+        conditions.append(ProviderCallLog.error_type.is_(None))
     elif status == "error":
-        query = query.where(ProviderCallLog.error_type.isnot(None))
+        conditions.append(ProviderCallLog.error_type.isnot(None))
 
-    # Total count (before pagination)
-    count_query = select(ProviderCallLog.id)
-    if provider is not None:
-        count_query = count_query.where(ProviderCallLog.provider == provider)
-    if api_path is not None:
-        count_query = count_query.where(ProviderCallLog.api_path == api_path)
-    if job_id is not None:
-        count_query = count_query.where(ProviderCallLog.job_id == job_id)
-    if start is not None:
-        count_query = count_query.where(ProviderCallLog.created_at >= start)
-    if end is not None:
-        count_query = count_query.where(ProviderCallLog.created_at < end)
-    if status == "success":
-        count_query = count_query.where(ProviderCallLog.status_code.isnot(None))
-        count_query = count_query.where(ProviderCallLog.error_type.is_(None))
-    elif status == "error":
-        count_query = count_query.where(ProviderCallLog.error_type.isnot(None))
-    total = len(session.exec(count_query).all())
+    # Count with same filters (no materialization)
+    count_q = select(func.count(ProviderCallLog.id)).where(*conditions) if conditions else select(func.count(ProviderCallLog.id))
+    total = session.exec(count_q).one() or 0
 
-    # Apply pagination and ordering
+    # Data query with pagination
     limit = min(limit, 200)
+    query = select(ProviderCallLog).where(*conditions) if conditions else select(ProviderCallLog)
     query = query.order_by(ProviderCallLog.created_at.desc()).offset(offset).limit(limit)
 
     rows = session.exec(query).all()

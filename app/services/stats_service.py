@@ -145,32 +145,42 @@ class StatsService:
     def _p95_duration(
         self, session: Session, provider: str, call_filter: list
     ) -> int:
-        """Return approximate P95 of duration_ms for a provider."""
+        """Return approximate P95 of duration_ms for a provider using DB-level sort + LIMIT."""
+        base_conditions = [
+            ProviderCallLog.provider == provider,
+            ProviderCallLog.duration_ms.isnot(None),
+        ]
+        if call_filter:
+            base_conditions.extend(call_filter)
+        count_q = select(func.count(ProviderCallLog.id)).where(*base_conditions)
+        total = session.exec(count_q).one() or 0
+        if total == 0:
+            return 0
+        offset = min(int(total * 0.95) - 1, total - 1)
+        offset = max(offset, 0)
         query = (
             select(ProviderCallLog.duration_ms)
-            .where(ProviderCallLog.provider == provider)
-            .where(ProviderCallLog.duration_ms.isnot(None))
+            .where(*base_conditions)
             .order_by(ProviderCallLog.duration_ms)
+            .offset(offset)
+            .limit(1)
         )
-        if call_filter:
-            query = query.where(*call_filter)
-        durations = [r for r in session.exec(query).all() if r is not None]
-        if not durations:
-            return 0
-        idx = int(len(durations) * 0.95)
-        if idx >= len(durations):
-            idx = len(durations) - 1
-        return durations[idx]
+        result = session.exec(query).first()
+        return int(result) if result else 0
 
     def get_daily_trend(
         self, session: Session, start: str | None = None, end: str | None = None, metric: str = "jobs"
     ) -> list[dict]:
         """按天返回指标趋势数据。"""
-        filters = []
+        # Separate date filters: jobs use VoiceJob.created_at, others use ProviderCallLog.created_at
+        job_filters = []
+        call_filters = []
         if start:
-            filters.append(ProviderCallLog.created_at >= start)
+            job_filters.append(VoiceJob.created_at >= start)
+            call_filters.append(ProviderCallLog.created_at >= start)
         if end:
-            filters.append(ProviderCallLog.created_at < end)
+            job_filters.append(VoiceJob.created_at < end)
+            call_filters.append(ProviderCallLog.created_at < end)
 
         if metric == "jobs":
             query = (
@@ -181,15 +191,16 @@ class StatsService:
                 .group_by(func.substr(VoiceJob.created_at, 1, 10))
                 .order_by(func.substr(VoiceJob.created_at, 1, 10))
             )
-            if filters:
-                query = query.where(*filters)
+            if job_filters:
+                query = query.where(*job_filters)
             return [
                 {"date": row[0], "value": int(row[1] or 0)}
                 for row in session.exec(query).all()
             ]
 
+        # All other metrics use ProviderCallLog
         if metric == "characters":
-            query = (
+            q = (
                 select(
                     func.substr(ProviderCallLog.created_at, 1, 10).label("date"),
                     func.coalesce(func.sum(ProviderCallLog.usage_characters), 0).label("value"),
@@ -197,15 +208,12 @@ class StatsService:
                 .group_by(func.substr(ProviderCallLog.created_at, 1, 10))
                 .order_by(func.substr(ProviderCallLog.created_at, 1, 10))
             )
-            if filters:
-                query = query.where(*filters)
-            return [
-                {"date": row[0], "value": int(row[1] or 0)}
-                for row in session.exec(query).all()
-            ]
+            if call_filters:
+                q = q.where(*call_filters)
+            return [{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()]
 
         if metric == "errors":
-            query = (
+            q = (
                 select(
                     func.substr(ProviderCallLog.created_at, 1, 10).label("date"),
                     _error_count().label("value"),
@@ -213,15 +221,12 @@ class StatsService:
                 .group_by(func.substr(ProviderCallLog.created_at, 1, 10))
                 .order_by(func.substr(ProviderCallLog.created_at, 1, 10))
             )
-            if filters:
-                query = query.where(*filters)
-            return [
-                {"date": row[0], "value": int(row[1] or 0)}
-                for row in session.exec(query).all()
-            ]
+            if call_filters:
+                q = q.where(*call_filters)
+            return [{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()]
 
         if metric == "api_calls":
-            query = (
+            q = (
                 select(
                     func.substr(ProviderCallLog.created_at, 1, 10).label("date"),
                     func.count(ProviderCallLog.id).label("value"),
@@ -229,15 +234,12 @@ class StatsService:
                 .group_by(func.substr(ProviderCallLog.created_at, 1, 10))
                 .order_by(func.substr(ProviderCallLog.created_at, 1, 10))
             )
-            if filters:
-                query = query.where(*filters)
-            return [
-                {"date": row[0], "value": int(row[1] or 0)}
-                for row in session.exec(query).all()
-            ]
+            if call_filters:
+                q = q.where(*call_filters)
+            return [{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()]
 
         if metric == "avg_duration":
-            query = (
+            q = (
                 select(
                     func.substr(ProviderCallLog.created_at, 1, 10).label("date"),
                     func.coalesce(func.avg(ProviderCallLog.duration_ms), 0).label("value"),
@@ -245,11 +247,8 @@ class StatsService:
                 .group_by(func.substr(ProviderCallLog.created_at, 1, 10))
                 .order_by(func.substr(ProviderCallLog.created_at, 1, 10))
             )
-            if filters:
-                query = query.where(*filters)
-            return [
-                {"date": row[0], "value": round(float(row[1] or 0))}
-                for row in session.exec(query).all()
-            ]
+            if call_filters:
+                q = q.where(*call_filters)
+            return [{"date": r[0], "value": round(float(r[1] or 0))} for r in session.exec(q).all()]
 
         return []

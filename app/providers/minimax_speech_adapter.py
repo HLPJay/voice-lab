@@ -425,7 +425,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             subtitle_file, settings.minimax_timeout_seconds
         )
 
-        duration_ms = extra.get("audio_length") or extra.get("duration_ms") or estimate_duration_ms(plan.text)
+        duration_ms = extra.get("audio_length") or extra.get("duration_ms") or estimate_duration_ms(plan.processed_text)
         metadata = {"extra_info": extra}
         metadata.update(subtitle_meta)
 
@@ -693,13 +693,16 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                 close_timeout=10,
                 open_timeout=settings.minimax_ws_timeout_seconds,
             ) as ws:
-                msg = _json.loads(await ws.recv())
+                # Wrap recv with timeout to avoid hanging indefinitely
+                recv_timeout = settings.minimax_ws_timeout_seconds
+
+                msg = _json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
                 if msg.get("event") != "connected_success":
                     raise ProviderError("WebSocket connection failed", str(msg))
 
                 await ws.send(_json.dumps(task_start_msg))
 
-                msg = _json.loads(await ws.recv())
+                msg = _json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
                 if msg.get("event") == "task_failed":
                     base_resp = msg.get("base_resp", {})
                     raise ProviderError("WebSocket task_start failed", base_resp.get("status_msg", str(msg)))

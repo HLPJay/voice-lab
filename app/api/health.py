@@ -93,7 +93,7 @@ async def health_detail(session: Session = Depends(get_session)) -> dict:
             last_call_at = last_row[0]
             last_status_code = last_row[1]
 
-        # 24-hour window
+        # 24-hour window (use UTC to match how created_at is stored)
         cutoff_24h = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 86400))
 
         total_calls_24h = session.exec(

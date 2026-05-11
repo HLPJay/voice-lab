@@ -75,7 +75,7 @@ class AsyncRenderService:
             voice_params=voice_params,
             audio_params=audio_params,
             subtitle=SubtitlePlan(enabled=request.need_subtitle, type="sentence"),
-            output_format=request.output_format,
+            output_format="hex" if request.output_format == "mp3" else request.output_format,
         )
 
         adapter = get_provider(provider)
@@ -132,7 +132,10 @@ class AsyncRenderService:
         if job.status in (JobStatus.success, JobStatus.failed):
             return self._build_status_response(session, job)
 
-        response_data = json.loads(job.response_json or "{}")
+        try:
+            response_data = json.loads(job.response_json or "{}")
+        except json.JSONDecodeError:
+            response_data = {}
         provider_task_id = response_data.get("provider_task_id")
         if not provider_task_id:
             raise ProviderError("No provider task ID found for job", job_id)
@@ -141,6 +144,8 @@ class AsyncRenderService:
         task_status = await adapter.query_async_task(provider_task_id)
 
         if task_status.status == "success" and task_status.file_url:
+            # Re-check status inside _complete_job to guard against race:
+            # another concurrent request may have already completed this job
             await self._complete_job(session, job, task_status)
         elif task_status.status == "failed":
             job.status = JobStatus.failed
@@ -156,6 +161,11 @@ class AsyncRenderService:
         """Download audio and save assets when async task succeeds."""
         from app.providers.base import ProviderRenderResult
 
+        # Idempotency guard: skip if already completed by a concurrent request
+        session.refresh(job)
+        if job.status == JobStatus.success:
+            return
+
         file_url = task_status.file_url
         settings = get_settings()
         fmt = "mp3"
@@ -168,9 +178,19 @@ class AsyncRenderService:
                 resp.raise_for_status()
                 audio_path.write_bytes(resp.content)
         else:
-            audio_path = Path(file_url)
+            # Local file path (used by mock adapter) — read directly
+            local_path = Path(file_url).resolve()
+            storage_dir = Path(settings.storage_dir).resolve()
+            if not local_path.exists():
+                raise ProviderError("Audio file not found", f"local path {file_url} does not exist")
+            if not str(local_path).startswith(str(storage_dir)):
+                raise ProviderError("Invalid file path", "path traversal attempt detected")
+            audio_path.write_bytes(local_path.read_bytes())
 
-        plan_data = json.loads(job.render_plan_json or "{}")
+        try:
+            plan_data = json.loads(job.render_plan_json or "{}")
+        except json.JSONDecodeError:
+            plan_data = {}
         audio_params = plan_data.get("audio_params", {})
         subtitle_config = plan_data.get("subtitle", {})
         subtitle_type = subtitle_config.get("type", "sentence")
@@ -178,7 +198,7 @@ class AsyncRenderService:
         timeline = task_status.metadata.get("timeline", [])
         if not timeline and subtitle_config.get("enabled"):
             duration_s = round((task_status.duration_ms or 0) / 1000, 2)
-            timeline = [{"text": job.input_text or "", "start": 0.0, "end": duration_s}]
+            timeline = [{"text": job.processed_text or job.input_text or "", "start": 0.0, "end": duration_s}]
 
         result = ProviderRenderResult(
             audio_path=str(audio_path),

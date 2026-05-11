@@ -63,6 +63,5 @@ def async_retry(
                             },
                         )
                         raise
-            return result
         return wrapper
     return decorator
