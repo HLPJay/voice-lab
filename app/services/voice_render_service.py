@@ -15,8 +15,7 @@ from app.domain.schemas import (
     VoiceRenderResponse,
 )
 from app.models.voice_job import VoiceJob
-from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
-from app.providers.mock_speech_adapter import MockSpeechAdapter
+from app.providers.registry import get_provider
 from app.repositories.voice_profile_repo import get_binding, get_profile
 from app.services.asset_service import AssetService
 from app.services.text_preprocess_service import TextPreprocessService
@@ -28,13 +27,6 @@ class VoiceRenderService:
         self.preprocessor = TextPreprocessService()
         self.asset_service = AssetService()
         self.logger = get_logger("voice_render")
-
-    def _provider(self, provider: str):
-        if provider == "mock":
-            return MockSpeechAdapter()
-        if provider == "minimax":
-            return MiniMaxSpeechAdapter()
-        raise UnsupportedProvider(f"Unsupported provider: {provider}", provider)
 
     async def render_voice(
         self,
@@ -105,7 +97,7 @@ class VoiceRenderService:
             job.updated_at = utc_now_iso()
             session.add(job)
             session.commit()
-            result = await self._provider(provider).render_sync(plan)
+            result = await get_provider(provider).render_sync(plan)
             audio_asset, subtitle_asset = self.asset_service.save_assets(
                 session,
                 job_id=job.id,
