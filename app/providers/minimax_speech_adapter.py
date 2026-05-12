@@ -427,6 +427,26 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             raise ProviderError("MiniMax request failed", str(exc)) from exc
 
         trace_id = body.get("trace_id")
+        base_resp = body.get("base_resp") or {}
+        if base_resp.get("status_code") not in (None, 0):
+            _provider_logger.warning(
+                "t2a_business_failed",
+                extra={
+                    "status_code": base_resp.get("status_code"),
+                    "status_msg": base_resp.get("status_msg"),
+                    "trace_id": trace_id,
+                    "model": plan.model,
+                    "voice_id": plan.provider_voice_id,
+                    "output_format": plan.output_format,
+                    "data_keys": list((body.get("data") or {}).keys()),
+                    "base_resp": base_resp,
+                },
+            )
+            raise ProviderError(
+                "MiniMax T2A failed",
+                base_resp.get("status_msg") or str(base_resp),
+            )
+
         data = body.get("data") or {}
         extra = body.get("extra_info") or {}
 
@@ -435,7 +455,17 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                 data, plan.output_format, plan.audio_params, settings.minimax_timeout_seconds
             )
         except Exception as exc:
-            raise ProviderError("MiniMax audio save failed", str(exc)) from exc
+            err_detail = _json.dumps({
+                "reason": str(exc),
+                "trace_id": trace_id,
+                "base_resp": base_resp,
+                "data_keys": list(data.keys()),
+                "extra_info_keys": list(extra.keys()),
+                "output_format": plan.output_format,
+                "model": plan.model,
+                "voice_id": plan.provider_voice_id,
+            }, ensure_ascii=False)
+            raise ProviderError("MiniMax audio save failed", err_detail) from exc
 
         subtitle_file = data.get("subtitle") or data.get("subtitle_file")
         timeline, subtitle_meta = await self._extract_timeline_from_subtitle_file(
