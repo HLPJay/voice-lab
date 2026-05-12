@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderResult, SpeechProvider, StreamAudioChunk
-from app.core.errors import ProviderError
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
 from app.utils.audio import estimate_duration_ms, write_silent_wav
@@ -102,12 +101,6 @@ class MockSpeechAdapter(SpeechProvider):
         }
 
     async def clone_voice(self, request: dict) -> dict:
-        # Simulate MiniMax content-safety rejection when input_sensitive=True in request
-        if request.get("input_sensitive"):
-            raise ProviderError(
-                "内容安全检测未通过",
-                "input_sensitive=True is set but content was flagged",
-            )
         return {
             "voice_id": request["voice_id"],
             "demo_audio_url": None,

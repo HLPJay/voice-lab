@@ -595,9 +595,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         preview_text = request.get("preview_text")
         if preview_text:
             payload["text"] = preview_text
-        for key in ("model", "language_boost", "need_noise_reduction", "need_volume_normalization", "input_sensitive"):
+        for key in ("model", "language_boost", "need_noise_reduction", "need_volume_normalization"):
             if key in request and request[key] is not None:
                 payload[key] = request[key]
+        payload["aigc_watermark"] = False
 
         prompt_file_id = request.get("prompt_file_id")
         prompt_text = request.get("prompt_text")

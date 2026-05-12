@@ -115,7 +115,7 @@ class VoiceCloneService:
     ) -> VoiceCloneResponse:
         adapter = get_provider(provider)
 
-        request_dict = request.model_dump(exclude_none=False)
+        request_dict = request.model_dump(exclude_none=True, exclude={"input_sensitive"})
         result = await adapter.clone_voice(request_dict)
 
         self.logger.info(

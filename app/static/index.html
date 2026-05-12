@@ -787,8 +787,8 @@
           <input type="text" id="clonePreviewText" value="你好，这是一段声音克隆的试听文本，用于验证克隆效果。" placeholder="试听用短文本">
         </div>
         <div class="form-group">
-          <label for="cloneModel">model（可选）</label>
-          <input type="text" id="cloneModel" placeholder="可选（不填则使用 API 默认模型）">
+          <label for="cloneModel">model（preview_text 有值时必填）</label>
+          <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-2.8-hd">
         </div>
         <div class="form-group full-width">
           <div class="checkbox-row">
@@ -992,6 +992,7 @@
             <select id="batchOutputFormat">
               <option value="mp3">MP3</option>
               <option value="wav">WAV</option>
+              <option value="flac">FLAC</option>
             </select>
           </div>
         </div>
@@ -1056,6 +1057,7 @@
             <select id="batchScriptOutputFormat">
               <option value="mp3">MP3</option>
               <option value="wav">WAV</option>
+              <option value="flac">FLAC</option>
             </select>
           </div>
           <div class="form-group">
@@ -1284,6 +1286,26 @@
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  function hexToBlobUrl(hex, mime = 'audio/mpeg') {
+    const clean = String(hex || '').replace(/\s+/g, '');
+    if (!clean || clean.length % 2 !== 0) return '';
+    const bytes = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < clean.length; i += 2) {
+      bytes[i / 2] = parseInt(clean.slice(i, i + 2), 16);
+    }
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  }
+
+  function extractErrorMessage(data) {
+    if (!data) return '未知错误';
+    if (typeof data === 'string') return data;
+    if (data.detail) return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+    if (data.error?.detail) return data.error.detail;
+    if (data.error?.message) return data.error.message;
+    if (data.message) return data.message;
+    return JSON.stringify(data);
   }
 
   let pollTimer = null;
@@ -1776,7 +1798,10 @@
   // ============================================================
   const cloneModelInput = document.getElementById('cloneModel');
   const clonePreviewTextInput = document.getElementById('clonePreviewText');
-  // clone model 留空，让 MiniMax API 使用默认模型
+  // MiniMax 官方要求：当 preview_text 有值时，model 必填。
+  if (cloneModelInput && !cloneModelInput.value) {
+    cloneModelInput.value = 'speech-2.8-hd';
+  }
   if (clonePreviewTextInput && !clonePreviewTextInput.value) {
     clonePreviewTextInput.value = '你好，这是一段声音克隆的试听文本，用于验证克隆效果。';
   }
@@ -1799,9 +1824,10 @@
     if (!row) return;
     const cell = row.querySelector('.bind-status-cell');
     if (!cell) return;
-    const boundProfiles = bindMap[voiceId];
-    if (boundProfiles && boundProfiles.length > 0) {
-      cell.innerHTML = `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`;
+    const bindings = bindMap[voiceId] || [];
+    if (bindings.length > 0) {
+      const names = bindings.map(b => b.profile_name || b.profile_id).join(', ');
+      cell.innerHTML = `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(names)}</span>`;
     } else {
       cell.innerHTML = `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
     }
@@ -1813,8 +1839,10 @@
     resultEl.style.cssText = 'font-size:0.82rem;margin-top:4px';
     rowEl.appendChild(resultEl);
     try {
-      const resp = await fetch(`/api/voice/provider-voices/${encodeURIComponent(provider)}/${encodeURIComponent(voiceId)}?voice_type=${encodeURIComponent(voiceType || '')}`, {
-        method: 'DELETE',
+      const resp = await fetch(`/api/voice/voices/delete?provider=${encodeURIComponent(provider)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_voice_id: voiceId, voice_type: voiceType || 'voice_cloning' }),
       });
       const data = await resp.json();
       if (!resp.ok) {
@@ -1868,25 +1896,30 @@
 
   function updateAuditionSelected(voiceId, voiceName) {
     const el = document.getElementById('auditionSelected');
+    const wrap = document.getElementById('auditionProfileSelectWrap');
+    const profileSelect = document.getElementById('auditionProfileSelect');
     if (!el) return;
     if (!voiceId) {
       el.style.cssText = 'font-size:0.82rem;color:#a0aec0;white-space:nowrap';
       el.textContent = '当前选中：（无）';
-      document.getElementById('auditionProfileSelectWrap').style.display = 'none';
+      if (wrap) wrap.style.display = 'none';
       return;
     }
+
     el.style.cssText = 'font-size:0.82rem;color:#2f855a;font-weight:600;background:#f0fff4;padding:2px 8px;border-radius:4px;white-space:nowrap';
-    el.textContent = `当前选中：${esc(voiceId)} ${voiceName ? `(${esc(voiceName)})` : ''}`;
-    // Check if voice is already bound
-    const bindMap = window._voiceBindMap || {};
-    const bound = bindMap[voiceId];
-    if (bound && bound.length > 0) {
-      document.getElementById('auditionProfileSelectWrap').style.display = 'none';
-    } else {
-      document.getElementById('auditionProfileSelectWrap').style.display = 'flex';
-      loadProfiles().then(() => {
-        populateProfileSelect(document.getElementById('auditionProfileSelect'));
-      });
+    el.textContent = `当前选中：${voiceId} ${voiceName ? `(${voiceName})` : ''}`;
+
+    const provider = document.getElementById('voiceProvider')?.value || 'minimax';
+    const bindings = (window._voiceBindMap && window._voiceBindMap[voiceId] || [])
+      .filter(b => !provider || b.provider === provider);
+
+    if (bindings.length > 0 && wrap && profileSelect) {
+      wrap.style.display = 'flex';
+      profileSelect.innerHTML = bindings.map(b =>
+        `<option value="${esc(b.profile_id)}">${esc(b.profile_name || b.profile_id)} / ${esc(b.model || '')}</option>`
+      ).join('');
+    } else if (wrap) {
+      wrap.style.display = 'none';
     }
   }
 
@@ -2059,7 +2092,6 @@
     const voiceName = window._auditionSelectedVoiceName;
     const provider = document.getElementById('voiceProvider').value;
     const text = document.getElementById('auditionText').value.trim();
-    const model = document.getElementById('auditionModel').value;
     const resultDiv = document.getElementById('auditionResult');
 
     if (!voiceId) {
@@ -2071,52 +2103,49 @@
       return;
     }
 
-    // Check if voice is bound, otherwise use selected profile
-    const bindMap = window._voiceBindMap || {};
-    const bound = bindMap[voiceId];
-    let profileId;
-    if (bound && bound.length > 0) {
-      // Voice is bound, resolve profile_id from binding
-      const profiles = await loadProfiles();
-      const p = profiles.find(p => bindMap[voiceId] && bindMap[voiceId].includes(p.name));
-      if (p) {
-        // Find the actual profile_id by checking bindings
-        try {
-          const resp = await fetch(`/api/voice/profiles/${p.id}/bindings`);
-          const bindings = await resp.json();
-          const matched = bindings.find(b => b.provider === provider && b.provider_voice_id === voiceId && b.status === 'available');
-          if (matched) {
-            profileId = p.id;
-          }
-        } catch (e) {}
-      }
-    }
-    if (!profileId) {
-      profileId = document.getElementById('auditionProfileSelect').value;
-    }
-    if (!profileId) {
-      resultDiv.innerHTML = '<span style="color:#ed8936;font-size:0.82rem">该音色未绑定，请先在上方选择或创建人设后再生成</span>';
+    const bindings = (window._voiceBindMap && window._voiceBindMap[voiceId] || [])
+      .filter(b => b.provider === provider);
+
+    if (!bindings.length) {
+      resultDiv.innerHTML = `<span style="color:#ed8936;font-size:0.82rem">
+        当前选中的音色 <code>${esc(voiceId)}</code> 还没有绑定到人设。当前后端 /api/voice/render 只能通过 profile_id 解析绑定，不能直接传 provider_voice_id 试听。
+        请先点击该音色行的「绑定」按钮，绑定成功后再试听。
+      </span>`;
       return;
     }
+
+    const selectedProfileId = document.getElementById('auditionProfileSelect')?.value;
+    const binding = selectedProfileId
+      ? (bindings.find(b => b.profile_id === selectedProfileId) || bindings[0])
+      : bindings[0];
+    const profileId = binding.profile_id;
 
     resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
     try {
       const resp = await fetch('/api/voice/render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, profile_id: profileId, provider }),
+        body: JSON.stringify({
+          text,
+          profile_id: profileId,
+          provider,
+          output_format: 'hex',
+          audio_format: 'mp3',
+        }),
       });
       const data = await resp.json();
       if (!resp.ok) {
-        resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">生成失败: ${esc(data.error?.message || JSON.stringify(data))}</span>`;
+        resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">生成失败: ${esc(extractErrorMessage(data))}</span>`;
         return;
       }
       if (data.audio_asset && data.audio_asset.url) {
         resultDiv.innerHTML = `<audio class="audio-player" controls autoplay style="width:100%">
           <source src="${esc(data.audio_asset.url)}" type="audio/mpeg">
         </audio>
-        <div style="font-size:0.75rem;color:#718096;margin-top:4px">voice_id: ${esc(voiceId)} | 时长: ${data.audio_asset.duration_ms ? (data.audio_asset.duration_ms/1000).toFixed(1) + 's' : '-'}</div>`;
-        // Add to records
+        <div style="font-size:0.75rem;color:#718096;margin-top:4px">
+          selected voice_id: ${esc(voiceId)} | profile: ${esc(profileId)} | model: ${esc(binding.model || '')}
+          | 时长: ${data.audio_asset.duration_ms ? (data.audio_asset.duration_ms/1000).toFixed(1) + 's' : '-'}
+        </div>`;
         window._auditionRecords.push({
           voiceId, voiceName: voiceName || '',
           text, audioUrl: data.audio_asset.url,
@@ -2231,9 +2260,9 @@
       tableHtml += `<tr><td colspan="6" style="text-align:center;color:#a0aec0;font-size:0.82rem;padding:16px">本页暂无音色</td></tr>`;
     }
     pageVoices.forEach(v => {
-      const boundProfiles = voiceBindMap[v.provider_voice_id];
-      const bindStatusHtml = boundProfiles && boundProfiles.length > 0
-        ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`
+      const boundProfiles = voiceBindMap[v.provider_voice_id] || [];
+      const bindStatusHtml = boundProfiles.length > 0
+        ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.map(b => b.profile_name || b.profile_id).join(', '))}</span>`
         : `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
       const showDelete = v.voice_type !== 'system';
       const voiceTypeLabel = v.voice_type || '';
@@ -2432,7 +2461,14 @@
           bindings.forEach(b => {
             if (b.status === 'available') {
               if (!voiceBindMap[b.provider_voice_id]) voiceBindMap[b.provider_voice_id] = [];
-              voiceBindMap[b.provider_voice_id].push(p.name);
+              voiceBindMap[b.provider_voice_id].push({
+                profile_id: p.id,
+                profile_name: p.name,
+                provider: b.provider,
+                model: b.model,
+                binding_id: b.id,
+                priority: b.priority,
+              });
             }
           });
         }
@@ -2552,6 +2588,14 @@
       resultsEl.innerHTML = `<div class="error-msg">请先上传音频获取 file_id，或手动输入</div>`;
       return;
     }
+    if (previewText && !model) {
+      resultsEl.innerHTML = `<div class="error-msg">preview_text 有值时 model 必填。建议使用 speech-2.8-hd。</div>`;
+      return;
+    }
+    if ((promptFileId && !promptText) || (!promptFileId && promptText)) {
+      resultsEl.innerHTML = `<div class="error-msg">prompt_file_id 和 prompt_text 必须同时填写，或同时留空。</div>`;
+      return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>克隆中…';
@@ -2577,7 +2621,7 @@
       const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(data.error?.detail || data.error?.message || data.detail || JSON.stringify(data))}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(extractErrorMessage(data))}</div>`;
         return;
       }
 
@@ -2725,7 +2769,7 @@
       const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(data.error?.detail || data.error?.message || data.detail || JSON.stringify(data))}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(extractErrorMessage(data))}</div>`;
         return;
       }
 
@@ -2734,13 +2778,11 @@
       </div>`;
 
       if (data.trial_audio_hex) {
-        html += `<div class="hex-player">
-          <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">
-            试听音频（hex原始数据，mock模式下为null）
-          </div>
-          <div style="font-family:monospace;font-size:0.72rem;color:#a0aec0;word-break:break-all;max-height:60px;overflow:hidden">
-            ${esc(data.trial_audio_hex.substring(0, 200))}${data.trial_audio_hex.length > 200 ? '…' : ''}
-          </div>
+        const trialBlobUrl = hexToBlobUrl(data.trial_audio_hex);
+        html += `<div style="margin-top:10px">
+          ${trialBlobUrl
+            ? `<audio class="audio-player" controls preload="none"><source src="${trialBlobUrl}" type="audio/mpeg">您的浏览器不支持音频播放</audio>`
+            : '<div class="hex-player">trial_audio_hex 解析失败，无法播放。</div>'}
         </div>`;
       } else if (data.trial_audio_url) {
         html += `<div style="margin-top:10px">
@@ -3105,7 +3147,8 @@
           segment_strategy: strategy,
           max_segment_chars: maxChars,
           silence_between_ms: silence,
-          output_format: outputFormat,
+          output_format: 'hex',
+          audio_format: outputFormat,
           params,
           need_subtitle: needSubtitle,
         }),
@@ -3158,7 +3201,8 @@
           script: lines,
           provider,
           silence_between_ms: silence,
-          output_format: outputFormat,
+          output_format: 'hex',
+          audio_format: outputFormat,
           need_subtitle: needSubtitle,
         }),
       });
