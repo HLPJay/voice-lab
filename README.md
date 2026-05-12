@@ -141,7 +141,7 @@ curl -X POST http://127.0.0.1:8000/api/voice/clone/create?provider=minimax \
 python -m pytest tests/ -x -q
 ```
 
-当前：238 passed, 6 skipped
+当前：245 passed, 6 skipped
 
 ### E2E 真实 API 测试
 

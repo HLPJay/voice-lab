@@ -504,3 +504,32 @@ def test_execute_batch_concurrent_respects_order(
     assert batch_job.status == BatchStatus.success
     assert batch_job.completed_segments == 5
     assert batch_job.merged_audio_asset_id is not None
+
+
+def test_batch_mode_literal_rejects_wrong_mode():
+    """LongtextBatchRequest(mode='wrong') is rejected by Pydantic Literal validation."""
+    from pydantic import ValidationError
+    from app.domain.schemas import LongtextBatchRequest
+
+    with pytest.raises(ValidationError):
+        LongtextBatchRequest(
+            mode="wrong",
+            text="测试文本。",
+            profile_id="deep_night_programmer",
+        )
+
+
+def test_batch_job_default_output_format_is_hex():
+    """BatchJob() default output_format is 'hex'."""
+    from app.models.batch_job import BatchJob
+
+    job = BatchJob(
+        id="test_default_format",
+        mode="longtext",
+        provider="mock",
+        total_segments=0,
+        created_at="2024-01-01T00:00:00",
+        updated_at="2024-01-01T00:00:00",
+    )
+    assert job.output_format == "hex", \
+        f"expected output_format='hex', got '{job.output_format}'"

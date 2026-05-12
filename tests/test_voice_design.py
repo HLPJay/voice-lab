@@ -43,3 +43,13 @@ def test_design_preview_text_too_long(test_app):
         params={"provider": "mock"},
     )
     assert resp.status_code == 422
+
+
+def test_voice_design_provider_signature_has_no_model():
+    """design_voice() adapter method has no 'model' parameter (official API does not support it)."""
+    import inspect
+    from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+
+    sig = inspect.signature(MiniMaxSpeechAdapter.design_voice)
+    assert "model" not in sig.parameters, \
+        f"design_voice should not have 'model' parameter, but has: {list(sig.parameters.keys())}"

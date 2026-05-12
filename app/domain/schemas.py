@@ -219,6 +219,7 @@ class VoiceCloneRequest(BaseModel):
     language_boost: str | None = None
     need_noise_reduction: bool = False
     need_volume_normalization: bool = False
+    input_sensitive: bool = False
 
     @model_validator(mode="after")
     def check_clone_request_consistency(self):

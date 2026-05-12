@@ -595,7 +595,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         preview_text = request.get("preview_text")
         if preview_text:
             payload["text"] = preview_text
-        for key in ("model", "language_boost", "need_noise_reduction", "need_volume_normalization"):
+        for key in ("model", "language_boost", "need_noise_reduction", "need_volume_normalization", "input_sensitive"):
             if key in request and request[key] is not None:
                 payload[key] = request[key]
 

@@ -80,3 +80,42 @@ def test_clone_invalid_voice_id(test_app):
         params={"provider": "mock"},
     )
     assert resp.status_code == 422
+
+
+def test_clone_sensitive_bool_true_rejected(test_app, seed_mock_binding):
+    """MiniMax API response with input_sensitive=True raises ProviderError."""
+    from unittest.mock import patch, AsyncMock
+    from app.providers.registry import get_provider
+
+    class SensitiveAdapter:
+        async def clone_voice(self, request: dict) -> dict:
+            raise Exception("SensitiveAdapter should not be called when input_sensitive=True in request")
+        async def upload_voice_file(self, file_data, filename, purpose):
+            from app.providers.base import ProviderCallResult
+            return ProviderCallResult(file_id=99999, filename=filename, purpose=purpose)
+
+    with patch("app.providers.registry.get_provider", return_value=SensitiveAdapter()):
+        resp = TestClient(test_app).post(
+            "/api/voice/clone/create",
+            json={"voice_id": "test_sensitive_01", "file_id": 99999, "input_sensitive": True},
+            params={"provider": "mock"},
+        )
+    assert resp.status_code == 400
+    data = resp.json()
+    assert "sensitive" in data["error"]["message"].lower() or \
+           "内容安全" in data["error"]["message"]
+
+
+def test_clone_prompt_pair_required(test_app):
+    """Only prompt_file_id without prompt_text → 422 ValidationError."""
+    resp = TestClient(test_app).post(
+        "/api/voice/clone/create",
+        json={
+            "voice_id": "test_prompt_pair_01",
+            "file_id": 99999,
+            "prompt_file_id": 88888,
+            # intentionally omit prompt_text
+        },
+        params={"provider": "mock"},
+    )
+    assert resp.status_code == 422
