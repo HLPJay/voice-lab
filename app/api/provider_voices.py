@@ -2,13 +2,15 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.core.database import get_session
-from app.domain.schemas import ProviderVoiceListResponse, ProviderVoicePreviewRequest, ProviderVoicePreviewResponse
+from app.domain.schemas import ProviderVoiceImportRequest, ProviderVoiceImportResponse, ProviderVoiceListResponse, ProviderVoicePreviewRequest, ProviderVoicePreviewResponse
 from app.services.voice_catalog_service import VoiceCatalogService
+from app.services.provider_voice_import_service import ProviderVoiceImportService
 from app.services.provider_voice_preview_service import ProviderVoicePreviewService
 
 router = APIRouter()
 service = VoiceCatalogService()
 preview_service = ProviderVoicePreviewService()
+import_service = ProviderVoiceImportService()
 
 
 @router.get("/provider-voices", response_model=ProviderVoiceListResponse)
@@ -33,3 +35,16 @@ async def preview_provider_voice(
 ):
     """直连试听 — 跳过 profile binding，直接用指定的 provider_voice_id 生成音频。"""
     return await preview_service.preview(session, request.provider, request)
+
+
+@router.post("/provider-voices/import", response_model=ProviderVoiceImportResponse)
+async def import_provider_voice(
+    request: ProviderVoiceImportRequest,
+    session: Session = Depends(get_session),
+):
+    """将 MiniMax 远端已存在的 voice_id 登记到本地 provider_voices 表。
+
+    verify=true 时会先调用 direct preview 验证 voice_id 可用后再导入；
+    verify=false 时直接导入（metadata.verified=false）。
+    """
+    return await import_service.import_voice(session, request)

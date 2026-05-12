@@ -807,6 +807,48 @@
       <button class="btn-primary" id="cloneBtn" onclick="handleCloneVoice()">克隆</button>
       <div id="cloneResult"></div>
     </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">导入已有克隆音色</div>
+      <p style="font-size:0.80rem;color:#718096;margin:0 0 12px">MiniMax 远端已经克隆成功，但本地没有登记时，可在这里输入 voice_id 导入本地缓存。导入后即可绑定到人设使用。</p>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="importCloneProvider">Provider</label>
+          <select id="importCloneProvider">
+            <option value="mock">mock</option>
+            <option value="minimax" selected>minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="importCloneVoiceId">voice_id</label>
+          <input type="text" id="importCloneVoiceId" placeholder="输入已有远端 voice_id">
+        </div>
+        <div class="form-group">
+          <label for="importCloneName">名称（可选）</label>
+          <input type="text" id="importCloneName" placeholder="不填则使用 voice_id">
+        </div>
+        <div class="form-group full-width">
+          <label for="importCloneModel">model（验证试听时使用）</label>
+          <select id="importCloneModel">
+            <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+            <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+            <option value="speech-2.6-hd">speech-2.6-hd</option>
+            <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label for="importClonePreviewText">试听文本</label>
+          <input type="text" id="importClonePreviewText" value="你好，这是导入音色试听。" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
+        </div>
+        <div class="form-group full-width">
+          <div class="checkbox-row">
+            <input type="checkbox" id="importCloneVerify" checked>
+            <label for="importCloneVerify" style="font-weight:400;cursor:pointer">验证试听（建议开启，确认远端音色可用后再导入）</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn-secondary" id="importCloneBtn" onclick="handleImportRemoteVoice('clone')">验证并导入</button>
+      <div id="importCloneResult"></div>
+    </div>
   </div>
 
   <!-- ======================== TAB: DESIGN ======================== -->
@@ -836,6 +878,48 @@
       </div>
       <button class="btn-primary" id="designBtn" onclick="handleDesignVoice()">生成设计</button>
       <div id="designResult"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">导入已有设计音色</div>
+      <p style="font-size:0.80rem;color:#718096;margin:0 0 12px">MiniMax 远端已经设计成功，但本地没有登记时，可在这里输入 voice_id 导入本地缓存。导入后即可绑定到人设使用。</p>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="importDesignProvider">Provider</label>
+          <select id="importDesignProvider">
+            <option value="mock">mock</option>
+            <option value="minimax" selected>minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="importDesignVoiceId">voice_id</label>
+          <input type="text" id="importDesignVoiceId" placeholder="输入已有远端 voice_id">
+        </div>
+        <div class="form-group">
+          <label for="importDesignName">名称（可选）</label>
+          <input type="text" id="importDesignName" placeholder="不填则使用 voice_id">
+        </div>
+        <div class="form-group full-width">
+          <label for="importDesignModel">model（验证试听时使用）</label>
+          <select id="importDesignModel">
+            <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+            <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+            <option value="speech-2.6-hd">speech-2.6-hd</option>
+            <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label for="importDesignPreviewText">试听文本</label>
+          <input type="text" id="importDesignPreviewText" value="你好，这是导入音色试听。" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
+        </div>
+        <div class="form-group full-width">
+          <div class="checkbox-row">
+            <input type="checkbox" id="importDesignVerify" checked>
+            <label for="importDesignVerify" style="font-weight:400;cursor:pointer">验证试听（建议开启，确认远端音色可用后再导入）</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn-secondary" id="importDesignBtn" onclick="handleImportRemoteVoice('design')">验证并导入</button>
+      <div id="importDesignResult"></div>
     </div>
   </div>
 
@@ -2756,6 +2840,133 @@
     } finally {
       btn.disabled = false;
       btn.innerHTML = '克隆';
+    }
+  }
+
+  // ============================================================
+  // Import Remote Voice
+  // ============================================================
+  async function handleImportRemoteVoice(source) {
+    const isClone = source === 'clone';
+    const prefix = isClone ? 'importClone' : 'importDesign';
+    const provider = document.getElementById(prefix + 'Provider').value;
+    const voiceId = document.getElementById(prefix + 'VoiceId').value.trim();
+    const name = document.getElementById(prefix + 'Name').value.trim() || null;
+    const model = document.getElementById(prefix + 'Model').value;
+    const previewText = document.getElementById(prefix + 'PreviewText').value.trim();
+    const verify = document.getElementById(prefix + 'Verify').checked;
+    const resultsEl = document.getElementById(prefix + 'Result');
+    const btn = document.getElementById(prefix + 'Btn');
+
+    if (!voiceId) {
+      resultsEl.innerHTML = `<div class="error-msg">请输入 voice_id</div>`;
+      return;
+    }
+    if (!previewText) {
+      resultsEl.innerHTML = `<div class="error-msg">请输入试听文本</div>`;
+      return;
+    }
+
+    await loadProfiles();
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>导入中…';
+    resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>导入中…</p>';
+
+    try {
+      const payload = {
+        provider,
+        provider_voice_id: voiceId,
+        voice_type: isClone ? 'voice_cloning' : 'voice_generation',
+        verify,
+        model,
+        preview_text: previewText,
+      };
+      if (name) payload.name = name;
+      if (!verify) {
+        payload.description = isClone ? '手动导入的克隆音色' : '手动导入的设计音色';
+      }
+
+      const resp = await fetch('/api/voice/provider-voices/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        const errMsg = extractErrorMessage(data);
+        resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(friendlyErrorMessage(errMsg))}</div>`;
+        return;
+      }
+
+      let html = `<div class="success-msg">
+        导入成功：voice_id=<code>${esc(data.provider_voice_id)}</code>，voice_type=${esc(data.voice_type)}，status=${esc(data.status)}
+      </div>`;
+
+      if (data.audio_asset && data.audio_asset.url) {
+        html += `<div style="margin-top:10px">
+          <audio class="audio-player" controls preload="none">
+            <source src="${esc(data.audio_asset.url)}" type="audio/mpeg">
+            您的浏览器不支持音频播放</audio>
+        </div>`;
+      }
+
+      if (!verify) {
+        html += `<div style="margin-top:8px;font-size:0.80rem;color:#c53030">未验证导入：建议仅在你确认该 voice_id 可用时使用。</div>`;
+      }
+
+      // Quick bind panel
+      html += `<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div id="importProfileWrap" style="display:flex;gap:8px;align-items:center;flex:1;min-width:0"></div>
+          <select id="importBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+            <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+            <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+            <option value="speech-2.6-hd">speech-2.6-hd</option>
+            <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          </select>
+          <button class="btn-primary" id="importBindBtn" style="margin:0;white-space:nowrap">绑定</button>
+        </div>
+        <div id="importBindResult" style="margin-top:6px;font-size:0.82rem"></div>
+      </div>`;
+
+      resultsEl.innerHTML = html;
+
+      setTimeout(() => {
+        const profileWrap = document.getElementById('importProfileWrap');
+        const sel = document.createElement('select');
+        sel.id = 'importBindProfile';
+        sel.style.cssText = 'flex:1;min-width:0;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
+        profileWrap.appendChild(sel);
+        populateProfileSelect(sel);
+        renderInlineCreateProfile(profileWrap, sel, 'import');
+        const btn = document.getElementById('importBindBtn');
+        if (btn) {
+          btn.onclick = async () => {
+            const profileId = document.getElementById('importBindProfile').value;
+            const model = document.getElementById('importBindModel').value;
+            if (!profileId) { alert('请选择人设'); return; }
+            const resultDiv = document.getElementById('importBindResult');
+            try {
+              await bindVoiceToProfile(data.provider_voice_id, provider, profileId, model);
+              resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+              await refreshVoiceBindStatus(data.provider_voice_id);
+            } catch (e) {
+              resultDiv.innerHTML = `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
+            }
+          };
+        }
+      }, 0);
+
+      handleListVoices(true).catch(() => {});
+
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '验证并导入';
     }
   }
 

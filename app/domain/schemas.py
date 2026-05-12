@@ -291,6 +291,30 @@ class ProviderVoicePreviewResponse(BaseModel):
     audio_asset: AudioAssetResponse | None = None
 
 
+class ProviderVoiceImportRequest(BaseModel):
+    """导入已有远端音色请求 — 将 MiniMax 远端已存在的 voice_id 登记到本地 provider_voices 表。"""
+    provider: str = "minimax"
+    provider_voice_id: str = Field(min_length=1)
+    voice_type: Literal["voice_cloning", "voice_generation"]
+    name: str | None = None
+    description: str | None = None
+    verify: bool = True
+    model: str = "speech-2.8-hd"
+    preview_text: str = Field(default="你好，这是导入音色试听。", min_length=1, max_length=1000)
+
+
+class ProviderVoiceImportResponse(BaseModel):
+    """导入已有远端音色响应。"""
+    provider: str
+    provider_voice_id: str
+    voice_type: str
+    name: str | None = None
+    status: str
+    verified: bool = False
+    audio_asset: AudioAssetResponse | None = None
+    message: str = "导入成功"
+
+
 class StreamRenderRequest(BaseModel):
     text: str = Field(min_length=1, max_length=10000)
     profile_id: str = "deep_night_programmer"
