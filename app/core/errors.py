@@ -61,6 +61,7 @@ async def voice_lab_error_handler(request: Request, exc: VoiceLabError) -> JSONR
         extra={
             "error_code": exc.code,
             "error_message": exc.message,
+            "error_detail": exc.detail,
             "status_code": exc.status_code,
             "path": request.url.path,
             "method": request.method,

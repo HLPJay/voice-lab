@@ -614,6 +614,16 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         base_resp = body.get("base_resp") or {}
         if base_resp.get("status_code") not in (None, 0):
+            _provider_logger.warning(
+                "voice_clone_business_failed",
+                extra={
+                    "status_code": base_resp.get("status_code"),
+                    "status_msg": base_resp.get("status_msg"),
+                    "trace_id": body.get("trace_id"),
+                    "voice_id": body.get("voice_id"),
+                    "base_resp": base_resp,
+                },
+            )
             raise ProviderError("MiniMax voice clone failed", base_resp.get("status_msg"))
 
         # Official API may return input_sensitive as bool or dict, and
@@ -662,7 +672,20 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         base_resp = body.get("base_resp") or {}
         if base_resp.get("status_code") not in (None, 0):
-            raise ProviderError("MiniMax voice design failed", base_resp.get("status_msg"))
+            _provider_logger.warning(
+                "voice_design_business_failed",
+                extra={
+                    "status_code": base_resp.get("status_code"),
+                    "status_msg": base_resp.get("status_msg"),
+                    "trace_id": body.get("trace_id"),
+                    "voice_id": body.get("voice_id"),
+                    "base_resp": base_resp,
+                },
+            )
+            raise ProviderError(
+                "MiniMax voice design failed",
+                base_resp.get("status_msg") or str(base_resp),
+            )
 
         return {
             "voice_id": body.get("voice_id"),
