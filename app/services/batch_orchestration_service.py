@@ -194,6 +194,7 @@ class BatchOrchestrationService:
         segment_id: str,
         provider: str,
         output_format: str,
+        audio_format: str,
         config: dict,
         db_engine,
     ) -> tuple[str, str, str | None]:
@@ -207,7 +208,7 @@ class BatchOrchestrationService:
                     return (segment_id, BatchStatus.failed, "Segment not found")
 
                 segment = await self._process_segment(
-                    session, segment, provider, output_format, config
+                    session, segment, provider, output_format, audio_format, config
                 )
                 session.commit()
                 return (segment_id, segment.status, None)
@@ -256,7 +257,8 @@ class BatchOrchestrationService:
 
         settings = get_settings()
         provider = batch_job.provider or settings.voice_provider
-        output_format = batch_job.output_format or "mp3"
+        output_format = batch_job.output_format or "hex"
+        audio_format = config.get("audio_format", "mp3")
         silence_ms = batch_job.silence_between_ms or 300
 
         semaphore = asyncio.Semaphore(settings.batch_max_concurrency)
@@ -267,7 +269,7 @@ class BatchOrchestrationService:
                 continue
             pending_tasks.append(
                 self._process_segment_isolated(
-                    semaphore, segment.id, provider, output_format, config, db_engine
+                    semaphore, segment.id, provider, output_format, audio_format, config, db_engine
                 )
             )
 
@@ -396,6 +398,7 @@ class BatchOrchestrationService:
         segment: BatchSegment,
         provider: str,
         output_format: str,
+        audio_format: str,
         config: dict,
     ) -> BatchSegment:
         """Process a single segment: render audio and save asset."""
@@ -408,7 +411,7 @@ class BatchOrchestrationService:
         voice_params.update({k: v for k, v in segment_params.items() if v is not None})
 
         audio_params = {
-            "format": output_format,
+            "format": audio_format,
             "sample_rate": settings.default_sample_rate,
             "bitrate": settings.default_bitrate,
             "channel": settings.default_channel,

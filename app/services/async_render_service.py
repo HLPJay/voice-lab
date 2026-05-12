@@ -50,7 +50,7 @@ class AsyncRenderService:
 
         voice_params = json.loads(binding.params_json or "{}")
         audio_params = {
-            "format": settings.default_audio_format,
+            "format": request.audio_format,
             "sample_rate": settings.default_sample_rate,
             "bitrate": settings.default_bitrate,
             "channel": settings.default_channel,
