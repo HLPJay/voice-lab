@@ -221,9 +221,11 @@ class VoiceCloneRequest(BaseModel):
     need_volume_normalization: bool = False
 
     @model_validator(mode="after")
-    def check_preview_requires_model(self):
+    def check_clone_request_consistency(self):
         if self.preview_text and not self.model:
             raise ValueError("preview_text requires model to be set (official requirement: when text is provided, model is mandatory)")
+        if (self.prompt_file_id is None) ^ (self.prompt_text is None):
+            raise ValueError("prompt_file_id and prompt_text must be provided together")
         return self
 
 
@@ -280,7 +282,7 @@ class StreamRenderRequest(BaseModel):
 
 
 class LongtextBatchRequest(BaseModel):
-    mode: str = "longtext"
+    mode: Literal["longtext"] = "longtext"
     text: str = Field(min_length=1)
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
@@ -301,7 +303,7 @@ class ScriptLine(BaseModel):
 
 
 class ScriptBatchRequest(BaseModel):
-    mode: str = "script"
+    mode: Literal["script"] = "script"
     script: list[ScriptLine] = Field(min_length=1, max_length=200)
     provider: str | None = None
     output_format: Literal["hex", "url"] = "hex"

@@ -76,7 +76,7 @@ async def download_asset(
             _asset_not_found(asset_id)
         return FileResponse(
             path,
-            media_type="audio/wav" if audio.format == "wav" else "audio/mpeg",
+            media_type={"mp3": "audio/mpeg", "wav": "audio/wav", "flac": "audio/flac"}.get(audio.format, "application/octet-stream"),
             filename=f"{asset_id}.{audio.format}",
         )
     subtitle = voice_asset_repo.get_subtitle_asset(session, asset_id)

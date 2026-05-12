@@ -8,7 +8,7 @@ class BatchJob(SQLModel, table=True):
     mode: str  # "longtext" | "script"
     status: str = "pending"  # pending/running/success/partial/failed
     provider: str | None = None
-    output_format: str = "mp3"
+    output_format: str = "hex"  # MiniMax response format: hex/url; audio_format stored in config_json
     total_segments: int = 0
     completed_segments: int = 0
     failed_segments: int = 0

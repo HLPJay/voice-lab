@@ -69,6 +69,11 @@ class VoiceCloneService:
 
         # 1b: Duration check by purpose
         duration_sec = _probe_audio_duration(file_data, ext)
+        if duration_sec is None:
+            self.logger.warning(
+                "audio_duration_probe_failed purpose=%s filename=%s bytes=%d",
+                purpose, filename, len(file_data),
+            )
         if duration_sec is not None:
             if purpose == "voice_clone":
                 if duration_sec < 10 or duration_sec > 300:

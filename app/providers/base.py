@@ -67,7 +67,7 @@ class SpeechProvider(ABC):
     async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
         raise NotImplementedError
 
-    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None, model: str | None = None) -> dict:
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
         raise NotImplementedError
 
     async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:

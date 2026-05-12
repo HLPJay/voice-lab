@@ -70,7 +70,7 @@ async def batch_download(
 
     return FileResponse(
         path,
-        media_type="audio/wav" if audio.format == "wav" else "audio/mpeg",
+        media_type={"mp3": "audio/mpeg", "wav": "audio/wav", "flac": "audio/flac"}.get(audio.format, "application/octet-stream"),
         filename=f"{batch_id}.{audio.format}",
     )
 

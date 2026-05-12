@@ -615,10 +615,25 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         if base_resp.get("status_code") not in (None, 0):
             raise ProviderError("MiniMax voice clone failed", base_resp.get("status_msg"))
 
-        input_sensitive = body.get("input_sensitive") or {}
-        sensitive_type = input_sensitive.get("type")
-        if sensitive_type is not None and sensitive_type != 0:
-            raise ProviderError("内容安全检测未通过", f"input_sensitive.type={sensitive_type}")
+        # Official API may return input_sensitive as bool or dict, and
+        # input_sensitive_type as a separate top-level field.
+        input_sensitive = body.get("input_sensitive")
+        sensitive_type = body.get("input_sensitive_type")
+
+        if isinstance(input_sensitive, dict):
+            sensitive_type = input_sensitive.get("type", sensitive_type)
+            input_sensitive_flag = bool(
+                input_sensitive.get("hit", False)
+                or input_sensitive.get("sensitive", False)
+            )
+        else:
+            input_sensitive_flag = bool(input_sensitive)
+
+        if input_sensitive_flag or (sensitive_type is not None and sensitive_type != 0):
+            raise ProviderError(
+                "内容安全检测未通过",
+                f"input_sensitive={input_sensitive}, input_sensitive_type={sensitive_type}",
+            )
 
         extra = body.get("extra_info") or {}
         return {
