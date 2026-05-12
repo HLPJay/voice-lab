@@ -426,3 +426,58 @@ class TestUpdateDuplicateCheck:
         read = service.update_binding(session, "b_self", request)
         assert read.provider_voice_id == "Voice_Alpha"
         assert read.params == {"speed": 0.95}
+
+
+class TestCloneThenBind:
+    def test_clone_then_bind_succeeds(self, session, service):
+        """Clone success upserts provider_voice; binding can be created immediately without refresh."""
+        from unittest.mock import patch
+        from app.domain.schemas import VoiceCloneRequest
+        from app.models.voice_profile import VoiceProfile
+        from app.core.time import utc_now_iso
+
+        # Create a profile first
+        profile = VoiceProfile(
+            id="clone_bind_profile",
+            name="Clone Bind Profile",
+            description="Test profile for clone+bind flow",
+            is_active=True,
+            created_at=utc_now_iso(),
+            updated_at=utc_now_iso(),
+        )
+        session.add(profile)
+        session.commit()
+
+        # Fake adapter returns a voice_id from clone
+        class FakeCloneAdapter:
+            provider_name = "mock"
+            async def clone_voice(self, request):
+                return {
+                    "voice_id": request["voice_id"],
+                    "demo_audio_url": None,
+                    "duration_ms": 5000,
+                    "usage_characters": 50,
+                }
+
+        with patch("app.services.voice_clone_service.get_provider", return_value=FakeCloneAdapter()):
+            from app.services.voice_clone_service import VoiceCloneService
+            svc = VoiceCloneService()
+            req = VoiceCloneRequest(voice_id="clone_for_bind_01", file_id=12345)
+            import asyncio
+            asyncio.get_event_loop().run_until_complete(
+                svc.clone_voice(session, "mock", req)
+            )
+
+        # Binding must succeed using the voice_id that was just cloned
+        from app.domain.schemas import VoiceBindingCreate
+        binding_req = VoiceBindingCreate(
+            provider="mock",
+            model="speech-2.8-hd",
+            provider_voice_id="clone_for_bind_01",
+            params={},
+            priority=1,
+        )
+        binding = service.create_profile_binding(session, "clone_bind_profile", binding_req)
+        assert binding.provider_voice_id == "clone_for_bind_01"
+        assert binding.profile_id == "clone_bind_profile"
+        assert binding.status == "available"
