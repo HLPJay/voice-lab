@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -120,3 +121,66 @@ def test_clone_prompt_pair_required(test_app):
         params={"provider": "mock"},
     )
     assert resp.status_code == 422
+
+
+class TestMiniMaxCloneAdapter:
+    def test_clone_success_uses_request_voice_id(self):
+        """clone_voice returns request['voice_id'] even if body has no voice_id."""
+        from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+        from unittest.mock import patch
+
+        adapter = MiniMaxSpeechAdapter()
+
+        class MockResp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self):
+                # MiniMax success response without voice_id in body
+                return {"base_resp": {"status_code": 0}, "demo_audio": None}
+
+        async def mock_request(method, path, **kwargs):
+            return MockResp()
+
+        with patch.object(adapter, "_request", mock_request):
+            import asyncio
+            result = asyncio.get_event_loop().run_until_complete(
+                adapter.clone_voice({
+                    "voice_id": "my_custom_voice_id",
+                    "file_id": 12345,
+                })
+            )
+
+        assert result["voice_id"] == "my_custom_voice_id"
+
+    def test_clone_duplicate_error_raises_provider_error(self):
+        """MiniMax returns status_code=2039 duplicate → ProviderError with duplicate detail."""
+        from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+        from app.core.errors import ProviderError
+        from unittest.mock import patch
+
+        adapter = MiniMaxSpeechAdapter()
+
+        class MockResp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self):
+                return {
+                    "base_resp": {
+                        "status_code": 2039,
+                        "status_msg": "voice clone voice id duplicate"
+                    }
+                }
+
+        async def mock_request(method, path, **kwargs):
+            return MockResp()
+
+        with patch.object(adapter, "_request", mock_request):
+            with pytest.raises(ProviderError) as exc_info:
+                import asyncio
+                asyncio.get_event_loop().run_until_complete(
+                    adapter.clone_voice({
+                        "voice_id": "duplicate_voice",
+                        "file_id": 12345,
+                    })
+                )
+        assert "duplicate" in str(exc_info.value.detail).lower()

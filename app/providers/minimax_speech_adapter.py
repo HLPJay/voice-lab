@@ -647,11 +647,21 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             )
 
         extra = body.get("extra_info") or {}
+        _provider_logger.info(
+            "voice_clone_success",
+            extra={
+                "voice_id": request["voice_id"],
+                "has_demo_audio": bool(body.get("demo_audio")),
+                "input_sensitive": body.get("input_sensitive"),
+                "input_sensitive_type": body.get("input_sensitive_type"),
+            },
+        )
         return {
-            "voice_id": body.get("voice_id"),
+            "voice_id": request["voice_id"],
             "demo_audio_url": body.get("demo_audio"),
             "duration_ms": extra.get("audio_length"),
             "usage_characters": extra.get("usage_characters"),
+            "response_json": body,
         }
 
     async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
