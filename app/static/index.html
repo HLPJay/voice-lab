@@ -1577,26 +1577,8 @@
     resultsArea.innerHTML = '';
 
     if (isStream) {
-      if (provider === 'minimax' && !confirm('流式生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
-        setLoading(false);
-        return;
-      }
       startStreamGenerate(text, profileId, provider, subtitle, audioFormat, { speed, vol, pitch, emotion });
       return;
-    }
-
-    if (provider === 'minimax' && isVariant) {
-      if (!confirm('多版本试音会多次调用云端 TTS，可能产生费用，是否确认继续？')) {
-        setLoading(false);
-        return;
-      }
-    }
-
-    if (provider === 'minimax' && isAsync) {
-      if (!confirm('异步生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
-        setLoading(false);
-        return;
-      }
     }
 
     try {
@@ -1612,20 +1594,15 @@
         ...(pitch ? { pitch: parseInt(pitch) } : {}),
         ...(emotion ? { emotion } : {}),
         ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {}),
-        ...(provider === 'minimax' && isVariant ? { confirm_cost: true } : {}),
-        ...(provider === 'minimax' && isAsync ? { confirm_cost: true } : {}),
+        confirm_cost: false,
       };
 
-      let endpoint;
-      if (isAsync) endpoint = '/api/voice/render/async';
-      else if (isVariant) endpoint = '/api/voice/variants/render';
-      else endpoint = '/api/voice/render';
+      let endpoint, operation;
+      if (isAsync) { endpoint = '/api/voice/render/async'; operation = 'async_render'; }
+      else if (isVariant) { endpoint = '/api/voice/variants/render'; operation = 'voice_variants'; }
+      else { endpoint = '/api/voice/render'; operation = 't2a'; }
 
-      const resp = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const resp = await guardedJsonFetch(endpoint, payload, { provider, operation, highRisk: true });
 
       const data = await resp.json();
 
@@ -1646,13 +1623,20 @@
         loadHistory(0);
       }
     } catch (e) {
-      resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
-      resultsArea.classList.add('visible');
+      if (e.message === 'USER_CANCELLED') {
+        resultsArea.innerHTML = '';
+      } else {
+        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+        resultsArea.classList.add('visible');
+      }
       setLoading(false);
     }
   }
 
   function startStreamGenerate(text, profileId, provider, subtitle, audioFormat, voiceParams) {
+    if (provider === 'minimax' && !confirm('流式生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
+      return;
+    }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${proto}//${location.host}/api/voice/ws/render`;
 
@@ -2289,27 +2273,24 @@
       resultDiv.innerHTML = '<span style="color:#e53e3e;font-size:0.82rem">请输入试听文本</span>';
       return;
     }
-    if (provider === 'minimax' && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否确认继续？')) {
-      return;
-    }
 
     const model = document.getElementById('auditionModel')?.value || 'speech-2.8-hd';
 
     resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
     try {
-      const resp = await fetch(`/api/voice/provider-voices/preview?provider=${encodeURIComponent(provider)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const resp = await guardedJsonFetch(
+        `/api/voice/provider-voices/preview?provider=${encodeURIComponent(provider)}`,
+        {
           provider_voice_id: voiceId,
           model,
           text,
           audio_format: 'mp3',
           output_format: 'hex',
           need_subtitle: false,
-          confirm_cost: provider === 'minimax',
-        }),
-      });
+          confirm_cost: false,
+        },
+        { provider, operation: 'provider_voice_preview', highRisk: true }
+      );
       const data = await resp.json();
       if (!resp.ok) {
         resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">音色试听失败: ${esc(friendlyErrorMessage(extractErrorMessage(data)))}</span>`;
@@ -2337,6 +2318,10 @@
         resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';
       }
     } catch (e) {
+      if (e.message === 'USER_CANCELLED') {
+        resultDiv.innerHTML = '';
+        return;
+      }
       resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">网络错误: ${esc(e.message)}</span>`;
     }
   }
@@ -2790,9 +2775,6 @@
       resultsEl.innerHTML = `<div class="error-msg">prompt_file_id 和 prompt_text 必须同时填写，或同时留空。</div>`;
       return;
     }
-    if (provider === 'minimax' && !confirm('声音克隆可能产生音色费用和试听费用，是否确认继续？')) {
-      return;
-    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>克隆中…';
@@ -2804,18 +2786,18 @@
         file_id: parseInt(fileId),
         need_noise_reduction: needNoiseReduction,
         need_volume_normalization: needVolumeNormalization,
-        confirm_cost: provider === 'minimax',
+        confirm_cost: false,
       };
       if (promptFileId) payload.prompt_file_id = parseInt(promptFileId);
       if (promptText) payload.prompt_text = promptText;
       if (previewText) payload.preview_text = previewText;
       if (model) payload.model = model;
 
-      const resp = await fetch(`/api/voice/clone/create?provider=${encodeURIComponent(provider)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const resp = await guardedJsonFetch(
+        `/api/voice/clone/create?provider=${encodeURIComponent(provider)}`,
+        payload,
+        { provider, operation: 'voice_clone', highRisk: true }
+      );
       const data = await resp.json();
 
       if (!resp.ok) {
@@ -2823,9 +2805,13 @@
         const fullMsg = friendlyErrorMessage(errMsg);
         if (errMsg.toLowerCase().includes('duplicate')) {
           resultsEl.innerHTML = `<div class="error-msg">voice_id 已存在，请换一个新的 voice_id，或点击「自动生成」。注意：已删除的 voice_id 也不能复用。</div>`;
+          btn.disabled = false;
+          btn.innerHTML = '克隆';
           return;
         }
         resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(fullMsg)}</div>`;
+        btn.disabled = false;
+        btn.innerHTML = '克隆';
         return;
       }
 
@@ -2931,7 +2917,11 @@
         }
       }, 0);
     } catch (e) {
-      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+      if (e.message === 'USER_CANCELLED') {
+        resultsEl.innerHTML = '';
+      } else {
+        resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+      }
     } finally {
       btn.disabled = false;
       btn.innerHTML = '克隆';
@@ -2976,34 +2966,25 @@
         verify,
         model,
         preview_text: previewText,
-        confirm_cost: provider === 'minimax' && verify,
+        confirm_cost: false,
       };
       if (name) payload.name = name;
       if (!verify) {
         payload.description = isClone ? '手动导入的克隆音色' : '手动导入的设计音色';
       }
 
-      // Guard for verify=true on minimax
-      if (provider === 'minimax' && verify) {
-        if (!confirm('验证试听会调用云端 TTS，可能产生费用，是否确认继续？')) {
-          btn.disabled = false;
-          btn.innerHTML = isClone ? '导入克隆音色' : '导入设计音色';
-          resultsEl.innerHTML = '';
-          return;
-        }
-        payload.confirm_cost = true;
-      }
-
-      const resp = await fetch('/api/voice/provider-voices/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const resp = await guardedJsonFetch(
+        '/api/voice/provider-voices/import',
+        payload,
+        { provider, operation: 'provider_voice_import_verify', highRisk: true }
+      );
       const data = await resp.json();
 
       if (!resp.ok) {
         const errMsg = extractErrorMessage(data);
         resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(friendlyErrorMessage(errMsg))}</div>`;
+        btn.disabled = false;
+        btn.innerHTML = '验证并导入';
         return;
       }
 
@@ -3070,7 +3051,11 @@
       handleListVoices(true).catch(() => {});
 
     } catch (e) {
-      resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(e.message)}</div>`;
+      if (e.message === 'USER_CANCELLED') {
+        resultsEl.innerHTML = '';
+      } else {
+        resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(e.message)}</div>`;
+      }
     } finally {
       btn.disabled = false;
       btn.innerHTML = '验证并导入';
@@ -3096,27 +3081,26 @@
       resultsEl.innerHTML = `<div class="error-msg">请输入试听文本（preview_text）</div>`;
       return;
     }
-    if (provider === 'minimax' && !confirm('声音设计可能产生音色费用和试听费用，是否确认继续？')) {
-      return;
-    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>生成中…';
     resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>生成中…</p>';
 
     try {
-      const payload = { prompt, preview_text: previewText, confirm_cost: provider === 'minimax' };
+      const payload = { prompt, preview_text: previewText, confirm_cost: false };
       if (voiceId) payload.voice_id = voiceId;
 
-      const resp = await fetch(`/api/voice/design/create?provider=${encodeURIComponent(provider)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const resp = await guardedJsonFetch(
+        `/api/voice/design/create?provider=${encodeURIComponent(provider)}`,
+        payload,
+        { provider, operation: 'voice_design', highRisk: true }
+      );
       const data = await resp.json();
 
       if (!resp.ok) {
         resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(friendlyErrorMessage(extractErrorMessage(data)))}</div>`;
+        btn.disabled = false;
+        btn.innerHTML = '生成设计';
         return;
       }
 
@@ -3230,7 +3214,11 @@
         }
       }, 0);
     } catch (e) {
-      resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+      if (e.message === 'USER_CANCELLED') {
+        resultsEl.innerHTML = '';
+      } else {
+        resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+      }
     } finally {
       btn.disabled = false;
       btn.innerHTML = '生成设计';
@@ -3480,46 +3468,44 @@
     if (pitch) params.pitch = parseInt(pitch);
     if (emotion) params.emotion = emotion;
 
-    if (provider === 'minimax' && !confirm('批量生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
-      return;
-    }
-
     const btn = document.getElementById('batchLongtextSubmit');
     btn.disabled = true;
     btn.textContent = '提交中…';
 
     try {
-      const resp = await fetch('/api/voice/batch/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'longtext',
-          text,
-          profile_id: profileId,
-          provider,
-          segment_strategy: strategy,
-          max_segment_chars: maxChars,
-          silence_between_ms: silence,
-          output_format: 'hex',
-          audio_format: outputFormat,
-          params,
-          need_subtitle: needSubtitle,
-          confirm_cost: provider === 'minimax',
-        }),
-      });
+      const resp = await guardedJsonFetch('/api/voice/batch/submit', {
+        mode: 'longtext',
+        text,
+        profile_id: profileId,
+        provider,
+        segment_strategy: strategy,
+        max_segment_chars: maxChars,
+        silence_between_ms: silence,
+        output_format: 'hex',
+        audio_format: outputFormat,
+        params,
+        need_subtitle: needSubtitle,
+        confirm_cost: false,
+      }, { provider, operation: 'batch_longtext', highRisk: true });
       const data = await resp.json();
       if (!resp.ok) {
         alert('提交失败：' + (data.detail || JSON.stringify(data)));
+        btn.disabled = false;
+        btn.textContent = '提交批量任务';
         return;
       }
       _currentBatchId = data.batch_id;
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
     } catch (e) {
-      alert('提交失败：' + e.message);
+      if (e.message !== 'USER_CANCELLED') {
+        alert('提交失败：' + e.message);
+      }
     } finally {
-      btn.disabled = false;
-      btn.textContent = '提交批量任务';
+      if (btn.disabled) {
+        btn.disabled = false;
+        btn.textContent = '提交批量任务';
+      }
     }
   }
 
@@ -3551,33 +3537,35 @@
     btn.textContent = '提交中…';
 
     try {
-      const resp = await fetch('/api/voice/batch/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'script',
-          script: lines,
-          provider,
-          silence_between_ms: silence,
-          output_format: 'hex',
-          audio_format: outputFormat,
-          need_subtitle: needSubtitle,
-          confirm_cost: provider === 'minimax',
-        }),
-      });
+      const resp = await guardedJsonFetch('/api/voice/batch/submit', {
+        mode: 'script',
+        script: lines,
+        provider,
+        silence_between_ms: silence,
+        output_format: 'hex',
+        audio_format: outputFormat,
+        need_subtitle: needSubtitle,
+        confirm_cost: false,
+      }, { provider, operation: 'batch_script', highRisk: true });
       const data = await resp.json();
       if (!resp.ok) {
         alert('提交失败：' + (data.detail || JSON.stringify(data)));
+        btn.disabled = false;
+        btn.textContent = '提交批量任务';
         return;
       }
       _currentBatchId = data.batch_id;
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
     } catch (e) {
-      alert('提交失败：' + e.message);
+      if (e.message !== 'USER_CANCELLED') {
+        alert('提交失败：' + e.message);
+      }
     } finally {
-      btn.disabled = false;
-      btn.textContent = '提交批量任务';
+      if (btn.disabled) {
+        btn.disabled = false;
+        btn.textContent = '提交批量任务';
+      }
     }
   }
 

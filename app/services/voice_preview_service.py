@@ -74,9 +74,10 @@ class VoicePreviewService:
         )
 
         result = await adapter.render_sync(plan)
+        job_id = new_id("preview_job")
         audio_asset, _ = self.asset_service.save_assets(
             session,
-            job_id=new_id("preview_job"),
+            job_id=job_id,
             provider=request.provider,
             model=request.model,
             result=result,
@@ -90,13 +91,15 @@ class VoicePreviewService:
         )
 
         return ProviderVoicePreviewResponse(
+            job_id=job_id,
+            status="success",
+            provider=request.provider,
+            model=request.model,
+            provider_voice_id=request.provider_voice_id,
             audio_asset=AudioAssetResponse(
                 id=audio_asset.id,
                 url=audio_asset.file_url,
                 duration_ms=audio_asset.duration_ms,
                 format=audio_asset.format,
             ),
-            provider=request.provider,
-            model=request.model,
-            provider_voice_id=request.provider_voice_id,
         )
