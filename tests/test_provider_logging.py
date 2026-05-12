@@ -14,7 +14,7 @@ def test_provider_logger_exists():
     assert isinstance(logger, logging.Logger)
 
 
-def test_sync_render_produces_provider_logs(test_app, seed_profile, caplog):
+def test_sync_render_produces_provider_logs(test_app, seed_mock_binding, caplog):
     """同步渲染调用 mock provider 时不产生 provider_request 日志（mock 不经过 _request）"""
     from fastapi.testclient import TestClient
 

@@ -399,6 +399,57 @@ class TestRenderSync:
                 await self.adapter.render_sync(plan)
             assert "MiniMax audio save failed" in str(exc_info.value.message)
 
+    @pytest.mark.asyncio
+    async def test_render_sync_business_failure_raises(self):
+        """base_resp.status_code != 0 raises ProviderError('MiniMax T2A failed', status_msg)."""
+        plan = make_plan("hex")
+        body = {
+            "trace_id": "trace_failed",
+            "base_resp": {"status_code": 10001, "status_msg": "audio length too short"},
+            "data": {},
+        }
+
+        with patch("httpx.AsyncClient") as MockClient:
+            mock_instance = AsyncMock()
+            mock_instance.request.return_value = FakeResponse(body)
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            MockClient.return_value = mock_instance
+
+            from app.core.errors import ProviderError
+            with pytest.raises(ProviderError) as exc_info:
+                await self.adapter.render_sync(plan)
+            assert "MiniMax T2A failed" in str(exc_info.value.message)
+            assert "audio length too short" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_render_sync_empty_data_success_base_resp_error_detail(self):
+        """data empty but base_resp success: error detail contains data_keys/output_format/model/voice_id."""
+        plan = make_plan("hex")
+        body = {
+            "trace_id": "trace_empty_data",
+            "base_resp": {"status_code": 0, "status_msg": "success"},
+            "data": {},
+            "extra_info": {},
+        }
+
+        with patch("httpx.AsyncClient") as MockClient:
+            mock_instance = AsyncMock()
+            mock_instance.request.return_value = FakeResponse(body)
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            MockClient.return_value = mock_instance
+
+            from app.core.errors import ProviderError
+            with pytest.raises(ProviderError) as exc_info:
+                await self.adapter.render_sync(plan)
+            detail_str = str(exc_info.value.detail)
+            assert "trace_id" in detail_str
+            assert "data_keys" in detail_str
+            assert "output_format" in detail_str
+            assert plan.model in detail_str
+            assert plan.provider_voice_id in detail_str
+
 
 class TestParseRenderResponse:
     """Tests for _save_audio_from_data covering output_format=url response combinations."""

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 
-def test_save_audio_asset(test_app, seed_profile):
+def test_save_audio_asset(test_app, seed_mock_binding):
     """POST /api/voice/render creates an audio asset retrievable via GET."""
     resp = TestClient(test_app).post(
         "/api/voice/render",
@@ -22,7 +22,7 @@ def test_save_audio_asset(test_app, seed_profile):
     assert data["file_path"]
 
 
-def test_save_subtitle_asset(test_app, seed_profile):
+def test_save_subtitle_asset(test_app, seed_mock_binding):
     """need_subtitle=True creates a subtitle asset retrievable via GET."""
     resp = TestClient(test_app).post(
         "/api/voice/render",
@@ -42,7 +42,7 @@ def test_save_subtitle_asset(test_app, seed_profile):
     assert data["file_path"]
 
 
-def test_audio_download(test_app, seed_profile):
+def test_audio_download(test_app, seed_mock_binding):
     """GET /api/voice/assets/{id}/download returns 200 with audio content-type."""
     resp = TestClient(test_app).post(
         "/api/voice/render",
@@ -60,7 +60,7 @@ def test_audio_download(test_app, seed_profile):
     assert "audio" in dl_resp.headers.get("content-type", "")
 
 
-def test_no_subtitle_when_disabled(test_app, seed_profile):
+def test_no_subtitle_when_disabled(test_app, seed_mock_binding):
     """need_subtitle=False results in null subtitle_asset in response."""
     resp = TestClient(test_app).post(
         "/api/voice/render",

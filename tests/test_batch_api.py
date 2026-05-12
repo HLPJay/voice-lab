@@ -283,3 +283,94 @@ def test_submit_script_empty_lines_rejected(client: TestClient, session: Session
         },
     )
     assert resp.status_code == 422  # Validation error
+
+
+def test_submit_longtext_accepts_hex_output_format_and_mp3_audio_format(
+    client: TestClient, session: Session, seed_profile_and_binding
+):
+    """Batch longtext accepts output_format=hex and audio_format=mp3 (correct MiniMax API fields)."""
+    with patch("app.api.batch.service._execute_with_session", return_value=None):
+        resp = client.post(
+            "/api/voice/batch/submit",
+            json={
+                "mode": "longtext",
+                "text": "这是一段测试文本。",
+                "profile_id": "deep_night_programmer",
+                "provider": "mock",
+                "output_format": "hex",
+                "audio_format": "mp3",
+                "segment_strategy": "sentence",
+                "max_segment_chars": 2000,
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["batch_id"].startswith("batch_")
+
+
+def test_submit_script_accepts_hex_output_format_and_flac_audio_format(
+    client: TestClient, session: Session, seed_profile_and_binding
+):
+    """Batch script accepts output_format=hex and audio_format=flac (correct MiniMax API fields)."""
+    with patch("app.api.batch.service._execute_with_session", return_value=None):
+        resp = client.post(
+            "/api/voice/batch/submit",
+            json={
+                "mode": "script",
+                "script": [
+                    {"role": "旁白", "text": "旁白内容。", "profile_id": "deep_night_programmer"},
+                ],
+                "provider": "mock",
+                "output_format": "hex",
+                "audio_format": "flac",
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["batch_id"].startswith("batch_")
+
+
+def test_status_with_failed_segment_includes_error_message(
+    client: TestClient, session: Session, seed_profile_and_binding
+):
+    """Status response includes error_message for failed segments."""
+    now = utc_now_iso()
+    batch_id = "batch_api_test_failed_seg"
+    batch_job = BatchJob(
+        id=batch_id,
+        mode="longtext",
+        status="failed",
+        provider="mock",
+        output_format="hex",
+        total_segments=1,
+        completed_segments=0,
+        failed_segments=1,
+        silence_between_ms=0,
+        config_json="{}",
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(batch_job)
+
+    seg = BatchSegment(
+        id="batch_api_seg_failed",
+        batch_job_id=batch_id,
+        index=0,
+        text="失败文本。",
+        profile_id="deep_night_programmer",
+        params_json="{}",
+        status="failed",
+        error_message="MiniMax T2A failed: audio length too short",
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(seg)
+    session.commit()
+
+    resp = client.get(f"/api/voice/batch/{batch_id}/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "failed"
+    assert len(data["segments"]) == 1
+    assert data["segments"][0]["status"] == "failed"
+    assert "MiniMax T2A failed" in data["segments"][0]["error_message"]

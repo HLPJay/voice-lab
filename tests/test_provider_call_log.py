@@ -43,7 +43,7 @@ def test_call_log_table_created(temp_db):
         assert result.all() == []  # empty is fine, table exists
 
 
-def test_sync_render_creates_no_call_log_for_mock(test_app, seed_profile, temp_db):
+def test_sync_render_creates_no_call_log_for_mock(test_app, seed_mock_binding, temp_db):
     """Mock provider 的 sync render 不产生 call_log（只有 MiniMax 才写）"""
     engine, _ = temp_db
     from fastapi.testclient import TestClient
