@@ -1308,6 +1308,18 @@
     return JSON.stringify(data);
   }
 
+  function friendlyErrorMessage(message) {
+    const text = String(message || '');
+    const lower = text.toLowerCase();
+    if (lower.includes('insufficient balance')) {
+      return 'MiniMax 余额不足：该错误来自 MiniMax voice_design / voice_clone / preview 接口。请检查 MiniMax 控制台中的语音相关余额，或先切换 provider=mock 测试流程。';
+    }
+    if (lower.includes('api key') || lower.includes('not configured')) {
+      return 'MiniMax API Key 未配置或不可用，请检查 MINIMAX_API_KEY。';
+    }
+    return text;
+  }
+
   let pollTimer = null;
 
   // ============================================================
@@ -2107,21 +2119,21 @@
 
     resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
     try {
-      const resp = await fetch('/api/voice/provider-voices/preview', {
+      const resp = await fetch(`/api/voice/provider-voices/preview?provider=${encodeURIComponent(provider)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          provider,
           provider_voice_id: voiceId,
           model,
           text,
           audio_format: 'mp3',
           output_format: 'hex',
+          need_subtitle: false,
         }),
       });
       const data = await resp.json();
       if (!resp.ok) {
-        resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">生成失败: ${esc(extractErrorMessage(data))}</span>`;
+        resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">音色试听失败: ${esc(friendlyErrorMessage(extractErrorMessage(data)))}</span>`;
         return;
       }
       if (data.audio_asset && data.audio_asset.url) {
@@ -2610,7 +2622,7 @@
       const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(extractErrorMessage(data))}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(friendlyErrorMessage(extractErrorMessage(data)))}</div>`;
         return;
       }
 
@@ -2758,7 +2770,7 @@
       const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(extractErrorMessage(data))}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(friendlyErrorMessage(extractErrorMessage(data)))}</div>`;
         return;
       }
 
