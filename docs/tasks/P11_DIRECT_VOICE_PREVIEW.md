@@ -262,10 +262,10 @@ python -m pytest tests/ -x -q
 
 ## 验证清单
 
-- [ ] 未绑定音色点击试听 → 直接生成音频播放（不提示"请先绑定"）
-- [ ] 已绑定音色点击试听 → 生成的音频确实是该音色（不是 profile 默认绑定的）
-- [ ] 自定义试听文本 → 生成的音频使用自定义文本
-- [ ] speed/vol/pitch/emotion 参数传入 → 生效
-- [ ] provider=mock → 200 + audio_asset
-- [ ] text 为空 → 422
-- [ ] provider_voice_id 为空 → 422
+- [x] 未绑定音色点击试听 → 直接生成音频播放（不提示"请先绑定"）
+- [x] 已绑定音色点击试听 → 生成的音频确实是该音色（不是 profile 默认绑定的）
+- [x] 自定义试听文本 → 生成的音频使用自定义文本
+- [x] speed/vol/pitch/emotion 参数传入 → 生效
+- [x] provider=mock → 200 + audio_asset
+- [x] text 为空 → 422
+- [x] provider_voice_id 为空 → 422
