@@ -2,10 +2,14 @@ import io
 import tempfile
 from pathlib import Path
 
-from app.core.errors import VoiceLabError
+from sqlmodel import Session
+
+from app.core.errors import ProviderError, VoiceLabError
 from app.core.logging import get_logger
+from app.domain.enums import ProviderVoiceStatus
 from app.domain.schemas import VoiceCloneRequest, VoiceCloneResponse, VoiceCloneUploadResponse
 from app.providers.registry import get_provider
+from app.repositories.provider_voice_repo import upsert_provider_voice
 
 MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20MB
 
@@ -110,6 +114,7 @@ class VoiceCloneService:
 
     async def clone_voice(
         self,
+        session: Session,
         provider: str,
         request: VoiceCloneRequest,
     ) -> VoiceCloneResponse:
@@ -118,13 +123,37 @@ class VoiceCloneService:
         request_dict = request.model_dump(exclude_none=True, exclude={"input_sensitive"})
         result = await adapter.clone_voice(request_dict)
 
+        voice_id = result.get("voice_id")
+        if not voice_id:
+            raise ProviderError(
+                "Voice clone returned empty voice_id",
+                str(result),
+            )
+
+        upsert_provider_voice(
+            session,
+            provider=provider,
+            provider_voice_id=voice_id,
+            voice_type="voice_cloning",
+            name=voice_id,
+            description=f"Cloned voice from file_id={request.file_id}",
+            status=ProviderVoiceStatus.available,
+            metadata={
+                "source": "voice_clone",
+                "file_id": request.file_id,
+                "has_demo_audio": bool(result.get("demo_audio_url")),
+                "duration_ms": result.get("duration_ms"),
+                "usage_characters": result.get("usage_characters"),
+            },
+        )
+
         self.logger.info(
             "clone_voice provider=%s voice_id=%s",
-            provider, result.get("voice_id"),
+            provider, voice_id,
         )
 
         return VoiceCloneResponse(
-            voice_id=result["voice_id"],
+            voice_id=voice_id,
             demo_audio_url=result.get("demo_audio_url"),
             duration_ms=result.get("duration_ms"),
             usage_characters=result.get("usage_characters"),

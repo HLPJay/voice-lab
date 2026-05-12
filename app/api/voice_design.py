@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlmodel import Session
 
+from app.core.database import get_session
 from app.domain.schemas import VoiceDesignRequest, VoiceDesignResponse
 from app.services.voice_design_service import VoiceDesignService
 
@@ -11,5 +13,6 @@ service = VoiceDesignService()
 async def create_design(
     request: VoiceDesignRequest,
     provider: str = Query(default="mock"),
+    session: Session = Depends(get_session),
 ):
-    return await service.design_voice(provider, request)
+    return await service.design_voice(session, provider, request)

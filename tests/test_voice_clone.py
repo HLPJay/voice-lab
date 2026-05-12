@@ -184,3 +184,64 @@ class TestMiniMaxCloneAdapter:
                     })
                 )
         assert "duplicate" in str(exc_info.value.detail).lower()
+
+
+class TestCloneServiceUpsert:
+    def test_clone_success_upserts_provider_voice(self, test_app, session):
+        """clone_voice success writes a record to provider_voices."""
+        from unittest.mock import patch, AsyncMock
+        from app.models.provider_voice import ProviderVoice
+        from app.repositories.provider_voice_repo import get_provider_voice
+
+        class FakeAdapter:
+            provider_name = "mock"
+            async def clone_voice(self, request):
+                return {
+                    "voice_id": request["voice_id"],
+                    "demo_audio_url": None,
+                    "duration_ms": 5000,
+                    "usage_characters": 50,
+                }
+
+        with patch("app.services.voice_clone_service.get_provider", return_value=FakeAdapter()):
+            from app.services.voice_clone_service import VoiceCloneService
+            svc = VoiceCloneService()
+            from app.domain.schemas import VoiceCloneRequest
+            req = VoiceCloneRequest(
+                voice_id="clone_test_voice_01",
+                file_id=12345,
+            )
+            import asyncio
+            asyncio.get_event_loop().run_until_complete(
+                svc.clone_voice(session, "mock", req)
+            )
+
+        pv = get_provider_voice(session, provider="mock", provider_voice_id="clone_test_voice_01")
+        assert pv is not None, "provider_voice should be upserted after clone success"
+        assert pv.voice_type == "voice_cloning"
+        assert pv.status == "available"
+
+    def test_clone_empty_voice_id_raises_error(self, test_app, session):
+        """adapter returns empty voice_id → ProviderError, not a false success."""
+        from unittest.mock import patch
+        from app.core.errors import ProviderError
+
+        class EmptyVoiceIdAdapter:
+            provider_name = "mock"
+            async def clone_voice(self, request):
+                return {
+                    "voice_id": None,
+                    "demo_audio_url": None,
+                }
+
+        with patch("app.services.voice_clone_service.get_provider", return_value=EmptyVoiceIdAdapter()):
+            from app.services.voice_clone_service import VoiceCloneService
+            svc = VoiceCloneService()
+            from app.domain.schemas import VoiceCloneRequest
+            req = VoiceCloneRequest(voice_id="some_id_voice", file_id=12345)
+            with pytest.raises(ProviderError) as exc:
+                import asyncio
+                asyncio.get_event_loop().run_until_complete(
+                    svc.clone_voice(session, "mock", req)
+                )
+        assert "empty voice_id" in str(exc.value.message).lower()

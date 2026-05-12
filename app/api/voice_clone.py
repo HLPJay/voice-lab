@@ -1,5 +1,7 @@
-from fastapi import APIRouter, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from sqlmodel import Session
 
+from app.core.database import get_session
 from app.domain.schemas import VoiceCloneRequest, VoiceCloneResponse, VoiceCloneUploadResponse
 from app.services.voice_clone_service import VoiceCloneService
 
@@ -29,5 +31,6 @@ async def upload_clone_audio(
 async def create_clone(
     request: VoiceCloneRequest,
     provider: str = Query(default="mock"),
+    session: Session = Depends(get_session),
 ):
-    return await service.clone_voice(provider, request)
+    return await service.clone_voice(session, provider, request)
