@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -43,9 +43,8 @@ class TestProviderVoicePreviewSchema:
 class TestProviderVoicePreviewAPI:
     def test_preview_returns_200_with_audio_asset(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview",
+            "/api/voice/provider-voices/preview?provider=mock",
             json={
-                "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
                 "model": "speech-2.8-hd",
                 "text": "你好，这是一段试听测试。",
@@ -58,15 +57,16 @@ class TestProviderVoicePreviewAPI:
         assert data["provider"] == "mock"
         assert data["model"] == "speech-2.8-hd"
         assert data["provider_voice_id"] == "mock_voice_system"
+        assert "job_id" in data
+        assert "status" in data
         assert "audio_asset" in data
         assert data["audio_asset"]["id"]
         assert data["audio_asset"]["url"]
 
     def test_preview_with_speed_vol_pitch(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview",
+            "/api/voice/provider-voices/preview?provider=mock",
             json={
-                "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
                 "model": "speech-2.8-hd",
                 "text": "参数试听测试。",
@@ -83,9 +83,8 @@ class TestProviderVoicePreviewAPI:
 
     def test_preview_missing_text_returns_422(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview",
+            "/api/voice/provider-voices/preview?provider=mock",
             json={
-                "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
                 "model": "speech-2.8-hd",
                 "audio_format": "mp3",
@@ -96,9 +95,8 @@ class TestProviderVoicePreviewAPI:
 
     def test_preview_missing_voice_id_returns_422(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview",
+            "/api/voice/provider-voices/preview?provider=mock",
             json={
-                "provider": "mock",
                 "model": "speech-2.8-hd",
                 "text": "测试文本",
                 "audio_format": "mp3",
@@ -109,9 +107,8 @@ class TestProviderVoicePreviewAPI:
 
 
 class TestProviderVoicePreviewService:
-    def test_plan_uses_preview_profile_id(self, test_app):
-        """Verify RenderPlan is created with __preview__ profile_id."""
-        from unittest.mock import patch, MagicMock
+    def test_plan_uses_provider_voice_id_not_binding(self, test_app):
+        """Verify RenderPlan uses the exact provider_voice_id passed in request, not from binding."""
         from app.domain.render_plan import RenderPlan
 
         captured_plan = None
@@ -144,12 +141,11 @@ class TestProviderVoicePreviewService:
                     metadata={"mock": True},
                 )
 
-        with patch("app.services.voice_preview_service.get_provider", return_value=FakeAdapter()):
+        with patch("app.services.provider_voice_preview_service.get_provider", return_value=FakeAdapter()):
             resp = TestClient(test_app).post(
-                "/api/voice/provider-voices/preview",
+                "/api/voice/provider-voices/preview?provider=mock",
                 json={
-                    "provider": "mock",
-                    "provider_voice_id": "mock_voice_system",
+                    "provider_voice_id": "voice_a",
                     "model": "speech-2.8-hd",
                     "text": "direct preview test",
                     "audio_format": "mp3",
@@ -158,5 +154,76 @@ class TestProviderVoicePreviewService:
             )
         assert resp.status_code == 200
         assert captured_plan is not None
-        assert captured_plan.profile_id == "__preview__"
-        assert captured_plan.provider_voice_id == "mock_voice_system"
+        # Must use the exact provider_voice_id from request, not from any binding
+        assert captured_plan.provider_voice_id == "voice_a"
+        # profile_id should NOT be a real profile
+        assert captured_plan.profile_id == "provider_voice_preview"
+
+
+class TestMiniMaxClonePayload:
+    def test_clone_payload_excludes_input_sensitive(self):
+        """MiniMaxSpeechAdapter.clone_voice() must NOT forward input_sensitive in the request payload."""
+        from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+
+        adapter = MiniMaxSpeechAdapter()
+        captured_payload = None
+
+        async def mock_request(method, path, **kwargs):
+            nonlocal captured_payload
+            captured_payload = kwargs.get("json", {})
+            # Return a successful response
+            class MockResp:
+                status_code = 200
+                def raise_for_status(self): pass
+                def json(self): return {"base_resp": {"status_code": 0}, "voice_id": "test_voice"}
+            return MockResp()
+
+        with patch.object(adapter, "_request", mock_request):
+            import asyncio
+            asyncio.get_event_loop().run_until_complete(
+                adapter.clone_voice({
+                    "voice_id": "test_voice",
+                    "file_id": 12345,
+                    "input_sensitive": True,  # This must NOT appear in payload
+                    "model": "speech-2.8-hd",
+                    "need_noise_reduction": True,
+                })
+            )
+
+        assert captured_payload is not None
+        assert "input_sensitive" not in captured_payload, \
+            "input_sensitive must NOT be forwarded to MiniMax API"
+
+
+class TestMiniMaxDesignVoice:
+    def test_design_voice_base_resp_failure_raises_provider_error(self):
+        """design_voice raises ProviderError when base_resp.status_code != 0."""
+        from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
+        from app.core.errors import ProviderError
+
+        adapter = MiniMaxSpeechAdapter()
+
+        async def mock_request(method, path, **kwargs):
+            class MockResp:
+                status_code = 200
+                def raise_for_status(self): pass
+                def json(self):
+                    return {
+                        "base_resp": {
+                            "status_code": 1008,
+                            "status_msg": "insufficient balance"
+                        }
+                    }
+            return MockResp()
+
+        with patch.object(adapter, "_request", mock_request):
+            with pytest.raises(ProviderError) as exc_info:
+                import asyncio
+                asyncio.get_event_loop().run_until_complete(
+                    adapter.design_voice(
+                        prompt="a warm male voice",
+                        preview_text="hello world",
+                        voice_id=None,
+                    )
+                )
+        assert "insufficient balance" in str(exc_info.value.detail)

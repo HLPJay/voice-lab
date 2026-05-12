@@ -272,9 +272,10 @@ class ProviderVoicePreviewRequest(BaseModel):
     provider: str = "minimax"
     provider_voice_id: str = Field(min_length=1)
     model: str = "speech-2.8-hd"
-    text: str = Field(min_length=1, max_length=500)
+    text: str = Field(min_length=1, max_length=1000)
     audio_format: Literal["mp3", "wav", "flac"] = "mp3"
     output_format: Literal["hex", "url"] = "hex"
+    need_subtitle: bool = False
     speed: float | None = Field(None, ge=0.5, le=2.0)
     vol: float | None = Field(None, ge=0.1, le=10.0)
     pitch: int | None = Field(None, ge=-12, le=12)
@@ -282,10 +283,12 @@ class ProviderVoicePreviewRequest(BaseModel):
 
 
 class ProviderVoicePreviewResponse(BaseModel):
-    audio_asset: AudioAssetResponse
+    job_id: str
+    status: str
     provider: str
     model: str
     provider_voice_id: str
+    audio_asset: AudioAssetResponse | None = None
 
 
 class StreamRenderRequest(BaseModel):
