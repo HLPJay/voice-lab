@@ -265,6 +265,8 @@ class VoiceDeleteResponse(BaseModel):
     voice_id: str
     deleted: bool = True
     message: str = "删除成功"
+    local_provider_voice_updated: bool = False
+    affected_bindings_count: int = 0
 
 
 class ProviderVoicePreviewRequest(BaseModel):

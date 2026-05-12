@@ -97,3 +97,22 @@ def mark_missing_provider_voices_deprecated(
     if changed:
         session.commit()
     return changed
+
+
+def mark_provider_voice_deprecated(
+    session: Session,
+    *,
+    provider: str,
+    provider_voice_id: str,
+) -> bool:
+    """Mark a single provider_voice as deprecated. Returns True if found and updated."""
+    item = get_provider_voice(session, provider=provider, provider_voice_id=provider_voice_id)
+    if not item:
+        return False
+    now = utc_now_iso()
+    item.status = ProviderVoiceStatus.deprecated
+    item.updated_at = now
+    item.synced_at = now
+    session.add(item)
+    session.commit()
+    return True

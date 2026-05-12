@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlmodel import Session
 
+from app.core.database import get_session
 from app.domain.schemas import VoiceDeleteRequest, VoiceDeleteResponse
 from app.services.voice_delete_service import VoiceDeleteService
 
@@ -11,5 +13,6 @@ service = VoiceDeleteService()
 async def delete_voice(
     request: VoiceDeleteRequest,
     provider: str = Query(default="mock"),
+    session: Session = Depends(get_session),
 ):
-    return await service.delete_voice(provider, request)
+    return await service.delete_voice(session, provider, request)

@@ -104,3 +104,28 @@ def update_binding(
 
 def deprecate_binding(session: Session, binding: VoiceBinding) -> VoiceBinding:
     return update_binding(session, binding, status=BindingStatus.deprecated)
+
+
+def deprecate_bindings_by_provider_voice(
+    session: Session,
+    *,
+    provider: str,
+    provider_voice_id: str,
+) -> int:
+    """Mark all active bindings matching provider+provider_voice_id as deprecated. Returns count."""
+    stmt = (
+        select(VoiceBinding)
+        .where(VoiceBinding.provider == provider)
+        .where(VoiceBinding.provider_voice_id == provider_voice_id)
+        .where(VoiceBinding.status != BindingStatus.deprecated)
+    )
+    bindings = list(session.exec(stmt).all())
+    if not bindings:
+        return 0
+    now = utc_now_iso()
+    for b in bindings:
+        b.status = BindingStatus.deprecated
+        b.updated_at = now
+        session.add(b)
+    session.commit()
+    return len(bindings)
