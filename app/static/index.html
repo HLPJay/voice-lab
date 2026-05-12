@@ -1130,6 +1130,8 @@
   // ============================================================
   let _cachedProfiles = null;
   let _cachedVoices = {};
+  window._auditionRecords = [];
+  window._voicePagination = { currentPage: 1, pageSize: 20, totalItems: 0 };
 
   async function loadProfiles(forceRefresh = false) {
     if (_cachedProfiles && !forceRefresh) return _cachedProfiles;
@@ -1782,6 +1784,346 @@
   // ============================================================
   // Voices Tab
   // ============================================================
+  async function refreshVoiceBindStatus(voiceId) {
+    const bindMap = await loadAllBindings();
+    window._voiceBindMap = bindMap;
+    const row = document.querySelector(`tr[data-voice-id="${CSS.escape(voiceId)}"]`);
+    if (!row) return;
+    const cell = row.querySelector('.bind-status-cell');
+    if (!cell) return;
+    const boundProfiles = bindMap[voiceId];
+    if (boundProfiles && boundProfiles.length > 0) {
+      cell.innerHTML = `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`;
+    } else {
+      cell.innerHTML = `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
+    }
+  }
+
+  async function handleVoiceDeleteFromList(voiceId, voiceName, provider, voiceType, rowEl) {
+    if (!confirm(`确定删除音色 ${voiceId}？此操作不可恢复。`)) return;
+    const resultEl = document.createElement('div');
+    resultEl.style.cssText = 'font-size:0.82rem;margin-top:4px';
+    rowEl.appendChild(resultEl);
+    try {
+      const resp = await fetch(`/api/voice/provider-voices/${encodeURIComponent(provider)}/${encodeURIComponent(voiceId)}?voice_type=${encodeURIComponent(voiceType || '')}`, {
+        method: 'DELETE',
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        resultEl.innerHTML = `<span style="color:#e53e3e">删除失败: ${esc(data.detail || JSON.stringify(data))}</span>`;
+        return;
+      }
+      // Remove row from DOM
+      rowEl.remove();
+      // Also update _loadedVoices
+      if (window._loadedVoices) {
+        window._loadedVoices = window._loadedVoices.filter(v => v.provider_voice_id !== voiceId);
+      }
+    } catch (e) {
+      resultEl.innerHTML = `<span style="color:#e53e3e">网络错误: ${esc(e.message)}</span>`;
+    }
+  }
+
+  function renderAuditionWorkstation() {
+    return `<div id="voiceAuditionPanel" class="card" style="margin-bottom:12px">
+      <div class="card-title">🎧 试听工作台</div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:0.82rem;color:#718096;margin-bottom:4px">试听文本</div>
+        <textarea id="auditionText" rows="2"
+          placeholder="输入试听文本…"
+          style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem;resize:vertical;box-sizing:border-box">你好，这是一段测试语音。欢迎使用语音合成服务。</textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <div id="auditionSelected" style="font-size:0.82rem;color:#a0aec0;white-space:nowrap">当前选中：（无）</div>
+        <div style="font-size:0.82rem">模型：</div>
+        <select id="auditionModel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+          <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+          <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+          <option value="speech-2.6-hd">speech-2.6-hd</option>
+          <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+        </select>
+        <div id="auditionProfileSelectWrap" style="display:none;flex:1;min-width:160px">
+          <select id="auditionProfileSelect" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;width:100%"></select>
+        </div>
+        <button class="btn-primary" id="auditionGenBtn" style="margin:0;white-space:nowrap">▶ 生成试听</button>
+      </div>
+      <div id="auditionResult" style="margin-bottom:10px;min-height:24px"></div>
+      <div id="auditionRecordsPanel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:0.82rem;font-weight:600">试听记录 <span id="auditionCount"></span></div>
+          <button class="btn-sm" id="auditionClearBtn" style="margin:0">清空全部记录</button>
+        </div>
+        <div id="auditionRecordsTable"></div>
+      </div>
+    </div>`;
+  }
+
+  function updateAuditionSelected(voiceId, voiceName) {
+    const el = document.getElementById('auditionSelected');
+    if (!el) return;
+    if (!voiceId) {
+      el.style.cssText = 'font-size:0.82rem;color:#a0aec0;white-space:nowrap';
+      el.textContent = '当前选中：（无）';
+      document.getElementById('auditionProfileSelectWrap').style.display = 'none';
+      return;
+    }
+    el.style.cssText = 'font-size:0.82rem;color:#2f855a;font-weight:600;background:#f0fff4;padding:2px 8px;border-radius:4px;white-space:nowrap';
+    el.textContent = `当前选中：${esc(voiceId)} ${voiceName ? `(${esc(voiceName)})` : ''}`;
+    // Check if voice is already bound
+    const bindMap = window._voiceBindMap || {};
+    const bound = bindMap[voiceId];
+    if (bound && bound.length > 0) {
+      document.getElementById('auditionProfileSelectWrap').style.display = 'none';
+    } else {
+      document.getElementById('auditionProfileSelectWrap').style.display = 'flex';
+      loadProfiles().then(() => {
+        populateProfileSelect(document.getElementById('auditionProfileSelect'));
+      });
+    }
+  }
+
+  function setupAuditionWorkstation() {
+    const resultsEl = document.getElementById('voiceListResults');
+
+    // Delegated events: only attach once to the persistent container
+    if (!window._auditionDelegated) {
+      window._auditionDelegated = true;
+
+      // Audition button clicks (delegated)
+      resultsEl.addEventListener('click', e => {
+        const audBtn = e.target.closest('.audition-btn');
+        if (audBtn) {
+          const voiceId = audBtn.dataset.voiceId;
+          const voiceName = audBtn.dataset.name;
+          const provider = audBtn.dataset.provider;
+          window._auditionSelectedVoiceId = voiceId;
+          window._auditionSelectedVoiceName = voiceName;
+          updateAuditionSelected(voiceId, voiceName);
+          // Scroll to workstation
+          const panel = document.getElementById('voiceAuditionPanel');
+          if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Generate audition (delegated — survives innerHTML replacement)
+        if (e.target.closest('#auditionGenBtn')) {
+          handleGenerateAudition();
+        }
+
+        // Clear all records (delegated — survives innerHTML replacement)
+        if (e.target.closest('#auditionClearBtn')) {
+          if (!confirm('确定清空全部试听记录？')) return;
+          window._auditionRecords = [];
+          renderAuditionRecords();
+        }
+
+        // Auto-fill delete form when clicking on a voice row (not on a button)
+        const row = e.target.closest('tr[data-voice-id]');
+        if (row && !e.target.closest('button')) {
+          const voiceId = row.dataset.voiceId;
+          const voiceType = row.querySelector('.voice-delete-btn')?.dataset.voiceType || '';
+          const deleteVoiceIdInput = document.getElementById('deleteVoiceId');
+          const deleteVoiceTypeInput = document.getElementById('deleteVoiceType');
+          if (deleteVoiceIdInput) deleteVoiceIdInput.value = voiceId;
+          if (deleteVoiceTypeInput) deleteVoiceTypeInput.value = voiceType;
+        }
+
+        // Delete voice from list
+        const voiceDelBtn = e.target.closest('.voice-delete-btn');
+        if (voiceDelBtn) {
+          const btn = voiceDelBtn;
+          const voiceId = btn.dataset.voiceId;
+          const voiceName = btn.dataset.name;
+          const provider = btn.dataset.provider;
+          const voiceType = btn.dataset.voiceType;
+          const row = btn.closest('tr');
+          handleVoiceDeleteFromList(voiceId, voiceName, provider, voiceType, row);
+        }
+
+        // Delete record
+        const delBtn = e.target.closest('[data-delete]');
+        if (delBtn) {
+          const idx = parseInt(delBtn.dataset.delete);
+          window._auditionRecords.splice(idx, 1);
+          renderAuditionRecords();
+        }
+      });
+
+      // Star rating (delegated)
+      resultsEl.addEventListener('click', e => {
+        const star = e.target.closest('.star');
+        if (star) {
+          const idx = parseInt(star.dataset.index);
+          const s = parseInt(star.dataset.star);
+          const record = window._auditionRecords[idx];
+          if (!record) return;
+          if (record.rating === s) {
+            record.rating = null; // toggle off
+          } else {
+            record.rating = s;
+          }
+          renderAuditionRecords();
+        }
+      });
+
+      // Star hover preview (delegated)
+      resultsEl.addEventListener('mouseover', e => {
+        const star = e.target.closest('.star');
+        if (!star) return;
+        const idx = parseInt(star.dataset.index);
+        const hoveredStar = parseInt(star.dataset.star);
+        const record = window._auditionRecords[idx];
+        if (!record) return;
+        const stars = resultsEl.querySelectorAll(`.star[data-index="${idx}"]`);
+      stars.forEach(s => {
+        const sn = parseInt(s.dataset.star);
+        s.style.color = sn <= hoveredStar ? '#f6ad55' : '#e2e8f0';
+      });
+    });
+
+    resultsEl.addEventListener('mouseleave', e => {
+      const cell = e.target.closest('.star-cell');
+      if (!cell) return;
+      const idx = cell.dataset.index;
+      const record = window._auditionRecords[idx];
+      const stars = cell.querySelectorAll('.star');
+      stars.forEach(s => {
+        const sn = parseInt(s.dataset.star);
+        s.style.color = record && record.rating && sn <= record.rating ? '#f6ad55' : '#e2e8f0';
+      });
+    });
+
+    // Note input (delegated, save on input)
+    resultsEl.addEventListener('input', e => {
+      const input = e.target.closest('[data-index][data-field="note"]');
+      if (input) {
+        const idx = parseInt(input.dataset.index);
+        const record = window._auditionRecords[idx];
+        if (record) record.note = input.value;
+      }
+    });
+    } // end of !_auditionDelegated guard
+
+    // These run on every call (after innerHTML replacement recreates elements)
+    renderAuditionRecords();
+    // Restore selected voice display if any
+    if (window._auditionSelectedVoiceId) {
+      updateAuditionSelected(window._auditionSelectedVoiceId, window._auditionSelectedVoiceName);
+    }
+  }
+
+  function renderAuditionRecords() {
+    const container = document.getElementById('auditionRecordsTable');
+    const countEl = document.getElementById('auditionCount');
+    if (!container) return;
+    const records = window._auditionRecords || [];
+    if (countEl) countEl.textContent = records.length > 0 ? `（共 ${records.length} 条）` : '';
+    if (records.length === 0) {
+      container.innerHTML = '<div style="font-size:0.78rem;color:#a0aec0;text-align:center;padding:8px">暂无试听记录</div>';
+      return;
+    }
+    let html = `<table class="voice-table" style="font-size:0.78rem">
+      <thead><tr><th>voice_id</th><th>文本摘要</th><th>音频</th><th>评分</th><th>备注</th><th>操作</th></tr></thead><tbody>`;
+    records.forEach((r, i) => {
+      const textPreview = r.text.length > 15 ? r.text.substring(0, 15) + '…' : r.text;
+      const stars = [1,2,3,4,5].map(n =>
+        `<span class="star" data-index="${i}" data-star="${n}" style="cursor:pointer;color:${r.rating && n <= r.rating ? '#f6ad55' : '#e2e8f0'};font-size:1.1rem;margin:0 1px">★</span>`
+      ).join('');
+      const audioHtml = r.audioUrl
+        ? `<audio controls style="height:24px"><source src="${esc(r.audioUrl)}" type="audio/mpeg"></audio>`
+        : '-';
+      html += `<tr>
+        <td><code>${esc(r.voiceId)}</code></td>
+        <td title="${esc(r.text)}">${esc(textPreview)}</td>
+        <td>${audioHtml}</td>
+        <td class="star-cell" data-index="${i}">${stars}</td>
+        <td><input type="text" value="${esc(r.note || '')}" placeholder="添加备注…"
+          style="border:none;border-bottom:1px dashed #cbd5e0;background:transparent;font-size:0.78rem;width:80px;padding:2px 0"
+          data-index="${i}" data-field="note"></td>
+        <td><button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e">删除</button></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  async function handleGenerateAudition() {
+    const voiceId = window._auditionSelectedVoiceId;
+    const voiceName = window._auditionSelectedVoiceName;
+    const provider = document.getElementById('voiceProvider').value;
+    const text = document.getElementById('auditionText').value.trim();
+    const model = document.getElementById('auditionModel').value;
+    const resultDiv = document.getElementById('auditionResult');
+
+    if (!voiceId) {
+      resultDiv.innerHTML = '<span style="color:#e53e3e;font-size:0.82rem">请先在下方音色列表点击「试听」按钮选择音色</span>';
+      return;
+    }
+    if (!text) {
+      resultDiv.innerHTML = '<span style="color:#e53e3e;font-size:0.82rem">请输入试听文本</span>';
+      return;
+    }
+
+    // Check if voice is bound, otherwise use selected profile
+    const bindMap = window._voiceBindMap || {};
+    const bound = bindMap[voiceId];
+    let profileId;
+    if (bound && bound.length > 0) {
+      // Voice is bound, resolve profile_id from binding
+      const profiles = await loadProfiles();
+      const p = profiles.find(p => bindMap[voiceId] && bindMap[voiceId].includes(p.name));
+      if (p) {
+        // Find the actual profile_id by checking bindings
+        try {
+          const resp = await fetch(`/api/voice/profiles/${p.id}/bindings`);
+          const bindings = await resp.json();
+          const matched = bindings.find(b => b.provider === provider && b.provider_voice_id === voiceId && b.status === 'available');
+          if (matched) {
+            profileId = p.id;
+          }
+        } catch (e) {}
+      }
+    }
+    if (!profileId) {
+      profileId = document.getElementById('auditionProfileSelect').value;
+    }
+    if (!profileId) {
+      resultDiv.innerHTML = '<span style="color:#ed8936;font-size:0.82rem">该音色未绑定，请先在上方选择或创建人设后再生成</span>';
+      return;
+    }
+
+    resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
+    try {
+      const resp = await fetch('/api/voice/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, profile_id: profileId, provider }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">生成失败: ${esc(data.error?.message || JSON.stringify(data))}</span>`;
+        return;
+      }
+      if (data.audio_asset && data.audio_asset.url) {
+        resultDiv.innerHTML = `<audio class="audio-player" controls autoplay style="width:100%">
+          <source src="${esc(data.audio_asset.url)}" type="audio/mpeg">
+        </audio>
+        <div style="font-size:0.75rem;color:#718096;margin-top:4px">voice_id: ${esc(voiceId)} | 时长: ${data.audio_asset.duration_ms ? (data.audio_asset.duration_ms/1000).toFixed(1) + 's' : '-'}</div>`;
+        // Add to records
+        window._auditionRecords.push({
+          voiceId, voiceName: voiceName || '',
+          text, audioUrl: data.audio_asset.url,
+          rating: null, note: '',
+          timestamp: Date.now(),
+        });
+        renderAuditionRecords();
+      } else {
+        resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';
+      }
+    } catch (e) {
+      resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">网络错误: ${esc(e.message)}</span>`;
+    }
+  }
+
   async function handleListVoices() {
     const provider = document.getElementById('voiceProvider').value;
     const voiceType = document.getElementById('voiceType').value;
@@ -1810,37 +2152,16 @@
       // Load binding info for all profiles
       const voiceBindMap = await loadAllBindings();
 
-      const typeTag = t => {
-        if (t === 'system') return '<span class="tag tag-system">系统</span>';
-        if (t === 'voice_cloning') return '<span class="tag tag-clone">克隆</span>';
-        if (t === 'voice_generation') return '<span class="tag tag-generation">设计</span>';
-        return `<span class="tag">${esc(t)}</span>`;
-      };
+      // Initialize pagination state
+      window._voicePagination.currentPage = 1;
+      window._voicePagination.totalItems = voices.length;
 
-      let html = `<table class="voice-table">
-        <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>绑定状态</th><th>操作</th></tr></thead><tbody>`;
-      voices.slice(0, 50).forEach(v => {
-        const boundProfiles = voiceBindMap[v.provider_voice_id];
-        const bindStatusHtml = boundProfiles && boundProfiles.length > 0
-          ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`
-          : `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
-        html += `<tr>
-          <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
-          <td>${esc(v.name || '-')}</td>
-          <td>${typeTag(v.voice_type)}</td>
-          <td>${esc(v.language || '-')}</td>
-          <td>${bindStatusHtml}</td>
-          <td><button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}">绑定到人设</button></td>
-        </tr>`;
-      });
-      html += '</tbody></table>';
-      if (voices.length > 50) {
-        html += `<p style="font-size:0.78rem;color:#718096;margin-top:8px">显示前 50 条（共 ${voices.length} 条），请用搜索过滤</p>`;
-      }
-      resultsEl.innerHTML = html;
       // Store for filtering
       window._loadedVoices = voices;
       window._voiceBindMap = voiceBindMap;
+
+      // Render table with pagination
+      renderVoiceTable(voices, provider, voiceBindMap);
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
     } finally {
@@ -1853,10 +2174,11 @@
     const voices = window._loadedVoices || [];
     const keyword = document.getElementById('voiceSearch').value.trim().toLowerCase();
     const provider = document.getElementById('voiceProvider').value;
-    const resultsEl = document.getElementById('voiceListResults');
 
     if (!keyword) {
-      renderVoiceTable(voices.slice(0, 50), provider, voices.length, window._voiceBindMap || {});
+      window._voicePagination.currentPage = 1;
+      window._voicePagination.totalItems = voices.length;
+      renderVoiceTable(voices, provider, window._voiceBindMap || {});
       return;
     }
 
@@ -1866,11 +2188,28 @@
       const desc = (v.description || '').toLowerCase();
       return name.includes(keyword) || voiceId.includes(keyword) || desc.includes(keyword);
     });
-    renderVoiceTable(filtered, provider, voices.length, window._voiceBindMap || {});
+
+    window._voicePagination.currentPage = 1;
+    window._voicePagination.totalItems = filtered.length;
+    renderVoiceTable(filtered, provider, window._voiceBindMap || {});
   }
 
-  function renderVoiceTable(voices, provider, total, voiceBindMap = {}) {
+  function renderVoiceTable(voices, provider, voiceBindMap) {
     const resultsEl = document.getElementById('voiceListResults');
+    voiceBindMap = voiceBindMap || {};
+    const totalItems = voices.length;
+    const { currentPage, pageSize } = window._voicePagination;
+    const isAll = pageSize === 'all';
+    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
+    const safePage = Math.min(currentPage, totalPages);
+
+    // Paginate
+    let pageVoices = voices;
+    if (!isAll && totalItems > 0) {
+      const start = (safePage - 1) * pageSize;
+      pageVoices = voices.slice(start, start + pageSize);
+    }
+
     const typeTag = t => {
       if (t === 'system') return '<span class="tag tag-system">系统</span>';
       if (t === 'voice_cloning') return '<span class="tag tag-clone">克隆</span>';
@@ -1878,73 +2217,194 @@
       return `<span class="tag">${esc(t)}</span>`;
     };
 
-    if (voices.length === 0) {
-      resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px">未找到匹配的音色</p>';
-      return;
-    }
-
-    let html = `<table class="voice-table">
+    let tableHtml = `<table class="voice-table">
       <thead><tr><th>voice_id</th><th>名称</th><th>类型</th><th>语言</th><th>绑定状态</th><th>操作</th></tr></thead><tbody>`;
-    voices.forEach(v => {
+    if (pageVoices.length === 0) {
+      tableHtml += `<tr><td colspan="6" style="text-align:center;color:#a0aec0;font-size:0.82rem;padding:16px">本页暂无音色</td></tr>`;
+    }
+    pageVoices.forEach(v => {
       const boundProfiles = voiceBindMap[v.provider_voice_id];
       const bindStatusHtml = boundProfiles && boundProfiles.length > 0
         ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.join(', '))}</span>`
         : `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
-      html += `<tr>
+      const showDelete = v.voice_type !== 'system';
+      const voiceTypeLabel = v.voice_type || '';
+      tableHtml += `<tr data-voice-id="${esc(v.provider_voice_id)}">
         <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
         <td>${esc(v.name || '-')}</td>
         <td>${typeTag(v.voice_type)}</td>
         <td>${esc(v.language || '-')}</td>
-        <td>${bindStatusHtml}</td>
-        <td><button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}">绑定到人设</button></td>
+        <td class="bind-status-cell">${bindStatusHtml}</td>
+        <td>
+          <button class="btn-sm audition-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">试听</button>
+          <button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">绑定</button>
+          ${showDelete ? `<button class="btn-sm voice-delete-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" data-voice-type="${voiceTypeLabel}" style="margin:0;color:#e53e3e">删除</button>` : ''}
+        </td>
       </tr>`;
     });
-    html += '</tbody></table>';
-    if (total > 50 && !document.getElementById('voiceSearch').value.trim()) {
-      html += `<p style="font-size:0.78rem;color:#718096;margin-top:8px">显示前 50 条（共 ${total} 条），请用搜索过滤</p>`;
+    tableHtml += '</tbody></table>';
+
+    // Pagination controls
+    let paginationHtml = '';
+    if (totalItems > 0) {
+      const prevDisabled = safePage <= 1 || isAll ? 'style="opacity:0.4;cursor:not-allowed"' : '';
+      const nextDisabled = safePage >= totalPages || isAll ? 'style="opacity:0.4;cursor:not-allowed"' : '';
+      paginationHtml = `
+        <div id="voicePagination" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:0.82rem">
+          <span>共 ${totalItems} 条音色</span>
+          <span>每页：</span>
+          <select id="pageSizeSelect" onchange="handlePageSizeChange(this.value)" style="padding:4px;border:1px solid #e2e8f0;border-radius:6px">
+            <option value="20" ${pageSize == 20 ? 'selected' : ''}>20</option>
+            <option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option>
+            <option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option>
+            <option value="all" ${isAll ? 'selected' : ''}>全部</option>
+          </select>
+          ${isAll ? '' : `
+          <button class="btn-sm" ${prevDisabled} onclick="handlePrevPage()">← 上一页</button>
+          <span>第 ${safePage}/${totalPages} 页</span>
+          <button class="btn-sm" ${nextDisabled} onclick="handleNextPage()">下一页 →</button>
+          `}
+        </div>`;
     }
-    resultsEl.innerHTML = html;
+
+    resultsEl.innerHTML = renderAuditionWorkstation() + tableHtml + paginationHtml;
+    setupAuditionWorkstation();
+  }
+
+  function handlePageSizeChange(newSize) {
+    window._voicePagination.pageSize = newSize === 'all' ? 'all' : parseInt(newSize);
+    window._voicePagination.currentPage = 1;
+    renderVoiceTable(window._loadedVoices || [], document.getElementById('voiceProvider').value, window._voiceBindMap || {});
+  }
+
+  function handlePrevPage() {
+    const { currentPage } = window._voicePagination;
+    if (currentPage <= 1) return;
+    window._voicePagination.currentPage = currentPage - 1;
+    renderVoiceTable(window._loadedVoices || [], document.getElementById('voiceProvider').value, window._voiceBindMap || {});
+  }
+
+  function handleNextPage() {
+    const { currentPage, pageSize, totalItems } = window._voicePagination;
+    const totalPages = pageSize === 'all' ? 1 : Math.ceil(totalItems / pageSize);
+    if (currentPage >= totalPages) return;
+    window._voicePagination.currentPage = currentPage + 1;
+    renderVoiceTable(window._loadedVoices || [], document.getElementById('voiceProvider').value, window._voiceBindMap || {});
+  }
+
+  function renderInlineCreateProfile(container, selectEl, idPrefix) {
+    // Add "+ 新建" button next to the profile select
+    const btn = document.createElement('button');
+    btn.id = idPrefix + 'NewProfileBtn';
+    btn.className = 'btn-sm';
+    btn.style.cssText = 'white-space:nowrap;margin-left:4px';
+    btn.textContent = '+ 新建';
+    container.appendChild(btn);
+
+    // Create collapsible form
+    const formEl = document.createElement('div');
+    formEl.id = idPrefix + 'NewProfileForm';
+    formEl.style.cssText = 'display:none;width:100%;margin-top:8px;padding:8px;background:#fffbeb;border-radius:6px';
+    formEl.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="${idPrefix}NewProfileId" placeholder="人设ID，如 narrator_female"
+          style="flex:1;min-width:140px;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.82rem">
+        <input type="text" id="${idPrefix}NewProfileName" placeholder="人设名称，如 女性旁白"
+          style="flex:1;min-width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.82rem">
+        <button class="btn-primary" id="${idPrefix}NewProfileConfirm" style="margin:0;white-space:nowrap">确认创建</button>
+        <button class="btn-sm" id="${idPrefix}NewProfileCancel" style="margin:0">取消</button>
+      </div>
+      <div id="${idPrefix}NewProfileMsg" style="margin-top:6px;font-size:0.8rem"></div>
+    `;
+    container.appendChild(formEl);
+
+    btn.addEventListener('click', () => {
+      formEl.style.display = formEl.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.getElementById(idPrefix + 'NewProfileCancel').addEventListener('click', () => {
+      formEl.style.display = 'none';
+    });
+
+    document.getElementById(idPrefix + 'NewProfileConfirm').addEventListener('click', async () => {
+      const id = document.getElementById(idPrefix + 'NewProfileId').value.trim();
+      const name = document.getElementById(idPrefix + 'NewProfileName').value.trim();
+      const msgEl = document.getElementById(idPrefix + 'NewProfileMsg');
+      if (!id || !name) {
+        msgEl.innerHTML = '<span style="color:#e53e3e">请填写 ID 和名称</span>';
+        return;
+      }
+      msgEl.innerHTML = '<span style="color:#718096">创建中…</span>';
+      try {
+        const resp = await fetch('/api/voice/profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          msgEl.innerHTML = `<span style="color:#e53e3e">创建失败: ${esc(data.detail || JSON.stringify(data))}</span>`;
+          return;
+        }
+        await loadProfiles(true);
+        populateProfileSelect(selectEl);
+        selectEl.value = id;
+        formEl.style.display = 'none';
+        msgEl.innerHTML = `<span style="color:#2f855a">人设已创建：${esc(name)} (${esc(id)})</span>`;
+        document.getElementById(idPrefix + 'NewProfileId').value = '';
+        document.getElementById(idPrefix + 'NewProfileName').value = '';
+      } catch (e) {
+        msgEl.innerHTML = `<span style="color:#e53e3e">网络错误: ${esc(e.message)}</span>`;
+      }
+    });
   }
 
   async function quickBindVoice(voiceId, voiceName, provider) {
     const existingPanel = document.getElementById('quickBindPanel');
     if (existingPanel) existingPanel.remove();
 
-    const profiles = await loadProfiles();
-    if (!profiles || profiles.length === 0) {
-      alert('没有可用的人设，请先在绑定管理中创建人设');
-      return;
-    }
+    await loadProfiles();
 
     const panel = document.createElement('div');
     panel.id = 'quickBindPanel';
-    panel.style.cssText = 'padding:12px;background:#f7fafc;border-radius:8px;margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    panel.style.cssText = 'padding:12px;background:#f7fafc;border-radius:8px;margin-top:8px';
+
+    const profileSelect = document.createElement('select');
+    profileSelect.id = 'quickBindProfileSel';
+    profileSelect.style.cssText = 'padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px';
+
     panel.innerHTML = `
-      <span style="font-size:0.82rem">将 <code>${esc(voiceId)}</code> 绑定到：</span>
-      <select id="quickBindProfileSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px"></select>
-      <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
-        <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-        <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-        <option value="speech-2.6-hd">speech-2.6-hd</option>
-        <option value="speech-2.6-turbo">speech-2.6-turbo</option>
-      </select>
-      <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
-      <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>
-      <div id="quickBindMsg" style="width:100%;font-size:0.82rem"></div>
+      <div style="font-size:0.82rem;margin-bottom:8px">将 <code>${esc(voiceId)}</code> 绑定到：</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div id="quickProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
+        <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
+          <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
+          <option value="speech-2.8-turbo">speech-2.8-turbo</option>
+          <option value="speech-2.6-hd">speech-2.6-hd</option>
+          <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+        </select>
+        <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
+        <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>
+      </div>
+      <div id="quickBindMsg" style="margin-top:6px;font-size:0.82rem"></div>
     `;
 
+    const quickProfileWrap = panel.querySelector('#quickProfileWrap');
+    quickProfileWrap.appendChild(profileSelect);
     document.getElementById('voiceListResults').appendChild(panel);
-    populateProfileSelect(document.getElementById('quickBindProfileSel'));
+    populateProfileSelect(profileSelect);
+    renderInlineCreateProfile(quickProfileWrap, profileSelect, 'quick');
 
     document.getElementById('quickBindCancel').onclick = () => panel.remove();
     document.getElementById('quickBindConfirm').onclick = async () => {
-      const profileId = document.getElementById('quickBindProfileSel').value;
+      const profileId = profileSelect.value;
       const model = document.getElementById('quickBindModelSel').value;
       if (!profileId) return;
       try {
         await bindVoiceToProfile(voiceId, provider, profileId, model);
         document.getElementById('quickBindMsg').innerHTML =
           `<span style="color:#2f855a">绑定成功: ${esc(voiceName)} → ${esc(profileId)}</span>`;
+        await refreshVoiceBindStatus(voiceId);
       } catch (e) {
         document.getElementById('quickBindMsg').innerHTML =
           `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
@@ -2109,7 +2569,7 @@
       const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(data.error?.detail || data.error?.message || data.detail || JSON.stringify(data))}</div>`;
         return;
       }
 
@@ -2128,7 +2588,7 @@
       html += `<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">
         <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="cloneBindProfile" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:120px"></select>
+          <div id="cloneProfileWrap" style="display:flex;gap:8px;align-items:center;flex:1;min-width:0"></div>
           <select id="cloneBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
             <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
             <option value="speech-2.8-turbo">speech-2.8-turbo</option>
@@ -2154,8 +2614,13 @@
       resultsEl.innerHTML = html;
 
       setTimeout(() => {
-        const sel = document.getElementById('cloneBindProfile');
-        if (sel) populateProfileSelect(sel);
+        const profileWrap = document.getElementById('cloneProfileWrap');
+        const sel = document.createElement('select');
+        sel.id = 'cloneBindProfile';
+        sel.style.cssText = 'flex:1;min-width:0;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
+        profileWrap.appendChild(sel);
+        populateProfileSelect(sel);
+        renderInlineCreateProfile(profileWrap, sel, 'clone');
         const btn = document.getElementById('cloneBindBtn');
         if (btn) {
           btn.onclick = async () => {
@@ -2166,6 +2631,7 @@
             try {
               await bindVoiceToProfile(data.voice_id, provider, profileId, model);
               resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+              await refreshVoiceBindStatus(data.voice_id);
             } catch (e) {
               resultDiv.innerHTML = `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
             }
@@ -2251,7 +2717,7 @@
       const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(data.error?.detail || data.error?.message || data.detail || JSON.stringify(data))}</div>`;
         return;
       }
 
@@ -2280,7 +2746,7 @@
       html += `<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">
         <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="designBindProfile" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:120px"></select>
+          <div id="designProfileWrap" style="display:flex;gap:8px;align-items:center;flex:1;min-width:0"></div>
           <select id="designBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
             <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
             <option value="speech-2.8-turbo">speech-2.8-turbo</option>
@@ -2306,8 +2772,13 @@
       resultsEl.innerHTML = html;
 
       setTimeout(() => {
-        const sel = document.getElementById('designBindProfile');
-        if (sel) populateProfileSelect(sel);
+        const profileWrap = document.getElementById('designProfileWrap');
+        const sel = document.createElement('select');
+        sel.id = 'designBindProfile';
+        sel.style.cssText = 'flex:1;min-width:0;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
+        profileWrap.appendChild(sel);
+        populateProfileSelect(sel);
+        renderInlineCreateProfile(profileWrap, sel, 'design');
         const btn = document.getElementById('designBindBtn');
         if (btn) {
           btn.onclick = async () => {
@@ -2318,6 +2789,7 @@
             try {
               await bindVoiceToProfile(data.voice_id, provider, profileId, model);
               resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+              await refreshVoiceBindStatus(data.voice_id);
             } catch (e) {
               resultDiv.innerHTML = `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
             }

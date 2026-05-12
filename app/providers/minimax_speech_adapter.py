@@ -580,7 +580,11 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "file_id": request["file_id"],
             "voice_id": request["voice_id"],
         }
-        for key in ("text", "model", "language_boost", "need_noise_reduction", "need_volume_normalization"):
+        # Map preview_text → text (MiniMax API expects "text" for demo generation)
+        preview_text = request.get("preview_text")
+        if preview_text:
+            payload["text"] = preview_text
+        for key in ("model", "language_boost", "need_noise_reduction", "need_volume_normalization"):
             if key in request and request[key] is not None:
                 payload[key] = request[key]
 
