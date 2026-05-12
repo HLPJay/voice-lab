@@ -1087,16 +1087,17 @@
         </div>
         <div id="batchProgressStats" style="font-size:0.85rem;color:#718096;margin-bottom:12px"></div>
         <div id="batchSegmentTable" style="font-size:0.82rem"></div>
-        <div id="batchCompleteActions" style="display:none;margin-top:16px">
-          <button class="btn-primary" id="batchPlayBtn" onclick="handleBatchPlay()">播放合并音频</button>
-          <a id="batchDownloadLink" class="btn-sm" href="#" style="display:inline-block;margin-left:8px">下载音频</a>
-          <button class="btn-danger" id="batchRetryBtn" onclick="handleBatchRetry()" style="display:none;margin-left:8px">重试失败段</button>
+        <div id="batchResultPlayer" style="display:none;margin-top:16px">
+          <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">批量结果</div>
+          <audio id="batchMergedAudio" controls style="width:100%;margin-bottom:8px"></audio>
+          <div id="batchCurrentSubtitle" style="padding:8px 12px;background:#f7fafc;border-radius:6px;min-height:40px;font-size:0.88rem;color:#2d3748;margin-bottom:8px"></div>
+          <div id="batchSubtitleList" style="max-height:160px;overflow-y:auto;font-size:0.80rem;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a id="batchDownloadAudio" class="btn-sm" href="#" style="display:none">下载合并音频</a>
+            <a id="batchDownloadSubtitle" class="btn-sm" href="#" style="display:none">下载字幕</a>
+            <button class="btn-danger" id="batchRetryBtn" onclick="handleBatchRetry()" style="display:none">重试失败段</button>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Audio player for batch (hidden) -->
-    <audio id="batchAudioPlayer" style="display:none"></audio>
   </div>
 
 </div>
@@ -3109,6 +3110,7 @@
   // Batch polling state
   let _batchPollTimer = null;
   let _currentBatchId = null;
+  let _batchTimeline = [];
 
   async function handleBatchLongtextSubmit() {
     const text = document.getElementById('batchText').value.trim();
@@ -3228,7 +3230,8 @@
     document.getElementById('batchProgressTitle').textContent = `(任务ID: ${batchId})`;
     document.getElementById('batchProgressStats').textContent = '加载中…';
     document.getElementById('batchSegmentTable').innerHTML = '';
-    document.getElementById('batchCompleteActions').style.display = 'none';
+    document.getElementById('batchResultPlayer').style.display = 'none';
+    _batchTimeline = [];
   }
 
   function startBatchPoll(batchId) {
@@ -3253,7 +3256,97 @@
     } catch (e) {}
   }
 
-  function renderBatchStatus(data) {
+  function renderBatchResultPlayer(data) {
+    const playerDiv = document.getElementById('batchResultPlayer');
+    if (!data.merged_audio) {
+      playerDiv.style.display = 'none';
+      return;
+    }
+    playerDiv.style.display = '';
+
+    const audio = document.getElementById('batchMergedAudio');
+    audio.src = data.merged_audio.url;
+    audio.addEventListener('timeupdate', updateBatchSubtitleHighlight);
+    audio.addEventListener('seeking', updateBatchSubtitleHighlight);
+
+    const dlAudio = document.getElementById('batchDownloadAudio');
+    dlAudio.href = data.merged_audio.url;
+    dlAudio.style.display = '';
+
+    _batchTimeline = [];
+    const dlSub = document.getElementById('batchDownloadSubtitle');
+    dlSub.style.display = 'none';
+    document.getElementById('batchCurrentSubtitle').textContent = '';
+    document.getElementById('batchSubtitleList').innerHTML = '';
+
+    if (data.merged_subtitle && data.merged_subtitle.id) {
+      fetch(`/api/voice/assets/${data.merged_subtitle.id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(asset => {
+          if (!asset || !asset.timeline || !asset.timeline.length) return;
+          _batchTimeline = asset.timeline;
+          dlSub.href = `/api/voice/assets/${data.merged_subtitle.id}/download`;
+          dlSub.style.display = '';
+          renderBatchSubtitleList(_batchTimeline);
+        })
+        .catch(() => {});
+    }
+  }
+
+  function renderBatchSubtitleList(timeline) {
+    const list = document.getElementById('batchSubtitleList');
+    list.innerHTML = '';
+    timeline.forEach((item, idx) => {
+      const startSec = typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0;
+      const endSec = typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0;
+      const text = item.text || '';
+      const div = document.createElement('div');
+      div.dataset.index = idx;
+      div.dataset.start = startSec;
+      div.style.cssText = 'padding:5px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background 0.1s';
+      div.innerHTML = `<span style="color:#a0aec0;margin-right:8px;font-size:0.75rem">${formatTime(startSec)}</span>${esc(text)}`;
+      div.addEventListener('click', () => {
+        const audio = document.getElementById('batchMergedAudio');
+        audio.currentTime = startSec;
+        audio.play().catch(() => {});
+      });
+      list.appendChild(div);
+    });
+  }
+
+  function updateBatchSubtitleHighlight() {
+    const audio = document.getElementById('batchMergedAudio');
+    const curTime = audio.currentTime;
+    const currentDiv = document.getElementById('batchCurrentSubtitle');
+    const list = document.getElementById('batchSubtitleList');
+    if (!_batchTimeline.length) return;
+    let activeIdx = -1;
+    for (let i = 0; i < _batchTimeline.length; i++) {
+      const item = _batchTimeline[i];
+      const start = typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0;
+      const end = typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0;
+      if (curTime >= start && curTime <= end) {
+        activeIdx = i;
+        break;
+      }
+    }
+    const children = list.querySelectorAll('div[data-index]');
+    children.forEach((child, i) => {
+      child.style.background = i === activeIdx ? '#e2e8f0' : '';
+    });
+    if (activeIdx >= 0) {
+      currentDiv.textContent = _batchTimeline[activeIdx].text || '';
+      const activeEl = list.querySelector(`div[data-index="${activeIdx}"]`);
+      if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+      currentDiv.textContent = '';
+    }
+  }
+
+  function formatTime(sec) {
+    const s = Math.floor(sec);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
     const total = data.total_segments || 0;
     const completed = data.completed_segments || 0;
     const failed = data.failed_segments || 0;
@@ -3302,38 +3395,16 @@
     html += '</tbody></table>';
     table.innerHTML = html;
 
-    // Show complete actions when done
+    // Show result player when done
     if (data.status === 'success' || data.status === 'partial') {
       stopBatchPoll();
-      const actions = document.getElementById('batchCompleteActions');
-      actions.style.display = '';
-
-      if (data.merged_audio) {
-        document.getElementById('batchPlayBtn').style.display = '';
-        const dlLink = document.getElementById('batchDownloadLink');
-        dlLink.href = data.merged_audio.url;
-        dlLink.style.display = '';
-      } else {
-        document.getElementById('batchPlayBtn').style.display = 'none';
-        document.getElementById('batchDownloadLink').style.display = 'none';
-      }
-
-      document.getElementById('batchRetryBtn').style.display = data.failed_segments > 0 ? '' : 'none';
+      renderBatchResultPlayer(data);
     }
   }
 
   async function handleBatchPlay() {
-    const batchId = _currentBatchId;
-    if (!batchId) return;
-    try {
-      const resp = await fetch(`/api/voice/batch/${batchId}/status`);
-      const data = await resp.json();
-      if (!data.merged_audio) return;
-      const audioUrl = data.merged_audio.url;
-      const player = document.getElementById('batchAudioPlayer');
-      player.src = audioUrl;
-      player.play().catch(() => {});
-    } catch (e) {}
+    const audio = document.getElementById('batchMergedAudio');
+    if (audio) audio.play().catch(() => {});
   }
 
   async function handleBatchRetry() {
