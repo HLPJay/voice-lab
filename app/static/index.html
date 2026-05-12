@@ -3258,47 +3258,75 @@
 
   function renderBatchResultPlayer(data) {
     const playerDiv = document.getElementById('batchResultPlayer');
+    if (!playerDiv) return;
     if (!data.merged_audio) {
       playerDiv.style.display = 'none';
       return;
     }
     playerDiv.style.display = '';
 
-    const audio = document.getElementById('batchMergedAudio');
-    audio.src = data.merged_audio.url;
-    audio.addEventListener('timeupdate', updateBatchSubtitleHighlight);
-    audio.addEventListener('seeking', updateBatchSubtitleHighlight);
+    // Only initialize player DOM once per batch
+    if (window._batchPlayerInitialized !== data.batch_id) {
+      window._batchPlayerInitialized = data.batch_id;
 
-    const dlAudio = document.getElementById('batchDownloadAudio');
-    dlAudio.href = data.merged_audio.url;
-    dlAudio.style.display = '';
+      const audio = document.getElementById('batchMergedAudio');
+      if (!audio) return;
+      audio.src = data.merged_audio.url;
+      audio.addEventListener('timeupdate', updateBatchSubtitleHighlight);
+      audio.addEventListener('seeking', updateBatchSubtitleHighlight);
 
-    _batchTimeline = [];
-    const dlSub = document.getElementById('batchDownloadSubtitle');
-    dlSub.style.display = 'none';
-    document.getElementById('batchCurrentSubtitle').textContent = '';
-    document.getElementById('batchSubtitleList').innerHTML = '';
+      const dlAudio = document.getElementById('batchDownloadAudio');
+      if (dlAudio) {
+        dlAudio.href = data.merged_audio.url;
+        dlAudio.style.display = '';
+      }
+
+      const dlSub = document.getElementById('batchDownloadSubtitle');
+      if (dlSub) dlSub.style.display = 'none';
+      const curSub = document.getElementById('batchCurrentSubtitle');
+      if (curSub) curSub.textContent = '';
+      const subList = document.getElementById('batchSubtitleList');
+      if (subList) subList.innerHTML = '';
+      _batchTimeline = [];
+    }
 
     if (data.merged_subtitle && data.merged_subtitle.id) {
-      fetch(`/api/voice/assets/${data.merged_subtitle.id}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(asset => {
-          if (!asset || !asset.timeline || !asset.timeline.length) return;
-          _batchTimeline = asset.timeline;
-          dlSub.href = `/api/voice/assets/${data.merged_subtitle.id}/download`;
+      const subId = data.merged_subtitle.id;
+      if (window._batchSubtitleCache && window._batchSubtitleCache[subId]) {
+        _batchTimeline = window._batchSubtitleCache[subId];
+        renderBatchSubtitleList(_batchTimeline);
+        const dlSub = document.getElementById('batchDownloadSubtitle');
+        if (dlSub) {
+          dlSub.href = `/api/voice/assets/${subId}/download`;
           dlSub.style.display = '';
-          renderBatchSubtitleList(_batchTimeline);
-        })
-        .catch(() => {});
+        }
+      } else {
+        if (!window._batchSubtitleCache) window._batchSubtitleCache = {};
+        fetch(`/api/voice/assets/${subId}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(asset => {
+            if (!asset || !asset.timeline || !asset.timeline.length) return;
+            window._batchSubtitleCache[subId] = asset.timeline;
+            _batchTimeline = asset.timeline;
+            renderBatchSubtitleList(_batchTimeline);
+            const dlSub = document.getElementById('batchDownloadSubtitle');
+            if (dlSub) {
+              dlSub.href = `/api/voice/assets/${subId}/download`;
+              dlSub.style.display = '';
+            }
+          })
+          .catch(() => {});
+      }
     }
   }
 
   function renderBatchSubtitleList(timeline) {
     const list = document.getElementById('batchSubtitleList');
+    if (!list) return;
     list.innerHTML = '';
+    if (!timeline || !timeline.length) return;
     timeline.forEach((item, idx) => {
       const startSec = typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0;
-      const endSec = typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0;
       const text = item.text || '';
       const div = document.createElement('div');
       div.dataset.index = idx;
@@ -3307,8 +3335,10 @@
       div.innerHTML = `<span style="color:#a0aec0;margin-right:8px;font-size:0.75rem">${formatTime(startSec)}</span>${esc(text)}`;
       div.addEventListener('click', () => {
         const audio = document.getElementById('batchMergedAudio');
-        audio.currentTime = startSec;
-        audio.play().catch(() => {});
+        if (audio) {
+          audio.currentTime = startSec;
+          audio.play().catch(() => {});
+        }
       });
       list.appendChild(div);
     });
@@ -3316,10 +3346,11 @@
 
   function updateBatchSubtitleHighlight() {
     const audio = document.getElementById('batchMergedAudio');
+    if (!audio) return;
     const curTime = audio.currentTime;
     const currentDiv = document.getElementById('batchCurrentSubtitle');
     const list = document.getElementById('batchSubtitleList');
-    if (!_batchTimeline.length) return;
+    if (!currentDiv || !list || !_batchTimeline.length) return;
     let activeIdx = -1;
     for (let i = 0; i < _batchTimeline.length; i++) {
       const item = _batchTimeline[i];
@@ -3347,13 +3378,17 @@
     const s = Math.floor(sec);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
+
+  function renderBatchStatus(data) {
     const total = data.total_segments || 0;
     const completed = data.completed_segments || 0;
     const failed = data.failed_segments || 0;
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    document.getElementById('batchProgressFill').style.width = pct + '%';
-    document.getElementById('batchProgressStats').textContent =
+    const fill = document.getElementById('batchProgressFill');
+    const stats = document.getElementById('batchProgressStats');
+    if (fill) fill.style.width = pct + '%';
+    if (stats) stats.textContent =
       `已完成 ${completed}/${total} 段` + (failed > 0 ? `（失败 ${failed} 段）` : '');
 
     const table = document.getElementById('batchSegmentTable');
