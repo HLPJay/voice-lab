@@ -578,6 +578,7 @@
       <div class="textarea-wrap">
         <textarea id="textInput" placeholder="输入文案..." maxlength="9500"></textarea>
         <span class="char-count" id="charCount">0 / 9500</span>
+        <span class="cost-hint" id="costHint" style="display:none"></span>
       </div>
     </div>
 
@@ -1332,7 +1333,42 @@
 
   textInput.addEventListener('input', () => {
     charCount.textContent = `${textInput.value.length} / 9500`;
+    updateCostHint();
   });
+
+  async function updateCostHint() {
+    const costHintEl = document.getElementById('costHint');
+    if (!costHintEl) return;
+    if (providerSelect.value !== 'minimax') {
+      costHintEl.style.display = 'none';
+      return;
+    }
+    const text = textInput.value.trim();
+    if (!text) {
+      costHintEl.style.display = 'none';
+      return;
+    }
+    try {
+      const resp = await fetch('/api/voice/cost/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'minimax', model: 'speech-2.8-hd', text, operation: 't2a' })
+      });
+      if (!resp.ok) { costHintEl.style.display = 'none'; return; }
+      const data = await resp.json();
+      const chars = data.billing_characters;
+      const cost = data.estimated_cost_cny;
+      const unknown = data.unknown_price;
+      if (unknown) {
+        costHintEl.textContent = `计费字符: ${chars} (价格未知)`;
+      } else {
+        costHintEl.textContent = `计费字符: ${chars}，预估费用: ¥${cost.toFixed(4)}`;
+      }
+      costHintEl.style.display = 'inline';
+    } catch {
+      costHintEl.style.display = 'none';
+    }
+  }
 
   genModes.forEach(r => r.addEventListener('change', () => {
     const mode = document.querySelector('input[name="genMode"]:checked').value;
@@ -1351,7 +1387,7 @@
   });
 
   // T2A Tab: also load binding status when provider changes
-  providerSelect.addEventListener('change', checkBindingStatus);
+  providerSelect.addEventListener('change', () => { checkBindingStatus(); updateCostHint(); });
   profileSelect.addEventListener('change', checkBindingStatus);
 
   function setLoading(on) {
@@ -2202,6 +2238,9 @@
       resultDiv.innerHTML = '<span style="color:#e53e3e;font-size:0.82rem">请输入试听文本</span>';
       return;
     }
+    if (provider === 'minimax' && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否确认继续？')) {
+      return;
+    }
 
     const model = document.getElementById('auditionModel')?.value || 'speech-2.8-hd';
 
@@ -2217,6 +2256,7 @@
           audio_format: 'mp3',
           output_format: 'hex',
           need_subtitle: false,
+          confirm_cost: provider === 'minimax',
         }),
       });
       const data = await resp.json();
@@ -2699,6 +2739,9 @@
       resultsEl.innerHTML = `<div class="error-msg">prompt_file_id 和 prompt_text 必须同时填写，或同时留空。</div>`;
       return;
     }
+    if (provider === 'minimax' && !confirm('声音克隆可能产生音色费用和试听费用，是否确认继续？')) {
+      return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>克隆中…';
@@ -2710,6 +2753,7 @@
         file_id: parseInt(fileId),
         need_noise_reduction: needNoiseReduction,
         need_volume_normalization: needVolumeNormalization,
+        confirm_cost: provider === 'minimax',
       };
       if (promptFileId) payload.prompt_file_id = parseInt(promptFileId);
       if (promptText) payload.prompt_text = promptText;
@@ -2989,13 +3033,16 @@
       resultsEl.innerHTML = `<div class="error-msg">请输入试听文本（preview_text）</div>`;
       return;
     }
+    if (provider === 'minimax' && !confirm('声音设计可能产生音色费用和试听费用，是否确认继续？')) {
+      return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>生成中…';
     resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>生成中…</p>';
 
     try {
-      const payload = { prompt, preview_text: previewText };
+      const payload = { prompt, preview_text: previewText, confirm_cost: provider === 'minimax' };
       if (voiceId) payload.voice_id = voiceId;
 
       const resp = await fetch(`/api/voice/design/create?provider=${encodeURIComponent(provider)}`, {
@@ -3370,6 +3417,10 @@
     if (pitch) params.pitch = parseInt(pitch);
     if (emotion) params.emotion = emotion;
 
+    if (provider === 'minimax' && !confirm('批量生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
+      return;
+    }
+
     const btn = document.getElementById('batchLongtextSubmit');
     btn.disabled = true;
     btn.textContent = '提交中…';
@@ -3390,6 +3441,7 @@
           audio_format: outputFormat,
           params,
           need_subtitle: needSubtitle,
+          confirm_cost: provider === 'minimax',
         }),
       });
       const data = await resp.json();
@@ -3427,6 +3479,10 @@
     const outputFormat = document.getElementById('batchScriptOutputFormat').value;
     const needSubtitle = document.getElementById('batchScriptNeedSubtitle').checked;
 
+    if (provider === 'minimax' && !confirm('批量生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
+      return;
+    }
+
     const btn = document.getElementById('batchScriptSubmit');
     btn.disabled = true;
     btn.textContent = '提交中…';
@@ -3443,6 +3499,7 @@
           output_format: 'hex',
           audio_format: outputFormat,
           need_subtitle: needSubtitle,
+          confirm_cost: provider === 'minimax',
         }),
       });
       const data = await resp.json();

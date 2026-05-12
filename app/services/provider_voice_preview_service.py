@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session
 
 from app.core.config import get_settings
+from app.core.errors import ValidationError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.domain.enums import JobStatus, JobType
@@ -31,6 +32,12 @@ class ProviderVoicePreviewService:
         provider: str,
         request: ProviderVoicePreviewRequest,
     ) -> ProviderVoicePreviewResponse:
+        if provider == "minimax" and not request.confirm_cost:
+            raise ValidationError(
+                "需要确认成本后才能执行真实试听",
+                "provider_voice_preview requires confirm_cost=true for minimax provider",
+            )
+
         settings = get_settings()
         adapter = get_provider(provider)
 

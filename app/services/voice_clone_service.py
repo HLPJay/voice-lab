@@ -4,7 +4,7 @@ from pathlib import Path
 
 from sqlmodel import Session
 
-from app.core.errors import ProviderError, VoiceLabError
+from app.core.errors import ProviderError, ValidationError, VoiceLabError
 from app.core.logging import get_logger
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.schemas import VoiceCloneRequest, VoiceCloneResponse, VoiceCloneUploadResponse
@@ -12,6 +12,15 @@ from app.providers.registry import get_provider
 from app.repositories.provider_voice_repo import upsert_provider_voice
 
 MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+def _require_cost_confirm(provider: str, confirm_cost: bool) -> None:
+    """Raise ValidationError if minimax high-risk operation has no cost confirmation."""
+    if provider == "minimax" and not confirm_cost:
+        raise ValidationError(
+            "需要确认成本后才能执行声音克隆",
+            "voice_clone requires confirm_cost=true for minimax provider",
+        )
 
 
 def _probe_audio_duration(file_data: bytes, ext: str) -> float | None:
@@ -118,6 +127,8 @@ class VoiceCloneService:
         provider: str,
         request: VoiceCloneRequest,
     ) -> VoiceCloneResponse:
+        _require_cost_confirm(provider, request.confirm_cost)
+
         adapter = get_provider(provider)
 
         request_dict = request.model_dump(exclude_none=True, exclude={"input_sensitive"})

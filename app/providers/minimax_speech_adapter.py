@@ -258,6 +258,36 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         except Exception as exc:
             _provider_logger.warning("call_log_save_failed", extra={"error": str(exc)})
 
+    def update_call_log(
+        self,
+        *,
+        job_id: str,
+        usage_characters: int | None,
+        provider_trace_id: str | None,
+    ) -> None:
+        """Update the most recent call log entry for job_id with usage/trace fields."""
+        try:
+            from app.core.database import get_engine
+            from sqlmodel import Session, select
+            from app.models.provider_call_log import ProviderCallLog
+
+            with Session(get_engine()) as session:
+                entry = session.exec(
+                    select(ProviderCallLog)
+                    .where(ProviderCallLog.job_id == job_id)
+                    .order_by(ProviderCallLog.created_at.desc())
+                    .limit(1)
+                ).one_or_none()
+                if entry:
+                    if usage_characters is not None:
+                        entry.usage_characters = usage_characters
+                    if provider_trace_id is not None:
+                        entry.provider_trace_id = provider_trace_id
+                    session.add(entry)
+                    session.commit()
+        except Exception as exc:
+            _provider_logger.warning("call_log_update_failed", extra={"error": str(exc), "job_id": job_id})
+
     def _description_to_text(self, value) -> str | None:
         if isinstance(value, list):
             return "\n".join(str(item) for item in value if item)
@@ -476,10 +506,17 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         metadata = {"extra_info": extra}
         metadata.update(subtitle_meta)
 
+        usage_chars = extra.get("usage_characters") or len(plan.text)
+        self.update_call_log(
+            job_id=get_job_id() or "",
+            usage_characters=usage_chars,
+            provider_trace_id=trace_id,
+        )
+
         return ProviderRenderResult(
             audio_path=str(Path(audio_path)),
             duration_ms=duration_ms,
-            usage_characters=extra.get("usage_characters") or len(plan.text),
+            usage_characters=usage_chars,
             trace_id=trace_id,
             response_json=body,
             timeline=timeline,

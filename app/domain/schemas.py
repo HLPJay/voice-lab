@@ -33,6 +33,7 @@ class VoiceRenderRequest(BaseModel):
     vol: float | None = Field(None, ge=0.1, le=10.0)
     pitch: int | None = Field(None, ge=-12, le=12)
     emotion: str | None = None
+    confirm_cost: bool = False
 
 
 class AudioAssetResponse(BaseModel):
@@ -220,6 +221,7 @@ class VoiceCloneRequest(BaseModel):
     need_noise_reduction: bool = False
     need_volume_normalization: bool = False
     input_sensitive: bool = False
+    confirm_cost: bool = False
 
     @model_validator(mode="after")
     def check_clone_request_consistency(self):
@@ -247,6 +249,7 @@ class VoiceDesignRequest(BaseModel):
         max_length=256,
         pattern=r"^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$",
     )
+    confirm_cost: bool = False
 
 
 class VoiceDesignResponse(BaseModel):
@@ -282,6 +285,7 @@ class ProviderVoicePreviewRequest(BaseModel):
     vol: float | None = Field(None, ge=0.1, le=10.0)
     pitch: int | None = Field(None, ge=-12, le=12)
     emotion: str | None = None
+    confirm_cost: bool = False
 
 
 class ProviderVoicePreviewResponse(BaseModel):
@@ -344,6 +348,7 @@ class LongtextBatchRequest(BaseModel):
     silence_between_ms: int = Field(default=300, ge=0, le=3000)
     params: dict = Field(default_factory=dict)
     need_subtitle: bool = True
+    confirm_cost: bool = False
 
 
 class ScriptLine(BaseModel):
@@ -361,6 +366,7 @@ class ScriptBatchRequest(BaseModel):
     audio_format: Literal["mp3", "wav", "flac"] = "mp3"
     silence_between_ms: int = Field(default=500, ge=0, le=3000)
     need_subtitle: bool = True
+    confirm_cost: bool = False
 
 
 class BatchSubmitResponse(BaseModel):
@@ -394,3 +400,24 @@ class BatchStatusResponse(BaseModel):
     total_duration_ms: int | None = None
     created_at: str
     updated_at: str
+
+
+# ─── Cost Estimate Schemas ────────────────────────────────────────────────────
+
+
+class CostEstimateRequest(BaseModel):
+    provider: str = "minimax"
+    model: str = "speech-2.8-hd"
+    text: str = Field(min_length=1)
+    operation: str = "t2a"
+
+
+class CostEstimateResponse(BaseModel):
+    provider: str
+    model: str
+    operation: str
+    billing_characters: int
+    estimated_cost_cny: float | None = None
+    unit_price_cny_per_10k_chars: float | None = None
+    unknown_price: bool = False
+    warnings: list[str] = Field(default_factory=list)

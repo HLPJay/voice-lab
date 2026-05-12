@@ -152,6 +152,7 @@ class TestProviderVoicePreviewService:
                     "text": "direct preview test",
                     "audio_format": "mp3",
                     "output_format": "hex",
+                    "confirm_cost": True,
                 },
             )
         assert resp.status_code == 200

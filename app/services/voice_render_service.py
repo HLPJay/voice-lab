@@ -19,6 +19,7 @@ from app.providers.registry import get_provider
 from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
+from app.services.cost_guard_service import CostGuardService
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.id_generator import new_id
 
@@ -27,6 +28,7 @@ class VoiceRenderService:
     def __init__(self):
         self.preprocessor = TextPreprocessService()
         self.asset_service = AssetService()
+        self.cost_guard = CostGuardService()
         self.logger = get_logger("voice_render")
 
     async def render_voice(
@@ -84,9 +86,12 @@ class VoiceRenderService:
         )
         session.add(job)
         session.commit()
+
+        est = self.cost_guard.estimate_t2a_cost(provider, plan.model, request.text)
         self.logger.info(
-            "render_start job=%s profile=%s provider=%s model=%s text_length=%d",
+            "render_start job=%s profile=%s provider=%s model=%s text_length=%d billing_chars=%d estimated_cny=%.6f",
             job.id, binding.profile_id, provider, plan.model, len(request.text),
+            est["billing_characters"], est["estimated_cost_cny"] or 0,
         )
 
         try:

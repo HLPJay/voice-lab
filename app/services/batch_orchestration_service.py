@@ -4,7 +4,7 @@ import json
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
-from app.core.errors import ProfileNotFound, VoiceLabError
+from app.core.errors import ProfileNotFound, ValidationError, VoiceLabError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.domain.enums import BatchStatus, JobStatus, JobType
@@ -24,6 +24,7 @@ from app.repositories import voice_asset_repo, voice_job_repo
 from app.repositories.voice_profile_repo import get_profile, resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
+from app.services.cost_guard_service import CostGuardService
 from app.services.audio_merge_service import AudioMergeService
 from app.services.text_segment_service import TextSegmentService
 from app.utils.files import storage_path
@@ -36,6 +37,7 @@ class BatchOrchestrationService:
         self.segmenter = TextSegmentService()
         self.audio_merger = AudioMergeService()
         self.asset_service = AssetService()
+        self.cost_guard = CostGuardService()
         self.logger = get_logger("batch_orchestration")
 
     async def submit_longtext(
@@ -51,11 +53,24 @@ class BatchOrchestrationService:
         provider = resolved_provider
         get_provider(provider)
 
+        if provider == "minimax" and not request.confirm_cost:
+            raise ValidationError(
+                "需要确认成本后才能提交批量生成",
+                "longtext batch requires confirm_cost=true for minimax provider",
+            )
+
         texts = self.segmenter.segment(
             request.text, strategy=request.segment_strategy, max_chars=request.max_segment_chars
         )
         if not texts:
             raise VoiceLabError("Text segmentation produced no segments", "EMPTY_SEGMENTS")
+
+        total_chars = sum(self.cost_guard.estimate_billing_characters(t) for t in texts)
+        est = self.cost_guard.estimate_t2a_cost(provider, binding.model, request.text)
+        self.logger.info(
+            "batch_submit_cost_estimate provider=%s model=%s total_billing_chars=%d estimated_cny=%.6f",
+            provider, binding.model, total_chars, est.get("estimated_cost_cny") or 0,
+        )
 
         now = utc_now_iso()
         batch_id = new_id("batch")
@@ -113,6 +128,18 @@ class BatchOrchestrationService:
         settings = get_settings()
         provider = request.provider or settings.voice_provider
         get_provider(provider)
+
+        if provider == "minimax" and not request.confirm_cost:
+            raise ValidationError(
+                "需要确认成本后才能提交批量生成",
+                "script batch requires confirm_cost=true for minimax provider",
+            )
+
+        total_chars = sum(self.cost_guard.estimate_billing_characters(line.text) for line in request.script)
+        self.logger.info(
+            "batch_submit_script_cost_estimate provider=%s total_billing_chars=%d",
+            provider, total_chars,
+        )
 
         now = utc_now_iso()
         batch_id = new_id("batch")
