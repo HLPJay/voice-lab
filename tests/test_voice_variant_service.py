@@ -38,13 +38,26 @@ def custom_profile_with_binding(session: Session):
         created_at=now,
         updated_at=now,
     )
+    mock_binding = VoiceBinding(
+        id="binding_mock_test_custom_profile",
+        profile_id=profile.id,
+        provider="mock",
+        model="speech-2.8-hd",
+        provider_voice_id="mock_voice",
+        params_json='{}',
+        priority=1,
+        status="available",
+        created_at=now,
+        updated_at=now,
+    )
     session.add(profile)
     session.add(binding)
+    session.add(mock_binding)
     session.commit()
     return profile, binding
 
 
-def test_render_variants_default_profile(test_app, seed_profile):
+def test_render_variants_default_profile(test_app, seed_profile, seed_mock_binding):
     """Default profile deep_night_programmer is used when profile_id not passed."""
     resp = TestClient(test_app).post(
         "/api/voice/variants/render",
@@ -83,7 +96,7 @@ def test_render_variants_custom_profile(test_app, custom_profile_with_binding):
         assert v["profile_id"] == "test_custom_profile"
 
 
-def test_render_variants_count(test_app, seed_profile):
+def test_render_variants_count(test_app, seed_profile, seed_mock_binding):
     """variant_count=1 returns 1 variant; variant_count=5 returns 5 variants."""
     for count, expected in [(1, 1), (5, 5)]:
         resp = TestClient(test_app).post(
@@ -98,7 +111,7 @@ def test_render_variants_count(test_app, seed_profile):
         assert len(resp.json()["variants"]) == expected
 
 
-def test_render_variants_each_has_job_and_audio(test_app, seed_profile):
+def test_render_variants_each_has_job_and_audio(test_app, seed_profile, seed_mock_binding):
     """Each variant has a non-null job_id and audio_asset_id under mock provider."""
     resp = TestClient(test_app).post(
         "/api/voice/variants/render",

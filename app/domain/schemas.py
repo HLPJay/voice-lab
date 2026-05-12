@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.domain.enums import BindingStatus, ProviderVoiceStatus
@@ -25,7 +27,8 @@ class VoiceRenderRequest(BaseModel):
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
     need_subtitle: bool = True
-    output_format: str = "hex"
+    output_format: Literal["hex", "url"] = "hex"
+    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
     speed: float | None = Field(None, ge=0.5, le=2.0)
     vol: float | None = Field(None, ge=0.1, le=10.0)
     pitch: int | None = Field(None, ge=-12, le=12)
@@ -254,7 +257,7 @@ class StreamRenderRequest(BaseModel):
     text: str = Field(min_length=1, max_length=10000)
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
-    output_format: str = "mp3"
+    audio_format: Literal["mp3"] = "mp3"
     need_subtitle: bool = False
     speed: float | None = Field(None, ge=0.5, le=2.0)
     vol: float | None = Field(None, ge=0.1, le=10.0)

@@ -18,6 +18,25 @@ class VoiceCloneService:
         if purpose not in ("voice_clone", "prompt_audio"):
             raise VoiceLabError("Invalid purpose", f"purpose must be 'voice_clone' or 'prompt_audio', got '{purpose}'")
 
+        # Validate audio file extension and MIME type
+        allowed_extensions = {".mp3", ".wav", ".m4a", ".flac"}
+        allowed_mime_prefixes = {"audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/flac", "audio/x-flac"}
+        import mimetypes
+        ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if ext not in allowed_extensions:
+            raise VoiceLabError(
+                "Unsupported audio format",
+                f"file extension '{ext}' not allowed. Allowed: {', '.join(sorted(allowed_extensions))}",
+            )
+        mime_type, _ = mimetypes.guess_type(filename)
+        if mime_type and not any(mime_type.startswith(p) for p in allowed_mime_prefixes):
+            raise VoiceLabError(
+                "Unsupported audio MIME type",
+                f"MIME type '{mime_type}' not allowed for audio upload",
+            )
+        if not file_data or len(file_data) < 10:
+            raise VoiceLabError("Invalid audio data", "file is empty or too small to be a valid audio file")
+
         adapter = get_provider(provider)
         result = await adapter.upload_voice_file(file_data, filename, purpose)
 

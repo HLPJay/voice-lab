@@ -599,12 +599,18 @@
         </div>
         <div id="bindingStatus" style="margin-top:4px;min-height:20px"></div>
         <div class="form-group">
-          <label for="outputFormat">音频格式</label>
-          <select id="outputFormat">
+          <label for="audioFormat">编码格式</label>
+          <select id="audioFormat">
             <option value="mp3">MP3</option>
             <option value="wav">WAV</option>
             <option value="flac">FLAC</option>
-            <option value="pcm">PCM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="outputFormat">返回格式</label>
+          <select id="outputFormat">
+            <option value="hex">HEX (十六进制)</option>
+            <option value="url">URL (下载链接)</option>
           </select>
         </div>
         <div class="form-group full-width">
@@ -1370,6 +1376,7 @@
     const isStream = mode === 'stream';
     const count = parseInt(variantCountInput.value) || 3;
     const subtitle = needSubtitle.checked;
+    const audioFormat = document.getElementById('audioFormat').value;
     const outputFormat = document.getElementById('outputFormat').value;
     const speed = document.getElementById('paramSpeed').value;
     const vol = document.getElementById('paramVol').value;
@@ -1382,7 +1389,7 @@
     resultsArea.innerHTML = '';
 
     if (isStream) {
-      startStreamGenerate(text, profileId, provider, subtitle, outputFormat, { speed, vol, pitch, emotion });
+      startStreamGenerate(text, profileId, provider, subtitle, audioFormat, { speed, vol, pitch, emotion });
       return;
     }
 
@@ -1392,6 +1399,7 @@
         profile_id: profileId,
         provider,
         need_subtitle: subtitle,
+        audio_format: audioFormat,
         output_format: outputFormat,
         ...(speed ? { speed: parseFloat(speed) } : {}),
         ...(vol ? { vol: parseFloat(vol) } : {}),
@@ -1436,7 +1444,7 @@
     }
   }
 
-  function startStreamGenerate(text, profileId, provider, subtitle, outputFormat, voiceParams) {
+  function startStreamGenerate(text, profileId, provider, subtitle, audioFormat, voiceParams) {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${proto}//${location.host}/api/voice/ws/render`;
 
@@ -1464,7 +1472,7 @@
             text: text,
             profile_id: profileId,
             provider: provider,
-            output_format: outputFormat,
+            audio_format: audioFormat,
             need_subtitle: subtitle,
             ...(speed ? { speed: parseFloat(speed) } : {}),
             ...(vol ? { vol: parseFloat(vol) } : {}),

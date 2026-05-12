@@ -44,10 +44,11 @@ class BatchOrchestrationService:
     ) -> BatchSubmitResponse:
         """提交长文本批量任务：分段 → 创建 BatchJob + Segments → 后台执行。"""
         settings = get_settings()
-        provider = request.provider or settings.voice_provider
+        binding, resolved_provider = resolve_binding(
+            session, request.profile_id, request.provider or settings.voice_provider
+        )
+        provider = resolved_provider
         get_provider(provider)
-
-        resolve_binding(session, request.profile_id, provider)
 
         texts = self.segmenter.segment(
             request.text, strategy=request.segment_strategy, max_chars=request.max_segment_chars
@@ -399,7 +400,8 @@ class BatchOrchestrationService:
     ) -> BatchSegment:
         """Process a single segment: render audio and save asset."""
         settings = get_settings()
-        binding, _resolved_provider = resolve_binding(session, segment.profile_id, provider)
+        binding, resolved_provider = resolve_binding(session, segment.profile_id, provider)
+        provider = resolved_provider
 
         voice_params = json.loads(binding.params_json or "{}")
         segment_params = json.loads(segment.params_json or "{}")

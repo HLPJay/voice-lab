@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 
-def test_submit_async_task(test_app, seed_profile):
+def test_submit_async_task(test_app, seed_profile, seed_mock_binding):
     """POST /api/voice/render/async returns job_id with processing status."""
     resp = TestClient(test_app).post(
         "/api/voice/render/async",
@@ -19,7 +19,7 @@ def test_submit_async_task(test_app, seed_profile):
     assert data["model"]
 
 
-def test_query_status_success(test_app, seed_profile):
+def test_query_status_success(test_app, seed_profile, seed_mock_binding):
     """GET status after submit returns success with audio asset."""
     client = TestClient(test_app)
     submit = client.post(
@@ -41,7 +41,7 @@ def test_query_status_success(test_app, seed_profile):
     assert data["audio_asset"]["id"].startswith("audio_")
 
 
-def test_query_status_with_subtitle(test_app, seed_profile):
+def test_query_status_with_subtitle(test_app, seed_profile, seed_mock_binding):
     """Async render with need_subtitle=True produces subtitle asset on completion."""
     client = TestClient(test_app)
     submit = client.post(
@@ -69,7 +69,7 @@ def test_query_nonexistent_job(test_app, seed_profile):
     assert resp.status_code == 404
 
 
-def test_already_completed_job_returns_cached(test_app, seed_profile):
+def test_already_completed_job_returns_cached(test_app, seed_profile, seed_mock_binding):
     """Querying a completed job again returns same result without re-downloading."""
     client = TestClient(test_app)
     submit = client.post(

@@ -39,10 +39,11 @@ class AsyncRenderService:
     ) -> AsyncRenderResponse:
         """Submit an async voice generation task. Returns immediately with a job_id."""
         settings = get_settings()
-        provider = request.provider or settings.voice_provider
+        binding, resolved_provider = resolve_binding(
+            session, request.profile_id, request.provider or settings.voice_provider
+        )
+        provider = resolved_provider
         get_provider(provider)  # validate provider
-
-        binding, resolved_provider = resolve_binding(session, request.profile_id, provider)
 
         # Async mode: basic text cleaning only, no length limit
         processed_text = request.text.strip()
@@ -65,7 +66,7 @@ class AsyncRenderService:
             voice_params=voice_params,
             audio_params=audio_params,
             subtitle=SubtitlePlan(enabled=request.need_subtitle, type="sentence"),
-            output_format="hex" if request.output_format == "mp3" else request.output_format,
+            output_format=request.output_format,
         )
 
         adapter = get_provider(provider)

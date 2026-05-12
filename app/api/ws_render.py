@@ -63,6 +63,10 @@ async def ws_render(websocket: WebSocket):
             provider=start_msg.get("provider"),
             output_format=start_msg.get("output_format", "mp3"),
             need_subtitle=start_msg.get("need_subtitle", False),
+            speed=start_msg.get("speed"),
+            vol=start_msg.get("vol"),
+            pitch=start_msg.get("pitch"),
+            emotion=start_msg.get("emotion"),
         )
 
         # 5. Call Service streaming render

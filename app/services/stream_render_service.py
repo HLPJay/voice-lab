@@ -43,9 +43,10 @@ class StreamRenderService:
         """
         settings = get_settings()
         provider = request.provider or settings.voice_provider
-        get_provider(provider)
 
         binding, resolved_provider = resolve_binding(session, request.profile_id, provider)
+        provider = resolved_provider
+        adapter = get_provider(provider)
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = json.loads(binding.params_json or "{}")
@@ -59,7 +60,7 @@ class StreamRenderService:
         if request.emotion is not None:
             voice_params["emotion"] = request.emotion
         audio_params = {
-            "format": settings.default_audio_format,
+            "format": request.audio_format,
             "sample_rate": settings.default_sample_rate,
             "bitrate": settings.default_bitrate,
             "channel": settings.default_channel,
@@ -75,7 +76,7 @@ class StreamRenderService:
             voice_params=voice_params,
             audio_params=audio_params,
             subtitle=SubtitlePlan(enabled=False),
-            output_format="hex" if request.output_format == "mp3" else request.output_format,
+            output_format="hex",
         )
 
         job = VoiceJob(
@@ -132,7 +133,7 @@ class StreamRenderService:
 
             # 保存完整音频
             audio_id = new_id("audio")
-            fmt = request.output_format or "mp3"
+            fmt = request.audio_format or "mp3"
             audio_path = storage_path("audio", f"{audio_id}.{fmt}")
             audio_path.write_bytes(bytes(all_audio_data))
 

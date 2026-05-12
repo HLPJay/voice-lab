@@ -40,7 +40,7 @@ def _make_clean_app(temp_db):
     return app
 
 
-def test_render_with_mock_provider(test_app):
+def test_render_with_mock_provider(test_app, seed_mock_binding):
     """Full render flow with mock provider."""
     client = TestClient(test_app)
     response = client.post(

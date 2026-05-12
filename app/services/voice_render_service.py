@@ -36,15 +36,17 @@ class VoiceRenderService:
     ) -> VoiceRenderResponse:
         settings = get_settings()
         provider = request.provider or settings.voice_provider
-        get_provider(provider)
+        get_provider(provider)  # validate provider is supported before binding lookup
         binding, resolved_provider = resolve_binding(session, request.profile_id, provider)
+        provider = resolved_provider
+        adapter = get_provider(provider)
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = json.loads(binding.params_json or "{}")
         if voice_overrides:
             voice_params.update({k: v for k, v in voice_overrides.items() if v is not None})
         audio_params = {
-            "format": settings.default_audio_format,
+            "format": request.audio_format,
             "sample_rate": settings.default_sample_rate,
             "bitrate": settings.default_bitrate,
             "channel": settings.default_channel,
@@ -60,7 +62,7 @@ class VoiceRenderService:
             voice_params=voice_params,
             audio_params=audio_params,
             subtitle=SubtitlePlan(enabled=request.need_subtitle, type="sentence"),
-            output_format="hex" if request.output_format == "mp3" else request.output_format,
+            output_format=request.output_format,
         )
         now = utc_now_iso()
         job = VoiceJob(

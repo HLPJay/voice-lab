@@ -724,6 +724,11 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                     status_msg = base_resp.get("status_msg", str(msg))
                     _provider_logger.error("ws_task_start_failed status_msg=%s base_resp=%s", status_msg, base_resp)
                     raise ProviderError("WebSocket task_start failed", status_msg)
+                if msg.get("event") != "task_started":
+                    raise ProviderError(
+                        "WebSocket protocol error: expected task_started",
+                        f"got event={msg.get('event')}, msg={str(msg)[:200]}",
+                    )
 
                 await ws.send(_json.dumps({"event": "task_continue", "text": plan.processed_text}))
                 await ws.send(_json.dumps({"event": "task_finish"}))
