@@ -70,13 +70,13 @@ class AsyncRenderService:
         )
 
         adapter = get_provider(provider)
-        task_result = await adapter.create_async_task(plan)
 
+        # 1. Create job with pending status before calling provider
         now = utc_now_iso()
         job = VoiceJob(
             id=new_id("job"),
             job_type=JobType.async_render,
-            status=JobStatus.processing,
+            status=JobStatus.pending,
             provider=provider,
             model=plan.model,
             profile_id=binding.profile_id,
@@ -84,24 +84,36 @@ class AsyncRenderService:
             input_text=request.text,
             processed_text=processed_text,
             render_plan_json=plan.model_dump_json(),
-            provider_trace_id=task_result.trace_id,
             created_at=now,
             updated_at=now,
         )
         session.add(job)
         session.commit()
 
+        # 2. Call provider to create async task
+        try:
+            task_result = await adapter.create_async_task(plan)
+            job.status = JobStatus.processing
+            job.provider_trace_id = task_result.trace_id
+            job.response_json = json.dumps({
+                "provider_task_id": task_result.provider_task_id,
+                "task_metadata": task_result.metadata,
+            }, ensure_ascii=False)
+            job.updated_at = utc_now_iso()
+            session.add(job)
+            session.commit()
+        except Exception as exc:
+            job.status = JobStatus.failed
+            job.error_message = str(exc)[:500]
+            job.updated_at = utc_now_iso()
+            session.add(job)
+            session.commit()
+            raise
+
         self.logger.info(
             "async_submit job=%s provider=%s model=%s text_length=%d task_id=%s",
             job.id, provider, plan.model, len(request.text), task_result.provider_task_id,
         )
-
-        job.response_json = json.dumps({
-            "provider_task_id": task_result.provider_task_id,
-            "task_metadata": task_result.metadata,
-        }, ensure_ascii=False)
-        session.add(job)
-        session.commit()
 
         return AsyncRenderResponse(
             job_id=job.id,
