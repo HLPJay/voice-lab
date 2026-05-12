@@ -63,7 +63,7 @@
 
 ### P0-4：Cost Guard 第一版只是防误触
 
-当前 confirm_cost=true 可以防误触，但不是完整预算系统。
+2026-05-12 更新：Cost Guard 已升级为统一操作策略入口（`CostGuardService.require_confirmed`），覆盖全部 10 个高风险操作路径。但仍不是完整预算系统。
 
 仍缺少：
 
@@ -75,6 +75,12 @@
 - Provider 预算
 - 用户预算
 - API Key 额度限制
+
+### P0-5：已有 Cost Guard 路径的 usage 回填不完整
+
+`voice_design_service.design_voice`、`voice_clone_service.clone_voice`、`stream_render_service.render_stream`、`async_render_service` 成功调用后未显式调用 `update_call_log` 回填 `usage_characters`。
+
+后续应：显式在 service 层调用 `adapter.update_call_log(job_id, usage_characters, trace_id)`。
 
 ## P1：近期可优化
 
@@ -151,17 +157,11 @@
 
 前端应根据 capabilities 展示功能。
 
-### P1-5：Async / Stream 尚未纳入 confirm_cost
+### P1-5：Async / Stream 已纳入 confirm_cost ✅
 
-当前普通 T2A 不强制 confirm_cost 可以接受。
+> 2026-05-12 更新：`AsyncRenderRequest` 和 `StreamRenderRequest` 已增加 `confirm_cost` 字段，`async_render_service` 和 `stream_render_service` 已接入 `CostGuardService.require_confirmed`。
 
-但异步生成和流式生成仍可能产生真实云端费用。
-
-建议后续：
-
-- AsyncRenderRequest 增加 confirm_cost
-- StreamRenderRequest 增加 confirm_cost
-- provider=minimax 且文本超过阈值时强制确认
+仍需补充：usage_characters 回填（见 P0-5）。
 
 ### P1-6：ProviderCallLog usage 补录需要真实链路验证
 

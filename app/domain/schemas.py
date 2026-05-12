@@ -65,6 +65,7 @@ class VoiceVariantRenderRequest(BaseModel):
     variant_count: int = Field(default=3, ge=1, le=5)
     need_subtitle: bool = True
     provider: str | None = None
+    confirm_cost: bool = False
 
 
 class VoiceVariantResponse(BaseModel):
@@ -180,6 +181,7 @@ class AsyncRenderRequest(BaseModel):
     need_subtitle: bool = True
     output_format: Literal["hex", "url"] = "hex"
     audio_format: Literal["mp3", "wav", "flac"] = "mp3"
+    confirm_cost: bool = False
 
 
 class AsyncRenderResponse(BaseModel):
@@ -307,6 +309,7 @@ class ProviderVoiceImportRequest(BaseModel):
     verify: bool = True
     model: str = "speech-2.8-hd"
     preview_text: str = Field(default="你好，这是导入音色试听。", min_length=1, max_length=1000)
+    confirm_cost: bool = False
 
 
 class ProviderVoiceImportResponse(BaseModel):
@@ -331,6 +334,7 @@ class StreamRenderRequest(BaseModel):
     vol: float | None = Field(None, ge=0.1, le=10.0)
     pitch: int | None = Field(None, ge=-12, le=12)
     emotion: str | None = None
+    confirm_cost: bool = False
 
 
 # ─── Batch Job Schemas ───────────────────────────────────────────────────────

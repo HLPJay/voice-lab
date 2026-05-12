@@ -12,12 +12,14 @@ from app.domain.schemas import (
     ProviderVoicePreviewRequest,
 )
 from app.repositories.provider_voice_repo import upsert_provider_voice
+from app.services.cost_guard_service import CostGuardService
 from app.services.provider_voice_preview_service import ProviderVoicePreviewService
 
 
 class ProviderVoiceImportService:
     def __init__(self):
         self.logger = get_logger("provider_voice_import")
+        self.cost_guard = CostGuardService()
         self.preview_service = ProviderVoicePreviewService()
 
     async def import_voice(
@@ -40,6 +42,9 @@ class ProviderVoiceImportService:
                 request.provider, request.provider_voice_id, request.model,
             )
             try:
+                self.cost_guard.require_confirmed(
+                    request.provider, "provider_voice_import_verify", request.confirm_cost
+                )
                 preview_req = ProviderVoicePreviewRequest(
                     provider=request.provider,
                     provider_voice_id=request.provider_voice_id,
@@ -48,6 +53,7 @@ class ProviderVoiceImportService:
                     audio_format="mp3",
                     output_format="hex",
                     need_subtitle=False,
+                    confirm_cost=request.confirm_cost,
                 )
                 preview_result = await self.preview_service.preview(
                     session, request.provider, preview_req
@@ -58,6 +64,8 @@ class ProviderVoiceImportService:
                     "import_verify_success provider=%s voice_id=%s",
                     request.provider, request.provider_voice_id,
                 )
+            except ValidationError:
+                raise  # ValidationError must propagate with its own status_code (422)
             except Exception as exc:
                 self.logger.warning(
                     "import_verify_failed provider=%s voice_id=%s error=%s",

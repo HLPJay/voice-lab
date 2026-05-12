@@ -229,3 +229,220 @@ class TestCostEstimateAPI:
         data = resp.json()
         assert data["unknown_price"] is True
         assert "暂未配置" in data["warnings"][0]
+
+
+class TestCostGuardServiceRequireConfirmed:
+    """CostGuardService.require_confirmed enforces HIGH_RISK_OPERATIONS on COST_PROVIDER_SET."""
+
+    def test_minimax_high_risk_without_confirm_cost_rejected(self):
+        svc = CostGuardService()
+        with pytest.raises(Exception) as exc_info:
+            svc.require_confirmed("minimax", "voice_design", confirm_cost=False)
+        assert "confirm_cost" in str(exc_info.value.detail)
+
+    def test_minimax_high_risk_with_confirm_cost_passes(self):
+        svc = CostGuardService()
+        # Should not raise
+        svc.require_confirmed("minimax", "voice_design", confirm_cost=True)
+        svc.require_confirmed("minimax", "voice_clone", confirm_cost=True)
+        svc.require_confirmed("minimax", "provider_voice_preview", confirm_cost=True)
+        svc.require_confirmed("minimax", "provider_voice_import_verify", confirm_cost=True)
+        svc.require_confirmed("minimax", "binding_voice_preview", confirm_cost=True)
+        svc.require_confirmed("minimax", "voice_variants", confirm_cost=True)
+        svc.require_confirmed("minimax", "batch_longtext", confirm_cost=True)
+        svc.require_confirmed("minimax", "batch_script", confirm_cost=True)
+        svc.require_confirmed("minimax", "async_render", confirm_cost=True)
+        svc.require_confirmed("minimax", "stream_render", confirm_cost=True)
+
+    def test_mock_provider_high_risk_without_confirm_cost_passes(self):
+        svc = CostGuardService()
+        # mock never requires confirm_cost
+        for op in [
+            "voice_design", "voice_clone", "provider_voice_preview",
+            "provider_voice_import_verify", "binding_voice_preview",
+            "voice_variants", "batch_longtext", "batch_script",
+            "async_render", "stream_render",
+        ]:
+            svc.require_confirmed("mock", op, confirm_cost=False)  # should not raise
+
+    def test_minimax_non_high_risk_operation_passes(self):
+        svc = CostGuardService()
+        # Operations not in HIGH_RISK_OPERATIONS don't need confirm_cost
+        svc.require_confirmed("minimax", "t2a", confirm_cost=False)  # regular T2A
+        svc.require_confirmed("minimax", "list_voices", confirm_cost=False)
+
+    def test_unknown_provider_passes(self):
+        svc = CostGuardService()
+        # Unknown providers don't trigger the guard
+        svc.require_confirmed("openai", "voice_design", confirm_cost=False)
+
+
+class TestProviderVoiceImportGuard:
+    """provider_voice_import verify=true requires confirm_cost for minimax."""
+
+    def test_minimax_import_verify_without_confirm_cost_rejected(self, test_app, seed_profile):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/provider-voices/import",
+            json={
+                "provider": "minimax",
+                "provider_voice_id": "some_voice_id",
+                "voice_type": "voice_cloning",
+                "model": "speech-2.8-hd",
+                "verify": True,
+                "preview_text": "测试文本",
+                "confirm_cost": False,
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_minimax_import_verify_with_confirm_cost_passes(self, test_app, seed_profile):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/provider-voices/import",
+            json={
+                "provider": "minimax",
+                "provider_voice_id": "some_voice_id",
+                "voice_type": "voice_cloning",
+                "model": "speech-2.8-hd",
+                "verify": True,
+                "preview_text": "测试文本",
+                "confirm_cost": True,
+            },
+        )
+        # Should NOT be 422 for confirm_cost reasons (may fail for other reasons like voice not found)
+        assert resp.status_code != 422 or "confirm_cost" not in resp.text.lower()
+
+    def test_mock_import_verify_without_confirm_cost_passes(self, test_app, seed_profile):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/provider-voices/import",
+            json={
+                "provider": "mock",
+                "provider_voice_id": "mock_voice_import_test",
+                "voice_type": "voice_cloning",
+                "model": "speech-2.8-hd",
+                "verify": True,
+                "preview_text": "测试文本",
+                "confirm_cost": False,
+            },
+        )
+        # mock doesn't require confirm_cost
+        assert resp.status_code != 422 or "confirm_cost" not in resp.text.lower()
+
+
+class TestVoiceVariantRenderGuard:
+    """voice_variants endpoint requires confirm_cost for minimax."""
+
+    def test_minimax_variants_without_confirm_cost_rejected(self, test_app, session, seed_profile, seed_mock_binding):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/variants/render",
+            json={
+                "text": "测试文本",
+                "scene": "试音台",
+                "profile_id": "deep_night_programmer",
+                "variant_count": 3,
+                "provider": "minimax",
+                "confirm_cost": False,
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_minimax_variants_with_confirm_cost_passes(self, test_app, session, seed_profile, seed_mock_binding):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/variants/render",
+            json={
+                "text": "测试文本",
+                "scene": "试音台",
+                "profile_id": "deep_night_programmer",
+                "variant_count": 3,
+                "provider": "minimax",
+                "confirm_cost": True,
+            },
+        )
+        # Should NOT be 422 for confirm_cost reasons
+        assert resp.status_code != 422 or "confirm_cost" not in resp.text.lower()
+
+    def test_mock_variants_without_confirm_cost_passes(self, test_app, session, seed_profile, seed_mock_binding):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/variants/render",
+            json={
+                "text": "测试文本",
+                "scene": "试音台",
+                "profile_id": "deep_night_programmer",
+                "variant_count": 3,
+                "provider": "mock",
+                "confirm_cost": False,
+            },
+        )
+        assert resp.status_code != 422
+
+
+class TestAsyncRenderGuard:
+    """async_render endpoint requires confirm_cost for minimax."""
+
+    def test_minimax_async_without_confirm_cost_rejected(self, test_app, session, seed_profile, seed_mock_binding):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/render/async",
+            json={
+                "text": "测试文本",
+                "profile_id": "deep_night_programmer",
+                "provider": "minimax",
+                "confirm_cost": False,
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_minimax_async_with_confirm_cost_passes(self, test_app, session, seed_profile, seed_mock_binding):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/render/async",
+            json={
+                "text": "测试文本",
+                "profile_id": "deep_night_programmer",
+                "provider": "minimax",
+                "confirm_cost": True,
+            },
+        )
+        # Should NOT be 422 for confirm_cost reasons
+        assert resp.status_code != 422 or "confirm_cost" not in resp.text.lower()
+
+    def test_mock_async_without_confirm_cost_passes(self, test_app, session, seed_profile, seed_mock_binding):
+        client = TestClient(test_app)
+        resp = client.post(
+            "/api/voice/render/async",
+            json={
+                "text": "测试文本",
+                "profile_id": "deep_night_programmer",
+                "provider": "mock",
+                "confirm_cost": False,
+            },
+        )
+        assert resp.status_code != 422
+
+
+class TestStreamRenderRequestSchema:
+    """StreamRenderRequest now accepts confirm_cost field."""
+
+    def test_stream_render_request_accepts_confirm_cost(self):
+        from app.domain.schemas import StreamRenderRequest
+        req = StreamRenderRequest(
+            text="测试文本",
+            profile_id="deep_night_programmer",
+            provider="minimax",
+            confirm_cost=True,
+        )
+        assert req.confirm_cost is True
+
+    def test_stream_render_request_confirm_cost_default_false(self):
+        from app.domain.schemas import StreamRenderRequest
+        req = StreamRenderRequest(
+            text="测试文本",
+            profile_id="deep_night_programmer",
+            provider="minimax",
+        )
+        assert req.confirm_cost is False

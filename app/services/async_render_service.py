@@ -24,6 +24,7 @@ from app.repositories import voice_asset_repo, voice_job_repo
 from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
+from app.services.cost_guard_service import CostGuardService
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 
@@ -31,6 +32,7 @@ from app.utils.id_generator import new_id
 class AsyncRenderService:
     def __init__(self):
         self.asset_service = AssetService()
+        self.cost_guard = CostGuardService()
         self.logger = get_logger("async_render")
 
     async def submit_task(
@@ -46,6 +48,7 @@ class AsyncRenderService:
         provider = resolved_provider
         get_provider(provider)  # validate provider
         validate_binding_provider_voice(session, binding)
+        self.cost_guard.require_confirmed(provider, "async_render", request.confirm_cost)
 
         # Async mode: basic text cleaning only, no length limit
         processed_text = request.text.strip()

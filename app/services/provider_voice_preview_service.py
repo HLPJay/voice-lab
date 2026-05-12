@@ -3,7 +3,6 @@ import json
 from sqlmodel import Session
 
 from app.core.config import get_settings
-from app.core.errors import ValidationError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.domain.enums import JobStatus, JobType
@@ -16,6 +15,7 @@ from app.domain.schemas import (
 from app.models.voice_job import VoiceJob
 from app.providers.registry import get_provider
 from app.services.asset_service import AssetService
+from app.services.cost_guard_service import CostGuardService
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.id_generator import new_id
 
@@ -24,6 +24,7 @@ class ProviderVoicePreviewService:
     def __init__(self):
         self.preprocessor = TextPreprocessService()
         self.asset_service = AssetService()
+        self.cost_guard = CostGuardService()
         self.logger = get_logger("provider_voice_preview")
 
     async def preview(
@@ -32,11 +33,7 @@ class ProviderVoicePreviewService:
         provider: str,
         request: ProviderVoicePreviewRequest,
     ) -> ProviderVoicePreviewResponse:
-        if provider == "minimax" and not request.confirm_cost:
-            raise ValidationError(
-                "需要确认成本后才能执行真实试听",
-                "provider_voice_preview requires confirm_cost=true for minimax provider",
-            )
+        self.cost_guard.require_confirmed(provider, "provider_voice_preview", request.confirm_cost)
 
         settings = get_settings()
         adapter = get_provider(provider)

@@ -18,6 +18,7 @@ from app.repositories import voice_asset_repo
 from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
+from app.services.cost_guard_service import CostGuardService
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -29,6 +30,7 @@ class StreamRenderService:
     def __init__(self):
         self.preprocessor = TextPreprocessService()
         self.asset_service = AssetService()
+        self.cost_guard = CostGuardService()
 
     async def render_stream(
         self, session: Session, request: StreamRenderRequest
@@ -50,6 +52,7 @@ class StreamRenderService:
         adapter = get_provider(provider)
 
         validate_binding_provider_voice(session, binding)
+        self.cost_guard.require_confirmed(provider, "stream_render", request.confirm_cost)
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = json.loads(binding.params_json or "{}")

@@ -1,8 +1,26 @@
 """Cost estimation and guard service for Voice Lab."""
 
+from app.core.errors import ValidationError
 from app.core.logging import get_logger
 
 logger = get_logger("cost_guard")
+
+# Providers that incur real costs (require cost confirmation for high-risk operations)
+COST_PROVIDER_SET = frozenset({"minimax"})
+
+# High-risk operations that always require explicit cost confirmation
+HIGH_RISK_OPERATIONS = frozenset({
+    "voice_design",
+    "voice_clone",
+    "provider_voice_preview",
+    "provider_voice_import_verify",
+    "binding_voice_preview",
+    "voice_variants",
+    "batch_longtext",
+    "batch_script",
+    "async_render",
+    "stream_render",
+})
 
 # MiniMax pricing (CNY per 10,000 characters)
 MINIMAX_PRICE_PER_10K = {
@@ -85,6 +103,22 @@ def estimate_t2a_cost(provider: str, model: str, text: str) -> dict:
 
 class CostGuardService:
     """Service for cost estimation and high-risk operation guarding."""
+
+    def require_confirmed(self, provider: str, operation: str, confirm_cost: bool) -> None:
+        """Enforce cost confirmation for high-risk operations on real-cost providers.
+
+        Rules:
+        - mock provider: never requires confirm_cost
+        - provider in COST_PROVIDER_SET and operation in HIGH_RISK_OPERATIONS
+          and confirm_cost != True: raise ValidationError
+        """
+        if provider == "mock":
+            return
+        if provider in COST_PROVIDER_SET and operation in HIGH_RISK_OPERATIONS and not confirm_cost:
+            raise ValidationError(
+                "需要确认成本后才能执行该操作",
+                f"{operation} requires confirm_cost=true for {provider} provider",
+            )
 
     def estimate_billing_characters(self, text: str) -> int:
         return estimate_billing_characters(text)

@@ -1422,6 +1422,36 @@
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   }
 
+  // Guarded fetch: shows confirm dialog for minimax high-risk operations, then auto-sets confirm_cost=true
+  const _OPERATION_MESSAGES = {
+    voice_design: '声音设计会调用云端模型，可能产生费用，是否继续？',
+    voice_clone: '声音克隆会调用云端模型，可能产生费用，是否继续？',
+    provider_voice_preview: '真实试听会调用云端 TTS，可能产生字符费用，是否继续？',
+    provider_voice_import_verify: '验证试听会调用云端 TTS，可能产生费用，是否继续？',
+    binding_voice_preview: '试听会调用云端 TTS，可能产生费用，是否继续？',
+    voice_variants: '多版本试音会多次调用云端 TTS，可能产生费用，是否继续？',
+    batch_longtext: '批量生成会调用云端 TTS，可能产生较高费用，是否继续？',
+    batch_script: '剧本批量生成会调用云端 TTS，可能产生较高费用，是否继续？',
+    async_render: '异步生成会调用云端 TTS，可能产生费用，是否继续？',
+    stream_render: '流式生成会调用云端 TTS，可能产生费用，是否继续？',
+  };
+
+  async function guardedJsonFetch(url, payload, options) {
+    const { provider, operation, highRisk } = options;
+    if (provider === 'minimax' && highRisk && _OPERATION_MESSAGES[operation]) {
+      if (!confirm(_OPERATION_MESSAGES[operation])) {
+        throw new Error('USER_CANCELLED');
+      }
+      payload.confirm_cost = true;
+    }
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return resp;
+  }
+
   function extractErrorMessage(data) {
     if (!data) return '未知错误';
     if (typeof data === 'string') return data;
@@ -1547,8 +1577,26 @@
     resultsArea.innerHTML = '';
 
     if (isStream) {
+      if (provider === 'minimax' && !confirm('流式生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
+        setLoading(false);
+        return;
+      }
       startStreamGenerate(text, profileId, provider, subtitle, audioFormat, { speed, vol, pitch, emotion });
       return;
+    }
+
+    if (provider === 'minimax' && isVariant) {
+      if (!confirm('多版本试音会多次调用云端 TTS，可能产生费用，是否确认继续？')) {
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (provider === 'minimax' && isAsync) {
+      if (!confirm('异步生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -1563,7 +1611,9 @@
         ...(vol ? { vol: parseFloat(vol) } : {}),
         ...(pitch ? { pitch: parseInt(pitch) } : {}),
         ...(emotion ? { emotion } : {}),
-        ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {})
+        ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {}),
+        ...(provider === 'minimax' && isVariant ? { confirm_cost: true } : {}),
+        ...(provider === 'minimax' && isAsync ? { confirm_cost: true } : {}),
       };
 
       let endpoint;
@@ -1632,6 +1682,7 @@
             provider: provider,
             audio_format: audioFormat,
             need_subtitle: subtitle,
+            confirm_cost: provider === 'minimax',
             ...(speed ? { speed: parseFloat(speed) } : {}),
             ...(vol ? { vol: parseFloat(vol) } : {}),
             ...(pitch ? { pitch: parseInt(pitch) } : {}),
@@ -2925,10 +2976,22 @@
         verify,
         model,
         preview_text: previewText,
+        confirm_cost: provider === 'minimax' && verify,
       };
       if (name) payload.name = name;
       if (!verify) {
         payload.description = isClone ? '手动导入的克隆音色' : '手动导入的设计音色';
+      }
+
+      // Guard for verify=true on minimax
+      if (provider === 'minimax' && verify) {
+        if (!confirm('验证试听会调用云端 TTS，可能产生费用，是否确认继续？')) {
+          btn.disabled = false;
+          btn.innerHTML = isClone ? '导入克隆音色' : '导入设计音色';
+          resultsEl.innerHTML = '';
+          return;
+        }
+        payload.confirm_cost = true;
       }
 
       const resp = await fetch('/api/voice/provider-voices/import', {

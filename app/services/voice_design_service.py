@@ -2,27 +2,20 @@ import binascii
 
 from sqlmodel import Session
 
-from app.core.errors import ProviderError, ValidationError
+from app.core.errors import ProviderError
 from app.core.logging import get_logger
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.schemas import VoiceDesignRequest, VoiceDesignResponse
 from app.providers.registry import get_provider
 from app.repositories.provider_voice_repo import upsert_provider_voice
+from app.services.cost_guard_service import CostGuardService
 from app.utils.files import storage_path
-
-
-def _require_cost_confirm(provider: str, confirm_cost: bool) -> None:
-    """Raise ValidationError if minimax high-risk operation has no cost confirmation."""
-    if provider == "minimax" and not confirm_cost:
-        raise ValidationError(
-            "需要确认成本后才能执行声音设计",
-            "voice_design requires confirm_cost=true for minimax provider",
-        )
 
 
 class VoiceDesignService:
     def __init__(self):
         self.logger = get_logger("voice_design")
+        self.cost_guard = CostGuardService()
 
     async def design_voice(
         self,
@@ -30,7 +23,7 @@ class VoiceDesignService:
         provider: str,
         request: VoiceDesignRequest,
     ) -> VoiceDesignResponse:
-        _require_cost_confirm(provider, request.confirm_cost)
+        self.cost_guard.require_confirmed(provider, "voice_design", request.confirm_cost)
 
         adapter = get_provider(provider)
         result = await adapter.design_voice(

@@ -4,7 +4,7 @@ import json
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
-from app.core.errors import ProfileNotFound, ValidationError, VoiceLabError
+from app.core.errors import ProfileNotFound, VoiceLabError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.domain.enums import BatchStatus, JobStatus, JobType
@@ -53,11 +53,7 @@ class BatchOrchestrationService:
         provider = resolved_provider
         get_provider(provider)
 
-        if provider == "minimax" and not request.confirm_cost:
-            raise ValidationError(
-                "需要确认成本后才能提交批量生成",
-                "longtext batch requires confirm_cost=true for minimax provider",
-            )
+        self.cost_guard.require_confirmed(provider, "batch_longtext", request.confirm_cost)
 
         texts = self.segmenter.segment(
             request.text, strategy=request.segment_strategy, max_chars=request.max_segment_chars
@@ -129,11 +125,7 @@ class BatchOrchestrationService:
         provider = request.provider or settings.voice_provider
         get_provider(provider)
 
-        if provider == "minimax" and not request.confirm_cost:
-            raise ValidationError(
-                "需要确认成本后才能提交批量生成",
-                "script batch requires confirm_cost=true for minimax provider",
-            )
+        self.cost_guard.require_confirmed(provider, "batch_script", request.confirm_cost)
 
         total_chars = sum(self.cost_guard.estimate_billing_characters(line.text) for line in request.script)
         self.logger.info(
