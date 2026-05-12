@@ -16,6 +16,7 @@ from app.core.errors import (
     voice_lab_error_handler,
 )
 from app.core.middleware import RequestContextMiddleware
+from app.providers.minimax_speech_adapter import close_shared_http_client
 from app.utils.files import ensure_storage_dirs
 
 
@@ -26,6 +27,7 @@ async def lifespan(_app: FastAPI):
     seed_defaults()
     ensure_storage_dirs()
     yield
+    await close_shared_http_client()
 
 
 app = FastAPI(

@@ -231,7 +231,12 @@ class VoiceCloneResponse(BaseModel):
 class VoiceDesignRequest(BaseModel):
     prompt: str = Field(min_length=1, description="音色描述，如'成熟女性，温柔知性'")
     preview_text: str = Field(min_length=1, max_length=500, description="试听文本")
-    voice_id: str | None = None
+    voice_id: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=256,
+        pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$",
+    )
     model: str | None = None
 
 

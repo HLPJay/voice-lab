@@ -38,6 +38,13 @@ def _get_shared_http_client(timeout: int) -> httpx.AsyncClient:
     return _shared_http_client
 
 
+async def close_shared_http_client() -> None:
+    global _shared_http_client
+    if _shared_http_client is not None:
+        await _shared_http_client.aclose()
+        _shared_http_client = None
+
+
 class MiniMaxSpeechAdapter(SpeechProvider):
     provider_name = "minimax"
 

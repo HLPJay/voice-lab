@@ -40,7 +40,7 @@ class TextSegmentService:
             sentences.append(current.strip())
         return [s for s in sentences if s]
 
-    def _split_by_comma(self, text: str) -> list[str]:
+    def _split_by_comma(self, text: str, max_chars: int) -> list[str]:
         """Split by comma/semicolon when even sentences are too long."""
         parts = re.split(r'([，,；;]+)', text)
         segments = []
@@ -49,7 +49,7 @@ class TextSegmentService:
             if re.match(r'^[，,；;]+$', part):
                 current += part
             else:
-                if len(current) + len(part) > 2000 and current:
+                if len(current) + len(part) > max_chars and current:
                     segments.append(current.strip())
                     current = part
                 else:
@@ -74,7 +74,7 @@ class TextSegmentService:
                         if current:
                             result.append(current)
                         if len(sent) > max_chars:
-                            result.extend(self._split_by_comma(sent))
+                            result.extend(self._split_by_comma(sent, max_chars))
                             current = ""
                         else:
                             current = sent
@@ -123,7 +123,7 @@ class TextSegmentService:
                     else:
                         if current:
                             result.append(current)
-                        result.extend(self._split_by_comma(sent))
+                        result.extend(self._split_by_comma(sent, max_chars))
                         current = ""
                 if current:
                     result.append(current)
