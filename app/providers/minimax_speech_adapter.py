@@ -516,13 +516,17 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             raise ProviderError("MiniMax async task query failed", base_resp.get("status_msg"))
 
         status = (body.get("status") or "processing").lower()
-        file_url = body.get("file_url") or body.get("audio_url")
         extra = body.get("extra_info") or {}
 
-        if status == "success" and not file_url:
+        # Primary path: file_id → files/retrieve → download_url (official async flow)
+        # Fallback: direct URL fields
+        file_url = None
+        if status == "success":
             file_id = body.get("file_id")
             if file_id:
                 file_url = await self._retrieve_file_url(file_id)
+            if not file_url:
+                file_url = body.get("file_url") or body.get("audio_url")
 
         return AsyncTaskStatus(
             task_id=provider_task_id,
@@ -624,7 +628,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "usage_characters": extra.get("usage_characters"),
         }
 
-    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None, model: str | None = None) -> dict:
+    async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
         settings = get_settings()
         if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
             raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
@@ -632,8 +636,6 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         payload: dict = {"prompt": prompt, "preview_text": preview_text}
         if voice_id is not None:
             payload["voice_id"] = voice_id
-        if model:
-            payload["model"] = model
 
         try:
             response = await self._request("POST", settings.minimax_voice_design_path, json=payload)

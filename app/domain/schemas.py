@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.domain.enums import BindingStatus, ProviderVoiceStatus
 
@@ -177,7 +177,8 @@ class AsyncRenderRequest(BaseModel):
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
     need_subtitle: bool = True
-    output_format: str = "hex"
+    output_format: Literal["hex", "url"] = "hex"
+    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
 
 
 class AsyncRenderResponse(BaseModel):
@@ -209,15 +210,21 @@ class VoiceCloneUploadResponse(BaseModel):
 
 
 class VoiceCloneRequest(BaseModel):
-    voice_id: str = Field(min_length=8, max_length=256, pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$")
+    voice_id: str = Field(min_length=8, max_length=256, pattern=r"^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$")
     file_id: int
     prompt_file_id: int | None = None
     prompt_text: str | None = None
-    preview_text: str | None = None
+    preview_text: str | None = Field(default=None, max_length=1000)
     model: str | None = None
     language_boost: str | None = None
     need_noise_reduction: bool = False
     need_volume_normalization: bool = False
+
+    @model_validator(mode="after")
+    def check_preview_requires_model(self):
+        if self.preview_text and not self.model:
+            raise ValueError("preview_text requires model to be set (official requirement: when text is provided, model is mandatory)")
+        return self
 
 
 class VoiceCloneResponse(BaseModel):
@@ -235,9 +242,8 @@ class VoiceDesignRequest(BaseModel):
         default=None,
         min_length=8,
         max_length=256,
-        pattern=r"^[a-zA-Z][a-zA-Z0-9_-]*$",
+        pattern=r"^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$",
     )
-    model: str | None = None
 
 
 class VoiceDesignResponse(BaseModel):
@@ -278,7 +284,8 @@ class LongtextBatchRequest(BaseModel):
     text: str = Field(min_length=1)
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
-    output_format: str = "mp3"
+    output_format: Literal["hex", "url"] = "hex"
+    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
     segment_strategy: str = "auto"  # auto/paragraph/sentence
     max_segment_chars: int = Field(default=2000, ge=100, le=5000)
     silence_between_ms: int = Field(default=300, ge=0, le=3000)
@@ -297,7 +304,8 @@ class ScriptBatchRequest(BaseModel):
     mode: str = "script"
     script: list[ScriptLine] = Field(min_length=1, max_length=200)
     provider: str | None = None
-    output_format: str = "mp3"
+    output_format: Literal["hex", "url"] = "hex"
+    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
     silence_between_ms: int = Field(default=500, ge=0, le=3000)
     need_subtitle: bool = True
 

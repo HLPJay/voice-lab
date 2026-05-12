@@ -51,6 +51,7 @@ def test_clone_voice_with_prompt(test_app):
             "prompt_file_id": 88888,
             "prompt_text": "这是一段参考文本。",
             "preview_text": "试听文本。",
+            "model": "speech-2.8-hd",
         },
         params={"provider": "mock"},
     )

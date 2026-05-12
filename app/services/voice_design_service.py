@@ -17,7 +17,7 @@ class VoiceDesignService:
     ) -> VoiceDesignResponse:
         adapter = get_provider(provider)
         result = await adapter.design_voice(
-            request.prompt, request.preview_text, request.voice_id, request.model
+            request.prompt, request.preview_text, request.voice_id
         )
 
         trial_audio_url = None

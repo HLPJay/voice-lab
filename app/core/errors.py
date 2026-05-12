@@ -72,20 +72,27 @@ async def voice_lab_error_handler(request: Request, exc: VoiceLabError) -> JSONR
 
 
 async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # Sanitize errors: Pydantic v2 may include raw exception objects in ctx, which
+    # are not JSON-serializable. Strip ctx to ensure safe serialization.
+    errors = []
+    for err in exc.errors():
+        clean = {k: v for k, v in err.items() if k != "ctx"}
+        errors.append(clean)
+
     _error_logger.warning(
         "validation_error",
         extra={
             "error_code": "VALIDATION_ERROR",
             "path": request.url.path,
             "method": request.method,
-            "error_count": len(exc.errors()),
+            "error_count": len(errors),
         },
     )
     payload = {
         "error": {
             "code": "VALIDATION_ERROR",
             "message": "Request validation failed",
-            "detail": exc.errors(),
+            "detail": errors,
             "job_id": None,
         }
     }
