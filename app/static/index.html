@@ -2689,6 +2689,7 @@
       </div>`;
 
       resultsEl.innerHTML = html;
+      handleListVoices(true).catch(() => {});
 
       setTimeout(() => {
         const profileWrap = document.getElementById('cloneProfileWrap');
@@ -2845,6 +2846,7 @@
       </div>`;
 
       resultsEl.innerHTML = html;
+      handleListVoices(true).catch(() => {});
 
       setTimeout(() => {
         const profileWrap = document.getElementById('designProfileWrap');
