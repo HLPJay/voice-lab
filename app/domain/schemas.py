@@ -267,6 +267,27 @@ class VoiceDeleteResponse(BaseModel):
     message: str = "删除成功"
 
 
+class ProviderVoicePreviewRequest(BaseModel):
+    """直连试听请求 — 不走 profile binding，直接指定 provider_voice_id。"""
+    provider: str = "minimax"
+    provider_voice_id: str = Field(min_length=1)
+    model: str = "speech-2.8-hd"
+    text: str = Field(min_length=1, max_length=500)
+    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
+    output_format: Literal["hex", "url"] = "hex"
+    speed: float | None = Field(None, ge=0.5, le=2.0)
+    vol: float | None = Field(None, ge=0.1, le=10.0)
+    pitch: int | None = Field(None, ge=-12, le=12)
+    emotion: str | None = None
+
+
+class ProviderVoicePreviewResponse(BaseModel):
+    audio_asset: AudioAssetResponse
+    provider: str
+    model: str
+    provider_voice_id: str
+
+
 class StreamRenderRequest(BaseModel):
     text: str = Field(min_length=1, max_length=10000)
     profile_id: str = "deep_night_programmer"
