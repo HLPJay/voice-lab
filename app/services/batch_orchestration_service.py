@@ -259,6 +259,12 @@ class BatchOrchestrationService:
         provider = batch_job.provider or settings.voice_provider
         output_format = batch_job.output_format or "hex"
         audio_format = config.get("audio_format", "mp3")
+
+        # Legacy compatibility: older batch jobs stored audio format (mp3/wav/flac)
+        # in batch_job.output_format before the P10 split.
+        if output_format in {"mp3", "wav", "flac"}:
+            audio_format = output_format
+            output_format = config.get("output_format", "hex")
         silence_ms = batch_job.silence_between_ms or 300
 
         semaphore = asyncio.Semaphore(settings.batch_max_concurrency)
@@ -318,7 +324,7 @@ class BatchOrchestrationService:
         if success_audio_paths:
             try:
                 merged_audio_path = self.audio_merger.merge(
-                    success_audio_paths, silence_ms, output_format
+                    success_audio_paths, silence_ms, audio_format
                 )
                 merged_timeline = self.audio_merger.merge_timelines(
                     success_timelines, success_durations, silence_ms
@@ -332,7 +338,7 @@ class BatchOrchestrationService:
                     provider=provider,
                     file_path=merged_audio_path,
                     file_url=f"/api/voice/assets/{merged_audio_id}/download",
-                    format=output_format,
+                    format=audio_format,
                     duration_ms=sum(success_durations) + (
                         silence_ms * (len(success_durations) - 1)
                         if len(success_durations) > 1 else 0

@@ -97,7 +97,7 @@ class TextSegmentService:
             else:
                 if current:
                     result.append(current)
-                result.extend(self._split_by_comma(sent))
+                result.extend(self._split_by_comma(sent, max_chars))
                 current = ""
         if current:
             result.append(current)
