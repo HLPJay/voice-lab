@@ -23,6 +23,7 @@ from app.providers.registry import get_provider
 from app.repositories import voice_asset_repo, voice_job_repo
 from app.repositories.voice_profile_repo import get_profile, resolve_binding
 from app.services.asset_service import AssetService
+from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.audio_merge_service import AudioMergeService
 from app.services.text_segment_service import TextSegmentService
 from app.utils.files import storage_path
@@ -411,6 +412,8 @@ class BatchOrchestrationService:
         settings = get_settings()
         binding, resolved_provider = resolve_binding(session, segment.profile_id, provider)
         provider = resolved_provider
+
+        validate_binding_provider_voice(session, binding)
 
         voice_params = json.loads(binding.params_json or "{}")
         segment_params = json.loads(segment.params_json or "{}")

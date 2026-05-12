@@ -23,6 +23,7 @@ from app.providers.registry import get_provider
 from app.repositories import voice_asset_repo, voice_job_repo
 from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
+from app.services.binding_validation_service import validate_binding_provider_voice
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 
@@ -44,6 +45,7 @@ class AsyncRenderService:
         )
         provider = resolved_provider
         get_provider(provider)  # validate provider
+        validate_binding_provider_voice(session, binding)
 
         # Async mode: basic text cleaning only, no length limit
         processed_text = request.text.strip()

@@ -5,6 +5,7 @@ from sqlmodel import Session
 from app.core.time import utc_now_iso
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
+from app.models.provider_voice import ProviderVoice
 
 
 @pytest.fixture
@@ -53,6 +54,22 @@ def custom_profile_with_binding(session: Session):
     session.add(profile)
     session.add(binding)
     session.add(mock_binding)
+
+    for pv_spec in [
+        {"id": "pv_minimax_test", "provider": "minimax", "provider_voice_id": "English_expressive_narrator"},
+        {"id": "pv_mock_test", "provider": "mock", "provider_voice_id": "mock_voice"},
+    ]:
+        pv = ProviderVoice(
+            id=pv_spec["id"],
+            provider=pv_spec["provider"],
+            provider_voice_id=pv_spec["provider_voice_id"],
+            voice_type="voice_cloning",
+            name=f"Mock PV {pv_spec['provider_voice_id']}",
+            status="available",
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(pv)
     session.commit()
     return profile, binding
 

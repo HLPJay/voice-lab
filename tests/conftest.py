@@ -120,7 +120,7 @@ def seed_profile(session):
 
 @pytest.fixture
 def seed_mock_binding(session, seed_profile):
-    """Add a mock provider binding for the seeded profile."""
+    """Add a mock provider binding for the seeded profile, plus the corresponding ProviderVoice record."""
     profile, _ = seed_profile
     now = utc_now_iso()
     binding = VoiceBinding(
@@ -136,6 +136,18 @@ def seed_mock_binding(session, seed_profile):
         updated_at=now,
     )
     session.add(binding)
+
+    pv = ProviderVoice(
+        id="pv_mock_voice",
+        provider="mock",
+        provider_voice_id="mock_voice",
+        voice_type="voice_cloning",
+        name="Mock Voice",
+        status="available",
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(pv)
     session.commit()
     return binding
 

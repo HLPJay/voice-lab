@@ -17,6 +17,7 @@ from app.providers.registry import get_provider
 from app.repositories import voice_asset_repo
 from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
+from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -47,6 +48,8 @@ class StreamRenderService:
         binding, resolved_provider = resolve_binding(session, request.profile_id, provider)
         provider = resolved_provider
         adapter = get_provider(provider)
+
+        validate_binding_provider_voice(session, binding)
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = json.loads(binding.params_json or "{}")

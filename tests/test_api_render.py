@@ -10,6 +10,7 @@ from app.core.errors import VoiceLabError, request_validation_error_handler, voi
 from app.core.time import utc_now_iso
 from app.models.voice_binding import VoiceBinding
 from app.models.voice_profile import VoiceProfile
+from app.models.provider_voice import ProviderVoice
 
 
 def _make_clean_app(temp_db):
@@ -95,7 +96,10 @@ def test_render_empty_text(test_app):
 
 
 def _seed_profile_with_bindings(session, bindings_spec):
-    """Helper: create a profile and N bindings from a list of (priority, status) tuples."""
+    """Helper: create a profile and N bindings from a list of (priority, status, voice_id) tuples.
+
+    Also creates a ProviderVoice record for each binding so that validate_binding_provider_voice passes.
+    """
     now = utc_now_iso()
     profile = VoiceProfile(
         id="test_binding_profile",
@@ -128,6 +132,18 @@ def _seed_profile_with_bindings(session, bindings_spec):
             updated_at=now,
         )
         session.add(b)
+
+        pv = ProviderVoice(
+            id=f"pv_{voice_id}",
+            provider="mock",
+            provider_voice_id=voice_id,
+            voice_type="voice_cloning",
+            name=f"Mock Voice {voice_id}",
+            status="available",
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(pv)
         created_bindings.append(b)
     session.commit()
     return profile, created_bindings
