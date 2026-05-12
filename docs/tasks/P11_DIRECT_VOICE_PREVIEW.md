@@ -164,9 +164,9 @@ class VoicePreviewService:
 
 ```python
 from app.domain.schemas import ProviderVoicePreviewRequest, ProviderVoicePreviewResponse
-from app.services.voice_preview_service import VoicePreviewService
+from app.services.provider_voice_preview_service import ProviderVoicePreviewService
 
-preview_service = VoicePreviewService()
+preview_service = ProviderVoicePreviewService()
 
 
 @router.post("/provider-voices/preview", response_model=ProviderVoicePreviewResponse)
@@ -175,7 +175,7 @@ async def preview_provider_voice(
     session: Session = Depends(get_session),
 ):
     """直连试听 — 跳过 profile binding，直接用指定的 provider_voice_id 生成音频。"""
-    return await preview_service.preview(session, request)
+    return await preview_service.preview(session, request.provider, request)
 ```
 
 不需要修改 `app/api/__init__.py`，因为 `provider_voices.router` 已经注册。

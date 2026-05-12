@@ -43,8 +43,9 @@ class TestProviderVoicePreviewSchema:
 class TestProviderVoicePreviewAPI:
     def test_preview_returns_200_with_audio_asset(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview?provider=mock",
+            "/api/voice/provider-voices/preview",
             json={
+                "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
                 "model": "speech-2.8-hd",
                 "text": "你好，这是一段试听测试。",
@@ -65,8 +66,9 @@ class TestProviderVoicePreviewAPI:
 
     def test_preview_with_speed_vol_pitch(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview?provider=mock",
+            "/api/voice/provider-voices/preview",
             json={
+                "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
                 "model": "speech-2.8-hd",
                 "text": "参数试听测试。",
@@ -83,7 +85,7 @@ class TestProviderVoicePreviewAPI:
 
     def test_preview_missing_text_returns_422(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview?provider=mock",
+            "/api/voice/provider-voices/preview",
             json={
                 "provider_voice_id": "mock_voice_system",
                 "model": "speech-2.8-hd",
@@ -95,7 +97,7 @@ class TestProviderVoicePreviewAPI:
 
     def test_preview_missing_voice_id_returns_422(self, test_app):
         resp = TestClient(test_app).post(
-            "/api/voice/provider-voices/preview?provider=mock",
+            "/api/voice/provider-voices/preview",
             json={
                 "model": "speech-2.8-hd",
                 "text": "测试文本",
@@ -143,7 +145,7 @@ class TestProviderVoicePreviewService:
 
         with patch("app.services.provider_voice_preview_service.get_provider", return_value=FakeAdapter()):
             resp = TestClient(test_app).post(
-                "/api/voice/provider-voices/preview?provider=mock",
+                "/api/voice/provider-voices/preview",
                 json={
                     "provider_voice_id": "voice_a",
                     "model": "speech-2.8-hd",
