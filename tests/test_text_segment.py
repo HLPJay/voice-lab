@@ -72,3 +72,13 @@ def test_segment_empty_text_raises(service):
         service.segment("")
     with pytest.raises(ValueError, match="cannot be empty"):
         service.segment("   ")
+
+
+def test_segment_sentence_long_sentence_splits_by_comma(service):
+    """strategy=sentence, single sentence exceeds max_chars → split by comma."""
+    text = "这是一个很长的片段，" * 200  # ~2000 chars, far exceeds max_chars=100
+    result = service.segment(text, strategy="sentence", max_chars=100)
+
+    assert len(result) > 1
+    for seg in result:
+        assert len(seg) <= 100

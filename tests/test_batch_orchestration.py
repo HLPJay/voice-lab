@@ -295,6 +295,157 @@ def test_get_status_returns_progress(service, session: Session):
     assert response.segments[2].status == BatchStatus.pending
 
 
+def test_batch_process_segment_uses_audio_format_not_output_format(
+    service, session: Session, seed_profile, seed_mock_binding
+):
+    """Verify _process_segment passes audio_format (not output_format) as audio_params['format']."""
+    from unittest.mock import AsyncMock
+    from app.domain.render_plan import RenderPlan
+
+    captured_plans: list[RenderPlan] = []
+
+    async def mock_render_sync(plan: RenderPlan) -> dict:
+        captured_plans.append(plan)
+        # Return a minimal ProviderRenderResult-like dict
+        from app.providers.base import ProviderRenderResult
+        from app.utils.files import storage_path
+        from app.utils.id_generator import new_id
+        audio_id = new_id("audio_file")
+        audio_path = storage_path("audio", f"{audio_id}.wav")
+        from app.utils.audio import write_silent_wav
+        write_silent_wav(audio_path, duration_ms=500, sample_rate=16000)
+        return ProviderRenderResult(
+            audio_path=str(audio_path),
+            duration_ms=500,
+            usage_characters=len(plan.text),
+            trace_id="mock_trace",
+            response_json={},
+            timeline=[],
+            metadata={},
+        )
+
+    # Patch get_provider on the service module
+    import app.services.batch_orchestration_service as svc_module
+    original_get = svc_module.get_provider
+
+    class FakeAdapter:
+        async def render_sync(self, plan):
+            return await mock_render_sync(plan)
+
+    def fake_get_provider(p):
+        return FakeAdapter()
+
+    svc_module.get_provider = fake_get_provider
+
+    try:
+        now = utc_now_iso()
+        batch_id = "batch_test_audio_format"
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="mock",
+            output_format="hex",
+            total_segments=1,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "测试文本。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+                "audio_format": "wav",
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        seg = BatchSegment(
+            id="seg_audio_format",
+            batch_job_id=batch_id,
+            index=0,
+            text="测试文本。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+        session.commit()
+
+        asyncio.get_event_loop().run_until_complete(
+            service.execute(session, batch_id)
+        )
+
+        assert len(captured_plans) == 1
+        plan = captured_plans[0]
+        # audio_params['format'] must be the audio encoding (wav), not output_format (hex)
+        assert plan.audio_params["format"] == "wav", \
+            f"expected audio_params['format']='wav', got '{plan.audio_params['format']}'"
+        # output_format must be hex/url
+        assert plan.output_format in ("hex", "url"), \
+            f"expected output_format in ('hex','url'), got '{plan.output_format}'"
+    finally:
+        svc_module.get_provider = original_get
+
+
+def test_batch_legacy_output_format_mp3_sets_audio_format(
+    service, session: Session, seed_profile, seed_mock_binding
+):
+    """Legacy batch job with output_format='mp3' (old schema) is treated as audio_format='mp3'.
+
+    Compatibility: when batch_job.output_format is an audio format (mp3/wav/flac),
+    it means the old schema stored the audio encoding there.
+    The execute() should use it as audio_format and default output_format to hex.
+    """
+    now = utc_now_iso()
+    batch_id = "batch_test_legacy"
+    batch_job = BatchJob(
+        id=batch_id,
+        mode="longtext",
+        status=BatchStatus.pending,
+        provider="mock",
+        output_format="mp3",  # old schema: this was the audio format
+        total_segments=1,
+        silence_between_ms=0,
+        config_json=json.dumps({
+            "text": "legacy text。",
+            "profile_id": "deep_night_programmer",
+            "need_subtitle": False,
+            # no audio_format field → from legacy output_format="mp3"
+        }),
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(batch_job)
+
+    seg = BatchSegment(
+        id="seg_legacy",
+        batch_job_id=batch_id,
+        index=0,
+        text="legacy text。",
+        profile_id="deep_night_programmer",
+        params_json="{}",
+        status=BatchStatus.pending,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(seg)
+    session.commit()
+
+    asyncio.get_event_loop().run_until_complete(
+        service.execute(session, batch_id)
+    )
+
+    segments = list(session.exec(
+        select(BatchSegment).where(BatchSegment.batch_job_id == batch_id)
+    ).all())
+    assert all(s.status == BatchStatus.success for s in segments)
+    # Verify merged asset was created (old schema with mp3 audio_format works)
+    session.refresh(batch_job)
+    assert batch_job.merged_audio_asset_id is not None
+
+
 def test_execute_batch_concurrent_respects_order(
     service, session: Session, seed_profile, seed_mock_binding
 ):
@@ -306,7 +457,7 @@ def test_execute_batch_concurrent_respects_order(
         mode="longtext",
         status=BatchStatus.pending,
         provider="mock",
-        output_format="mp3",
+        output_format="hex",
         total_segments=5,
         silence_between_ms=0,
         config_json=json.dumps({
