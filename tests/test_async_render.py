@@ -515,3 +515,152 @@ class TestAsyncRenderResourceGuard:
         session.refresh(job)
         assert job.status == "processing", "Job should stay processing when provider query transiently fails"
 
+    @pytest.mark.asyncio
+    async def test_query_status_success_without_duration_estimates_subtitle_timeline_end(
+        self, session, seed_profile, seed_mock_binding
+    ):
+        """When provider returns duration_ms=None and no timeline, estimate_duration_ms is used for timeline end."""
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+        from app.services.async_render_service import AsyncRenderService
+        from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
+        from app.utils.files import storage_path
+
+        now = utc_now_iso()
+        render_plan = {
+            "subtitle": {"enabled": True, "type": "sentence"},
+            "audio_params": {"format": "mp3"},
+        }
+        job = VoiceJob(
+            id="test_no_duration_job",
+            job_type="async_render",
+            status="processing",
+            provider="minimax",
+            model="speech-2.8-hd",
+            profile_id="deep_night_programmer",
+            binding_id="binding_mock_deep_night_programmer",
+            input_text="异步字幕测试",
+            processed_text="异步字幕测试",
+            render_plan_json=json.dumps(render_plan),
+            response_json='{"provider_task_id": "mock_task"}',
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+
+        # Create a real temp audio file in storage directory
+        audio_path = storage_path("audio", "test_async_duration_audio.mp3")
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
+        audio_path.write_bytes(bytes([0xFF, 0xFB, 0x90, 0x00] + [0x00] * 100))
+
+        class NoDurationAdapter:
+            provider_name = "minimax"
+
+            async def query_async_task(self, provider_task_id):
+                from app.providers.base import AsyncTaskStatus
+                return AsyncTaskStatus(
+                    task_id=provider_task_id,
+                    status="success",
+                    file_url=str(audio_path),
+                    trace_id="mock_trace",
+                    duration_ms=None,
+                    metadata={},
+                )
+
+        svc = AsyncRenderService()
+
+        with patch("app.services.async_render_service.get_provider", return_value=NoDurationAdapter()):
+            result = await svc.query_status(session, "test_no_duration_job")
+
+        session.refresh(job)
+        assert job.status == "success", f"Job should be success, got {job.status}"
+
+        audio_asset_resp = result.audio_asset
+        assert audio_asset_resp is not None, "audio_asset should be present"
+        assert audio_asset_resp.duration_ms is not None, "duration_ms should not be None"
+        assert audio_asset_resp.duration_ms > 0, f"duration_ms should be > 0, got {audio_asset_resp.duration_ms}"
+
+        subtitle_asset_resp = result.subtitle_asset
+        assert subtitle_asset_resp is not None, "subtitle_asset should be present"
+        timeline = subtitle_asset_resp.timeline
+        assert len(timeline) > 0, "Timeline should not be empty"
+        assert timeline[0]["start"] == 0.0, f"Timeline start should be 0.0, got {timeline[0]['start']}"
+        assert timeline[0]["end"] > 0.0, f"Timeline end should be > 0.0 (estimated), got {timeline[0]['end']}"
+
+    @pytest.mark.asyncio
+    async def test_query_status_success_preserves_provider_timeline(
+        self, session, seed_profile, seed_mock_binding
+    ):
+        """When provider returns a timeline in metadata, it should be preserved and not overwritten by estimate."""
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+        from app.services.async_render_service import AsyncRenderService
+        from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
+        from app.utils.files import storage_path
+
+        now = utc_now_iso()
+        render_plan = {
+            "subtitle": {"enabled": True, "type": "sentence"},
+            "audio_params": {"format": "mp3"},
+        }
+        job = VoiceJob(
+            id="test_provider_timeline_job",
+            job_type="async_render",
+            status="processing",
+            provider="minimax",
+            model="speech-2.8-hd",
+            profile_id="deep_night_programmer",
+            binding_id="binding_mock_deep_night_programmer",
+            input_text="provider timeline test",
+            processed_text="provider timeline test",
+            render_plan_json=json.dumps(render_plan),
+            response_json='{"provider_task_id": "mock_task"}',
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+
+        audio_path = storage_path("audio", "test_async_timeline_audio.mp3")
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
+        audio_path.write_bytes(bytes([0xFF, 0xFB, 0x90, 0x00] + [0x00] * 100))
+
+        provider_timeline = [
+            {"text": "hello", "start": 0.0, "end": 1.23},
+            {"text": "world", "start": 1.23, "end": 2.5},
+        ]
+
+        class ProviderTimelineAdapter:
+            provider_name = "minimax"
+
+            async def query_async_task(self, provider_task_id):
+                from app.providers.base import AsyncTaskStatus
+                return AsyncTaskStatus(
+                    task_id=provider_task_id,
+                    status="success",
+                    file_url=str(audio_path),
+                    trace_id="mock_trace",
+                    duration_ms=None,
+                    metadata={"timeline": provider_timeline},
+                )
+
+        svc = AsyncRenderService()
+
+        with patch("app.services.async_render_service.get_provider", return_value=ProviderTimelineAdapter()):
+            result = await svc.query_status(session, "test_provider_timeline_job")
+
+        session.refresh(job)
+        assert job.status == "success"
+
+        subtitle_asset_resp = result.subtitle_asset
+        assert subtitle_asset_resp is not None
+        timeline = subtitle_asset_resp.timeline
+        assert timeline == provider_timeline, f"Provider timeline should be preserved, got {timeline}"
+        assert timeline[0]["end"] == 1.23, f"First entry end should be 1.23, got {timeline[0]['end']}"
+        assert timeline[1]["end"] == 2.5, f"Second entry end should be 2.5, got {timeline[1]['end']}"
+

@@ -1224,7 +1224,7 @@ tests/ -x -q                         → 366 passed, 6 skipped
 
 ### 阶段结论
 
-**P7-I 真实 MiniMax smoke test 完成。同步 T2A、异步 T2A、批量生成、provider preview 均真实可用。所有 P2 问题均已解决，可进入 P8 前端 UX 修复阶段。WebSocket 流式和前端交互需浏览器环境补充验证。**
+**P7-I 真实 MiniMax smoke test 完成。同步 T2A、异步 T2A、批量生成、provider preview 均真实可用。P2-2 已修复；P2-1 HTTP 流式端点不存在仍作为产品/API 口径评估项保留。进入 P8 前仍需补充浏览器前端验证。**
 
 ---
 
@@ -1256,7 +1256,7 @@ tests/ -x -q                         → 366 passed, 6 skipped
 
 ### 阶段结论
 
-**P2-2 已修复，所有 P2 问题均已解决。**
+**P2-2 已修复；P2-1 HTTP 流式端点不存在仍作为产品/API 口径评估项保留。真实 MiniMax 主链路可用；进入 P8 前仍需补充浏览器前端验证，HTTP 流式端点是否补充另行评估。**
 
 ---
 
