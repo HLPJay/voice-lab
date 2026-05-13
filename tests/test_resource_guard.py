@@ -149,17 +149,16 @@ async def test_release_idempotent():
     """Calling _release twice must not cause negative current."""
     svc = make_service()
 
-    async with svc.guard(provider="minimax", operation="voice_design", job_id="j1") as lease:
-        assert svc.current("minimax", "voice_design") == 1
+    lease = await svc._acquire(provider="minimax", operation="voice_design", job_id="j1")
+    assert svc.current("minimax", "voice_design") == 1
 
-    # First explicit release (via guard exit already called it)
+    # First explicit release
     await svc._release(lease)
 
-    # Second explicit release — must be idempotent
+    # Second explicit release — must be idempotent (lease already released)
     await svc._release(lease)
 
     assert svc.current("minimax", "voice_design") == 0
-    # Keys with value 0 are retained in snapshot; only values matter
     assert all(v >= 0 for v in svc.snapshot().values())
 
 
@@ -294,26 +293,58 @@ async def test_singleton_shared_state():
 
 @pytest.mark.asyncio
 async def test_concurrent_acquires_do_not_exceed_limit():
-    """With limit=1, only one of N concurrent guards should succeed; others raise."""
+    """With limit=1, only one of N concurrent guards should succeed; others raise.
+
+    The holder task acquires the slot and waits. Contenders attempt to acquire while
+    the holder holds the slot. All contenders should be rejected. After release,
+    holder exits and current returns to 0.
+    """
     svc = make_service()
 
-    accepted_count = 0
-    rejected_count = 0
+    holder_held = asyncio.Event()
+    release_holder = asyncio.Event()
+    holder_finished = asyncio.Event()
 
-    async def try_acquire(job_id: str):
-        nonlocal accepted_count, rejected_count
+    results: list[str] = []
+
+    async def holder():
+        async with svc.guard(provider="minimax", operation="t2a_stream", job_id="holder"):
+            holder_held.set()
+            await release_holder.wait()
+        holder_finished.set()
+
+    async def try_acquire(i: int):
         try:
-            async with svc.guard(provider="minimax", operation="t2a_stream", job_id=job_id):
-                accepted_count += 1
+            async with svc.guard(provider="minimax", operation="t2a_stream", job_id=f"job_{i}"):
+                results.append(f"accepted_{i}")
         except ResourceLimitExceeded:
-            rejected_count += 1
+            results.append(f"rejected_{i}")
 
-    # Run 5 coroutines concurrently; limit=1 so exactly 1 accepts, 4 reject
-    await asyncio.gather(*[try_acquire(f"job_{i}") for i in range(5)])
+    # Start holder task
+    t_holder = asyncio.create_task(holder())
 
-    assert accepted_count == 1, f"expected 1 accepted, got {accepted_count}"
-    assert rejected_count == 4, f"expected 4 rejected, got {rejected_count}"
-    # All slots should be released
+    # Wait for holder to actually hold the slot
+    await holder_held.wait()
+
+    # Now start all contenders - they should all be rejected since limit=1
+    await asyncio.gather(
+        try_acquire(0),
+        try_acquire(1),
+        try_acquire(2),
+        try_acquire(3),
+    )
+
+    # Release holder and wait for it to finish
+    release_holder.set()
+    await t_holder
+
+    accepted = [r for r in results if r.startswith("accepted")]
+    rejected = [r for r in results if r.startswith("rejected")]
+
+    # With limit=1 and holder holding the slot, all contenders should be rejected
+    # (holder itself is not a contender, it directly holds the slot)
+    assert len(accepted) == 0, f"expected 0 accepted (holder holding), got {len(accepted)}: {accepted}"
+    assert len(rejected) == 4, f"expected 4 rejected, got {len(rejected)}: {rejected}"
     assert svc.current("minimax", "t2a_stream") == 0
 
 

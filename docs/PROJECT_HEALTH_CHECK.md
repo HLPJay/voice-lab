@@ -502,3 +502,56 @@ python -m pytest tests/ -x -q
 | P7-D | 接入流式与异步路径 |
 | P7-E | 接入批量路径 |
 | P7-F | 前端 RESOURCE_LIMIT_EXCEEDED 友好提示 |
+
+---
+
+## P7-B1 ResourceGuardService 并发控制实现修复
+
+### 背景
+
+- P7-B 已完成 ResourceGuardService 基础模块（commit eb31d25）
+- 代码审查发现当前实现使用 `asyncio.Semaphore + wait_for(timeout=0.001)` 模拟非阻塞准入
+- 该实现虽然测试通过，但和 P7-A1 的"立即拒绝、不排队、不等待"设计存在偏差
+- `_active` 仅用于观测，不是真实控制来源，存在控制状态和观测状态不一致的风险
+
+### 修复内容
+
+1. **移除 asyncio.Semaphore**：删除 `_semaphores` dict 和 `_get_semaphore()` 方法，不再使用 Semaphore
+
+2. **移除 wait_for(timeout=0.001)**：不再使用 `asyncio.wait_for(sem.acquire(), timeout=0.001)` 模拟非阻塞
+
+3. **使用 asyncio.Lock + _active 原子计数**：`_active` 同时作为并发控制状态和 introspection 观测状态的单一来源。check 和 increment 在同一个 lock critical section 内完成，无等待、无排队
+
+4. **_acquire/_release 保留为测试方法**：业务代码使用 `guard()` async context manager，`_acquire/_release` 仅供测试直接调用
+
+5. **guard(...) finally 统一调用 _release(lease)**：guard 的 finally 只调用 `_release(lease)`，不再有自己的释放逻辑
+
+6. **_release 幂等**：重复释放不会导致 `_active` 变负。降到 0 时 pop key 保持 snapshot 简洁
+
+7. **重写并发测试**：使用 `asyncio.Event` 保证 holder 先持有 slot，contenders 再尝试获取，消除事件循环时序依赖
+
+### 修改文件
+
+- `app/services/resource_guard_service.py`
+- `tests/test_resource_guard.py`
+- `docs/PROJECT_HEALTH_CHECK.md`
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- `tests/test_resource_guard.py`：15 passed
+- 全量测试：337 passed, 6 skipped (0:01:16)
+
+### 后续计划
+
+| 阶段 | 目标 |
+|---|---|
+| P7-C | 接入核心同步与高风险路径 |
+| P7-D | 接入流式与异步路径 |
+| P7-E | 接入批量路径 |

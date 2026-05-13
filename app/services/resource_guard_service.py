@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import time
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from app.core.errors import VoiceLabError
@@ -105,11 +105,11 @@ class ResourceLease:
     model: str | None = None
     acquired_at: float | None = None
     is_noop: bool = False
-    released: bool = False
+    _released: bool = False
 
-    def release(self) -> None:
-        """Idempotent release — safe to call multiple times."""
-        self.released = True
+    @property
+    def released(self) -> bool:
+        return self._released
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +174,10 @@ class ResourceGuardService:
     """In-process resource admission control.
 
     第一版只做内存级并发控制，不做 Redis/排队/持久化。
+
+    并发控制使用 asyncio.Lock + _active 原子计数：
+    - _active 同时作为并发控制状态和 introspection 观测状态
+    - 不使用 Semaphore，不等待，不排队
     """
 
     # Default limit for unknown real-provider operations (conservative: allow one)
@@ -184,19 +188,123 @@ class ResourceGuardService:
         policies: dict[str, ResourcePolicy] | None = None,
     ):
         self._policies: dict[str, ResourcePolicy] = policies or _build_default_policies()
-        self._active: dict[str, int] = {}   # key -> current active count (for introspection)
+        self._active: dict[str, int] = {}   # key -> current active count; single source of truth
         self._lock = asyncio.Lock()
-        self._semaphores: dict[str, asyncio.Semaphore] = {}
 
     # ------------------------------------------------------------------
-    # Semaphore registry
+    # Internal: _acquire / _release
     # ------------------------------------------------------------------
 
-    def _get_semaphore(self, key: str, limit: int) -> asyncio.Semaphore:
-        """Get or create a semaphore for the given key, creating it unlocked."""
-        if key not in self._semaphores:
-            self._semaphores[key] = asyncio.Semaphore(limit)
-        return self._semaphores[key]
+    async def _acquire(
+        self,
+        *,
+        provider: str,
+        operation: str,
+        model: str | None = None,
+        job_id: str | None = None,
+    ) -> ResourceLease:
+        """Acquire a resource slot. Raises ResourceLimitExceeded if at capacity."""
+        provider = provider.lower()
+        operation = operation.lower()
+
+        # mock provider always gets a no-op lease
+        if provider == "mock":
+            return ResourceLease(
+                provider=provider,
+                operation=operation,
+                key=f"mock:{operation}",
+                limit=None,
+                model=model,
+                job_id=job_id,
+                acquired_at=time.time(),
+                is_noop=True,
+            )
+
+        policy = self._policies.get(f"{provider}:{operation}")
+        if policy is None:
+            limit = self._UNKNOWN_OPERATION_DEFAULT_LIMIT
+            key = f"{provider}:{operation}"
+        else:
+            key = policy.shared_key or f"{policy.provider}:{policy.operation}"
+            limit = policy.limit
+
+        # Unlimited: always succeeds
+        if limit is None:
+            return ResourceLease(
+                provider=provider,
+                operation=operation,
+                key=key,
+                limit=None,
+                model=model,
+                job_id=job_id,
+                acquired_at=time.time(),
+                is_noop=True,
+            )
+
+        # The lock serializes the entire check-and-increment as one atomic operation.
+        # All concurrent callers queue here; only one enters at a time.
+        async with self._lock:
+            current = self._active.get(key, 0)
+            if current >= limit:
+                logger.warning(
+                    "resource_rejected provider=%s operation=%s model=%s job_id=%s key=%s limit=%s current=%s reason=limit_exceeded",
+                    provider, operation, model, job_id, key, limit, current,
+                )
+                raise ResourceLimitExceeded(
+                    provider=provider,
+                    operation=operation,
+                    limit=limit,
+                    current=current,
+                    job_id=job_id,
+                    model=model,
+                )
+
+            self._active[key] = current + 1
+            logger.debug(
+                "resource_acquired provider=%s operation=%s model=%s job_id=%s key=%s limit=%s current=%s",
+                provider, operation, model, job_id, key, limit, self._active[key],
+            )
+
+        logger.info(
+            "resource_acquire_attempt provider=%s operation=%s model=%s job_id=%s key=%s limit=%s",
+            provider, operation, model, job_id, key, limit,
+        )
+
+        return ResourceLease(
+            provider=provider,
+            operation=operation,
+            key=key,
+            limit=limit,
+            model=model,
+            job_id=job_id,
+            acquired_at=time.time(),
+            is_noop=False,
+        )
+
+    async def _release(self, lease: ResourceLease) -> None:
+        """Release a resource slot. Idempotent — safe to call multiple times."""
+        if lease.is_noop:
+            return
+
+        if lease._released:
+            return
+
+        async with self._lock:
+            if lease._released:
+                return
+            current = self._active.get(lease.key, 0)
+            if current <= 1:
+                self._active.pop(lease.key, None)
+            else:
+                self._active[lease.key] = current - 1
+            # Mark as released while still holding the lock to ensure idempotency
+            lease._released = True
+
+            logger.debug(
+                "resource_released provider=%s operation=%s model=%s job_id=%s key=%s limit=%s current=%s",
+                lease.provider, lease.operation, lease.model, lease.job_id,
+                lease.key, lease.limit, self._active.get(lease.key, 0),
+            )
 
     # ------------------------------------------------------------------
     # Public: guard (...) async context manager
@@ -218,197 +326,11 @@ class ResourceGuardService:
                 async for msg in adapter.render_stream(plan):
                     ...
         """
-        provider = provider.lower()
-        operation = operation.lower()
-
-        # mock provider always gets a no-op lease
-        if provider == "mock":
-            lease = ResourceLease(
-                provider=provider,
-                operation=operation,
-                key=f"mock:{operation}",
-                limit=None,
-                model=model,
-                job_id=job_id,
-                acquired_at=time.time(),
-                is_noop=True,
-            )
-            yield lease
-            return
-
-        policy = self._policies.get(f"{provider}:{operation}")
-        if policy is None:
-            limit = self._UNKNOWN_OPERATION_DEFAULT_LIMIT
-            key = f"{provider}:{operation}"
-        else:
-            key = policy.shared_key or f"{policy.provider}:{policy.operation}"
-            limit = policy.limit
-
-        # Unlimited: always succeeds
-        if limit is None:
-            lease = ResourceLease(
-                provider=provider,
-                operation=operation,
-                key=key,
-                limit=None,
-                model=model,
-                job_id=job_id,
-                acquired_at=time.time(),
-                is_noop=True,
-            )
-            yield lease
-            return
-
-        sem = self._get_semaphore(key, limit)
-
-        logger.info(
-            "resource_acquire_attempt provider=%s operation=%s model=%s job_id=%s key=%s limit=%s",
-            provider, operation, model, job_id, key, limit,
-        )
-
-        # Acquire the semaphore - this blocks if at capacity
-        # We use wait_for with a very small timeout to avoid indefinite blocking
-        # but in practice it should either succeed immediately or we reject
-        try:
-            await asyncio.wait_for(sem.acquire(), timeout=0.001)
-        except asyncio.TimeoutError:
-            logger.warning(
-                "resource_rejected provider=%s operation=%s model=%s job_id=%s key=%s limit=%s current=%s reason=limit_exceeded",
-                provider, operation, model, job_id, key, limit, limit,
-            )
-            raise ResourceLimitExceeded(
-                provider=provider,
-                operation=operation,
-                limit=limit,
-                current=limit,
-                job_id=job_id,
-                model=model,
-            )
-
-        # Update active count for introspection (eventually consistent, not used for concurrency control)
-        async with self._lock:
-            self._active[key] = self._active.get(key, 0) + 1
-
-        lease = ResourceLease(
-            provider=provider,
-            operation=operation,
-            key=key,
-            limit=limit,
-            model=model,
-            job_id=job_id,
-            acquired_at=time.time(),
-            is_noop=False,
-        )
-
-        logger.debug(
-            "resource_acquired provider=%s operation=%s model=%s job_id=%s key=%s limit=%s",
-            provider, operation, model, job_id, key, limit,
-        )
-
+        lease = await self._acquire(provider=provider, operation=operation, model=model, job_id=job_id)
         try:
             yield lease
         finally:
-            async with self._lock:
-                if self._active.get(key, 0) > 0:
-                    self._active[key] -= 1
-            sem.release()
-            lease.release()
-            logger.debug(
-                "resource_released provider=%s operation=%s model=%s job_id=%s key=%s limit=%s",
-                provider, operation, model, job_id, key, limit,
-            )
-
-    # ------------------------------------------------------------------
-    # Internal: _acquire / _release (for direct testing)
-    # ------------------------------------------------------------------
-
-    async def _acquire(
-        self,
-        *,
-        provider: str,
-        operation: str,
-        model: str | None = None,
-        job_id: str | None = None,
-    ) -> ResourceLease:
-        """Internal acquire for testing. Use guard() in production."""
-        provider = provider.lower()
-        operation = operation.lower()
-
-        if provider == "mock":
-            return ResourceLease(
-                provider=provider,
-                operation=operation,
-                key=f"mock:{operation}",
-                limit=None,
-                model=model,
-                job_id=job_id,
-                acquired_at=time.time(),
-                is_noop=True,
-            )
-
-        policy = self._policies.get(f"{provider}:{operation}")
-        if policy is None:
-            limit = self._UNKNOWN_OPERATION_DEFAULT_LIMIT
-            key = f"{provider}:{operation}"
-        else:
-            key = policy.shared_key or f"{policy.provider}:{policy.operation}"
-            limit = policy.limit
-
-        if limit is None:
-            return ResourceLease(
-                provider=provider,
-                operation=operation,
-                key=key,
-                limit=None,
-                model=model,
-                job_id=job_id,
-                acquired_at=time.time(),
-                is_noop=True,
-            )
-
-        sem = self._get_semaphore(key, limit)
-
-        try:
-            await asyncio.wait_for(sem.acquire(), timeout=0.001)
-        except asyncio.TimeoutError:
-            raise ResourceLimitExceeded(
-                provider=provider,
-                operation=operation,
-                limit=limit,
-                current=limit,
-                job_id=job_id,
-                model=model,
-            )
-
-        async with self._lock:
-            self._active[key] = self._active.get(key, 0) + 1
-
-        return ResourceLease(
-            provider=provider,
-            operation=operation,
-            key=key,
-            limit=limit,
-            model=model,
-            job_id=job_id,
-            acquired_at=time.time(),
-            is_noop=False,
-        )
-
-    async def _release(self, lease: ResourceLease) -> None:
-        """Internal release for testing. Use guard() in production."""
-        if lease.is_noop or lease.released:
-            return
-
-        async with self._lock:
-            if self._active.get(lease.key, 0) > 0:
-                self._active[lease.key] -= 1
-        # Find the semaphore for this key and release it
-        # We need to find the semaphore by looking up the key
-        for policy_key, sem in list(self._semaphores.items()):
-            if policy_key == lease.key:
-                sem.release()
-                break
-        lease.release()
+            await self._release(lease)
 
     # ------------------------------------------------------------------
     # Introspection (useful in tests)
@@ -427,13 +349,8 @@ class ResourceGuardService:
         return dict(self._active)
 
     def reset(self) -> None:
-        """Clear all active slot counts and recreate semaphores. Use only in tests."""
+        """Clear all active slot counts. Use only in tests."""
         self._active.clear()
-        # Recreate all semaphores to ensure clean unlocked state
-        for key, sem in list(self._semaphores.items()):
-            policy = self._policies.get(key)
-            limit = policy.limit if policy else self._UNKNOWN_OPERATION_DEFAULT_LIMIT
-            self._semaphores[key] = asyncio.Semaphore(limit)
 
 
 # ---------------------------------------------------------------------------
