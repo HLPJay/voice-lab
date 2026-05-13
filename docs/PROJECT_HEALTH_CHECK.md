@@ -22,6 +22,7 @@
 * P8-3B：resultsArea 信息架构整理已完成（同步/异步/多版本结果卡片化、section label 统一、新增 resultSectionLabel helper、timelineTable 空状态处理）
 * P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、无 audio/subtitle 空状态准确化）
 * P8-3C1：结果状态口径自检与收口修复已完成（新增 isResultSuccessStatus/isResultFailedStatus/isResultProcessingStatus helper、完成态统一识别 success/completed，失败态统一识别 failed/error，resultStatusHintHtml 补全 completed/error/queued 文案，诊断信息优先使用 extractErrorMessage）
+* P8-3D：流式/多版本结果展示统一已完成（renderStreamResult 升级为 card 结构、section label 统一、本地缓存提示增加、variants 空状态处理、单版本无 audio 红色提示）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -70,6 +71,9 @@
 * 当前结果展示完成态统一识别 success / completed
 * 当前结果展示失败态统一识别 failed / error
 * 当前结果展示等待/处理中态统一识别 queued / pending / running / processing
+* 当前流式结果展示已与任务结果 card 对齐
+* 当前多版本结果展示已与任务结果 card 对齐
+* 下一阶段建议进入 P8-3E：错误 / Resource Guard / 下载入口产品化
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2272,3 +2276,63 @@ git diff --check: 无 whitespace error
 ### 阶段结论
 
 P8-3C1 已完成结果状态口径自检与收口修复。下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一。
+
+---
+
+## P8-3D 流式 / 多版本结果展示统一
+
+### 背景
+
+P8-3D 是流式 / 多版本结果展示统一阶段，目标是让流式生成结果和多版本试音结果的展示结构与 P8-3B/P8-3C 已整理的任务结果 card 保持一致。
+
+### 主要调整
+
+1. **`renderStreamResult`**：外层从 `result-section` 改为 `card`，增加"任务结果"主标题、"流式生成结果"副标题、"流式接收完成，可以播放生成音频。"提示、section label 统一、本地缓存与服务端 asset 下载区分说明
+2. **`renderResults` variant 分支**：variants 为空时展示明确空状态卡片，单版本无 audio 时红色提示"该版本未返回音频资产。"
+3. **未改变**：startStreamGenerate、WebSocket 逻辑、variants API、variantCount
+
+### 修改文件
+
+- `app/static/index.html`（展示层代码调整）
+- `docs/P8_3_RESULT_DISPLAY_WORKSTATION.md`（追加 P8-3D 节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新摘要 + 追加本节）
+
+### 风险处理
+
+- 流式本地缓存与服务端 asset 下载区分说明已增加
+- variants 空状态已处理，不再抛 JS 异常
+- 多版本无 audio 时提示已从灰色改为红色，更醒目
+
+### 验证命令
+
+- DOM/display marker 检查：通过
+- JS function 检查：通过
+- API/WebSocket marker 检查：通过
+- startStreamGenerate 逻辑保留检查：通过
+- renderStreamResult 展示检查：通过
+- renderResults variant 分支检查：通过
+- P8-3C1 状态 helper 保留检查：通过
+
+### 验证结果
+
+pytest: 375 passed, 6 skipped
+git diff --check: 无 whitespace error
+
+### 未做事项
+
+- 未处理字幕播放同步
+- 未处理流式下载 404 时序
+- 未处理 WebSocket 服务端结果资产化
+- 未处理批量字幕缓存
+- 未处理 Resource Guard 排队预估
+- 未处理异步轮询最大时长提示
+- 未处理批量脚本独立轮询状态
+- 未处理多版本费用防误点
+- 未处理批量结果卡片化
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-3E
+
+### 阶段结论
+
+P8-3D 已完成流式 / 多版本结果展示统一。下一阶段建议进入 P8-3E：错误 / Resource Guard / 下载入口产品化。

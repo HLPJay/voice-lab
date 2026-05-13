@@ -2041,24 +2041,34 @@ function handleStopAsyncPolling() {
 
     const asset = completed.audio_asset;
     resultsArea.innerHTML = `
-        <div class="result-section">
-            <div class="result-label">流式生成结果</div>
-            <span class="job-status status-success">已完成</span>
-            <p style="font-size:0.82rem;color:#718096;margin-top:6px">
-                任务ID：<code>${esc(completed.job_id)}</code>
-                · 片段数: ${completed.total_chunks}
-                · 总时长: ${completed.total_duration_ms} ms
-                · 字符数: ${completed.total_characters}
-            </p>
-            <audio class="audio-player" controls preload="auto">
-                <source src="${blobUrl}" type="audio/mpeg">
-                您的浏览器不支持音频播放
-            </audio>
-            <div class="action-row">
-                ${asset ? `<a class="btn-sm" href="/api/voice/assets/${asset.id}/download" download>下载(服务端)</a>` : ''}
-                <a class="btn-sm" href="${blobUrl}" download="stream_audio.mp3">下载(本地缓存)</a>
-            </div>
-        </div>`;
+      <div class="card">
+        <div class="result-label">任务结果</div>
+        <p style="font-size:0.82rem;color:#718096;margin-top:4px">
+          流式生成结果
+          · 任务ID: <code>${esc(completed.job_id)}</code>
+          · 片段数: ${completed.total_chunks}
+          · 总时长: ${completed.total_duration_ms} ms
+          · 字符数: ${completed.total_characters}
+        </p>
+        <div style="margin-top:8px">
+          <span class="job-status status-success">已完成</span>
+        </div>
+        <p style="font-size:0.85rem;color:#4a5568;margin-top:8px">流式接收完成，可以播放生成音频。</p>
+        ${resultSectionLabel('音频结果')}
+        <audio class="audio-player" controls preload="auto">
+          <source src="${blobUrl}" type="audio/mpeg">
+          您的浏览器不支持音频播放
+        </audio>
+        ${resultSectionLabel('下载音频')}
+        <div class="action-row">
+          ${asset ? `<a class="btn-sm" href="/api/voice/assets/${asset.id}/download" download>下载(服务端)</a>` : ''}
+          <a class="btn-sm" href="${blobUrl}" download="stream_audio.mp3">下载(本地缓存)</a>
+        </div>
+        ${!asset ? `<p style="font-size:0.82rem;color:#718096;margin-top:6px">当前流式结果未返回服务端音频资产。</p>` : ''}
+        <p style="font-size:0.78rem;color:#a0aec0;margin-top:8px">
+          提示：本地缓存音频来自浏览器当前会话，刷新页面后将失效。如需长期保存请使用服务端下载（如有）。
+        </p>
+      </div>`;
     resultsArea.classList.add('visible');
   }
 
@@ -2268,11 +2278,22 @@ function handleStopAsyncPolling() {
 
   function renderResults(data, isVariant) {
     if (isVariant) {
+      const variantCount = data.variants ? data.variants.length : 0;
+      if (!variantCount) {
+        resultsArea.innerHTML = `
+        <div class="card">
+          <div class="result-label">任务结果</div>
+          <p style="font-size:0.82rem;color:#718096;margin-top:4px">多版本试音结果</p>
+          <p style="font-size:0.85rem;color:#718096;margin-top:8px">本次多版本试音未返回版本结果。</p>
+        </div>`;
+        resultsArea.classList.add('visible');
+        return;
+      }
       let html = `
       <div class="card">
         <div class="result-label">任务结果</div>
         <p style="font-size:0.82rem;color:#718096;margin-top:4px">
-          多版本试音结果 · 共 ${data.variants ? data.variants.length : 0} 个版本
+          多版本试音结果 · 共 ${variantCount} 个版本
         </p>
         <div class="variants-grid" style="margin-top:16px">`;
       data.variants.forEach((v, i) => {
@@ -2285,7 +2306,7 @@ function handleStopAsyncPolling() {
             </div>
             ${v.audio_asset_id
               ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(v.audio_asset_id)}`
-              : '<p style="font-size:0.82rem;color:#a0aec0">无音频</p>'}
+              : `<p style="font-size:0.82rem;color:#c53030;margin-top:8px">该版本未返回音频资产。</p>`}
             ${v.audio_asset_id
               ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(v.audio_asset_id)}</div>`
               : ''}
@@ -2293,6 +2314,7 @@ function handleStopAsyncPolling() {
       });
       html += '</div></div>';
       resultsArea.innerHTML = html;
+      resultsArea.classList.add('visible');
     } else {
       const job = data;
       const audio = job.audio_asset;
