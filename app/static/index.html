@@ -1543,8 +1543,9 @@
     if (!err) return '请求失败，请稍后重试。';
 
     if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
-      const operation = extractDetailValue(err.detail, 'operation');
-      const provider = extractDetailValue(err.detail, 'provider');
+      const detailText = err.detail || err.message || '';
+      const operation = extractDetailValue(detailText, 'operation');
+      const provider = extractDetailValue(detailText, 'provider');
       const opLabel = operationLabel(operation);
       if (provider) {
         return `${opLabel}当前任务较多，请稍后再试。`;
@@ -1558,25 +1559,47 @@
     return '请求失败，请稍后重试。';
   }
 
+  function resourceLimitExtraHint(operation) {
+    const queryOps = new Set([
+      't2a_async_query_download',
+    ]);
+
+    const executeOps = new Set([
+      'batch_execute',
+    ]);
+
+    if (queryOps.has(operation)) {
+      return '这不是系统异常，任务可能仍在处理中。请稍后手动刷新状态。';
+    }
+
+    if (executeOps.has(operation)) {
+      return '这不是系统异常，批量任务可能尚未开始执行。请稍后重试失败任务。';
+    }
+
+    return '这不是系统异常，也没有创建新的任务。请稍后再提交。';
+  }
+
   function renderApiError(err, options = {}) {
     const message = formatApiError(err);
-    const detail = err?.detail || '';
+    const detailText = err?.detail || err?.message || '';
     const code = err?.code || '';
-    const showDetail = options.showDetail !== false && detail;
+    const operation = extractDetailValue(detailText, 'operation');
+    const showDetail = options.showDetail !== false && detailText;
+    const extraHint = code === 'RESOURCE_LIMIT_EXCEEDED' ? resourceLimitExtraHint(operation) : '';
 
     return `
       <div class="error-msg ${code === 'RESOURCE_LIMIT_EXCEEDED' ? 'resource-limit-msg' : ''}">
         <div><strong>${esc(message)}</strong></div>
         ${
           code === 'RESOURCE_LIMIT_EXCEEDED'
-            ? `<div style="margin-top:6px;color:#718096;font-size:0.8rem">这不是系统异常，也没有创建新的任务。请稍后再提交。</div>`
+            ? `<div style="margin-top:6px;color:#718096;font-size:0.8rem">${esc(extraHint)}</div>`
             : ''
         }
         ${
           showDetail
             ? `<details style="margin-top:8px">
                  <summary style="cursor:pointer;color:#718096">技术详情</summary>
-                 <pre style="white-space:pre-wrap;margin-top:6px;font-size:0.75rem;color:#718096">${esc(detail)}</pre>
+                 <pre style="white-space:pre-wrap;margin-top:6px;font-size:0.75rem;color:#718096">${esc(detailText)}</pre>
                </details>`
             : ''
         }
@@ -1826,7 +1849,7 @@
                 break;
             case "error":
                 if (msg.code === 'RESOURCE_LIMIT_EXCEEDED') {
-                  resultsArea.innerHTML = renderApiError({ code: msg.code, message: msg.message, detail: msg.detail });
+                  resultsArea.innerHTML = renderApiError({ code: msg.code, message: msg.message, detail: msg.detail || msg.message });
                 } else {
                   resultsArea.innerHTML = `<div class="error-msg">流式生成失败：[${esc(msg.code)}] ${esc(msg.message)}</div>`;
                 }

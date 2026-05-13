@@ -988,6 +988,40 @@ python -m pytest tests/ -x -q
 
 - 全量测试：366 passed, 6 skipped
 
+---
+
+## P7-F1 前端 Resource Limit 提示准确性收口
+
+### 背景
+
+- P7-F 已完成 RESOURCE_LIMIT_EXCEEDED 友好提示主体能力
+- 复核发现 WebSocket error payload 可能没有 detail 字段，导致前端无法解析 operation
+- 异步 query/download 被资源限制拒绝时，不应提示"没有创建新的任务"
+
+### 修复内容
+
+- WebSocket RESOURCE_LIMIT_EXCEEDED 使用 message 作为 detail fallback
+- formatApiError 支持从 detail 或 message 中解析 operation
+- renderApiError 根据 operation 展示不同额外说明
+- t2a_async_query_download 提示"任务可能仍在处理中"
+- submit 类操作继续提示"没有创建新的任务"
+- batch_execute 提示"批量任务可能尚未开始执行"
+
+### 修改文件
+
+- app/static/index.html
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- 全量测试：366 passed, 6 skipped
+
 ## P7-D1 异步与流式状态机边界修复
 
 ### 背景
