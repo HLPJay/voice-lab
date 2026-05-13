@@ -17,7 +17,7 @@
 | 项目 | 详情 |
 |---|---|
 | 分支 | dev |
-| commit hash | e05714a |
+| 验收基线 | 4599907（P7-H1 文档修正后） |
 | Python 版本 | 3.11+ |
 | 主要测试 provider | mock（自动化测试）、minimax（代码审查确认） |
 | 是否使用真实 MiniMax | 自动化测试使用 mock；手工能力测试需要真实 MiniMax token |
@@ -43,34 +43,34 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 | 能力 | mock 自动化验证 | minimax 自动化验证 | 前端手工验证 | 结论 | 问题/备注 |
 |---|---|---|---|---|---|
-| 同步 T2A（mp3） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 同步 T2A（wav） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 同步 T2A（hex 返回） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 同步 T2A（url 返回） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 同步 T2A（字幕） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 同步 T2A（speed/vol/pitch/emotion） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 异步 T2A（submit + poll） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 异步 T2A（download） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 异步 T2A（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| HTTP 流式 T2A | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| WebSocket 流式 T2A | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 流式 T2A（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| provider voice preview | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| binding voice preview | 是 | 代码审查确认 | **未验证** | 可用 | - |
+| 同步 T2A（mp3） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 同步 T2A（wav） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 同步 T2A（hex 返回） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 同步 T2A（url 返回） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 同步 T2A（字幕） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 同步 T2A（speed/vol/pitch/emotion） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 异步 T2A（submit + poll） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 异步 T2A（download） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 异步 T2A（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| HTTP 流式 T2A | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| WebSocket 流式 T2A | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 流式 T2A（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| provider voice preview | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| binding voice preview | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
 | 声音克隆上传 | 是 | 暂缓真实验证 | 入口存在 | 暂缓产品化 | 成本较高，需单独评估 |
 | 声音克隆创建 | 是 | 暂缓真实验证 | 入口存在 | 暂缓产品化 | 成本较高，需单独评估 |
-| 克隆音色绑定到 profile | 是 | 代码审查确认 | **未验证** | 可用 | - |
+| 克隆音色绑定到 profile | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
 | 声音设计 | 是 | 暂缓真实验证 | 入口存在 | 暂缓产品化 | 成本较高，效果需主观评估 |
-| 多版本试音 | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 多版本试音（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 批量长文本生成 | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 批量长文本合并音频 | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 批量长文本合并字幕 | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 批量剧本生成 | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 批量任务 retry_failed | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 批量任务（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 资产下载 | 是 | 代码审查确认 | **未验证** | 可用 | - |
-| 任务历史记录 | 是 | 代码审查确认 | **未验证** | 可用 | - |
+| 多版本试音 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 多版本试音（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 批量长文本生成 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 批量长文本合并音频 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 批量长文本合并字幕 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 批量剧本生成 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 批量任务 retry_failed | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 批量任务（Resource Guard 拒绝） | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 资产下载 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
+| 任务历史记录 | 是 | 代码审查确认 | **未验证** | 工程链路可用，真实 MiniMax 待 smoke test | - |
 | 前端测试面板交互 | - | - | **未验证** | 待验证 | 需启动服务验证 |
 
 > 注：所有 minimax 能力均通过代码审查确认（Service 层直接调用 adapter），mock 自动化测试验证了逻辑路径。前端手工测试需要启动服务，当前为文档审查阶段。
@@ -110,7 +110,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **自动化测试**：`tests/test_voice_render_service.py` 验证 mock 路径
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -129,7 +129,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **自动化测试**：`tests/test_async_render.py`
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -149,7 +149,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **自动化测试**：`tests/test_stream_render_service.py`
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -167,7 +167,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **自动化测试**：`tests/test_voice_preview.py`
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -226,7 +226,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **自动化测试**：`tests/test_voice_variant_service.py`
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -245,7 +245,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **自动化测试**：`tests/test_batch_orchestration.py`
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -259,7 +259,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 - 支持 `role` 字段标记角色名
 - 其他逻辑与长文本模式共用
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -274,7 +274,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 - `VoiceJobRepository` 提供 job 查询
 - `StatsService` 提供聚合统计
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -300,7 +300,7 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 **前端友好提示**：所有 HTTP 和 WebSocket 错误均通过 `parseApiError` / `formatApiError` / `renderApiError` 渲染为友好提示。
 
-**结论**：**可用**
+**结论**：**工程链路可用，真实 MiniMax 待 smoke test**
 
 ---
 
@@ -343,7 +343,9 @@ python -m pytest tests/ -x -q                             → 366 passed, 6 skip
 
 ## 7. 产品化判断
 
-### 可以产品化（第一批）
+### 第一批产品化候选能力
+
+> 这些能力的工程链路已通过自动化测试和代码审查，适合作为 P8 优先产品化对象；但在正式面向用户前，仍需要进行真实 MiniMax 小文本 smoke test 和前端手工验证。
 
 - **同步 T2A**：功能完整，状态机清晰，Resource Guard 接入
 - **异步 T2A**：功能完整，支持 submit/poll/download 完整链路

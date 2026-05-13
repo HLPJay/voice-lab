@@ -1154,20 +1154,20 @@ tests/ -x -q                         → 366 passed, 6 skipped
 
 | 能力 | 状态 |
 |---|---|
-| 同步 T2A（所有格式和参数） | 可用 |
-| 异步 T2A（submit/poll/download） | 可用 |
-| HTTP / WebSocket 流式 T2A | 可用 |
-| provider voice preview | 可用 |
-| binding voice preview | 可用 |
+| 同步 T2A（所有格式和参数） | 工程链路可用，真实 MiniMax 待 smoke test |
+| 异步 T2A（submit/poll/download） | 工程链路可用，真实 MiniMax 待 smoke test |
+| HTTP / WebSocket 流式 T2A | 工程链路可用，真实 MiniMax 待 smoke test |
+| provider voice preview | 工程链路可用，真实 MiniMax 待 smoke test |
+| binding voice preview | 工程链路可用，真实 MiniMax 待 smoke test |
 | 声音克隆（上传/创建/绑定） | 暂缓产品化（高成本，需单独评估） |
 | 声音设计 | 暂缓产品化（高成本，需单独评估） |
-| 多版本试音 | 可用 |
-| 批量长文本生成 | 可用 |
-| 批量剧本生成 | 可用 |
-| 资产下载 / 历史记录 | 可用 |
-| Resource Guard 拒绝路径 | 可用 |
+| 多版本试音 | 工程链路可用，真实 MiniMax 待 smoke test |
+| 批量长文本生成 | 工程链路可用，真实 MiniMax 待 smoke test |
+| 批量剧本生成 | 工程链路可用，真实 MiniMax 待 smoke test |
+| 资产下载 / 历史记录 | 工程链路可用，真实 MiniMax 待 smoke test |
+| Resource Guard 拒绝路径 | 工程链路可用，真实 MiniMax 待 smoke test |
 | 前端测试面板交互 | 待手工验证 |
 
 ### 阶段结论
 
-**P7-H 能力验收完成。第一批核心能力（同步/异步/流式 T2A、批量生成、资产下载等）通过自动化测试和代码审查确认可用。声音克隆和声音设计为高成本能力，暂缓真实验证，后续单独立项。手工验证尚未执行，建议补充实际浏览器测试后进入 P8 前端 UX 修复阶段。**
+**P7-H 能力验收完成。第一批核心能力工程链路已通过自动化测试和代码审查，真实 MiniMax 能力仍需小文本 smoke test；声音克隆和声音设计为高成本能力，暂缓真实验证，后续单独立项。手工验证尚未执行，建议补充实际浏览器测试后进入 P8 前端 UX 修复阶段。**
