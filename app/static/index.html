@@ -72,6 +72,10 @@
     border-bottom: 2px solid #e2e8f0;
     padding-bottom: 0;
     overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .tab-btn {
@@ -727,6 +731,7 @@
             <option value="failed">失败</option>
           </select>
           <button id="historyClearFilters" class="btn-sm" onclick="clearHistoryFilters()" style="display:none">清空筛选</button>
+          <button id="historyRefreshBtn" class="btn-sm" onclick="refreshHistory()">刷新历史</button>
         </div>
         <div id="historyFilterHint" style="font-size:0.78rem;color:#718096;padding:4px 0"></div>
         <div id="historyList"></div>
@@ -2678,6 +2683,17 @@ function handleStopAsyncPolling() {
     _historySearch = '';
     _historyStatusFilter = 'all';
     renderHistoryList();
+  }
+
+  // P8-FIX1: Refresh history button - force reload from offset 0
+  async function refreshHistory() {
+    _historyJobs = [];
+    _historyOffset = 0;
+    _historyTotal = 0;
+    _historyLoading = false;
+    document.getElementById("historyList").innerHTML = '<div style="font-size:0.82rem;color:#718096">加载中…</div>';
+    updateHistoryFilterHint();
+    await loadHistory(0);
   }
 
   // P8-4E: Empty state when filters match nothing

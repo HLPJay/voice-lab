@@ -92,11 +92,12 @@
 * P8-BE1：历史任务返回音频资产字段（后端遗留）
 * P8-4 全阶段已正式收口
 * P8-FIX1A：前端回归缺陷审查已完成（文档：docs/P8_FIX1_FRONTEND_REGRESSION_AUDIT.md）
-  * Tab 完整性：无缺陷
-  * 长文本/剧本模块：无缺陷
-  * 历史播放/下载不可用：后端字段限制，非前端 bug
-  * 新增历史不显示：存在前端缺陷，缺少刷新历史机制
-* 下一阶段建议：P8-FIX1B 前端回归缺陷修复
+* P8-FIX1：前端回归缺陷修复已完成（新增 historyRefreshBtn + refreshHistory()，隐藏 tab-nav 滚动条）
+  * Tab 完整性：6 个 tab 均完整存在（P8-FIX1A 误判，经验核实内容本来完整）
+  * 长文本/剧本模块：本来完整存在
+  * 历史播放/下载不可用：后端字段限制，遗留到 P8-BE1
+  * 新增历史不显示：已修复
+* 下一阶段建议：P8-BE1 历史任务返回音频资产字段
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2920,3 +2921,39 @@ P8-4F 已完成。P8-4 全阶段正式收口。
 ### 阶段结论
 
 P8-FIX1A 已完成。下一阶段建议进入 P8-FIX1B：前端回归缺陷修复（新增刷新历史按钮）。
+
+---
+
+## P8-FIX1 前端回归缺陷排查与修复
+
+### 背景
+
+- P8-4 已收口，用户反馈前端存在长文本/剧本不显示等问题
+- P8-FIX1A 审查发现：长文本/剧本 tab **本来完整存在**（P8-FIX1A 误判），真正问题是缺少历史刷新入口
+- P8-FIX1 目标：修复前端回归缺陷（历史刷新入口 + UI 修复）
+
+### 审查与修复结果
+
+- Tab 完整性：6 个 tab 均有对应内容区，内容本来完整
+- 长文本模块：tab-longtext 和 handleBatchLongtextSubmit 均存在，无需修复
+- 剧本模块：tab-script 和 handleBatchScriptSubmit 均存在，无需修复
+- 历史播放/下载：后端 VoiceJobRead 缺少音频资产字段，遗留到 P8-BE1
+- 历史刷新入口：**已修复** - 新增 historyRefreshBtn 和 refreshHistory()
+- tab-nav 滚动条：**已修复** - 添加 scrollbar-width: none CSS
+- DOM/JS 完整性：通过（107 个函数，37 个 inline handler，均有对应实现）
+- pytest：375 passed, 6 skipped
+
+### 修复内容
+
+1. `app/static/index.html` - 新增 historyRefreshBtn 和 refreshHistory() 函数
+2. `app/static/index.html` - 新增 .tab-nav 滚动条隐藏 CSS
+3. `docs/P8_FIX1_FRONTEND_REGRESSION_REPAIR.md` - 新增修复文档
+
+### 未处理事项
+
+- 未改后端历史资产字段（遗留到 P8-BE1）
+- 未做 P8-BE1 / P8-UX1 / P8-5
+
+### 阶段结论
+
+P8-FIX1 已完成。历史刷新入口已补充，tab-nav 滚动条已隐藏，前端 DOM/JS 完整性已通过静态检查。历史播放/下载真正可用仍依赖 P8-BE1：历史任务返回音频资产字段。
