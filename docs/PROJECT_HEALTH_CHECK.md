@@ -1065,3 +1065,50 @@ python -m pytest tests/ -x -q
 - AsyncRenderService 测试：14 passed
 - StreamRenderService 测试：9 passed
 - 全量测试：358 passed, 6 skipped
+
+---
+
+## P7-G Resource Guard 阶段总验收
+
+### 背景
+
+- P7-A 至 P7-F1 已完成 Resource Guard 后端准入、任务状态机、前端友好提示
+- 本阶段进行完整现态复核与验收文档收口
+
+### 工作内容
+
+- 新增 docs/P7_RESOURCE_GUARD_ACCEPTANCE.md
+- 汇总所有 Resource Guard operation 与业务入口（14 个 operation）
+- 汇总后端状态机验收点（同步、异步、流式、preview、clone、design、batch）
+- 汇总前端 RESOURCE_LIMIT_EXCEEDED 提示验收点
+- 执行后端回归测试
+- 明确 P7 阶段结论：主线完成，可进入下一阶段
+
+### 修改文件
+
+- docs/P7_RESOURCE_GUARD_ACCEPTANCE.md（新增）
+- docs/PROJECT_HEALTH_CHECK.md（追加本节）
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_batch_orchestration.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 单元测试：15 passed
+- BatchOrchestrationService 测试：19 passed
+- AsyncRenderService 测试：14 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：**366 passed, 6 skipped**
+
+### 阶段结论
+
+**P7 Resource Guard 主线完成，可以进入下一阶段。**
+
+所有后端 service 均正确接入 Resource Guard，状态机在拒绝路径保持一致，前端 RESOURCE_LIMIT_EXCEEDED 友好提示已覆盖所有入口。366 个自动化测试全部通过，无阻塞问题。
