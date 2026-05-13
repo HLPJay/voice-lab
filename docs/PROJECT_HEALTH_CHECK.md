@@ -21,6 +21,7 @@
 * P8-3A：任务结果展示现状审查已完成，文档见 docs/P8_3_RESULT_DISPLAY_WORKSTATION.md
 * P8-3B：resultsArea 信息架构整理已完成（同步/异步/多版本结果卡片化、section label 统一、新增 resultSectionLabel helper、timelineTable 空状态处理）
 * P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、无 audio/subtitle 空状态准确化）
+* P8-3C1：结果状态口径自检与收口修复已完成（新增 isResultSuccessStatus/isResultFailedStatus/isResultProcessingStatus helper、完成态统一识别 success/completed，失败态统一识别 failed/error，resultStatusHintHtml 补全 completed/error/queued 文案，诊断信息优先使用 extractErrorMessage）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -66,6 +67,9 @@
 * P8-3B：resultsArea 信息架构整理已完成（resultsArea 已整理为任务结果展示区、同步/异步/多版本结果卡片化、section label 统一、timelineTable 空状态处理）
 * P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、空状态准确化）
 * 下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一
+* 当前结果展示完成态统一识别 success / completed
+* 当前结果展示失败态统一识别 failed / error
+* 当前结果展示等待/处理中态统一识别 queued / pending / running / processing
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2203,3 +2207,68 @@ git diff --check: 无 whitespace error
 ### 阶段结论
 
 P8-3C 已完成同步 / 异步结果卡片化细化验收。下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一。
+
+---
+
+## P8-3C1 结果状态口径自检与收口修复
+
+### 背景
+
+P8-3C1 是结果状态口径自检与收口修复阶段，目标是统一展示层状态语义，避免 `success`/`completed`、`failed`/`error` 等口径不一致导致展示错误。
+
+### 主要调整
+
+1. **新增 `isResultSuccessStatus(status)`**：统一识别 `success` / `completed` 为完成态
+2. **新增 `isResultFailedStatus(status)`**：统一识别 `failed` / `error` 为失败态
+3. **新增 `isResultProcessingStatus(status)`**：统一识别 `queued` / `pending` / `running` / `processing` 为等待/处理中态
+4. **`resultStatusHintHtml` 补全**：`completed`（已完成）、`error`（任务失败）、`queued`（任务等待中）等文案
+5. **`renderAsyncResult`**：状态判断改为使用 helper，`extractErrorMessage(data)` 替代手写错误字段提取
+6. **`renderResults` 非 variant**：状态判断改为使用 helper，failed/error 展示诊断信息而非空状态提示
+7. **未改变**：handleGenerate、轮询、WebSocket、批量、流式、下载 API
+
+### 修改文件
+
+- `app/static/index.html`（展示层代码调整）
+- `docs/P8_3_RESULT_DISPLAY_WORKSTATION.md`（追加 P8-3C1 节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新摘要 + 追加本节）
+
+### 风险处理
+
+- 状态口径不一致导致误判展示的风险已消除
+- `completed` / `error` 等后端状态不再被误判为处理中
+- `extractErrorMessage(data)` 覆盖更多错误字段，诊断信息更准确
+
+### 验证命令
+
+- DOM/display marker 检查：通过
+- JS function 检查：通过（包含新增 3 个 helper）
+- 状态 helper 语义检查：通过
+- renderAsyncResult 状态分支检查：通过
+- renderResults 非 variant 状态分支检查：通过
+- API marker 检查：通过
+- handleGenerate 请求逻辑保留检查：通过
+- 异步轮询保留检查：通过
+
+### 验证结果
+
+pytest: 375 passed, 6 skipped
+git diff --check: 无 whitespace error
+
+### 未做事项
+
+- 未处理字幕播放同步
+- 未处理流式下载 404 时序
+- 未处理批量字幕缓存
+- 未处理 Resource Guard 排队预估
+- 未处理异步轮询最大时长提示
+- 未处理批量脚本独立轮询状态
+- 未处理多版本费用防误点
+- 未处理批量结果卡片化
+- 未处理流式结果深度重构
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-3D
+
+### 阶段结论
+
+P8-3C1 已完成结果状态口径自检与收口修复。下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一。
