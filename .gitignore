@@ -32,3 +32,6 @@ Thumbs.db
 .claude/
 
 logs/
+
+# Smoke test local runtime
+.tmp/

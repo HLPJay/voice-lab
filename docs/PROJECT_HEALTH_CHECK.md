@@ -1257,3 +1257,37 @@ tests/ -x -q                         → 366 passed, 6 skipped
 ### 阶段结论
 
 **P2-2 已修复，所有 P2 问题均已解决。**
+
+---
+
+## P7-I2 Smoke Test 测试体系治理与进程防护
+
+### 背景
+
+- P7-I 真实 MiniMax smoke test 需要启动 uvicorn
+- 手动启动服务后可能残留进程，占用端口
+- 本阶段新增标准 smoke runner，治理端口和进程生命周期
+
+### 修改内容
+
+- 新增 `scripts/run_minimax_smoke.py` - 标准 smoke test runner
+- 新增 `scripts/stop_smoke_server.py` - 停止残留 smoke server
+- smoke test 使用独立端口 8010（可通过 `SMOKE_PORT` 覆盖）
+- 启动 uvicorn 不使用 `--reload`
+- 使用 `.tmp/uvicorn-smoke.pid` 管理进程
+- 默认 dry-run / skip-minimax 不消耗 token
+- 真实 MiniMax 调用必须显式 `--real-minimax`
+- 测试结束自动清理 uvicorn（try/finally）
+- 未知端口占用 fail fast，不盲目 kill
+- `.gitignore` 忽略 `.tmp/`
+
+### 阶段边界
+
+- **本阶段不修复 P2-2 异步字幕 timeline**（P7-I1 已修复）
+- **本阶段不补 HTTP stream 端点**
+- **本阶段不测试声音克隆 / 声音设计**
+- **本阶段不修改 app/services/*、app/providers/* 等业务逻辑**
+
+### 阶段结论
+
+**P7-I2 smoke runner 已就绪，可安全执行 dry-run 和真实 smoke test，无需手动管理进程。**

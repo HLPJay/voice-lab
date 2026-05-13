@@ -370,3 +370,72 @@ curl http://127.0.0.1:8000/api/voice/jobs?page=1&page_size=5
 3. **P8 前端 UX 修复**：内联创建人设、音色试听工作台、绑定反馈闭环、分页
 
 **建议**：P2-2 已修复（P7-I1），所有 P2 问题均已解决，可进入 P8 前端 UX 修复阶段；WebSocket 流式和前端交互在后续测试中补充验证。
+
+---
+
+## 11. Smoke Test 进程防护与执行方式（P7-I2）
+
+### 为什么需要进程防护
+
+P7-I 真实 MiniMax smoke test 需要启动 uvicorn。如果测试后进程未退出，会占用端口，导致后续服务启动失败。
+
+### 标准执行方式
+
+dry-run，不消耗 token：
+
+```bash
+python scripts/run_minimax_smoke.py --dry-run
+```
+
+跳过 MiniMax，测试基本接口：
+
+```bash
+python scripts/run_minimax_smoke.py --skip-minimax
+```
+
+真实 MiniMax 最小测试（仅同步 T2A）：
+
+```bash
+python scripts/run_minimax_smoke.py --real-minimax --sync-only
+```
+
+包含批量测试：
+
+```bash
+python scripts/run_minimax_smoke.py --real-minimax --include-batch
+```
+
+停止残留 smoke server：
+
+```bash
+python scripts/stop_smoke_server.py
+```
+
+### 防护机制
+
+- 使用独立端口 8010（可通过 `SMOKE_PORT=8011` 覆盖）
+- 启动 uvicorn 不使用 `--reload`（避免多进程残留）
+- 写入 `.tmp/uvicorn-smoke.pid` 管理进程
+- 启动前自动清理上次残留 smoke server（仅kill命令行匹配 uvicorn+app.main:app 的进程）
+- 测试结束后自动关闭 uvicorn（try/finally 保证）
+- 端口被未知进程占用时不盲目 kill，输出清晰提示
+- 默认不调用真实 MiniMax，必须显式 `--real-minimax`
+
+### 真实 MiniMax 测试范围
+
+| 测试 | 默认 | 说明 |
+|---|---|---|
+| 同步 T2A 短文本 | ✅ sync-only 时执行 | 低成本 |
+| provider voice preview | ✅ sync-only 时执行 | 低成本 |
+| 异步 T2A | ❌ 需 `--include-async` | ~4.5分钟/任务 |
+| 批量长文本 | ❌ 需 `--include-batch` | 成本较高 |
+| 批量剧本 | ❌ 需 `--include-batch` | 成本较高 |
+| 声音克隆 | ❌ 不测试 | 高成本 |
+| 声音设计 | ❌ 不测试 | 高成本，效果主观 |
+
+### 注意
+
+- P2-2（异步 subtitle timeline end=0.0）**已由 P7-I1 修复**，无需再修复
+- WebSocket 流式需浏览器或 websocat 验证
+- 前端交互需浏览器验证
+- 声音克隆和声音设计本轮不纳入 smoke runner
