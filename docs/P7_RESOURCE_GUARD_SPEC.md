@@ -198,7 +198,7 @@ MiniMax / Future Providers
 - 如果两个都限制得太死，可能导致批量任务几乎无法并行
 - 建议 P7-E 阶段再评估如何接入，避免第一版引入复杂联合限流逻辑
 
-**async submit 和 query_download 使用共享状态。** 异步任务提交后，查询和下载是同一任务的延续阶段，应该共享 slot，避免一个任务占着 submit slot 还在同时查询。
+**async submit 和 query_download 使用共享并发池。** 两者共用同一个 limit=2 的并发池，表示同一时刻最多有 2 个并发查询/下载请求。**不表示一个 async job 从 submit 到 success 全周期占用同一个 lease。** 第一版不尝试跨 HTTP 请求持有 lease。
 
 ---
 
@@ -213,6 +213,8 @@ app/services/resource_guard_service.py
 ### 6.2 核心对象
 
 ```python
+from contextlib import asynccontextmanager
+
 # 资源策略定义
 class ResourcePolicy:
     provider: str
@@ -220,7 +222,7 @@ class ResourcePolicy:
     limit: int  # 并发上限
     description: str
 
-# 租约对象（context manager 返回）
+# 租约对象（内部持有）
 class ResourceLease:
     provider: str
     operation: str
@@ -232,6 +234,7 @@ class ResourceLease:
 
 # 异常
 class ResourceLimitExceeded(VoiceLabError):
+    status_code = 429  # Too Many Requests
     code = "RESOURCE_LIMIT_EXCEEDED"
     provider: str
     operation: str
@@ -242,21 +245,30 @@ class ResourceLimitExceeded(VoiceLabError):
 # 服务主体
 class ResourceGuardService:
     def __init__(self):
-        # 模块级共享状态，不能每个 Service new 一个实例
         self._slots: dict[str, int]  # key = f"{provider}:{operation}"
         self._locks: dict[str, asyncio.Lock]
         self._policies: dict[str, ResourcePolicy]
 
-    async def acquire(
+    @asynccontextmanager
+    async def guard(
         self,
         provider: str,
         operation: str,
         model: str | None = None,
         job_id: str | None = None,
-    ) -> ResourceLease:
-        """申请资源租约，成功则返回 lease，失败则抛出 ResourceLimitExceeded"""
+    ):
+        """业务层使用的 async context manager。内部完成 acquire + 保证 release。"""
+        lease = await self._acquire(provider, operation, model, job_id)
+        try:
+            yield lease
+        finally:
+            await self._release(lease)
 
-    async def release(self, lease: ResourceLease): ...
+    async def _acquire(self, provider, operation, model=None, job_id=None) -> ResourceLease:
+        """内部方法，不暴露给业务代码。"""
+
+    async def _release(self, lease: ResourceLease): ...
+        """内部方法。lease.release() 幂等。"""
 
 # 模块级单例（关键：确保所有 Service 共享同一状态）
 _guard: ResourceGuardService | None = None
@@ -266,23 +278,72 @@ def get_resource_guard() -> ResourceGuardService:
     if _guard is None:
         _guard = ResourceGuardService()
     return _guard
+
+# 测试重置方法（仅用于测试）
+def reset_resource_guard_for_tests() -> None:
+    """重置模块级单例状态。业务代码不得调用。"""
+    global _guard
+    _guard = None
 ```
 
-### 6.3 acquire 语义
+### 6.3 业务层接口：guard(...) 而非 acquire(...)
+
+**业务代码只允许使用 `guard(...)`**，不允许直接调用 `_acquire(...)`：
 
 ```python
-# 正确用法（async with 保证 release）
-async with resource_guard.acquire(provider="minimax", operation="t2a_stream", job_id=job.id):
+# ✅ 正确用法（async with 保证 release）
+async with get_resource_guard().guard(provider="minimax", operation="t2a_stream", job_id=job.id):
     async for msg in adapter.render_stream(plan):
         await websocket.send_json(msg)
 
-# 错误用法（不允许手动 acquire 后忘记 release）
-lease = await resource_guard.acquire(provider="minimax", operation="t2a_stream")
-# ... 业务逻辑 ...
-await resource_guard.release(lease)  # 容易忘记，容易异常路径遗漏
+# ❌ 错误用法（不允许手动 acquire 后忘记 release）
+lease = await resource_guard._acquire(provider="minimax", operation="t2a_stream")
+try:
+    # ... 业务逻辑 ...
+finally:
+    await lease.release()  # 容易遗漏，异常路径也容易忘记
 ```
 
-### 6.4 mock provider 处理
+**`guard(...)` 的保证：**
+
+- `async with` 正常退出时调用 `release()`
+- `async with` 内抛任何异常时也会调用 `release()`（`finally` 保证）
+- mock provider 返回 no-op lease，`release()` 为空操作
+- `ResourceLease.release()` 幂等，多次 release 不会出错
+
+### 6.4 测试隔离设计
+
+单例状态会导致测试污染风险：test A 占用的 slot 会影响 test B。
+
+**P7-B 必须提供测试重置方法：**
+
+```python
+def reset_resource_guard_for_tests() -> None:
+    """重置模块级单例状态，仅用于测试。业务代码不得调用。"""
+    global _guard
+    _guard = None
+```
+
+**pytest fixture 示例：**
+
+```python
+import pytest
+
+@pytest.fixture(autouse=True)
+def reset_resource_guard():
+    """每个测试前自动重置 Resource Guard 状态，避免测试间污染。"""
+    reset_resource_guard_for_tests()
+    yield
+    reset_resource_guard_for_tests()
+```
+
+**关键约束：**
+
+- 如果没有测试重置机制，单例会导致测试顺序依赖和偶发失败
+- `reset_resource_guard_for_tests()` 仅用于测试，不得在业务代码中调用
+- 测试中可以通过 patch `get_resource_guard()` 返回自定义测试实例
+
+### 6.5 mock provider 处理
 
 ```python
 async def acquire(self, provider, operation, ...):
@@ -318,11 +379,13 @@ f"{provider}:{operation}"
 # 例如: "minimax:t2a_stream", "minimax:voice_design"
 ```
 
-对于 async submit/query_download 共享：
+对于 async submit/query_download 使用**共享并发池**（不是同一个长期租约）：
 
 ```
-f"{provider}:t2a_async"  # 两种 operation 共用同一 slot
+f"{provider}:t2a_async"  # submit 和 query_download 共享同一个 limit=2 的并发池
 ```
+
+**注意：** 这表示两者共享同一个并发限额，不是指一个 async job 从 submit 到 success 全周期占用同一个 lease。第一版不跨 HTTP 请求持有 lease。
 
 ---
 
@@ -332,8 +395,8 @@ f"{provider}:t2a_async"  # 两种 operation 共用同一 slot
 
 ```python
 class ResourceLimitExceeded(VoiceLabError):
+    status_code = 429  # Too Many Requests — 必须使用 status_code，与 VoiceLabError 体系一致
     code = "RESOURCE_LIMIT_EXCEEDED"
-    http_status = 429  # Too Many Requests
 
     def __init__(
         self,
@@ -356,6 +419,8 @@ class ResourceLimitExceeded(VoiceLabError):
             detail=detail,
         )
 ```
+
+**重要：** 必须继承 `VoiceLabError`，必须使用 `status_code = 429`（不能使用 `http_status`）。现有 `voice_lab_error_handler` 读取 `exc.status_code`，只有正确声明才能返回 HTTP 429。
 
 ### 7.2 HTTP 响应格式
 
@@ -383,28 +448,30 @@ class ResourceLimitExceeded(VoiceLabError):
 
 ### 8.1 接入模式
 
-每个 Service 的 Provider 调用路径，包裹 `async with resource_guard.acquire(...)`。
+每个 Service 的 Provider 调用路径，包裹 `async with get_resource_guard().guard(...)`。
 
 ### 8.2 接入点详细列表
 
-**1. VoiceRenderService.render**
+**1. VoiceRenderService.render_voice**
 - operation: `t2a_sync`
 - 包裹 `adapter.render_sync(plan)`
 - 位置：在 Cost Guard 检查之后，adapter 调用之前
 
 **2. AsyncRenderService.submit_task**
 - operation: `t2a_async_submit`
-- 包裹 `adapter.create_async_task(plan)`
+- 包裹 `adapter.create_async_task(plan)` 的瞬时调用
+- 注意：第一版 lease 在 submit HTTP 请求结束时释放，不跨请求持有
 
 **3. AsyncRenderService.query_status / _complete_job**
 - operation: `t2a_async_query_download`
-- 包裹查询和文件下载阶段
-- 注意：submit 和 query 可共享 slot key `t2a_async`
+- 包裹查询和文件下载的瞬时 Provider 调用
+- 注意：与 submit 共享 `t2a_async` 并发池，不跨请求持有 lease
 
 **4. StreamRenderService.render_stream**
 - operation: `t2a_stream`
 - 包裹整个 `async for msg in adapter.render_stream(plan)` 循环
 - 关键：WebSocket 断开时必须触发 release，即使客户端异常退出
+- 整个 WebSocket 连接生命周期持有 lease
 
 **5. VoiceVariantService.render_variants**
 - operation: `voice_variants`
@@ -426,10 +493,13 @@ class ResourceLimitExceeded(VoiceLabError):
 **9. ProviderVoicePreviewService.preview**
 - operation: `voice_preview`
 - 包裹 `adapter.render_sync(plan)`
+- job_id 语义：使用真实 `VoiceJob.id`，可关联 ProviderCallLog
 
 **10. VoicePreviewService.preview**
 - operation: `binding_voice_preview`
 - 包裹 `adapter.render_sync(plan)`
+- job_id 语义：使用 `preview_job` 风格的临时 ID，**不对应真实 VoiceJob 记录**，Resource Guard 日志中 job_id 可传 None 或该临时 ID，但不建议用于 ProviderCallLog 关联
+- 后续如需统一审计，应让所有真实 Provider 调用对应 VoiceJob 或 ProviderCallLog 记录，但这不属于 P7 第一版范围
 
 **11. ProviderVoiceImportService.import_voice**
 - operation: `provider_voice_import_verify`
@@ -437,8 +507,9 @@ class ResourceLimitExceeded(VoiceLabError):
 
 **12. BatchOrchestrationService.submit_longtext**
 - operation: `batch_longtext`
-- 在批量任务整体开始前 acquire，整个批量任务完成后 release
-- 注意：批量任务周期长，lease 生命周期需要覆盖所有 segment
+- **Layer 1 保护**：在 `submit_longtext()` HTTP 请求内 acquire，HTTP 返回时 release
+- **不覆盖后台 execute() 生命周期**（P7-E 再设计）
+- 注意：防止短时间重复提交多个批量任务，不代表整个后台批量执行受保护
 
 **13. BatchOrchestrationService.submit_script**
 - operation: `batch_script`
@@ -446,8 +517,8 @@ class ResourceLimitExceeded(VoiceLabError):
 
 **14. BatchOrchestrationService._process_segment**
 - operation: `batch_segment_render`
-- 第一版暂不接入（见 5.3 说明）
-- 后续 P7-E 评估是否以及如何接入
+- **第一版暂不接入**
+- 后续 P7-E 评估：需避免与 `batch_max_concurrency` 双重限流冲突
 
 ### 8.3 接入顺序建议
 
@@ -472,6 +543,34 @@ class ResourceLimitExceeded(VoiceLabError):
 
 12. `t2a_async_submit` — AsyncRenderService
 13. `t2a_async_query_download` — AsyncRenderService
+
+### 8.4 Operation 命名映射
+
+CostGuard 和 ResourceGuard 使用各自的 operation 命名体系，Service 接入时必须明确映射，避免魔法字符串错误。
+
+| 场景 | CostGuard operation | ResourceGuard operation |
+|---|---|---|
+| 普通同步 T2A | 无强制确认（log only） | `t2a_sync` |
+| 异步生成提交 | `async_render` | `t2a_async_submit` |
+| 异步查询/下载 | `async_render`（同一操作） | `t2a_async_query_download` |
+| WebSocket 流式 | `stream_render` | `t2a_stream` |
+| Provider 直连试听 | `provider_voice_preview` | `voice_preview` |
+| 绑定试听 | `binding_voice_preview` | `binding_voice_preview` |
+| 多版本试音 | `voice_variants` | `voice_variants` |
+| 声音设计 | `voice_design` | `voice_design` |
+| 克隆音频上传 | `voice_clone` | `voice_clone_upload` |
+| 克隆任务创建 | `voice_clone` | `voice_clone_create` |
+| 音色导入验证 | `provider_voice_import_verify` | `provider_voice_import_verify` |
+| 批量长文本 | `batch_longtext` | `batch_longtext` |
+| 批量剧本 | `batch_script` | `batch_script` |
+
+**说明：**
+
+- CostGuard operation 关注"用户是否已确认成本"（confirm_cost）
+- ResourceGuard operation 关注"当前资源是否允许执行"
+- 两者名称不完全一致，Service 接入时需要分别查表
+- 后续实现可考虑集中定义常量（`OPERATION_*`），避免魔法字符串分散
+- `async_render` 映射到两个 ResourceGuard operation，表示同一个 CostGuard 保护下有两个不同阶段的资源控制
 
 ---
 
@@ -641,19 +740,46 @@ tests/test_resource_guard.py
 - 使用 `try/finally` 或 `async with` 保证
 - 前端断网、标签页关闭、服务端重启都需要能正确 release
 
-### 12.4 异步任务阶段分离
+### 12.4 异步任务跨请求不持有 lease
 
-- async submit 和 query/download 是不同阶段
-- 不能简单将两者等同为同一 operation slot
-- query/download 阶段如果单独限流，需要考虑：一个任务提交后，在查询期间 slot 是否释放？
+第一版**不跨 HTTP 请求持有异步任务 lease**：
 
-**建议：** async submit 和 query 使用共享 slot key，确保整个任务周期内占用资源。
+- 异步 T2A 是跨多个 HTTP 请求的生命周期（submit → 多次 query → download）
+- submit 请求结束后，HTTP context 结束
+- 前端之后多次调用 status 接口，各自在独立 HTTP context 中
+- 如果试图跨请求持有 lease，会出现：
+  - 前端不再轮询时 lease 无法释放
+  - 服务重启时 lease 丢失
+  - job 卡住时永久占用
+  - 多 worker 状态不一致
 
-### 12.5 批量任务 lease 生命周期
+**第一版只限制每个瞬时 Provider 调用的并发：**
 
-- batch_longtext / batch_script 的 lease 需要覆盖整个批量任务周期
-- 如果批量任务后台执行，Service 持有 lease 直到所有 segment 完成
-- 如果中间出错，需要确保 lease 仍被释放
+- `t2a_async_submit`：限制同时提交的任务数（limit=2）
+- `t2a_async_query_download`：限制同时查询/下载的任务数（limit=2，共享池）
+
+完整异步任务生命周期资源占用，需要未来后台 worker / 持久化 lease / reconciler 设计，P7-D 只做瞬时并发控制。
+
+### 12.5 批量任务 lease 生命周期需分两层设计
+
+第一版批量任务保护分两层，生命周期不同：
+
+**Layer 1：批量提交入口保护（第一期实现）**
+
+- operation: `batch_longtext` / `batch_script`
+- 保护 `submit_longtext()` / `submit_script()` 的瞬时提交动作
+- 防止用户短时间重复提交多个批量任务
+- lease 在 HTTP 提交请求返回时释放
+- **不代表整个后台批量执行周期受保护**
+
+**Layer 2：批量后台执行周期保护（未来 P7-E 设计）**
+
+- 如果要覆盖整个批量任务运行周期，必须在 `execute()` 生命周期内持有 lease
+- lease 在 `execute()` 开始时申请，在所有 segment 完成/失败/异常时释放
+- 涉及：服务重启时 job 状态、长期占用 slot、异常时原子性释放
+- 建议 P7-E 单独设计，不在 P7-B/C/D 阶段引入
+
+**batch_segment_render 暂不接入：** 避免与 `batch_max_concurrency` 双重限流冲突，P7-E 再评估。
 
 ### 12.6 实例复用问题
 
@@ -678,37 +804,40 @@ tests/test_resource_guard.py
 
 ### P7-B：实现 ResourceGuardService 基础模块
 
-- 新增 `app/services/resource_guard_service.py`
-- 实现 `ResourceGuardService`、`ResourcePolicy`、`ResourceLease`、`ResourceLimitExceeded`
-- 实现 `get_resource_guard()` 模块级单例
-- 接入所有 operation 的默认策略
-- 新增 `tests/test_resource_guard.py`
-- 验证所有单元测试通过
+- 只新增 `app/services/resource_guard_service.py`
+- 只新增 `tests/test_resource_guard.py`
 - 不接入任何业务 Service
+- 必须包含 `reset_resource_guard_for_tests()` 测试重置方法
+- 必须实现 `guard(...)` async context manager（不对业务暴露 `_acquire`）
+- 必须使用 `status_code = 429` 的 `ResourceLimitExceeded`
+- 验证：mock 不限流、异常 release、并发超限拒绝、错误模型
 
-### P7-C：接入核心同步路径
+### P7-C：接入核心同步与高风险路径
 
-- 接入 `VoiceRenderService`（t2a_sync）
-- 接入 `VoiceDesignService`（voice_design）
-- 接入 `VoiceCloneService`（voice_clone_upload、voice_clone_create）
-- 接入 `ProviderVoicePreviewService`（voice_preview）
-- 接入 `VoicePreviewService`（binding_voice_preview）
-- 接入 `ProviderVoiceImportService`（provider_voice_import_verify）
+- 接入 `VoiceRenderService.render_voice`（t2a_sync）
+- 接入 `VoiceDesignService.design_voice`（voice_design）
+- 接入 `VoiceCloneService.upload_audio`（voice_clone_upload）
+- 接入 `VoiceCloneService.clone_voice`（voice_clone_create）
+- 接入 `ProviderVoicePreviewService.preview`（voice_preview）
+- 接入 `VoicePreviewService.preview`（binding_voice_preview）
+- 接入 `VoiceVariantService.render_variants`（voice_variants）
+- 不接入 async / stream / batch 路径
 - 重点测试：confirm_cost 通过但 resource 超限时正确拒绝
 
-### P7-D：接入流式和异步路径
+### P7-D：接入流式与异步路径
 
-- 接入 `StreamRenderService`（t2a_stream）
-- 接入 `AsyncRenderService`（t2a_async_submit、t2a_async_query_download）
-- 接入 `VoiceVariantService`（voice_variants）
-- 重点测试：WebSocket 断开后 release、async 任务各阶段 slot 状态
+- 接入 `StreamRenderService.render_stream`（t2a_stream）
+- 接入 `AsyncRenderService.submit_task`（t2a_async_submit）
+- 接入 `AsyncRenderService.query_status / _complete_job`（t2a_async_query_download）
+- 明确只做瞬时 Provider 调用并发控制，不跨 HTTP 请求持有 lease
+- 重点测试：WebSocket 断开后 release、async submit/query 各阶段 slot 状态
 
 ### P7-E：接入批量路径
 
-- 接入 `BatchOrchestrationService.submit_longtext`（batch_longtext）
-- 接入 `BatchOrchestrationService.submit_script`（batch_script）
-- 评估 `batch_segment_render` 是否接入及如何避免双重限流
-- 避免与 `batch_max_concurrency` 冲突
+- 先保护 `BatchOrchestrationService.submit_longtext` 入口（batch_longtext）
+- 先保护 `BatchOrchestrationService.submit_script` 入口（batch_script）
+- 再评估后台 `execute()` 生命周期保护（P7-E 专门设计）
+- 暂不轻易接入 `batch_segment_render`，避免与 `batch_max_concurrency` 冲突
 
 ### P7-F：前端错误提示
 

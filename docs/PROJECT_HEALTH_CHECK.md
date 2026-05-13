@@ -403,3 +403,51 @@ git diff --check
 | P7-D | 接入流式和异步路径（stream、async、variants） |
 | P7-E | 接入批量路径（batch_longtext/script，评估 segment_render） |
 | P7-F | 前端 RESOURCE_LIMIT_EXCEEDED 友好提示 |
+
+---
+
+## P7-A1 Resource Guard 方案审查修订
+
+### 背景
+
+- P7-A 方案设计已于上一 commit 完成（f249198）
+- 人工审查发现部分设计边界需要修订，避免 P7-B 实现走偏
+- 本次只修订文档，不修改任何业务代码
+
+### 修订内容
+
+1. **错误模型字段修正**：将 `http_status = 429` 改为 `status_code = 429`，与 `VoiceLabError` 体系一致，`voice_lab_error_handler` 读取 `exc.status_code`
+2. **明确业务层使用 guard(...)**：对业务 Service 暴露 `guard(...)` 作为 async context manager，`_acquire` 作为内部方法，确保业务代码无法绕过 release
+3. **增加测试隔离 reset 机制**：必须提供 `reset_resource_guard_for_tests()` 函数和 pytest autouse fixture 设计，避免单例状态导致测试间污染
+4. **修正异步任务跨请求持有 lease**：明确第一版不跨 HTTP 请求持有 lease，submit 和 query/download 使用共享并发池（limit=2），不是同一长期租约
+5. **修正批量任务 lease 生命周期边界**：区分 Layer 1（submit 入口瞬时保护）和 Layer 2（后台 execute 生命周期保护，P7-E 再设计）
+6. **增加 CostGuard/ResourceGuard operation 映射表**：明确两个 Guard 的 operation 命名差异，Service 接入时需分别查表
+7. **修正 VoiceRenderService 方法名**：将 `VoiceRenderService.render` 修正为 `VoiceRenderService.render_voice`
+8. **补充 VoicePreviewService 与 ProviderVoicePreviewService 的 job_id 语义差异**：前者使用 preview_job 临时 ID（不对应真实 VoiceJob），后者使用真实 VoiceJob.id
+
+### 修改文件
+
+- `docs/P7_RESOURCE_GUARD_SPEC.md`（多处修订）
+- `docs/PROJECT_HEALTH_CHECK.md`（追加本节）
+
+### 验证命令
+
+```bash
+git diff --stat
+git diff --check
+```
+
+### 验证结果
+
+- git diff --stat: 通过（仅 docs/P7_RESOURCE_GUARD_SPEC.md、docs/PROJECT_HEALTH_CHECK.md）
+- git diff --check: 通过，无 whitespace error
+- 全量测试：未运行，原因：文档修订
+
+### 后续实施计划
+
+| 阶段 | 目标 |
+|---|---|
+| P7-B | 实现 ResourceGuardService 基础模块 + 单元测试（含测试 reset 机制） |
+| P7-C | 接入核心同步与高风险路径（render_voice、design、clone、preview 等） |
+| P7-D | 接入流式与异步路径（明确只做瞬时调用并发，不跨请求持有 lease） |
+| P7-E | 接入批量路径（先 Layer 1 submit 入口，再评估 Layer 2 execute 生命周期） |
