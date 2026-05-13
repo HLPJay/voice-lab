@@ -79,11 +79,12 @@
 * P8-4 目标：将历史记录整理为历史任务找回、音频播放、下载和筛选体验
 * P8-4A 不改前端、不改后端，仅做审查和文档化
 * P8-4B：历史记录信息架构整理已完成（历史任务 card 化、状态展示复用 P8-3 helper、空状态/错误/到底提示产品化）
+* P8-4C：历史任务卡片播放入口整理已完成（播放区已添加，`/api/voice/jobs` 不返回音频字段，安全降级展示"未返回可播放音频资产"）
 * 当前历史记录已从纯文本行整理为历史任务 card
 * 当前历史记录状态展示已复用 statusLabel/statusClass/resultStatusHintHtml/resultDiagnosticHtml
-* 历史播放/下载入口留待 P8-4C/P8-4D
+* 当前历史记录已添加播放区（安全降级），下载入口留待 P8-4D
 * P8-UX1：桌面宽屏布局与响应式适配作为遗留项记录
-* 下一步建议：P8-4C 历史任务卡片播放入口整理
+* 下一步建议：P8-4D 历史任务下载入口产品化
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2588,3 +2589,87 @@ PY
 ### 阶段结论
 
 P8-4B 已完成。下一阶段建议进入 P8-4C：历史任务卡片播放入口整理。
+
+---
+
+## P8-4C 历史任务卡片播放入口整理
+
+### 背景
+
+- P8-4A/B 已完成历史记录信息架构整理
+- P8-4C 目标：在历史任务 card 中整理音频播放入口
+
+### 问题
+
+- 历史任务 card 已完成，但尚无播放入口
+- 播放入口依赖 `/api/voice/jobs` 返回的音频字段
+- `/api/voice/jobs` 返回的 `VoiceJobRead` 模型**不包含** `audio_asset` 或 `audio_asset_id` 字段
+
+### 方案
+
+- 采用安全降级方案：检测到无 asset 时展示明确提示
+- 新增 `getHistoryAudioAssetId(job)` 和 `historyAudioPlaybackHtml(job)` helper
+- 有 asset 时复用 `audioPlayerHtml(assetId)`，无 asset 时展示"当前历史记录未返回可播放音频资产。"
+- 不改 API，不改后端，不新增下载入口
+
+### 修改文件
+
+- `app/static/index.html`（新增播放 helper、修改 historyJobCardHtml）
+- `docs/P8_4_HISTORY_DOWNLOAD_EXPERIENCE.md`（追加 P8-4C 章节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新状态摘要）
+
+### 风险处理
+
+- `/api/voice/jobs` 不返回音频字段是后端设计现状，不可绕过
+- 安全降级方案：展示清晰提示，不伪造播放入口
+- 待后端在历史 job 中增加音频字段后，可立即启用播放能力
+- 不修改后端 API
+- 不修改 `/api/voice/assets/{assetId}/download` endpoint
+
+### 验证命令
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","历史任务","任务状态","生成文本","任务信息","音频播放"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("DOM/display marker check passed")
+PY
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_functions = ["function toggleHistory","function loadHistory","function loadMoreHistory","function historyJobCardHtml","function historyEmptyStateHtml","function historyLoadErrorHtml","function historyEndStateHtml","function audioPlayerHtml","function statusLabel","function statusClass","function resultStatusHintHtml","function resultDiagnosticHtml","function isResultFailedStatus","function extractErrorMessage","function esc","function apiJson"]
+missing = [x for x in required_functions if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("JS function check passed")
+PY
+```
+
+### 验证结果
+
+- DOM/display marker check: passed
+- JS function check: passed
+- API marker check: passed
+- loadHistory semantic retention: passed
+- No download entry: passed
+- pytest: 375 passed, 6 skipped
+
+### 未做事项
+
+- 未新增历史下载入口
+- 未新增历史字幕/timeline 展示
+- 未新增历史详情页
+- 未新增历史搜索/筛选/删除
+- 未处理 URL/HEX/blob 历史播放
+- 未改后端 API
+- 未改下载接口
+- 未处理桌面宽屏 P8-UX1
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+
+### 阶段结论
+
+P8-4C 已完成。下一阶段建议进入 P8-4D：历史任务下载入口产品化。
+

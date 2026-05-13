@@ -2471,7 +2471,8 @@ function handleStopAsyncPolling() {
       diagnosticInfo = resultDiagnosticHtml(errMsg);
     }
 
-    const futureEntryHint = `<p style="font-size:0.78rem;color:#a0aec0;margin-top:6px">播放和下载入口将在后续阶段补充。</p>`;
+    const audioPlayback = historyAudioPlaybackHtml(job);
+    const downloadHint = `<p style="font-size:0.78rem;color:#a0aec0;margin-top:6px">下载入口将在后续阶段补充。</p>`;
 
     return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:10px;background:#fff">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2495,7 +2496,8 @@ function handleStopAsyncPolling() {
       </div>
       ${statusHint}
       ${diagnosticInfo}
-      ${futureEntryHint}
+      ${audioPlayback}
+      ${downloadHint}
     </div>`;
   }
 
@@ -2520,6 +2522,35 @@ function handleStopAsyncPolling() {
   // P8-4B: End-of-list hint for history
   function historyEndStateHtml() {
     return `<div style="text-align:center;padding:16px;color:#a0aec0;font-size:0.82rem">没有更多历史记录了。</div>`;
+  }
+
+  // ============================================================
+  // P8-4C: History playback helpers — no API calls, no state mutation
+  // ============================================================
+
+  // P8-4C: Extract audio asset ID from history job
+  // Note: /api/voice/jobs VoiceJobRead does not include audio_asset/audio_asset_id,
+  // so this always returns null for now. Future backend changes may enable playback.
+  function getHistoryAudioAssetId(job) {
+    if (job.audio_asset && job.audio_asset.id) return job.audio_asset.id;
+    if (job.audio_asset_id) return job.audio_asset_id;
+    if (job.asset_id) return job.asset_id;
+    return null;
+  }
+
+  // P8-4C: Render playback section for history job card
+  function historyAudioPlaybackHtml(job) {
+    const assetId = getHistoryAudioAssetId(job);
+    if (assetId) {
+      return `<div style="margin-top:10px">
+        <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">音频播放</div>
+        ${audioPlayerHtml(assetId)}
+      </div>`;
+    }
+    return `<div style="margin-top:10px">
+      <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">音频播放</div>
+      <p style="font-size:0.82rem;color:#a0aec0">当前历史记录未返回可播放音频资产。</p>
+    </div>`;
   }
 
   // ============================================================

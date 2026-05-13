@@ -890,5 +890,401 @@ P8-4B 已完成。历史记录已从纯文本工程列表整理为历史任务 c
 - 根据 `/api/voice/jobs` 当前返回字段判断是否可复用 `audioPlayerHtml`
 - 若存在 `audio_asset` / `audio_asset_id`，在历史 card 中加入播放器
 - 不改后端 API
+
+---
+
+# P8-4C 历史任务卡片播放入口整理
+
+## 31. P8-4C 执行背景
+
+- P8-4A 已完成现状审查。
+- P8-4B 已完成历史记录信息架构整理。
+- 当前历史任务已是 card 结构。
+- 当前历史任务仍缺少播放入口。
+- 本阶段尝试基于 `/api/voice/jobs` 当前返回字段整理播放入口。
+- 本阶段不改后端、不改 API、不改下载接口。
+
+---
+
+## 32. P8-4C 本阶段目标
+
+记录：
+
+- 审查历史 job 是否有可播放音频字段。
+- 支持服务端 asset 播放入口。
+- 有 asset 时复用 `audioPlayerHtml(assetId)`。
+- 无 asset 时展示清晰提示。
+- 不新增下载入口。
+- 不处理 URL / HEX / blob 历史播放。
+- 保留 DOM id。
+- 保留 JS function 行为。
+- 不改 API。
+
+---
+
+## 33. P8-4C 问题与风险分析
+
+必须记录：
+
+1. 历史任务 card 已完成，但尚无播放入口。
+2. 播放入口依赖 `/api/voice/jobs` 返回的音频字段。
+3. 如果 job 没有 `audio_asset` / `audio_asset_id` / `asset_id`，不能伪造播放入口。
+4. URL / HEX / blob 历史播放语义需要单独确认。
+5. 本阶段不能改 `/api/voice/jobs` 返回结构。
+6. 本阶段不能改 `/api/voice/assets/{assetId}/download`。
+7. 本阶段不能新增下载按钮。
+8. 本阶段只能做展示层播放入口。
+
+---
+
+## 34. P8-4C 方案判断
+
+必须记录：
+
+- 采用服务端 asset 优先方案。
+- 新增 `getHistoryAudioAssetId(job)`，从 job 中读取已有 asset 字段。
+- 新增 `historyAudioPlaybackHtml(job)`。
+- 有 asset 时复用 `audioPlayerHtml(assetId)`。
+- 无 asset 时展示"当前历史记录未返回可播放音频资产。"
+- 不处理 URL / HEX / blob。
+- 不改 `loadHistory(offset)`。
+- 不改 `/api/voice/jobs`。
+- 不改下载接口。
+
+---
+
+## 35. P8-4C 修改范围
+
+记录实际修改：
+
+- `app/static/index.html` — 新增播放 helper、修改 historyJobCardHtml
+- `docs/P8_4_HISTORY_DOWNLOAD_EXPERIENCE.md` — 追加 P8-4C 章节
+- `docs/PROJECT_HEALTH_CHECK.md` — 更新状态摘要
+
+---
+
+## 36. P8-4C 历史播放入口说明
+
+记录：
+
+- 播放入口如何判断 asset：检查 `job.audio_asset.id`、`job.audio_asset_id`、`job.asset_id` 字段。
+- `/api/voice/jobs` 返回的 `VoiceJobRead` 模型**不包含** `audio_asset` 或 `audio_asset_id` 字段。
+- 因此 `getHistoryAudioAssetId(job)` 始终返回 `null`。
+- 当前实现展示"当前历史记录未返回可播放音频资产。"
+- 这是安全降级方案，不修改后端 API。
+- 未来后端若在历史 job 中增加音频字段，可直接启用播放能力。
+- 是否调用 API：否。
+- 是否改变历史加载逻辑：否。
+
+---
+
+## 37. P8-4C URL / HEX / blob 处理说明
+
+必须记录：
+
+- 本阶段未实现 URL 历史播放。
+- 本阶段未实现 HEX 历史播放。
+- 本阶段未实现 blob 历史恢复。
+- 原因：需要确认历史记录保存语义，不在 P8-4C 中处理。
+- 后续可单独进入历史播放增强阶段。
+
+---
+
+## 38. P8-4C 下载入口处理说明
+
+必须记录：
+
+- 本阶段未新增下载入口。
+- 未调用 `downloadBtnHtml(assetId)`。
+- 下载入口留给 P8-4D。
+- 下载接口未改。
+- 未伪造不存在的下载入口。
+- 提示文案从"播放和下载入口..."改为"下载入口将在后续阶段补充。"
+
+---
+
+## 39. P8-4C DOM id 保留说明
+
+记录静态检查结果，确认关键 DOM id 仍存在。
+
+- `tab-history` — 存在
+- `historyCard` — 存在
+- `historyToggle` — 存在
+- `historyArea` — 存在
+- `historyList` — 存在
+- `loadMoreHistory` — 存在
+
+---
+
+## 40. P8-4C JS function 行为保留说明
+
+记录静态检查结果，确认关键函数仍存在。
+
+| 函数 | 用途 | API 调用 | 状态读写 | 业务行为改变 |
+|---|---|---|---|---|
+| `toggleHistory` | 展开/收起历史记录 | 无 | DOM 状态 | 无 |
+| `loadHistory(offset)` | 加载历史记录 | `/api/voice/jobs` | `_historyOffset/_historyTotal/_historyLoading` | 无 |
+| `loadMoreHistory` | 加载更多 | 调用 loadHistory | 同上 | 无 |
+| `historyJobCardHtml(job)` | 渲染历史 job card | 无 | 无 | 新增播放区 |
+| `historyEmptyStateHtml()` | 空状态 HTML | 无 | 无 | 无 |
+| `historyLoadErrorHtml(message)` | 加载失败 HTML | 无 | 无 | 无 |
+| `historyEndStateHtml()` | 到底提示 HTML | 无 | 无 | 无 |
+| `audioPlayerHtml(assetId)` | 音频播放器 HTML | 无 | 无 | 无 |
+| `statusLabel(s)` | 状态中文 label | 无 | 无 | 无 |
+| `statusClass(s)` | 状态 CSS class | 无 | 无 | 无 |
+| `resultStatusHintHtml(status)` | 状态说明 HTML | 无 | 无 | 无 |
+| `resultDiagnosticHtml(message)` | 诊断信息 HTML | 无 | 无 | 无 |
+| `isResultFailedStatus(status)` | 判断失败状态 | 无 | 无 | 无 |
+| `extractErrorMessage(data)` | 提取错误信息 | 无 | 无 | 无 |
+| `esc(s)` | HTML 转义 | 无 | 无 | 无 |
+| `apiJson` | API JSON helper | 无 | 无 | 无 |
+
+新增 helper（P8-4C）：
+
+| 函数 | 用途 | API 调用 | 状态读写 | 业务行为改变 |
+|---|---|---|---|---|
+| `getHistoryAudioAssetId(job)` | 提取 job 中的 asset ID | 无 | 无 | 仅返回 null 或 asset ID |
+| `historyAudioPlaybackHtml(job)` | 渲染播放区 HTML | 无 | 无 | 仅返回 HTML 字符串 |
+
+---
+
+## 41. P8-4C API endpoint 不变说明
+
+必须记录：
+
+- 历史记录列表 endpoint 未变：`/api/voice/jobs`
+- 分页参数未变：`limit=10&offset={offset}`
+- asset 播放 endpoint 未变：`/api/voice/assets/{assetId}/download`
+- 下载 endpoint 未变：`/api/voice/assets/{assetId}/download`
+- 未新增 API。
+- 未删除 API。
+
+---
+
+## 42. P8-4C 未处理事项
+
+必须写明：
+
+- 未新增历史下载入口
+- 未新增历史字幕 / timeline 展示
+- 未新增历史详情页
+- 未新增历史搜索
+- 未新增历史筛选
+- 未新增历史删除
+- 未处理 URL 历史播放
+- 未处理 HEX 历史播放
+- 未处理 blob 历史恢复
+- 未改后端 API
+- 未改 `/api/voice/jobs`
+- 未改下载接口
+- 未处理桌面宽屏 P8-UX1
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-4D
+
+---
+
+## 43. P8-4C 执行命令记录
+
+### 基线检查
+
+```bash
+git fetch origin
+git checkout dev
+git pull --ff-only origin dev
+git status -sb
+git log --oneline -20
+```
+
+### 静态检查
+
+```bash
+grep -n "tab-history\|historyCard\|historyToggle\|historyArea\|historyList\|loadMoreHistory" app/static/index.html
+grep -n "function toggleHistory\|function loadHistory\|function loadMoreHistory" app/static/index.html
+grep -n "function audioPlayerHtml\|<audio\|audio_asset\|audio_asset_id\|asset_id" app/static/index.html
+grep -n "历史任务\|生成文本\|任务信息\|historyJobCardHtml" app/static/index.html
+```
+
+### 文档标记检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","历史任务","任务状态","生成文本","任务信息","音频播放"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("DOM/display marker check passed")
+PY
+```
+
+---
+
+## 44. P8-4C 验证命令记录
+
+### DOM marker 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","历史任务","任务状态","生成文本","任务信息","音频播放"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4C DOM/display marker check passed")
+PY
+```
+
+### JS function 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_functions = ["function toggleHistory","function loadHistory","function loadMoreHistory","function historyJobCardHtml","function historyEmptyStateHtml","function historyLoadErrorHtml","function historyEndStateHtml","function audioPlayerHtml","function statusLabel","function statusClass","function resultStatusHintHtml","function resultDiagnosticHtml","function isResultFailedStatus","function extractErrorMessage","function esc","function apiJson"]
+missing = [x for x in required_functions if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4C JS function check passed")
+PY
+```
+
+### History playback helper 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["function getHistoryAudioAssetId","function historyAudioPlaybackHtml","audioPlayerHtml(assetId)","当前历史记录未返回可播放音频资产"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4C history playback helper check passed")
+PY
+```
+
+### API marker 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_api_markers = ["/api/voice/jobs","limit=10","offset=","apiJson","/api/voice/assets/"]
+missing = [x for x in required_api_markers if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4C API marker check passed")
+PY
+```
+
+### loadHistory 语义保留检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+start = html.find("function loadHistory")
+end = html.find("function loadMoreHistory", start)
+block = html[start:end]
+required = ["/api/voice/jobs","limit=10","offset=","_historyOffset","_historyTotal","_historyLoading"]
+missing = [x for x in required if x not in block]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4C loadHistory semantic retention check passed")
+PY
+```
+
+### 不新增下载入口检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+start = html.find("function historyJobCardHtml")
+end = html.find("function historyEmptyStateHtml", start)
+block = html[start:end]
+forbidden = ["downloadBtnHtml(","下载音频"]
+found = [x for x in forbidden if x in block]
+if found: raise SystemExit(f"Should not add: {found}")
+print("P8-4C no download entry check passed")
+PY
+```
+
+### 全量测试
+
+```bash
+python -m pytest tests/ -x -q
+```
+
+---
+
+## 45. P8-4C 验证结果
+
+### git 检查
+
+```
+## dev...origin/dev
+ M app/static/index.html
+app/static/index.html | 35 +++++++++++++++++++++++++++++++++--
+1 file changed, 33 insertions(+), 2 deletions(-)
+```
+
+### DOM marker 检查
+
+```
+P8-4C DOM/display marker check passed
+```
+
+### JS function 检查
+
+```
+P8-4C JS function check passed
+```
+
+### History playback helper 检查
+
+```
+P8-4C history playback helper check passed
+```
+
+### API marker 检查
+
+```
+P8-4C API marker check passed
+```
+
+### loadHistory 语义保留检查
+
+```
+P8-4C loadHistory semantic retention check passed
+```
+
+### 不新增下载入口检查
+
+```
+P8-4C no download entry check passed
+```
+
+### 测试结果
+
+```
+pytest: 375 passed, 6 skipped
+```
+
+---
+
+## 46. P8-4C 阶段结论
+
+P8-4C 已完成历史任务卡片播放入口整理。经审查，`/api/voice/jobs` 返回的 `VoiceJobRead` 模型不包含 `audio_asset` 或 `audio_asset_id` 字段，因此历史播放入口采用安全降级方案：展示"当前历史记录未返回可播放音频资产。"提示。`getHistoryAudioAssetId(job)` 和 `historyAudioPlaybackHtml(job)` 已就位，待后端在历史 job 中增加音频字段时可立即启用播放能力。未新增下载入口。下一阶段建议进入 P8-4D：历史任务下载入口产品化。
+
+---
+
+## 47. P8-4C 下一阶段建议
+
+建议 P8-4D 聚焦：
+
+- 历史任务下载入口
+- 根据 `getHistoryAudioAssetId(job)` 判断是否可复用 `downloadBtnHtml(assetId)`
+- 有 asset 时加入下载按钮
+- 无 asset 时展示下载不可用提示
+- 不改后端 API
+- 不改下载接口
+
 - 不改下载接口
 
