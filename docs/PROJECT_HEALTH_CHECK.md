@@ -357,3 +357,49 @@ python -m pytest tests/ -x -q
 - 跳过数量：6（均为 E2E 测试，需要真实 API Key）
 - 失败数量：0
 - 第一个失败测试：无
+
+---
+
+## P7-A Resource Guard 第一版方案设计
+
+### 背景
+
+- P6 baseline 已于 2026-05-13 完成（tag: p6-dev-baseline-20260513）
+- 项目当前具备多条真实 MiniMax 调用路径：同步T2A、异步T2A、WebSocket流式、声音设计、声音克隆、音色试听、多版本试音、批量生成
+- 当前已有 Cost Guard（confirm_cost 检查），但缺少 Resource Guard（资源准入控制）
+- 下一阶段需要先完成方案设计，确保实现受控，而不是直接写代码
+
+### 本次工作
+
+- 新增 `docs/P7_RESOURCE_GUARD_SPEC.md`
+- 覆盖内容：定位与边界、operation类型定义、默认策略、错误模型、Service接入点、与其他模块关系、日志设计、测试计划、风险、分阶段实施计划
+- 本次不改任何业务代码，不新增 Python service，不修改测试
+
+### 修改文件
+
+- `docs/P7_RESOURCE_GUARD_SPEC.md`（新增）
+- `docs/PROJECT_HEALTH_CHECK.md`（追加本节）
+
+### 验证命令
+
+```bash
+git diff --stat
+git diff --check
+```
+
+### 验证结果
+
+- git diff --stat: docs/P7_RESOURCE_GUARD_SPEC.md（新增）、docs/PROJECT_HEALTH_CHECK.md（追加）
+- git diff --check: 无 whitespace error
+- 本次为文档任务，未执行全量测试
+
+### 后续实施计划
+
+| 阶段 | 目标 |
+|---|---|
+| P7-A | 方案设计（本次） |
+| P7-B | 实现 ResourceGuardService 基础模块 + 单元测试 |
+| P7-C | 接入核心同步路径（t2a_sync、voice_design、voice_clone、preview） |
+| P7-D | 接入流式和异步路径（stream、async、variants） |
+| P7-E | 接入批量路径（batch_longtext/script，评估 segment_render） |
+| P7-F | 前端 RESOURCE_LIMIT_EXCEEDED 友好提示 |
