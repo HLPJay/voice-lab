@@ -769,7 +769,7 @@
     <div class="card">
       <div class="card-title">绑定说明</div>
       <p style="font-size:0.82rem;color:#718096;line-height:1.7">
-        轻量绑定用于快速把当前音色关联到声音人设。需要查看、删除或批量维护绑定时，请进入「高级 / 绑定管理」。
+        轻量绑定用于快速把当前音色关联到声音人设。需要查看、删除或批量维护绑定时，请进入「高级 / 绑定管理」。删除音色请进入「高级 / 危险操作」。
       </p>
     </div>
   </div>
@@ -2879,8 +2879,6 @@ function handleStopAsyncPolling() {
             </span>`;
           })()
         : `<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;padding:1px 6px;border-radius:10px">未绑定</span>`;
-      const showDelete = v.voice_type !== 'system';
-      const voiceTypeLabel = v.voice_type || '';
       tableHtml += `<tr data-voice-id="${esc(v.provider_voice_id)}">
         <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
         <td>${esc(v.name || '-')}</td>
@@ -2890,7 +2888,6 @@ function handleStopAsyncPolling() {
         <td>
           <button class="btn-sm audition-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">试听</button>
           <button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">绑定到人设</button>
-          ${showDelete ? `<button class="btn-sm voice-delete-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" data-voice-type="${voiceTypeLabel}" style="margin:0;color:#e53e3e">删除</button>` : ''}
         </td>
       </tr>`;
     });

@@ -1123,3 +1123,177 @@ P8-2D 已完成轻量绑定入口整理。下一阶段建议进入 P8-2E：P8-2 
 | 绑定状态展示不清晰 | ✅ 添加 badge + count + profile 名称 |
 | 轻量绑定与高级绑定管理边界不清 | ✅ 更新绑定说明区文案 |
 | pytest 不捕获前端 UI 变化 | ⚠️ 静态检查已覆盖，UI 层验证依赖人工 review |
+
+---
+
+# P8-2D1 移除音色列表行内删除入口
+
+## 67. P8-2D1 执行背景
+
+P8-2B 已经将删除音色表单迁移到高级 / 危险操作区。P8-2D 已经完成轻量绑定入口整理。
+
+自检发现 `renderVoiceTable()` 中仍保留列表行内"删除"按钮：虽然 `tab-advanced / subtab-danger` 已有删除表单，但音色列表行内仍然直接暴露删除入口，与 P8-2B 的风险分区目标不一致。
+
+本阶段目标是彻底把"删除音色"从音色主流程中移除，只保留在高级危险操作区。
+
+## 68. P8-2D1 问题与风险分析
+
+| 问题 | 风险 |
+|------|------|
+| renderVoiceTable() 中仍保留行内"删除"按钮 | 高风险操作仍在普通音色选择流程中可见 |
+| "删除音色已迁移到高级危险操作区"描述与代码不一致 | 文档描述与实现不符 |
+| 直接删除删除函数可能影响兼容性 | 应只移除 UI 入口，不删函数 |
+
+## 69. P8-2D1 方案判断
+
+**采用最小 UI 收口方案**：
+- 从 `renderVoiceTable()` 移除行内删除按钮
+- 移除不再使用的 `showDelete` 和 `voiceTypeLabel` 变量
+- 保留高级 / 危险操作区删除表单
+- 保留 `handleDeleteVoice()` 和 `handleVoiceDeleteFromList()` 函数定义
+- 不改删除 API
+- 不改后端
+- 绑定说明区补充文案："删除音色请进入「高级 / 危险操作」"
+
+## 70. P8-2D1 修改范围
+
+实际修改：
+- `app/static/index.html` — 移除 renderVoiceTable 行内删除按钮及 showDelete/voiceTypeLabel 变量，绑定说明区补充删除引导文案
+- `docs/P8_2_VOICE_SELECTION_WORKSTATION.md` — 补齐 P8-2D1 文档
+- `docs/PROJECT_HEALTH_CHECK.md` — 更新 P8-2D1 状态
+
+## 71. P8-2D1 删除入口收口说明
+
+| 位置 | 调整前 | 调整后 |
+|------|--------|--------|
+| renderVoiceTable 操作列 | 试听 + 绑定到人设 + 删除 | 试听 + 绑定到人设 |
+| showDelete / voiceTypeLabel 变量 | 存在 | 已移除（死代码清理） |
+| 高级危险操作区 | 保留删除表单 | 未变更 |
+| 绑定说明区 | "需要查看、删除…" | "需要查看、删除…删除音色请进入「高级 / 危险操作」" |
+
+## 72. P8-2D1 DOM id 保留说明
+
+静态检查确认以下 DOM id 在 P8-2D1 修改后仍然存在：
+
+- `voiceProvider` — 未变更
+- `voiceType` — 未变更
+- `listVoicesBtn` — 未变更
+- `voiceSearch` — 未变更
+- `voiceListResults` — 未变更
+- `quickBindPanel` — 未变更
+- `quickBindProfileSel` — 未变更
+- `quickBindModelSel` — 未变更
+- `quickBindConfirm` — 未变更
+- `quickBindCancel` — 未变更
+- `quickBindMsg` — 未变更
+- `deleteProvider` — 未变更
+- `deleteVoiceId` — 未变更
+- `deleteVoiceType` — 未变更
+- `deleteResults` — 未变更
+- `subtab-danger` — 未变更
+- `高级 / 危险操作` — **新增**（绑定说明区新增文案）
+
+## 73. P8-2D1 JS function 行为保留说明
+
+| 函数 | 变更 |
+|------|------|
+| `renderVoiceTable` | **UI 层调整**：移除行内删除按钮，未改数据语义 |
+| `handleListVoices` | **未变更** |
+| `filterVoiceList` | **未变更** |
+| `quickBindVoice` | **未变更** |
+| `bindVoiceToProfile` | **未变更** |
+| `refreshVoiceBindStatus` | **未变更** |
+| `loadAllBindings` | **未变更** |
+| `handleDeleteVoice` | **未变更**（高级危险操作区仍使用） |
+| `handleVoiceDeleteFromList` | **未删除**（函数定义保留，但不再被行内按钮触发） |
+| `switchAdvancedSubtab` | **未变更** |
+
+**本阶段仅移除音色列表中的行内删除入口，未改变删除 API 调用语义。**
+
+## 74. P8-2D1 API endpoint 不变说明
+
+静态检查确认以下 API marker 在 P8-2D1 修改后仍然存在：
+
+- `/api/voice/provider-voices` — 未变更
+- `/api/voice/voices/delete` — 未变更（handleDeleteVoice 仍使用）
+- `/api/voice/profiles` — 未变更
+- `/bindings` — 未变更
+- `/api/voice/bindings` — 未变更
+- `apiJson` — 未变更
+- `guardedJsonFetch` — 未变更
+
+## 75. P8-2D1 执行命令记录
+
+```bash
+# 基线检查
+git fetch origin && git checkout dev && git pull --ff-only origin dev
+git status -sb && git log --oneline -10
+
+# 只读审查
+grep -n "voice-delete-btn|handleVoiceDeleteFromList|showDelete|删除</button>|data-voice-type" app/static/index.html
+grep -n "subtab-danger|deleteProvider|deleteVoiceId|deleteVoiceType|deleteResults|handleDeleteVoice" app/static/index.html
+grep -n "音色选择 / 试听工作台|绑定说明|高级 / 绑定管理|危险操作" app/static/index.html
+
+# 代码修改
+# app/static/index.html:
+# - renderVoiceTable: 移除 showDelete 变量、voiceTypeLabel 变量、行内删除按钮
+# - 绑定说明区: 补充"删除音色请进入「高级 / 危险操作」"
+
+# 验证
+python -m pytest tests/ -x -q  # 375 passed, 6 skipped
+```
+
+## 76. P8-2D1 验证命令记录
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["voiceProvider","voiceType","listVoicesBtn","voiceSearch","voiceListResults",
+    "quickBindPanel","quickBindProfileSel","quickBindModelSel","quickBindConfirm",
+    "quickBindCancel","quickBindMsg","deleteProvider","deleteVoiceId","deleteVoiceType",
+    "deleteResults","subtab-danger","高级 / 危险操作"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("DOM check passed")
+PY
+```
+
+## 77. P8-2D1 验证结果
+
+- pytest：375 passed, 6 skipped
+- DOM marker check：passed
+- JS function check：passed
+- API marker check：passed
+- renderVoiceTable inline delete removal check：passed
+- Danger delete form retention check：passed
+
+## 78. P8-2D1 未做事项
+
+- ❌ 未改后端 API
+- ❌ 未改 Provider
+- ❌ 未改 Resource Guard
+- ❌ 未改 Cost Guard
+- ❌ 未改数据库
+- ❌ 未改音色列表查询逻辑
+- ❌ 未改音色试听 API 调用语义
+- ❌ 未改绑定 API 调用语义
+- ❌ 未改删除音色 API 调用语义
+- ❌ 未删除 handleVoiceDeleteFromList
+- ❌ 未删除 handleDeleteVoice
+- ❌ 未改声音克隆 / 声音设计
+- ❌ 未执行真实 MiniMax smoke test
+- ❌ 未进入 P8-2E
+
+## 79. P8-2D1 阶段结论
+
+P8-2D1 已完成音色列表行内删除入口收口。删除音色能力已完全收敛到高级 / 危险操作区。下一阶段建议进入 P8-2E：P8-2 验收与健康检查收口。
+
+## 80. P8-2D1 风险清零说明
+
+| 风险 | 状态 |
+|------|------|
+| 音色列表行内删除按钮仍存在 | ✅ 已移除 |
+| 删除音色表单描述与代码不一致 | ✅ 绑定说明区已补充删除引导文案 |
+| showDelete / voiceTypeLabel 死代码 | ✅ 已移除 |
+| handleVoiceDeleteFromList 意外删除 | ✅ 函数定义保留，仅移除触发入口 |
