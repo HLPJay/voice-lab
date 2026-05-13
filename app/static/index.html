@@ -769,7 +769,7 @@
     <div class="card">
       <div class="card-title">绑定说明</div>
       <p style="font-size:0.82rem;color:#718096;line-height:1.7">
-        音色列表中的快速绑定用于把当前音色关联到声音人设。完整绑定管理仍保留在"高级 / 绑定管理"中。
+        轻量绑定用于快速把当前音色关联到声音人设。需要查看、删除或批量维护绑定时，请进入「高级 / 绑定管理」。
       </p>
     </div>
   </div>
@@ -2868,8 +2868,17 @@ function handleStopAsyncPolling() {
     pageVoices.forEach(v => {
       const boundProfiles = voiceBindMap[v.provider_voice_id] || [];
       const bindStatusHtml = boundProfiles.length > 0
-        ? `<span style="color:#2f855a;font-size:0.78rem">已绑定: ${esc(boundProfiles.map(b => b.profile_name || b.profile_id).join(', '))}</span>`
-        : `<span style="color:#ed8936;font-size:0.78rem">未绑定</span>`;
+        ? (() => {
+            const shown = boundProfiles.slice(0, 2);
+            const rest = boundProfiles.length - shown.length;
+            const names = shown.map(b => esc(b.profile_name || b.profile_id)).join(', ');
+            const extra = rest > 0 ? ` +${rest}` : '';
+            return `<span style="display:inline-flex;align-items:center;gap:4px">
+              <span style="background:#c6f6d5;color:#2f855a;font-size:0.7rem;padding:1px 6px;border-radius:10px;font-weight:500">已绑定${boundProfiles.length > 1 ? `(${boundProfiles.length})` : ''}</span>
+              <span style="color:#2f855a;font-size:0.78rem">${names}${extra}</span>
+            </span>`;
+          })()
+        : `<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;padding:1px 6px;border-radius:10px">未绑定</span>`;
       const showDelete = v.voice_type !== 'system';
       const voiceTypeLabel = v.voice_type || '';
       tableHtml += `<tr data-voice-id="${esc(v.provider_voice_id)}">
@@ -2880,7 +2889,7 @@ function handleStopAsyncPolling() {
         <td class="bind-status-cell">${bindStatusHtml}</td>
         <td>
           <button class="btn-sm audition-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">试听</button>
-          <button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">绑定</button>
+          <button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">绑定到人设</button>
           ${showDelete ? `<button class="btn-sm voice-delete-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" data-voice-type="${voiceTypeLabel}" style="margin:0;color:#e53e3e">删除</button>` : ''}
         </td>
       </tr>`;
@@ -3010,14 +3019,15 @@ function handleStopAsyncPolling() {
 
     const panel = document.createElement('div');
     panel.id = 'quickBindPanel';
-    panel.style.cssText = 'padding:12px;background:#f7fafc;border-radius:8px;margin-top:8px';
+    panel.style.cssText = 'background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-top:10px';
 
     const profileSelect = document.createElement('select');
     profileSelect.id = 'quickBindProfileSel';
     profileSelect.style.cssText = 'padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px';
 
     panel.innerHTML = `
-      <div style="font-size:0.82rem;margin-bottom:8px">将 <code>${esc(voiceId)}</code> 绑定到：</div>
+      <div style="font-size:0.88rem;font-weight:600;color:#2d3748;margin-bottom:6px">绑定到声音人设</div>
+      <div style="font-size:0.78rem;color:#718096;margin-bottom:10px;line-height:1.6">将当前音色 <code style="background:#f7fafc;padding:1px 4px;border-radius:3px">${esc(voiceId)}</code>${voiceName ? ` (<span style="color:#4a5568">${esc(voiceName)}</span>)` : ''} 绑定到一个声音人设。绑定后可在创作工作台中选择该人设进行生成。</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="quickProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
         <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
@@ -3029,7 +3039,7 @@ function handleStopAsyncPolling() {
         <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
         <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>
       </div>
-      <div id="quickBindMsg" style="margin-top:6px;font-size:0.82rem"></div>
+      <div id="quickBindMsg" style="margin-top:8px;font-size:0.78rem;min-height:18px"></div>
     `;
 
     const quickProfileWrap = panel.querySelector('#quickProfileWrap');
@@ -3042,15 +3052,22 @@ function handleStopAsyncPolling() {
     document.getElementById('quickBindConfirm').onclick = async () => {
       const profileId = profileSelect.value;
       const model = document.getElementById('quickBindModelSel').value;
-      if (!profileId) return;
+      const msgEl = document.getElementById('quickBindMsg');
+      const confirmBtn = document.getElementById('quickBindConfirm');
+      if (!profileId) {
+        msgEl.innerHTML = `<span style="color:#c53030;font-size:0.78rem">请先选择一个声音人设</span>`;
+        return;
+      }
+      confirmBtn.disabled = true;
+      msgEl.innerHTML = '<span style="color:#718096">绑定中…</span>';
       try {
         await bindVoiceToProfile(voiceId, provider, profileId, model);
-        document.getElementById('quickBindMsg').innerHTML =
-          `<span style="color:#2f855a">绑定成功: ${esc(voiceName)} → ${esc(profileId)}</span>`;
+        msgEl.innerHTML = `<div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:6px;padding:8px 10px;font-size:0.78rem;color:#2f855a">✓ 绑定成功。现在可以回到创作工作台，选择该声音人设进行生成。</div>`;
         await refreshVoiceBindStatus(voiceId);
       } catch (e) {
-        document.getElementById('quickBindMsg').innerHTML =
-          `<span style="color:#e53e3e">绑定失败: ${esc(e.message)}</span>`;
+        msgEl.innerHTML = `<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:6px;padding:8px 10px;font-size:0.78rem;color:#c53030">✕ 绑定失败：${esc(e.message)}</div>`;
+      } finally {
+        confirmBtn.disabled = false;
       }
     };
   }
