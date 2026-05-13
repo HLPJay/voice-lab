@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -245,3 +247,91 @@ class TestCloneServiceUpsert:
                     svc.clone_voice(session, "mock", req)
                 )
         assert "empty voice_id" in str(exc.value.message).lower()
+
+
+class TestVoiceCloneResourceGuard:
+    """Tests for Resource Guard integration in VoiceCloneService."""
+
+    @pytest.fixture(autouse=True)
+    def reset_guard(self):
+        """Reset resource guard state before and after each test."""
+        from app.services.resource_guard_service import reset_resource_guard_for_tests
+        reset_resource_guard_for_tests()
+        yield
+        reset_resource_guard_for_tests()
+
+    @pytest.mark.asyncio
+    async def test_upload_rejected_when_slot_full(self, session):
+        """When voice_clone_upload limit=1 is held, second request is rejected with 429."""
+        from unittest.mock import patch
+        from app.services.voice_clone_service import VoiceCloneService
+        from app.services.resource_guard_service import ResourceLimitExceeded
+
+        adapter_called = False
+
+        class CheckedUploadAdapter:
+            provider_name = "minimax"
+            async def upload_voice_file(self, file_data, filename, purpose):
+                nonlocal adapter_called
+                adapter_called = True
+                return {"file_id": "test_file", "filename": filename, "purpose": purpose}
+
+        svc = VoiceCloneService()
+
+        # First: hold the voice_clone_upload slot
+        from app.services.resource_guard_service import get_resource_guard
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="voice_clone_upload", job_id=None)
+
+        # Second: try to call upload_audio - should be rejected before adapter is called
+        with patch("app.services.voice_clone_service.get_provider", return_value=CheckedUploadAdapter()):
+            with pytest.raises(ResourceLimitExceeded) as exc_info:
+                await svc.upload_audio("minimax", b"fake_audio_data", "test.mp3", "voice_clone")
+            assert exc_info.value.status_code == 429
+            assert exc_info.value.code == "RESOURCE_LIMIT_EXCEEDED"
+
+        assert adapter_called is False, "adapter.upload_voice_file should not be called when Resource Guard rejects"
+
+        # Cleanup: release the held slot
+        await guard._release(lease)
+
+    @pytest.mark.asyncio
+    async def test_clone_rejected_when_slot_full(self, session):
+        """When voice_clone_create limit=1 is held, second request is rejected with 429."""
+        from unittest.mock import patch
+        from app.services.voice_clone_service import VoiceCloneService
+        from app.services.resource_guard_service import ResourceLimitExceeded
+
+        adapter_called = False
+
+        class CheckedCloneAdapter:
+            provider_name = "minimax"
+            async def clone_voice(self, request):
+                nonlocal adapter_called
+                adapter_called = True
+                return {"voice_id": "test_clone", "demo_audio_url": None}
+
+        svc = VoiceCloneService()
+
+        # First: hold the voice_clone_create slot
+        from app.services.resource_guard_service import get_resource_guard
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="voice_clone_create", job_id=None)
+
+        # Second: try to call clone_voice - should be rejected before adapter is called
+        with patch("app.services.voice_clone_service.get_provider", return_value=CheckedCloneAdapter()):
+            from app.domain.schemas import VoiceCloneRequest
+            req = VoiceCloneRequest(
+                voice_id="test_clone_01",
+                file_id=12345,
+                confirm_cost=True,
+            )
+            with pytest.raises(ResourceLimitExceeded) as exc_info:
+                await svc.clone_voice(session, "minimax", req)
+            assert exc_info.value.status_code == 429
+            assert exc_info.value.code == "RESOURCE_LIMIT_EXCEEDED"
+
+        assert adapter_called is False, "adapter.clone_voice should not be called when Resource Guard rejects"
+
+        # Cleanup: release the held slot
+        await guard._release(lease)

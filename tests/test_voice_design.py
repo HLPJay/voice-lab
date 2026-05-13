@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -116,3 +118,56 @@ class TestDesignServiceUpsert:
                     svc.design_voice(session, "mock", req)
                 )
         assert "empty voice_id" in str(exc.value.message).lower()
+
+
+class TestVoiceDesignResourceGuard:
+    """Tests for Resource Guard integration in VoiceDesignService."""
+
+    @pytest.fixture(autouse=True)
+    def reset_guard(self):
+        """Reset resource guard state before and after each test."""
+        from app.services.resource_guard_service import reset_resource_guard_for_tests
+        reset_resource_guard_for_tests()
+        yield
+        reset_resource_guard_for_tests()
+
+    @pytest.mark.asyncio
+    async def test_voice_design_rejected_when_slot_full(self, session):
+        """When voice_design limit=1 is held, second request is rejected with 429."""
+        from unittest.mock import patch, AsyncMock
+        from app.services.voice_design_service import VoiceDesignService
+        from app.services.resource_guard_service import ResourceLimitExceeded
+
+        adapter_called = False
+
+        class CheckedDesignAdapter:
+            provider_name = "minimax"
+            async def design_voice(self, prompt, preview_text, voice_id=None):
+                nonlocal adapter_called
+                adapter_called = True
+                return {"voice_id": "test", "trial_audio_hex": None}
+
+        svc = VoiceDesignService()
+
+        # First: hold the voice_design slot
+        from app.services.resource_guard_service import get_resource_guard
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="voice_design", job_id=None)
+
+        # Second: try to call design_voice - should be rejected before adapter is called
+        with patch("app.services.voice_design_service.get_provider", return_value=CheckedDesignAdapter()):
+            from app.domain.schemas import VoiceDesignRequest
+            req = VoiceDesignRequest(
+                prompt="测试",
+                preview_text="这是一段试听文本。",
+                confirm_cost=True,
+            )
+            with pytest.raises(ResourceLimitExceeded) as exc_info:
+                await svc.design_voice(session, "minimax", req)
+            assert exc_info.value.status_code == 429
+            assert exc_info.value.code == "RESOURCE_LIMIT_EXCEEDED"
+
+        assert adapter_called is False, "adapter.design_voice should not be called when Resource Guard rejects"
+
+        # Cleanup: release the held slot
+        await guard._release(lease)

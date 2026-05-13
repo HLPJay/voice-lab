@@ -555,3 +555,69 @@ python -m pytest tests/ -x -q
 | P7-C | 接入核心同步与高风险路径 |
 | P7-D | 接入流式与异步路径 |
 | P7-E | 接入批量路径 |
+
+---
+
+## P7-C Resource Guard 核心同步与高风险路径接入
+
+### 背景
+
+- P7-B / P7-B1 已完成 ResourceGuardService 基础模块和实现修复（commit a66d04d）
+- 本次进入 P7-C
+- 本阶段只接入核心同步与高风险真实 Provider 调用路径
+- 不接入异步、流式、批量
+
+### 本次接入范围
+
+- VoiceRenderService.render_voice → t2a_sync
+- VoiceDesignService → voice_design
+- VoiceCloneService.upload_audio → voice_clone_upload
+- VoiceCloneService.clone_voice → voice_clone_create
+- ProviderVoicePreviewService.preview → voice_preview
+- VoicePreviewService.preview → binding_voice_preview
+- VoiceVariantService → voice_variants
+
+### 本次不接入范围
+
+- AsyncRenderService
+- StreamRenderService
+- BatchOrchestrationService
+- 前端
+- Provider Adapter
+- 数据库模型
+
+### 修改文件
+
+- app/services/voice_render_service.py
+- app/services/voice_design_service.py
+- app/services/voice_clone_service.py
+- app/services/provider_voice_preview_service.py
+- app/services/voice_preview_service.py
+- app/services/voice_variant_service.py
+- tests/test_voice_design.py（新增 Resource Guard 测试）
+- tests/test_voice_clone.py（新增 Resource Guard 测试）
+- tests/test_voice_preview.py（新增 Resource Guard 测试）
+- tests/test_voice_variant_service.py（新增 Resource Guard 测试）
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_voice_design.py tests/test_voice_clone.py tests/test_voice_preview.py tests/test_voice_variant_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 单元测试：15 passed
+- 相关 Service 测试：55 passed
+- 全量测试：343 passed, 6 skipped (0:01:28)
+
+### 后续计划
+
+| 阶段 | 目标 |
+|---|---|
+| P7-D | 接入 AsyncRenderService 和 StreamRenderService |
+| P7-E | 接入 BatchOrchestrationService |
+| P7-F | 前端 RESOURCE_LIMIT_EXCEEDED 友好提示 |

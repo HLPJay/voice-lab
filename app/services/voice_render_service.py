@@ -20,6 +20,7 @@ from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.cost_guard_service import CostGuardService
+from app.services.resource_guard_service import get_resource_guard
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.id_generator import new_id
 
@@ -99,7 +100,14 @@ class VoiceRenderService:
             job.updated_at = utc_now_iso()
             session.add(job)
             session.commit()
-            result = await get_provider(provider).render_sync(plan)
+
+            async with get_resource_guard().guard(
+                provider=provider,
+                operation="t2a_sync",
+                model=plan.model,
+                job_id=job.id,
+            ):
+                result = await get_provider(provider).render_sync(plan)
             audio_asset, subtitle_asset = self.asset_service.save_assets(
                 session,
                 job_id=job.id,

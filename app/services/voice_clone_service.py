@@ -11,6 +11,7 @@ from app.domain.schemas import VoiceCloneRequest, VoiceCloneResponse, VoiceClone
 from app.providers.registry import get_provider
 from app.repositories.provider_voice_repo import upsert_provider_voice
 from app.services.cost_guard_service import CostGuardService
+from app.services.resource_guard_service import get_resource_guard
 
 MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20MB
 
@@ -95,7 +96,14 @@ class VoiceCloneService:
                     )
 
         adapter = get_provider(provider)
-        result = await adapter.upload_voice_file(file_data, filename, purpose)
+
+        async with get_resource_guard().guard(
+            provider=provider,
+            operation="voice_clone_upload",
+            model=None,
+            job_id=None,
+        ):
+            result = await adapter.upload_voice_file(file_data, filename, purpose)
 
         self.logger.info(
             "upload_audio provider=%s purpose=%s filename=%s file_id=%s",
@@ -124,8 +132,14 @@ class VoiceCloneService:
 
         adapter = get_provider(provider)
 
-        request_dict = request.model_dump(exclude_none=True, exclude={"input_sensitive"})
-        result = await adapter.clone_voice(request_dict)
+        async with get_resource_guard().guard(
+            provider=provider,
+            operation="voice_clone_create",
+            model=None,
+            job_id=None,
+        ):
+            request_dict = request.model_dump(exclude_none=True, exclude={"input_sensitive"})
+            result = await adapter.clone_voice(request_dict)
 
         voice_id = result.get("voice_id")
         if not voice_id:

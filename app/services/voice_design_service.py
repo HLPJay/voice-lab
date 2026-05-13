@@ -9,6 +9,7 @@ from app.domain.schemas import VoiceDesignRequest, VoiceDesignResponse
 from app.providers.registry import get_provider
 from app.repositories.provider_voice_repo import upsert_provider_voice
 from app.services.cost_guard_service import CostGuardService
+from app.services.resource_guard_service import get_resource_guard
 from app.utils.files import storage_path
 
 
@@ -26,9 +27,16 @@ class VoiceDesignService:
         self.cost_guard.require_confirmed(provider, "voice_design", request.confirm_cost)
 
         adapter = get_provider(provider)
-        result = await adapter.design_voice(
-            request.prompt, request.preview_text, request.voice_id
-        )
+
+        async with get_resource_guard().guard(
+            provider=provider,
+            operation="voice_design",
+            model=None,
+            job_id=None,
+        ):
+            result = await adapter.design_voice(
+                request.prompt, request.preview_text, request.voice_id
+            )
 
         voice_id = result.get("voice_id")
         if not voice_id:

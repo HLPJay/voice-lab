@@ -16,6 +16,7 @@ from app.models.voice_job import VoiceJob
 from app.providers.registry import get_provider
 from app.services.asset_service import AssetService
 from app.services.cost_guard_service import CostGuardService
+from app.services.resource_guard_service import get_resource_guard
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.id_generator import new_id
 
@@ -98,7 +99,13 @@ class ProviderVoicePreviewService:
             session.add(job)
             session.commit()
 
-            result = await adapter.render_sync(plan)
+            async with get_resource_guard().guard(
+                provider=provider,
+                operation="voice_preview",
+                model=request.model,
+                job_id=job.id,
+            ):
+                result = await adapter.render_sync(plan)
             audio_asset, subtitle_asset = self.asset_service.save_assets(
                 session,
                 job_id=job.id,

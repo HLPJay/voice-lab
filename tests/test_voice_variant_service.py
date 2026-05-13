@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -146,3 +148,76 @@ def test_render_variants_each_has_job_and_audio(test_app, seed_profile, seed_moc
         assert v["audio_asset_id"], "audio_asset_id should not be empty"
         assert v["speed"] is not None
         assert v["emotion"] is not None
+
+
+class TestVoiceVariantResourceGuard:
+    """Tests for Resource Guard integration in VoiceVariantService."""
+
+    @pytest.fixture(autouse=True)
+    def reset_guard(self):
+        """Reset resource guard state before and after each test."""
+        from app.services.resource_guard_service import reset_resource_guard_for_tests
+        reset_resource_guard_for_tests()
+        yield
+        reset_resource_guard_for_tests()
+
+    @pytest.mark.asyncio
+    async def test_variants_rejected_when_slot_full(self, session, seed_profile, seed_mock_binding):
+        """When voice_variants limit=1 is held, second request is rejected with 429."""
+        from unittest.mock import patch
+        from app.services.voice_variant_service import VoiceVariantService
+        from app.services.resource_guard_service import ResourceLimitExceeded
+        from app.domain.schemas import VoiceVariantRenderRequest
+
+        adapter_called_count = 0
+
+        class CheckedRenderAdapter:
+            provider_name = "minimax"
+
+            async def render_sync(self, plan):
+                nonlocal adapter_called_count
+                adapter_called_count += 1
+                from app.utils.audio import write_silent_wav
+                from app.utils.files import storage_path
+                from app.utils.id_generator import new_id
+                from app.utils.audio import estimate_duration_ms
+                audio_id = new_id("audio_file")
+                audio_path = storage_path("audio", f"{audio_id}.wav")
+                duration_ms = estimate_duration_ms(plan.processed_text)
+                write_silent_wav(audio_path, duration_ms=min(duration_ms, 2000), sample_rate=16000)
+                from app.providers.base import ProviderRenderResult
+                return ProviderRenderResult(
+                    audio_path=str(audio_path),
+                    duration_ms=duration_ms,
+                    usage_characters=len(plan.text),
+                    trace_id="mock_trace",
+                    response_json={"mock": True},
+                    timeline=[],
+                    metadata={"mock": True},
+                )
+
+        svc = VoiceVariantService()
+
+        # First: hold the voice_variants slot
+        from app.services.resource_guard_service import get_resource_guard
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="voice_variants", job_id=None)
+
+        # Second: try to call render_variants - should be rejected before any adapter is called
+        with patch("app.services.voice_render_service.get_provider", return_value=CheckedRenderAdapter()):
+            req = VoiceVariantRenderRequest(
+                text="测试文本",
+                profile_id="deep_night_programmer",
+                provider="minimax",
+                variant_count=3,
+                confirm_cost=True,
+            )
+            with pytest.raises(ResourceLimitExceeded) as exc_info:
+                await svc.render_variants(session, req)
+            assert exc_info.value.status_code == 429
+            assert exc_info.value.code == "RESOURCE_LIMIT_EXCEEDED"
+
+        assert adapter_called_count == 0, "adapter.render_sync should not be called when voice_variants guard rejects"
+
+        # Cleanup: release the held slot
+        await guard._release(lease)
