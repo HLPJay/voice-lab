@@ -819,6 +819,59 @@ python -m pytest tests/ -x -q
 - StreamRenderService 测试：9 passed
 - 全量测试：363 passed, 6 skipped
 
+---
+
+## P7-E1 批量生成状态机边界修正
+
+### 背景
+
+- P7-E 首次提交后审查发现 segment 失败路径中 BatchSegment.voice_job_id 未稳定绑定
+- 异常时 VoiceJob 可能处于 running 状态未被标记 failed
+- save_assets 失败时状态同步缺失
+- submit 被 Resource Guard 拒绝时未充分验证不产生脏数据
+- submit_script 在 guard 内部做 profile 校验，边界不够清晰
+
+### 修复内容
+
+- VoiceJob 创建并标记 running 后，立即同步 BatchSegment.voice_job_id 和 status=running，确保失败路径可追踪
+- 新增 _mark_segment_voice_job_failed helper 方法，统一处理 render_sync 和 save_assets 失败的收口
+- _process_segment_isolated 增强兜底：segment 异常时若 VoiceJob 仍为 pending/running/processing则同步标记 failed
+- submit_script 预校验所有 profile_id 后再进入 Resource Guard，符合"资源准入与业务校验分离"原则
+- save_assets 失败时 BatchSegment + VoiceJob 同步 failed
+
+### 修改文件
+
+- app/services/batch_orchestration_service.py
+- tests/test_batch_orchestration.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 测试增强
+
+- submit_longtext rejected：验证 BatchJob/BatchSegment 数量不变，不启动 execute
+- submit_script rejected：验证同上
+- execute rejected：验证 failed_segments == total_segments，segment 无 voice_job_id/audio_asset_id
+- segment render error：验证 segment.voice_job_id 非空，VoiceJob 与 segment 同步 failed
+- save_assets error：新增测试，验证 segment + VoiceJob 同步 failed
+- no t2a_sync double guard：验证 batch segments 不进入 t2a_sync guard（持有 minimax t2a_sync slots 不影响 mock batch 执行）
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_batch_orchestration.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 测试：38 passed
+- BatchOrchestrationService 测试：18 passed
+- AsyncRenderService 测试：14 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：365 passed, 6 skipped
+
 ## P7-D1 异步与流式状态机边界修复
 
 ### 背景

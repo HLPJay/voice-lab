@@ -548,9 +548,15 @@ class TestBatchResourceGuard:
 
     @pytest.mark.asyncio
     async def test_submit_longtext_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
-        """When batch_longtext limit=1 is held, submit_longtext raises ResourceLimitExceeded."""
-        from app.services.resource_guard_service import get_resource_guard
+        """When batch_longtext limit=1 is held, submit_longtext raises ResourceLimitExceeded
+        and does NOT create any BatchJob or BatchSegment records."""
+        from app.services.resource_guard_service import get_resource_guard, ResourceLimitExceeded
         from app.domain.schemas import LongtextBatchRequest
+        from app.models.batch_job import BatchJob, BatchSegment
+
+        # Count existing records before the call.
+        batch_job_count_before = len(list(session.exec(select(BatchJob)).all()))
+        batch_segment_count_before = len(list(session.exec(select(BatchSegment)).all()))
 
         guard = get_resource_guard()
         lease = await guard._acquire(provider="minimax", operation="batch_longtext", job_id=None)
@@ -566,17 +572,27 @@ class TestBatchResourceGuard:
                 confirm_cost=True,
             )
 
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(ResourceLimitExceeded):
                 await service.submit_longtext(session, request)
-            assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value) or exc_info.type.__name__ == "ResourceLimitExceeded"
         finally:
             await guard._release(lease)
 
+        # Verify no new BatchJob or BatchSegment records were created.
+        batch_job_count_after = len(list(session.exec(select(BatchJob)).all()))
+        batch_segment_count_after = len(list(session.exec(select(BatchSegment)).all()))
+        assert batch_job_count_after == batch_job_count_before
+        assert batch_segment_count_after == batch_segment_count_before
+
     @pytest.mark.asyncio
     async def test_submit_script_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
-        """When batch_script limit=1 is held, submit_script raises ResourceLimitExceeded."""
-        from app.services.resource_guard_service import get_resource_guard
+        """When batch_script limit=1 is held, submit_script raises ResourceLimitExceeded
+        and does NOT create any BatchJob or BatchSegment records."""
+        from app.services.resource_guard_service import get_resource_guard, ResourceLimitExceeded
         from app.domain.schemas import ScriptBatchRequest, ScriptLine
+        from app.models.batch_job import BatchJob, BatchSegment
+
+        batch_job_count_before = len(list(session.exec(select(BatchJob)).all()))
+        batch_segment_count_before = len(list(session.exec(select(BatchSegment)).all()))
 
         guard = get_resource_guard()
         lease = await guard._acquire(provider="minimax", operation="batch_script", job_id=None)
@@ -591,15 +607,20 @@ class TestBatchResourceGuard:
                 confirm_cost=True,
             )
 
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(ResourceLimitExceeded):
                 await service.submit_script(session, request)
-            assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value) or exc_info.type.__name__ == "ResourceLimitExceeded"
         finally:
             await guard._release(lease)
 
+        batch_job_count_after = len(list(session.exec(select(BatchJob)).all()))
+        batch_segment_count_after = len(list(session.exec(select(BatchSegment)).all()))
+        assert batch_job_count_after == batch_job_count_before
+        assert batch_segment_count_after == batch_segment_count_before
+
     @pytest.mark.asyncio
     async def test_execute_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
-        """When batch_execute limit=1 is held, execute raises ResourceLimitExceeded."""
+        """When batch_execute limit=1 is held, execute marks batch as failed
+        and no segment is successfully processed."""
         from app.services.resource_guard_service import get_resource_guard
         from app.models.batch_job import BatchJob, BatchSegment
         from app.core.time import utc_now_iso
@@ -648,14 +669,21 @@ class TestBatchResourceGuard:
             await guard._release(lease)
 
         session.refresh(batch_job)
-        # When guard rejects, batch status should be failed
+        # When guard rejects, batch status should be failed.
         assert batch_job.status == BatchStatus.failed
+        # All segments should be counted as failed.
+        assert batch_job.failed_segments == batch_job.total_segments
+        # Segment should NOT have voice_job_id or audio_asset_id set.
+        session.refresh(seg)
+        assert seg.voice_job_id is None, "Segment should not have voice_job_id when guard rejects"
+        assert seg.audio_asset_id is None, "Segment should not have audio_asset_id when guard rejects"
 
     @pytest.mark.asyncio
-    async def test_segment_render_error_marks_voice_job_failed(self, session, seed_profile, seed_mock_binding):
-        """When segment render fails, the associated VoiceJob is marked as failed."""
-        from app.services.resource_guard_service import get_resource_guard
+    async def test_segment_render_error_marks_voice_job_and_segment_failed(self, session, seed_profile, seed_mock_binding):
+        """When segment render fails, the segment and its VoiceJob are both marked as failed."""
+        from app.models.batch_job import BatchJob, BatchSegment
         from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
         from unittest.mock import patch
 
         now = utc_now_iso()
@@ -706,18 +734,171 @@ class TestBatchResourceGuard:
 
         session.expire_all()
 
-        # Find the VoiceJob that was created for the segment
-        voice_jobs = list(session.exec(
-            select(VoiceJob).where(VoiceJob.job_type == "sync_render")
-        ).all())
-        # Filter to jobs created for this batch (job_id contains batch_id or the job was created during this execute)
-        # Since we can't easily correlate, check that at least one VoiceJob is marked failed with the render error
-        failed_jobs = [j for j in voice_jobs if j.status == "failed"]
-        assert len(failed_jobs) >= 1, "At least one VoiceJob should be marked as failed"
-        assert "Provider render error" in (failed_jobs[0].error_message or "")
+        # Reload segment and verify.
+        seg = session.get(BatchSegment, "seg_render_fail")
+        assert seg is not None
+        assert seg.status == BatchStatus.failed, f"Expected segment status=failed, got {seg.status}"
+        assert seg.error_message is not None and "Provider render error" in seg.error_message
+        assert seg.voice_job_id is not None, "Segment should have voice_job_id after VoiceJob creation"
+
+        # Verify the associated VoiceJob is also marked as failed.
+        voice_job = session.get(VoiceJob, seg.voice_job_id)
+        assert voice_job is not None
+        assert voice_job.status == "failed", f"Expected VoiceJob status=failed, got {voice_job.status}"
+        assert "Provider render error" in (voice_job.error_message or "")
 
     @pytest.mark.asyncio
-    async def test_execute_success_path_no_double_guard(self, session, seed_profile, seed_mock_binding):
+    async def test_segment_save_assets_error_marks_voice_job_and_segment_failed(self, session, seed_profile, seed_mock_binding):
+        """When save_assets fails, the segment and its VoiceJob are both marked as failed."""
+        from app.models.batch_job import BatchJob, BatchSegment
+        from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
+        from unittest.mock import patch, AsyncMock
+
+        now = utc_now_iso()
+        batch_id = "batch_save_fail_test"
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="mock",
+            output_format="mp3",
+            total_segments=1,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "测试。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        seg = BatchSegment(
+            id="seg_save_fail",
+            batch_job_id=batch_id,
+            index=0,
+            text="测试。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+        session.commit()
+
+        class SuccessRenderAdapter:
+            provider_name = "minimax"
+
+            async def render_sync(self, plan):
+                from app.providers.base import ProviderRenderResult
+                return ProviderRenderResult(
+                    audio_path="/fake/audio.mp3",
+                    duration_ms=100,
+                    usage_characters=10,
+                    trace_id="mock_trace",
+                    response_json={},
+                    timeline=[],
+                    metadata={},
+                )
+
+        service = BatchOrchestrationService()
+
+        with patch("app.services.batch_orchestration_service.get_provider", return_value=SuccessRenderAdapter()):
+            with patch("app.services.batch_orchestration_service.validate_binding_provider_voice"):
+                with patch.object(service.asset_service, "save_assets", side_effect=RuntimeError("save assets error")):
+                    await service.execute(session, batch_id)
+
+        session.expire_all()
+
+        # Reload segment and verify.
+        seg = session.get(BatchSegment, "seg_save_fail")
+        assert seg is not None
+        assert seg.status == BatchStatus.failed, f"Expected segment status=failed, got {seg.status}"
+        assert seg.error_message is not None and "save assets error" in seg.error_message
+        assert seg.voice_job_id is not None, "Segment should have voice_job_id after VoiceJob creation"
+
+        # Verify the associated VoiceJob is also marked as failed.
+        voice_job = session.get(VoiceJob, seg.voice_job_id)
+        assert voice_job is not None
+        assert voice_job.status == "failed", f"Expected VoiceJob status=failed, got {voice_job.status}"
+        assert "save assets error" in (voice_job.error_message or "")
+
+        # BatchJob should be failed (single segment failure = full failure).
+        session.refresh(batch_job)
+        assert batch_job.status == BatchStatus.failed
+
+    @pytest.mark.asyncio
+    async def test_batch_segments_execute_without_t2a_sync_guard(self, session, seed_profile, seed_mock_binding):
+        """Batch segments do NOT go through t2a_sync guard; they call render_sync directly.
+
+        This test verifies that even when t2a_sync guard slots are fully occupied,
+        batch segments can still execute because they bypass t2a_sync guard.
+        """
+        from app.models.batch_job import BatchJob, BatchSegment
+        from app.core.time import utc_now_iso
+        from app.services.resource_guard_service import get_resource_guard
+        from unittest.mock import patch
+
+        now = utc_now_iso()
+        batch_id = "batch_no_double_guard_test"
+
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="mock",
+            output_format="mp3",
+            total_segments=1,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "测试。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        seg = BatchSegment(
+            id="seg_no_double_guard",
+            batch_job_id=batch_id,
+            index=0,
+            text="测试。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+        session.commit()
+
+        # Hold ALL t2a_sync slots (limit=2) for minimax.
+        # Batch uses provider="mock" which does NOT use t2a_sync internally,
+        # so holding minimax t2a_sync slots should NOT affect batch execution.
+        guard = get_resource_guard()
+        lease1 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
+        lease2 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
+
+        try:
+            service = BatchOrchestrationService()
+            await service.execute(session, batch_id)
+        finally:
+            await guard._release(lease1)
+            await guard._release(lease2)
+
+        session.refresh(batch_job)
+        # Batch should succeed because mock segments bypass t2a_sync guard.
+        assert batch_job.status == BatchStatus.success, \
+            f"Expected batch success, got {batch_job.status}. If failed, segments may have wrongly entered t2a_sync guard."
+        assert batch_job.completed_segments == 1
+
+    @pytest.mark.asyncio
+    async def test_execute_success_path_regression(self, session, seed_profile, seed_mock_binding):
         """Normal batch execution still works correctly (regression test)."""
         from app.models.batch_job import BatchJob, BatchSegment
         from app.core.time import utc_now_iso

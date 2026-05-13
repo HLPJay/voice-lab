@@ -134,6 +134,12 @@ class BatchOrchestrationService:
 
         self.cost_guard.require_confirmed(provider, "batch_script", request.confirm_cost)
 
+        # Pre-validate all profile IDs before entering Resource Guard.
+        for line in request.script:
+            profile = get_profile(session, line.profile_id)
+            if not profile:
+                raise ProfileNotFound("Voice profile not found", line.profile_id)
+
         total_chars = sum(self.cost_guard.estimate_billing_characters(line.text) for line in request.script)
         self.logger.info(
             "batch_submit_script_cost_estimate provider=%s total_billing_chars=%d",
@@ -165,10 +171,6 @@ class BatchOrchestrationService:
             session.add(batch_job)
 
             for i, line in enumerate(request.script):
-                profile = get_profile(session, line.profile_id)
-                if not profile:
-                    raise ProfileNotFound("Voice profile not found", line.profile_id)
-
                 segment = BatchSegment(
                     id=new_id("seg"),
                     batch_job_id=batch_id,
@@ -252,11 +254,23 @@ class BatchOrchestrationService:
                 try:
                     segment = session.get(BatchSegment, segment_id)
                     if segment:
-                        segment.status = BatchStatus.failed
-                        segment.error_message = str(exc)[:500]
-                        segment.updated_at = utc_now_iso()
-                        session.add(segment)
-                        session.commit()
+                        # If VoiceJob is still running/pending, mark it failed too.
+                        if segment.voice_job_id:
+                            voice_job = session.get(VoiceJob, segment.voice_job_id)
+                            if voice_job and voice_job.status in {
+                                JobStatus.pending, JobStatus.running, JobStatus.processing
+                            }:
+                                voice_job.status = JobStatus.failed
+                                voice_job.error_message = str(exc)[:500]
+                                voice_job.updated_at = utc_now_iso()
+                                session.add(voice_job)
+
+                        if segment.status != BatchStatus.failed:
+                            segment.status = BatchStatus.failed
+                            segment.error_message = str(exc)[:500]
+                            segment.updated_at = utc_now_iso()
+                            session.add(segment)
+                            session.commit()
                 except Exception:
                     pass
                 return (segment_id, BatchStatus.failed, str(exc)[:500])
@@ -451,6 +465,31 @@ class BatchOrchestrationService:
             )
             return
 
+    def _mark_segment_voice_job_failed(
+        self,
+        session: Session,
+        segment: BatchSegment,
+        voice_job: VoiceJob,
+        exc: Exception,
+    ) -> None:
+        """Mark both segment and its VoiceJob as failed with a consistent error message."""
+        now = utc_now_iso()
+        message = f"Segment processing failed: {str(exc)[:200]}"
+
+        voice_job.status = JobStatus.failed
+        voice_job.error_message = message
+        voice_job.updated_at = now
+
+        segment.status = BatchStatus.failed
+        segment.error_message = message[:500]
+        segment.updated_at = now
+        if not segment.voice_job_id:
+            segment.voice_job_id = voice_job.id
+
+        session.add(voice_job)
+        session.add(segment)
+        session.commit()
+
     async def _process_segment(
         self,
         session: Session,
@@ -510,7 +549,15 @@ class BatchOrchestrationService:
 
         voice_job.status = JobStatus.running
         voice_job.updated_at = utc_now_iso()
+
+        # Bind VoiceJob to segment BEFORE entering render, so failure paths
+        # always have a valid voice_job_id for tracing.
+        segment.voice_job_id = voice_job.id
+        segment.status = BatchStatus.running
+        segment.updated_at = now
+
         session.add(voice_job)
+        session.add(segment)
         session.commit()
 
         try:
@@ -527,26 +574,24 @@ class BatchOrchestrationService:
             )
 
             segment.status = BatchStatus.success
-            segment.voice_job_id = voice_job.id
             segment.audio_asset_id = audio_asset.id
             segment.duration_ms = result.duration_ms
+            segment.error_message = None
             segment.updated_at = utc_now_iso()
-            session.add(segment)
 
             voice_job.status = JobStatus.success
             voice_job.provider_trace_id = result.trace_id
             voice_job.response_json = json.dumps(result.response_json, ensure_ascii=False)
+            voice_job.error_message = None
             voice_job.updated_at = utc_now_iso()
+
+            session.add(segment)
             session.add(voice_job)
             session.commit()
 
             return segment
         except Exception as exc:
-            voice_job.status = JobStatus.failed
-            voice_job.error_message = f"Segment render failed: {str(exc)[:200]}"
-            voice_job.updated_at = utc_now_iso()
-            session.add(voice_job)
-            session.commit()
+            self._mark_segment_voice_job_failed(session, segment, voice_job, exc)
             raise
 
     async def get_status(self, session: Session, batch_job_id: str) -> BatchStatusResponse:
