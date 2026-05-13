@@ -5,7 +5,7 @@ import httpx
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
-from app.core.context import set_job_id
+from app.core.context import reset_job_id, set_job_id
 from app.core.errors import JobNotFound, ProviderError, VoiceLabError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
@@ -106,8 +106,11 @@ class AsyncRenderService:
                 model=plan.model,
                 job_id=job.id,
             ):
-                set_job_id(job.id)
-                task_result = await adapter.create_async_task(plan)
+                token = set_job_id(job.id)
+                try:
+                    task_result = await adapter.create_async_task(plan)
+                finally:
+                    reset_job_id(token)
             job.status = JobStatus.processing
             job.provider_trace_id = task_result.trace_id
             job.response_json = json.dumps({
@@ -180,12 +183,15 @@ class AsyncRenderService:
                 model=job.model,
                 job_id=job.id,
             ):
-                set_job_id(job.id)
+                token = set_job_id(job.id)
                 try:
                     task_status = await adapter.query_async_task(provider_task_id)
                 except Exception:
                     # Provider query transient failures keep job processing; re-raise for retry.
+                    reset_job_id(token)
                     raise
+                finally:
+                    reset_job_id(token)
 
                 if task_status.status == "success" and task_status.file_url:
                     # Re-check status inside _complete_job to guard against race:

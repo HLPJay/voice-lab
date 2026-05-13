@@ -1425,7 +1425,7 @@ tests/ -x -q                         → 366 passed, 6 skipped
 
 ### 验证结果
 
-- pytest：368 passed, 6 skipped
+- pytest：374 passed, 6 skipped（P7-I5a 后新增 context/stats 测试）
 - `python scripts/analyze_provider_errors.py --days 7 --top 5` 正常运行
 
 ### 阶段结论
@@ -1433,3 +1433,58 @@ tests/ -x -q                         → 366 passed, 6 skipped
 - `job_id` 上下文修复确保同步 T2A 的 `update_call_log` 正常工作
 - `AudioAsset` 后备确保异步任务字符统计准确
 - Provider error analysis 脚本可用于识别错误模式
+
+---
+
+## P7-I5a Admin 字符统计与 job_id context 收口
+
+### 背景
+
+- P7-I5 已修复字符数统计主链路
+- 复核发现 `set_job_id()` 没有 reset，存在 context 泄漏风险
+- WebSocket 流式链路缺少 `job_id` context
+- `get_daily_trend(metric="characters")` 缺少 AudioAsset fallback
+
+### 修改内容
+
+**context.py**
+- `set_job_id()` 改为返回 `ContextVar.Token`
+- 新增 `reset_job_id(token)` 函数
+
+**voice_render_service.py**
+- 同步 T2A provider 调用使用 `try/finally` + `reset_job_id(token)` 确保 context 恢复
+
+**async_render_service.py**
+- `create_async_task` 和 `query_async_task` 调用前设置 job_id context，调用后 reset
+
+**stream_render_service.py**
+- WebSocket 流式在 provider generator 迭代期间设置 job_id context，结束后 reset
+
+**stats_service.py**
+- `get_daily_trend(metric="characters")` 改为同时聚合 `ProviderCallLog` 和 `AudioAsset`，按天取 `max(call_chars, asset_chars)`
+
+**tests/test_context.py**（新增）
+- `test_job_id_context_set_and_reset`
+- `test_job_id_context_nested`
+- `test_job_id_context_empty_string`
+
+**tests/test_stream_render_service.py**（新增）
+- `TestStreamRenderJobIdContext::test_stream_render_sets_and_resets_job_id_context`
+
+**tests/test_stats_api.py**（新增）
+- `test_daily_trend_characters_uses_audio_asset_fallback`
+- `test_daily_trend_characters_uses_max_not_sum`
+
+### 验证结果
+
+```bash
+python -m pytest tests/ -x -q
+# 374 passed, 6 skipped
+```
+
+### 阶段结论
+
+- `set_job_id()` 返回 token，`reset_job_id()` 确保 context 不会泄漏到后续调用
+- 同步/异步/流式三条链路的 provider 调用都已纳入 job_id context 管理
+- 统计 fallback 已覆盖 overview、by_provider、by_day、daily_trend 所有维度
+- 所有 context 和 stats 测试通过

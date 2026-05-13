@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 from sqlmodel import Session
 
 from app.core.config import get_settings
+from app.core.context import reset_job_id, set_job_id
 from app.core.errors import ProviderError, VoiceLabError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
@@ -131,21 +132,25 @@ class StreamRenderService:
                 total_duration_ms = 0
                 total_characters = 0
 
-                async for chunk in adapter.render_stream(plan):
-                    all_audio_data.extend(chunk.audio_data)
-                    chunk_count += 1
-                    if chunk.duration_ms:
-                        total_duration_ms += chunk.duration_ms
-                    if chunk.usage_characters:
-                        total_characters = chunk.usage_characters
+                token = set_job_id(job.id)
+                try:
+                    async for chunk in adapter.render_stream(plan):
+                        all_audio_data.extend(chunk.audio_data)
+                        chunk_count += 1
+                        if chunk.duration_ms:
+                            total_duration_ms += chunk.duration_ms
+                        if chunk.usage_characters:
+                            total_characters = chunk.usage_characters
 
-                    yield {
-                        "event": "audio_chunk",
-                        "chunk_index": chunk.chunk_index,
-                        "audio_base64": base64.b64encode(chunk.audio_data).decode(),
-                        "duration_ms": chunk.duration_ms,
-                        "is_final": chunk.is_final,
-                    }
+                        yield {
+                            "event": "audio_chunk",
+                            "chunk_index": chunk.chunk_index,
+                            "audio_base64": base64.b64encode(chunk.audio_data).decode(),
+                            "duration_ms": chunk.duration_ms,
+                            "is_final": chunk.is_final,
+                        }
+                finally:
+                    reset_job_id(token)
 
                 # 保存完整音频
                 audio_id = new_id("audio")

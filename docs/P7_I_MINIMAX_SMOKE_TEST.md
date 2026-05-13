@@ -602,3 +602,48 @@ python scripts/analyze_provider_errors.py --json --days 7
 - 按 provider 分析错误归因
 - 区分真实 provider 错误与测试/开发环境错误
 - 分析 Resource Guard 限流错误
+
+---
+
+## 17. P7-I5a Admin 字符统计与 job_id context 收口
+
+### 背景
+
+P7-I5 修复了 ProviderCallLog 与 VoiceJob 的 job_id 关联问题，并增加 AudioAsset 字符数 fallback。复核后发现：
+- `set_job_id()` 没有 reset，存在 context 泄漏风险
+- WebSocket 流式链路没有设置 `job_id` context
+- `get_daily_trend(metric="characters")` 仍只使用 `ProviderCallLog.usage_characters`，没有 AudioAsset fallback
+
+### 修改内容
+
+**context.py**
+- `set_job_id()` 改为返回 `ContextVar.Token`
+- 新增 `reset_job_id(token)` 函数
+
+**voice_render_service.py**
+- 同步 T2A provider 调用使用 `try/finally` + `reset_job_id(token)` 确保 context 恢复
+
+**async_render_service.py**
+- `create_async_task` 和 `query_async_task` 调用前设置 job_id context，调用后 reset
+
+**stream_render_service.py**
+- WebSocket 流式 `render_stream` 在整个 provider generator 迭代期间设置 job_id context，迭代结束后 reset
+
+**stats_service.py**
+- `get_daily_trend(metric="characters")` 改为同时聚合 `ProviderCallLog` 和 `AudioAsset`，按天取 `max(call_chars, asset_chars)`
+
+### 统计口径
+
+Admin 字符统计当前采用双来源兜底：
+
+- `ProviderCallLog.usage_characters`（由 `update_call_log` 写入）
+- `AudioAsset.usage_characters`（由 `save_assets` 写入）
+
+同步链路两者通常一致。异步/流式链路可能更多依赖 AudioAsset。当前阶段按 overview / provider / day / trend 维度取 `max(call_chars, asset_chars)`，避免重复计数。如后续需要更精确的财务级统计，应升级为按 `job_id` 粒度去重聚合。
+
+### 阶段结论
+
+- `set_job_id()` 返回 token，`reset_job_id()` 确保 context 不会泄漏
+- 同步/异步/流式三条链路的 provider 调用都已纳入 job_id context 管理
+- 统计 fallback 已覆盖 overview、by_provider、by_day、daily_trend 所有维度
+- pytest：374 passed, 6 skipped

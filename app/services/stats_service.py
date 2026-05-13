@@ -253,17 +253,47 @@ class StatsService:
 
         # All other metrics use ProviderCallLog
         if metric == "characters":
-            q = (
+            # Build call_chars_by_date from ProviderCallLog
+            call_chars_by_date: dict = {}
+            call_q = (
                 select(
                     func.substr(ProviderCallLog.created_at, 1, 10).label("date"),
-                    func.coalesce(func.sum(ProviderCallLog.usage_characters), 0).label("value"),
+                    func.coalesce(func.sum(ProviderCallLog.usage_characters), 0).label("chars"),
                 )
                 .group_by(func.substr(ProviderCallLog.created_at, 1, 10))
                 .order_by(func.substr(ProviderCallLog.created_at, 1, 10))
             )
             if call_filters:
-                q = q.where(*call_filters)
-            return [{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()]
+                call_q = call_q.where(*call_filters)
+            for row in session.exec(call_q).all():
+                call_chars_by_date[row[0]] = int(row[1] or 0)
+
+            # Build asset_chars_by_date from AudioAsset
+            asset_chars_by_date: dict = {}
+            asset_q = (
+                select(
+                    func.substr(AudioAsset.created_at, 1, 10).label("date"),
+                    func.coalesce(func.sum(AudioAsset.usage_characters), 0).label("chars"),
+                )
+                .group_by(func.substr(AudioAsset.created_at, 1, 10))
+                .order_by(func.substr(AudioAsset.created_at, 1, 10))
+            )
+            if job_filters:
+                asset_q = asset_q.where(
+                    AudioAsset.job_id.in_(select(VoiceJob.id).where(*job_filters))
+                )
+            for row in session.exec(asset_q).all():
+                asset_chars_by_date[row[0]] = int(row[1] or 0)
+
+            # Merge: use max of call and asset chars per date
+            dates = sorted(set(call_chars_by_date) | set(asset_chars_by_date))
+            return [
+                {
+                    "date": date,
+                    "value": max(call_chars_by_date.get(date, 0), asset_chars_by_date.get(date, 0)),
+                }
+                for date in dates
+            ]
 
         if metric == "errors":
             q = (

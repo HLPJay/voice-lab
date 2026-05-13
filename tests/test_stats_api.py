@@ -232,3 +232,85 @@ def test_daily_trend_unknown_metric(test_app, seed_stats_data):
     assert resp.status_code == 200
     body = resp.json()
     assert body["data"] == []
+
+
+def test_daily_trend_characters_uses_audio_asset_fallback(test_app, temp_db):
+    """当 ProviderCallLog.usage_characters 为 0 时，使用 AudioAsset.usage_characters"""
+    engine, _ = temp_db
+    with Session(engine) as session:
+        # Job with no call_log chars but audio_asset with chars
+        job = VoiceJob(
+            id="job_fb_001",
+            job_type="render",
+            status="success",
+            provider="minimax",
+            created_at="2026-05-12T10:00:00+00:00",
+            updated_at="2026-05-12T10:00:00+00:00",
+        )
+        # No call_log for this job (or call_log with null usage_characters)
+        asset = AudioAsset(
+            id="audio_fb_001",
+            job_id="job_fb_001",
+            provider="minimax",
+            file_path="/fake/fallback.mp3",
+            duration_ms=3000,
+            usage_characters=123,
+            created_at="2026-05-12T10:00:00+00:00",
+        )
+        session.add(job)
+        session.add(asset)
+        session.commit()
+
+    client = TestClient(test_app)
+    resp = client.get("/api/admin/stats/daily?metric=characters")
+    assert resp.status_code == 200
+    body = resp.json()
+    data = {d["date"]: d["value"] for d in body["data"]}
+    assert data.get("2026-05-12", 0) == 123
+
+
+def test_daily_trend_characters_uses_max_not_sum(test_app, temp_db):
+    """同一天 call_chars 和 asset_chars 相同时，取 max 而非 sum（避免重复计数）"""
+    engine, _ = temp_db
+    with Session(engine) as session:
+        job = VoiceJob(
+            id="job_max_001",
+            job_type="render",
+            status="success",
+            provider="minimax",
+            created_at="2026-05-13T10:00:00+00:00",
+            updated_at="2026-05-13T10:00:00+00:00",
+        )
+        # call_log with 100 chars
+        call_log = ProviderCallLog(
+            id="clog_max_001",
+            provider="minimax",
+            api_path="/v1/t2a_v2",
+            method="POST",
+            status_code=200,
+            duration_ms=1500,
+            usage_characters=100,
+            created_at="2026-05-13T10:00:00+00:00",
+        )
+        # audio_asset also with 100 chars
+        asset = AudioAsset(
+            id="audio_max_001",
+            job_id="job_max_001",
+            provider="minimax",
+            file_path="/fake/max.mp3",
+            duration_ms=3000,
+            usage_characters=100,
+            created_at="2026-05-13T10:00:00+00:00",
+        )
+        session.add(job)
+        session.add(call_log)
+        session.add(asset)
+        session.commit()
+
+    client = TestClient(test_app)
+    resp = client.get("/api/admin/stats/daily?metric=characters")
+    assert resp.status_code == 200
+    body = resp.json()
+    data = {d["date"]: d["value"] for d in body["data"]}
+    # Should be 100 (max of 100 and 100), not 200 (sum)
+    assert data.get("2026-05-13", 0) == 100

@@ -276,3 +276,54 @@ class TestStreamRenderResourceGuard:
                 assert job_record is not None
                 assert job_record.status == "failed", "Job should be marked failed when stream disconnects before completion"
                 assert "disconnected" in job_record.error_message.lower() or "before completion" in job_record.error_message.lower()
+
+
+class TestStreamRenderJobIdContext:
+    """Tests for job_id context management in StreamRenderService."""
+
+    @pytest.mark.asyncio
+    async def test_stream_render_sets_and_resets_job_id_context(self, session, seed_mock_binding):
+        """job_id context is set during stream and reset after generator exits."""
+        from unittest.mock import patch
+        from app.core.context import get_job_id
+        from app.services.stream_render_service import StreamRenderService
+        from app.domain.schemas import StreamRenderRequest
+
+        captured_job_ids = []
+
+        class CapturingStreamAdapter:
+            provider_name = "minimax"
+
+            async def render_stream(self, plan):
+                from app.providers.base import StreamAudioChunk
+                # Capture job_id from context inside the async generator
+                captured_job_ids.append(get_job_id())
+                yield StreamAudioChunk(
+                    audio_data=b"test_audio",
+                    chunk_index=0,
+                    duration_ms=100,
+                    usage_characters=5,
+                    is_final=True,
+                )
+
+        svc = StreamRenderService()
+        req = StreamRenderRequest(
+            text="context test",
+            profile_id="deep_night_programmer",
+            provider="minimax",
+            output_format="mp3",
+            confirm_cost=True,
+        )
+
+        with patch("app.services.stream_render_service.get_provider", return_value=CapturingStreamAdapter()):
+            with patch("app.services.stream_render_service.validate_binding_provider_voice"):
+                events = []
+                async for event in svc.render_stream(session, req):
+                    events.append(event)
+
+        # job_id should have been captured during stream
+        assert len(captured_job_ids) == 1
+        assert captured_job_ids[0] != ""
+
+        # After stream completes, job_id context should be cleared
+        assert get_job_id() == ""
