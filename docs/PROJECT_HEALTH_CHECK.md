@@ -1078,7 +1078,7 @@ python -m pytest tests/ -x -q
 ### 工作内容
 
 - 新增 docs/P7_RESOURCE_GUARD_ACCEPTANCE.md
-- 汇总所有 Resource Guard operation 与业务入口（14 个 operation）
+- 汇总所有 Resource Guard operation 与业务入口（13 个唯一 operation，14 条业务入口覆盖记录）
 - 汇总后端状态机验收点（同步、异步、流式、preview、clone、design、batch）
 - 汇总前端 RESOURCE_LIMIT_EXCEEDED 提示验收点
 - 执行后端回归测试
