@@ -451,3 +451,54 @@ git diff --check
 | P7-C | 接入核心同步与高风险路径（render_voice、design、clone、preview 等） |
 | P7-D | 接入流式与异步路径（明确只做瞬时调用并发，不跨请求持有 lease） |
 | P7-E | 接入批量路径（先 Layer 1 submit 入口，再评估 Layer 2 execute 生命周期） |
+
+---
+
+## P7-B ResourceGuardService 基础模块实现
+
+### 背景
+
+- P7-A 方案设计（f249198）和 P7-A1 修订（f6617a6）已完成
+- 本次实现 ResourceGuardService 基础模块及单元测试，不接入业务服务
+- 技术决策：采用 asyncio.Semaphore 实现并发控制（而非纯 Lock + Counter）
+
+### 实现内容
+
+新增文件：
+- `app/services/resource_guard_service.py`：ResourceGuardService、ResourceLimitExceeded、ResourcePolicy、ResourceLease、get_resource_guard()、reset_resource_guard_for_tests()
+- `tests/test_resource_guard.py`：15 个单元测试
+
+### 技术决策记录
+
+1. **Semaphore vs Lock+Counter**：第一版采用 `asyncio.Semaphore` 而非 Lock+Counter。Semaphore 本身是原子操作，适合"尝试获取-成功或拒绝"模式。
+
+2. **wait_for timeout=0.001**：使用 `asyncio.wait_for(sem.acquire(), timeout=0.001)` 实现非阻塞语义。timeout=0 会导致 Python asyncio 内部任务取消异常传播问题，timeout=0.001（1ms）足以让可用permit立即成功，拒绝对timeout敏感的场景。
+
+3. **_active 单独加锁**：`_active` dict 用于 introspection（current()、snapshot()），与 Semaphore 并发控制解耦。更新时使用独立 Lock 保护。
+
+4. **_acquire/_release 保留为测试方法**：业务代码使用 `guard()` async context manager，`_acquire/_release` 仅供测试直接调用。
+
+### 修改文件
+
+- `app/services/resource_guard_service.py`（新增）
+- `tests/test_resource_guard.py`（新增）
+- `docs/PROJECT_HEALTH_CHECK.md`（追加本节）
+
+### 验证结果
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+# 15 passed
+
+python -m pytest tests/ -x -q
+# 337 passed, 6 skipped (0:01:26)
+```
+
+### 后续实施计划
+
+| 阶段 | 目标 |
+|---|---|
+| P7-C | 接入核心同步与高风险路径（render_voice、design、clone、preview 等） |
+| P7-D | 接入流式与异步路径 |
+| P7-E | 接入批量路径 |
+| P7-F | 前端 RESOURCE_LIMIT_EXCEEDED 友好提示 |
