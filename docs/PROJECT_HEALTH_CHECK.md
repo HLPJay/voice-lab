@@ -1553,3 +1553,25 @@ python -m pytest tests/ -x -q
 - 声音克隆 / 声音设计继续暂缓
 - HTTP 流式端点是否补充仍属于产品/API 口径决策
 - 可以进入 P8 前端产品化规划
+
+---
+
+## P7-J0 并发架构问题归纳与轻量策略
+
+### 背景
+
+P7-I 已完成真实 MiniMax 主链路验证与修复收口。当前后台核心能力基本稳定，但围绕多浏览器访问、多用户并发、前端误点、刷新后重复提交、本地 App / SaaS / BYOK 产品形态等问题，需要沉淀并发架构边界。
+
+### 新增文档
+
+- `docs/P7_J_CONCURRENCY_ARCHITECTURE.md`
+
+### 结论
+
+- 当前系统支持基础并发
+- 当前并发控制是单进程内 Resource Guard，按 provider + operation 限制
+- 超限时直接返回 `RESOURCE_LIMIT_EXCEEDED`，不排队
+- 小规模多浏览器 / 多用户访问相对安全
+- 当前不承诺高并发多人 SaaS 能力
+- 当前不建议立即引入队列、worker、Redis、PostgreSQL 或完整幂等表
+- P8 应优先做前端产品化和轻量防误点 / 任务恢复
