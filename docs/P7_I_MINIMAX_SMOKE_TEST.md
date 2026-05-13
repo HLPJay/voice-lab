@@ -497,3 +497,108 @@ P7-I3 已将异步 T2A 轮询改为退避策略，但复核发现手动刷新可
 异步轮询已从固定 3 秒轮询升级为可控退避轮询，防止重复 timer 和无限自动轮询。
 
 - 结果文件 `started_at / ended_at` 记录真实时间
+
+---
+
+## 15. P7-I5 Admin Stats characters=0 修复
+
+### 背景
+
+Admin stats API (`/api/admin/stats/summary`) 返回 `total_characters: 0`，即使有成功的 T2A 任务。
+
+### 根因分析
+
+**问题 1：`job_id` 上下文未设置**
+
+`MiniMaxSpeechAdapter` 中的 `_request()` 调用 `_save_call_log()` 时使用 `job_id=get_job_id() or None`。由于 `job_id_var` 从未被设置，`get_job_id()` 始终返回空字符串 `""`，导致：
+- `_save_call_log` 存储 `job_id=NULL`
+- `update_call_log` 查询 `job_id=""`
+- 查询找不到记录，更新失败 → `usage_characters` 保持 NULL
+
+**问题 2：异步任务从未调用 `update_call_log`**
+
+`create_async_task` 创建 `ProviderCallLog` 条目但不调用 `update_call_log`，因此 `usage_characters` 从未被设置。
+
+**问题 3：`StatsService` 仅从 `ProviderCallLog` 读取**
+
+`StatsService.get_summary()` 只使用 `ProviderCallLog.usage_characters` 计算字符数，对于从未更新过该字段的任务返回 0。
+
+### 修复内容
+
+**1. 添加 `set_job_id()` 到 context.py**
+
+```python
+def set_job_id(job_id: str) -> None:
+    """Set the current job ID in the context."""
+    job_id_var.set(job_id)
+```
+
+**2. 在调用适配器方法前设置 `job_id`**
+
+- `voice_render_service.py`：在 `render_sync()` 调用前添加 `set_job_id(job.id)`
+- `async_render_service.py`：在 `create_async_task()` 和 `query_async_task()` 调用前添加 `set_job_id(job.id)`
+
+**3. `StatsService` 增加 `AudioAsset.usage_characters` 后备**
+
+- `total_characters`：使用 `MAX(call_log_chars, asset_chars)`
+- `by_provider`：对每个 provider 使用 `max(call_chars, asset_chars)`
+- `by_day`：对每个日期使用 `max(call_chars, asset_chars)`
+
+这确保即使 `ProviderCallLog.usage_characters` 未更新（如异步任务），也能从 `AudioAsset` 获取准确的字符数。
+
+### 验证方式
+
+```bash
+# 运行分析脚本检查 stats
+python scripts/analyze_provider_errors.py --days 7 --top 20
+
+# 运行测试
+python -m pytest tests/test_stats_api.py tests/test_admin_api.py -x -q
+```
+
+### 阶段结论
+
+- `job_id` 上下文修复后，同步 T2A 的 `update_call_log` 可以正确找到并更新记录
+- `AudioAsset.usage_characters` 作为后备确保异步任务的字符统计准确
+- 所有测试通过
+
+---
+
+## 16. P7-I5a Provider Error Attribution 分析工具
+
+### 背景
+
+需要能够按错误类型、错误消息、API 路径和 provider 对provider错误进行分组分析，以识别模式和归因。
+
+### 实现内容
+
+创建 `scripts/analyze_provider_errors.py`，支持：
+
+```bash
+# 分析最近 7 天的错误
+python scripts/analyze_provider_errors.py --days 7 --top 20
+
+# 按 provider 过滤
+python scripts/analyze_provider_errors.py --provider minimax --days 30
+
+# 按错误类型过滤
+python scripts/analyze_provider_errors.py --error-type TimeoutException --top 50
+
+# 输出 JSON 格式
+python scripts/analyze_provider_errors.py --json --days 7
+```
+
+### 输出内容
+
+- 按错误类型分组统计
+- 按错误消息前缀（前100字符）分组
+- 按 API 路径 + 状态码分组
+- 按 provider 分组
+- 显示错误率和总调用数
+
+### 使用场景
+
+- 识别高频错误模式
+- 按 provider 分析错误归因
+- 区分真实 provider 错误与测试/开发环境错误
+- 分析 Resource Guard 限流错误

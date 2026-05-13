@@ -36,11 +36,27 @@ class StatsService:
         failed_jobs = sum(1 for j in all_jobs if j.status == "failed")
         success_rate = round(success_jobs / total_jobs, 3) if total_jobs > 0 else 0
 
-        # total_characters from provider_call_logs
-        char_query = select(func.coalesce(func.sum(ProviderCallLog.usage_characters), 0))
+        # total_characters: use ProviderCallLog.usage_characters where set,
+        # fall back to AudioAsset.usage_characters (populated for both sync and async jobs).
+        # MAX handles the case where both are set (sync jobs): they should be equal,
+        # so we don't double-count. For async jobs, only AudioAsset has the value.
+        chars_from_calls = select(
+            func.coalesce(func.sum(ProviderCallLog.usage_characters), 0)
+        )
         if call_filter:
-            char_query = char_query.where(*call_filter)
-        total_characters = session.exec(char_query).one() or 0
+            chars_from_calls = chars_from_calls.where(*call_filter)
+        chars_from_calls_val = session.exec(chars_from_calls).one() or 0
+
+        chars_from_assets = select(
+            func.coalesce(func.sum(AudioAsset.usage_characters), 0)
+        )
+        if job_filter:
+            chars_from_assets = chars_from_assets.where(
+                AudioAsset.job_id.in_(select(VoiceJob.id).where(*job_filter))
+            )
+        chars_from_assets_val = session.exec(chars_from_assets).one() or 0
+
+        total_characters = max(chars_from_calls_val, chars_from_assets_val)
 
         # total_audio_duration_ms from AudioAsset
         dur_query = select(func.coalesce(func.sum(AudioAsset.duration_ms), 0))
@@ -50,7 +66,7 @@ class StatsService:
             )
         total_audio_duration_ms = session.exec(dur_query).one() or 0
 
-        # by_provider from provider_call_logs
+        # by_provider from provider_call_logs + AudioAsset fallback for chars
         by_provider: dict = {}
         provider_query = select(
             ProviderCallLog.provider,
@@ -61,12 +77,29 @@ class StatsService:
         ).group_by(ProviderCallLog.provider)
         if call_filter:
             provider_query = provider_query.where(*call_filter)
+
+        # Get chars per provider from AudioAsset as fallback
+        asset_chars_by_provider: dict = {}
+        asset_chars_query = select(
+            AudioAsset.provider,
+            func.coalesce(func.sum(AudioAsset.usage_characters), 0).label("chars"),
+        )
+        if job_filter:
+            asset_chars_query = asset_chars_query.where(
+                AudioAsset.job_id.in_(select(VoiceJob.id).where(*job_filter))
+            )
+        asset_chars_query = asset_chars_query.group_by(AudioAsset.provider)
+        for row in session.exec(asset_chars_query).all():
+            asset_chars_by_provider[row[0]] = int(row[1] or 0)
+
         for row in session.exec(provider_query).all():
             p = row[0]
             api_calls = int(row[1] or 0)
             avg_ms = row[2] or 0
             error_count = int(row[3] or 0)
-            chars = int(row[4] or 0)
+            call_chars = int(row[4] or 0)
+            asset_chars = asset_chars_by_provider.get(p, 0)
+            chars = max(call_chars, asset_chars)  # use higher of the two to avoid missing async chars
             p95 = self._p95_duration(session, p, call_filter)
             by_provider[p] = {
                 "api_calls": api_calls,
@@ -94,7 +127,7 @@ class StatsService:
                 "errors": int(row[3] or 0),
             }
 
-        # by_day from provider_call_logs
+        # by_day from provider_call_logs + AudioAsset fallback for chars
         by_day: list[dict] = []
         day_query = (
             select(
@@ -108,6 +141,23 @@ class StatsService:
         )
         if call_filter:
             day_query = day_query.where(*call_filter)
+
+        # Get chars per date from AudioAsset as fallback
+        asset_chars_by_date: dict = {}
+        asset_day_query = select(
+            func.substr(AudioAsset.created_at, 1, 10).label("date"),
+            func.coalesce(func.sum(AudioAsset.usage_characters), 0).label("chars"),
+        )
+        if job_filter:
+            asset_day_query = asset_day_query.where(
+                AudioAsset.job_id.in_(select(VoiceJob.id).where(*job_filter))
+            )
+        asset_day_query = asset_day_query.group_by(
+            func.substr(AudioAsset.created_at, 1, 10)
+        ).order_by(func.substr(AudioAsset.created_at, 1, 10))
+        for row in session.exec(asset_day_query).all():
+            asset_chars_by_date[row[0]] = int(row[1] or 0)
+
         for row in session.exec(day_query).all():
             date = row[0]
             day_jobs_query = (
@@ -117,11 +167,14 @@ class StatsService:
             if job_filter:
                 day_jobs_query = day_jobs_query.where(*job_filter)
             day_jobs = session.exec(day_jobs_query).one() or 0
+            call_chars = int(row[3] or 0)
+            asset_chars = asset_chars_by_date.get(date, 0)
+            chars = max(call_chars, asset_chars)
             by_day.append(
                 {
                     "date": date,
                     "jobs": int(day_jobs or 0),
-                    "characters": int(row[3] or 0),
+                    "characters": chars,
                     "errors": int(row[2] or 0),
                     "api_calls": int(row[1] or 0),
                 }

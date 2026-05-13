@@ -5,6 +5,7 @@ import httpx
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
+from app.core.context import set_job_id
 from app.core.errors import JobNotFound, ProviderError, VoiceLabError
 from app.core.logging import get_logger
 from app.core.time import utc_now_iso
@@ -105,6 +106,7 @@ class AsyncRenderService:
                 model=plan.model,
                 job_id=job.id,
             ):
+                set_job_id(job.id)
                 task_result = await adapter.create_async_task(plan)
             job.status = JobStatus.processing
             job.provider_trace_id = task_result.trace_id
@@ -178,6 +180,7 @@ class AsyncRenderService:
                 model=job.model,
                 job_id=job.id,
             ):
+                set_job_id(job.id)
                 try:
                     task_status = await adapter.query_async_task(provider_task_id)
                 except Exception:

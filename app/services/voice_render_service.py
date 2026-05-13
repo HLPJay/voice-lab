@@ -3,6 +3,7 @@ import json
 from sqlmodel import Session
 
 from app.core.config import get_settings
+from app.core.context import set_job_id
 from app.core.logging import get_logger
 from app.core.errors import ProviderError, VoiceLabError
 from app.core.time import utc_now_iso
@@ -106,6 +107,7 @@ class VoiceRenderService:
 
             if resource_guard_already_acquired:
                 # Already guarded by upper layer (e.g. VoiceVariantService), skip t2a_sync guard
+                set_job_id(job.id)
                 result = await get_provider(provider).render_sync(plan)
             else:
                 async with get_resource_guard().guard(
@@ -114,6 +116,7 @@ class VoiceRenderService:
                     model=plan.model,
                     job_id=job.id,
                 ):
+                    set_job_id(job.id)
                     result = await get_provider(provider).render_sync(plan)
             audio_asset, subtitle_asset = self.asset_service.save_assets(
                 session,

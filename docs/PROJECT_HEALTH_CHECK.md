@@ -1380,3 +1380,56 @@ tests/ -x -q                         → 366 passed, 6 skipped
 异步轮询已实现防重复 timer 和最大自动轮询时长保护，逻辑完整。
 - 不修改 Resource Guard 策略
 - 不实现新的后端能力
+
+---
+
+## P7-I5 Admin Stats characters=0 修复 + Provider Error Attribution
+
+### 背景
+
+- Admin stats API 返回 `total_characters: 0`，即使有成功的 T2A 任务
+- 需要工具分析 provider 错误归因
+
+### 根因分析
+
+**问题 1：`job_id` 上下文未设置**
+- `job_id_var` 从未被设置，`get_job_id()` 返回空字符串
+- `_save_call_log` 存储 `job_id=NULL`，`update_call_log` 查询 `job_id=""` 找不到记录
+- 导致 `usage_characters` 从未被正确更新
+
+**问题 2：异步任务从未调用 `update_call_log`**
+- `create_async_task` 不调用 `update_call_log`
+
+**问题 3：`StatsService` 仅从 `ProviderCallLog` 读取**
+- 不使用 `AudioAsset.usage_characters` 作为后备
+
+### 修改内容
+
+**context.py**
+- 新增 `set_job_id(job_id: str)` 函数
+
+**voice_render_service.py**
+- `render_voice()` 在调用 `render_sync()` 前设置 `set_job_id(job.id)`
+
+**async_render_service.py**
+- `submit_task()` 在调用 `create_async_task()` 前设置 `set_job_id(job.id)`
+- `query_status()` 在调用 `query_async_task()` 前设置 `set_job_id(job.id)`
+
+**stats_service.py**
+- `get_summary()` 对 `total_characters`、`by_provider`、`by_day` 使用 `MAX(call_chars, asset_chars)` 
+- 这确保即使 `ProviderCallLog.usage_characters` 未更新，也能从 `AudioAsset` 获取准确值
+
+**scripts/analyze_provider_errors.py**（新增）
+- 按错误类型、错误消息前缀、API路径、provider 分组分析错误
+- 支持 `--days`、`--provider`、`--error-type`、`--top`、`--json` 参数
+
+### 验证结果
+
+- pytest：368 passed, 6 skipped
+- `python scripts/analyze_provider_errors.py --days 7 --top 5` 正常运行
+
+### 阶段结论
+
+- `job_id` 上下文修复确保同步 T2A 的 `update_call_log` 正常工作
+- `AudioAsset` 后备确保异步任务字符统计准确
+- Provider error analysis 脚本可用于识别错误模式
