@@ -25,7 +25,7 @@ from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.cost_guard_service import CostGuardService
-from app.services.resource_guard_service import get_resource_guard
+from app.services.resource_guard_service import ResourceLimitExceeded, get_resource_guard
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 
@@ -161,6 +161,11 @@ class AsyncRenderService:
             response_data = {}
         provider_task_id = response_data.get("provider_task_id")
         if not provider_task_id:
+            job.status = JobStatus.failed
+            job.error_message = "No provider task ID found for job"
+            job.updated_at = utc_now_iso()
+            session.add(job)
+            session.commit()
             raise ProviderError("No provider task ID found for job", job_id)
 
         adapter = get_provider(job.provider)
@@ -172,12 +177,31 @@ class AsyncRenderService:
                 model=job.model,
                 job_id=job.id,
             ):
-                task_status = await adapter.query_async_task(provider_task_id)
+                try:
+                    task_status = await adapter.query_async_task(provider_task_id)
+                except Exception:
+                    # Provider query transient failures keep job processing; re-raise for retry.
+                    raise
 
                 if task_status.status == "success" and task_status.file_url:
                     # Re-check status inside _complete_job to guard against race:
                     # another concurrent request may have already completed this job
-                    await self._complete_job(session, job, task_status)
+                    try:
+                        await self._complete_job(session, job, task_status)
+                    except VoiceLabError as exc:
+                        job.status = JobStatus.failed
+                        job.error_message = exc.message
+                        job.updated_at = utc_now_iso()
+                        session.add(job)
+                        session.commit()
+                        raise
+                    except Exception as exc:
+                        job.status = JobStatus.failed
+                        job.error_message = str(exc)[:500]
+                        job.updated_at = utc_now_iso()
+                        session.add(job)
+                        session.commit()
+                        raise
                 elif task_status.status == "success" and not task_status.file_url:
                     # Success but no file_url — mark failed to avoid stuck processing
                     job.status = JobStatus.failed
@@ -193,9 +217,8 @@ class AsyncRenderService:
                     session.add(job)
                     session.commit()
                     self.logger.error("async_failed job=%s error=%s", job.id, job.error_message)
-        except VoiceLabError:
-            # Re-raise VoiceLabError (includes ResourceLimitExceeded) without changing job status.
-            # Transient query/download failure does not mean the provider task itself failed.
+        except ResourceLimitExceeded:
+            # Query/download resource busy; keep job processing for retry.
             raise
 
         return self._build_status_response(session, job)

@@ -257,6 +257,7 @@ class TestStreamRenderResourceGuard:
                 # Read first event (started)
                 first_event = await agen.__anext__()
                 assert first_event["event"] == "started"
+                job_id = first_event["job_id"]
 
                 # Guard slot should be held (current=1)
                 assert guard.current("minimax", "t2a_stream") == 1
@@ -266,3 +267,12 @@ class TestStreamRenderResourceGuard:
 
                 # Guard slot should be released (current=0)
                 assert guard.current("minimax", "t2a_stream") == 0
+
+                # Verify job was marked failed due to early disconnect
+                from sqlmodel import select
+                from app.models.voice_job import VoiceJob
+                session.expire_all()
+                job_record = session.exec(select(VoiceJob).where(VoiceJob.id == job_id)).first()
+                assert job_record is not None
+                assert job_record.status == "failed", "Job should be marked failed when stream disconnects before completion"
+                assert "disconnected" in job_record.error_message.lower() or "before completion" in job_record.error_message.lower()

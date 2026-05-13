@@ -383,3 +383,134 @@ class TestAsyncRenderResourceGuard:
 
         # Cleanup
         await guard._release(lease)
+
+    @pytest.mark.asyncio
+    async def test_query_status_missing_provider_task_id_marks_failed(self, session, seed_profile, seed_mock_binding):
+        """When response_json has no provider_task_id, job should be marked failed."""
+        from app.services.async_render_service import AsyncRenderService
+        from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
+
+        now = utc_now_iso()
+        job = VoiceJob(
+            id="test_no_task_id_job",
+            job_type="async_render",
+            status="processing",
+            provider="minimax",
+            model="speech-2.8-hd",
+            profile_id="deep_night_programmer",
+            binding_id="binding_mock_deep_night_programmer",
+            input_text="测试",
+            processed_text="测试",
+            render_plan_json="{}",
+            response_json="{}",  # no provider_task_id
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+
+        svc = AsyncRenderService()
+
+        from app.core.errors import ProviderError
+        with pytest.raises(ProviderError) as exc_info:
+            await svc.query_status(session, "test_no_task_id_job")
+
+        session.refresh(job)
+        assert job.status == "failed", "Job should be marked failed when provider_task_id is missing"
+        assert "provider task ID" in job.error_message
+
+    @pytest.mark.asyncio
+    async def test_query_status_complete_job_error_marks_failed(self, session, seed_profile, seed_mock_binding):
+        """When _complete_job raises, job should be marked failed."""
+        from unittest.mock import patch, AsyncMock
+        from app.services.async_render_service import AsyncRenderService
+        from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
+
+        now = utc_now_iso()
+        job = VoiceJob(
+            id="test_complete_error_job",
+            job_type="async_render",
+            status="processing",
+            provider="minimax",
+            model="speech-2.8-hd",
+            profile_id="deep_night_programmer",
+            binding_id="binding_mock_deep_night_programmer",
+            input_text="测试",
+            processed_text="测试",
+            render_plan_json="{}",
+            response_json='{"provider_task_id": "mock_task"}',
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+
+        class SuccessWithUrlAdapter:
+            provider_name = "minimax"
+
+            async def query_async_task(self, provider_task_id):
+                from app.providers.base import AsyncTaskStatus
+                return AsyncTaskStatus(
+                    task_id=provider_task_id,
+                    status="success",
+                    file_url="http://fake.url/audio.mp3",
+                    trace_id="mock_trace",
+                    metadata={},
+                )
+
+        async def failing_complete_job(sess, j, task_status):
+            raise RuntimeError("Download failed: network error")
+
+        svc = AsyncRenderService()
+
+        with patch("app.services.async_render_service.get_provider", return_value=SuccessWithUrlAdapter()):
+            with patch.object(svc, "_complete_job", side_effect=failing_complete_job):
+                with pytest.raises(RuntimeError):
+                    await svc.query_status(session, "test_complete_error_job")
+
+        session.refresh(job)
+        assert job.status == "failed", "Job should be marked failed when _complete_job raises"
+
+    @pytest.mark.asyncio
+    async def test_query_status_provider_query_error_keeps_processing(self, session, seed_profile, seed_mock_binding):
+        """When adapter.query_async_task raises, job.status should stay processing (transient error)."""
+        from unittest.mock import patch
+        from app.services.async_render_service import AsyncRenderService
+        from app.models.voice_job import VoiceJob
+        from app.core.time import utc_now_iso
+
+        now = utc_now_iso()
+        job = VoiceJob(
+            id="test_query_error_job",
+            job_type="async_render",
+            status="processing",
+            provider="minimax",
+            model="speech-2.8-hd",
+            profile_id="deep_night_programmer",
+            binding_id="binding_mock_deep_night_programmer",
+            input_text="测试",
+            processed_text="测试",
+            render_plan_json="{}",
+            response_json='{"provider_task_id": "mock_task"}',
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+
+        class QueryErrorAdapter:
+            provider_name = "minimax"
+
+            async def query_async_task(self, provider_task_id):
+                raise RuntimeError("Provider query transient error")
+
+        svc = AsyncRenderService()
+
+        with patch("app.services.async_render_service.get_provider", return_value=QueryErrorAdapter()):
+            with pytest.raises(RuntimeError):
+                await svc.query_status(session, "test_query_error_job")
+
+        session.refresh(job)
+        assert job.status == "processing", "Job should stay processing when provider query transiently fails"

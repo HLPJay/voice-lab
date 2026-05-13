@@ -108,6 +108,9 @@ class StreamRenderService:
             job.id, request.profile_id, provider, len(request.text),
         )
 
+        started = False
+        completed = False
+
         try:
             async with get_resource_guard().guard(
                 provider=provider,
@@ -115,6 +118,7 @@ class StreamRenderService:
                 model=plan.model,
                 job_id=job.id,
             ):
+                started = True
                 yield {
                     "event": "started",
                     "job_id": job.id,
@@ -122,7 +126,6 @@ class StreamRenderService:
                     "model": plan.model,
                 }
 
-                adapter = get_provider(provider)
                 all_audio_data = bytearray()
                 chunk_count = 0
                 total_duration_ms = 0
@@ -168,6 +171,7 @@ class StreamRenderService:
                 job.updated_at = utc_now_iso()
                 session.add(job)
                 session.commit()
+                completed = True
 
                 logger.info(
                     "stream_render_success job=%s chunks=%d duration_ms=%d characters=%d",
@@ -205,3 +209,18 @@ class StreamRenderService:
             session.commit()
             logger.error("stream_render_failed job=%s error=%s", job.id, str(exc))
             yield {"event": "error", "code": "INTERNAL_ERROR", "message": str(exc)[:200]}
+        finally:
+            # If generator was started but not completed (e.g. WebSocket disconnect),
+            # mark the job as failed to avoid stuck running state.
+            if started and not completed:
+                try:
+                    session.refresh(job)
+                except Exception:
+                    pass
+                if job.status == JobStatus.running:
+                    job.status = JobStatus.failed
+                    job.error_message = "Stream disconnected before completion"
+                    job.updated_at = utc_now_iso()
+                    session.add(job)
+                    session.commit()
+                    logger.warning("stream_render_disconnected job=%s", job.id)

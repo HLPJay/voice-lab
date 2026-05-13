@@ -771,6 +771,52 @@ python -m pytest tests/ -x -q
 ### 验证结果
 
 - Resource Guard 单元测试：15 passed
-- AsyncRenderService 测试：11 passed
+- AsyncRenderService 测试：14 passed
 - StreamRenderService 测试：9 passed
-- 全量测试：355 passed, 6 skipped
+- 全量测试：358 passed, 6 skipped
+
+---
+
+## P7-D1 异步与流式状态机边界修复
+
+### 背景
+
+- P7-D 已接入 AsyncRenderService 与 StreamRenderService 的 Resource Guard
+- 审查发现 query_status 异常处理范围过宽，可能让下载/保存失败的 job 长期 processing
+- 审查发现 provider_task_id 缺失时 job 没有标记 failed
+- 审查发现 stream generator 提前关闭时 Resource Guard 会释放，但 job 可能仍 running
+
+### 修复内容
+
+- query_status 中 ResourceLimitExceeded 仍保持 job processing
+- provider_task_id 缺失时标记 job failed
+- _complete_job 下载/保存失败时标记 job failed
+- provider query 本身临时异常保持 processing 并重新抛出（本次不做改变）
+- stream generator started 后、completed 前提前关闭时标记 job failed（finally 块处理）
+- stream 正常完成不被 finally 覆盖
+- stream Resource Guard 拒绝不 yield started，并保持 RESOURCE_LIMIT_EXCEEDED 语义
+- 本次不接入 BatchOrchestrationService
+
+### 修改文件
+
+- app/services/async_render_service.py
+- app/services/stream_render_service.py
+- tests/test_async_render.py
+- tests/test_stream_render_service.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 单元测试：15 passed
+- AsyncRenderService 测试：14 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：358 passed, 6 skipped
