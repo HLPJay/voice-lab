@@ -554,7 +554,8 @@ python -m pytest tests/ -x -q
 |---|---|
 | P7-C | 接入核心同步与高风险路径 |
 | P7-C1 | 修复 voice_variants 双重 guard 边界问题 |
-| P7-D | 接入流式与异步路径 |
+| P7-C1-fix | 修复真实 provider 双重限流 |
+| P7-D | 接入异步与流式路径 |
 | P7-E | 接入批量路径 |
 
 ---
@@ -714,3 +715,62 @@ python -m pytest tests/ -x -q
 - Resource Guard 单元测试：15 passed
 - VoiceVariantService 测试：9 passed
 - 全量测试：347 passed, 6 skipped
+
+---
+
+## P7-D Resource Guard 异步与流式路径接入
+
+### 背景
+
+- P7-C / P7-C1-fix 已完成核心同步、高风险路径和 voice_variants 双重 guard 边界修复
+- 本次进入 P7-D
+- 本阶段只接入 AsyncRenderService 和 StreamRenderService
+- 不接入 BatchOrchestrationService
+
+### 本次接入范围
+
+- AsyncRenderService.submit_task → t2a_async_submit
+- AsyncRenderService.query_status / _complete_job → t2a_async_query_download
+- StreamRenderService.render_stream → t2a_stream
+
+### 关键设计确认
+
+- 异步任务不跨 HTTP 请求长期持有 lease
+- submit_task 只保护 create_async_task 瞬时调用
+- query_status 只保护 query_async_task 和成功后的 download/save 瞬时阶段
+- query_status 被 Resource Guard 拒绝时，不把 job 标记 failed（因为只是查询资源忙，不是任务本身失败）
+- stream guard 覆盖整个 async generator 生命周期
+- stream 拿到 guard 后才 yield started
+- stream 断开或 generator close 后自动释放 guard（async context manager）
+- 本次不接入批量任务
+
+### 本次不接入范围
+
+- BatchOrchestrationService
+- 前端
+- Provider Adapter
+- 数据库模型
+
+### 修改文件
+
+- app/services/async_render_service.py
+- app/services/stream_render_service.py
+- tests/test_async_render.py
+- tests/test_stream_render_service.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 单元测试：15 passed
+- AsyncRenderService 测试：11 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：355 passed, 6 skipped

@@ -19,6 +19,7 @@ from app.repositories.voice_profile_repo import resolve_binding
 from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.cost_guard_service import CostGuardService
+from app.services.resource_guard_service import get_resource_guard
 from app.services.text_preprocess_service import TextPreprocessService
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
@@ -108,76 +109,82 @@ class StreamRenderService:
         )
 
         try:
-            yield {
-                "event": "started",
-                "job_id": job.id,
-                "provider": provider,
-                "model": plan.model,
-            }
-
-            adapter = get_provider(provider)
-            all_audio_data = bytearray()
-            chunk_count = 0
-            total_duration_ms = 0
-            total_characters = 0
-
-            async for chunk in adapter.render_stream(plan):
-                all_audio_data.extend(chunk.audio_data)
-                chunk_count += 1
-                if chunk.duration_ms:
-                    total_duration_ms += chunk.duration_ms
-                if chunk.usage_characters:
-                    total_characters = chunk.usage_characters
-
+            async with get_resource_guard().guard(
+                provider=provider,
+                operation="t2a_stream",
+                model=plan.model,
+                job_id=job.id,
+            ):
                 yield {
-                    "event": "audio_chunk",
-                    "chunk_index": chunk.chunk_index,
-                    "audio_base64": base64.b64encode(chunk.audio_data).decode(),
-                    "duration_ms": chunk.duration_ms,
-                    "is_final": chunk.is_final,
+                    "event": "started",
+                    "job_id": job.id,
+                    "provider": provider,
+                    "model": plan.model,
                 }
 
-            # 保存完整音频
-            audio_id = new_id("audio")
-            fmt = request.audio_format or "mp3"
-            audio_path = storage_path("audio", f"{audio_id}.{fmt}")
-            audio_path.write_bytes(bytes(all_audio_data))
+                adapter = get_provider(provider)
+                all_audio_data = bytearray()
+                chunk_count = 0
+                total_duration_ms = 0
+                total_characters = 0
 
-            audio_asset = AudioAsset(
-                id=audio_id,
-                job_id=job.id,
-                provider=provider,
-                model=plan.model,
-                file_path=str(audio_path),
-                file_url=f"/api/voice/assets/{audio_id}/download",
-                format=fmt,
-                duration_ms=total_duration_ms or None,
-                usage_characters=total_characters or None,
-                created_at=utc_now_iso(),
-            )
-            voice_asset_repo.create_audio_asset(session, audio_asset)
+                async for chunk in adapter.render_stream(plan):
+                    all_audio_data.extend(chunk.audio_data)
+                    chunk_count += 1
+                    if chunk.duration_ms:
+                        total_duration_ms += chunk.duration_ms
+                    if chunk.usage_characters:
+                        total_characters = chunk.usage_characters
 
-            job.status = JobStatus.success
-            job.updated_at = utc_now_iso()
-            session.add(job)
-            session.commit()
+                    yield {
+                        "event": "audio_chunk",
+                        "chunk_index": chunk.chunk_index,
+                        "audio_base64": base64.b64encode(chunk.audio_data).decode(),
+                        "duration_ms": chunk.duration_ms,
+                        "is_final": chunk.is_final,
+                    }
 
-            logger.info(
-                "stream_render_success job=%s chunks=%d duration_ms=%d characters=%d",
-                job.id, chunk_count, total_duration_ms, total_characters,
-            )
+                # 保存完整音频
+                audio_id = new_id("audio")
+                fmt = request.audio_format or "mp3"
+                audio_path = storage_path("audio", f"{audio_id}.{fmt}")
+                audio_path.write_bytes(bytes(all_audio_data))
 
-            yield {
-                "event": "completed",
-                "job_id": job.id,
-                "total_chunks": chunk_count,
-                "total_duration_ms": total_duration_ms,
-                "total_characters": total_characters,
-                "audio_asset": {
-                    "id": audio_asset.id,
-                    "url": audio_asset.file_url,
-                },
-            }
+                audio_asset = AudioAsset(
+                    id=audio_id,
+                    job_id=job.id,
+                    provider=provider,
+                    model=plan.model,
+                    file_path=str(audio_path),
+                    file_url=f"/api/voice/assets/{audio_id}/download",
+                    format=fmt,
+                    duration_ms=total_duration_ms or None,
+                    usage_characters=total_characters or None,
+                    created_at=utc_now_iso(),
+                )
+                voice_asset_repo.create_audio_asset(session, audio_asset)
+
+                job.status = JobStatus.success
+                job.updated_at = utc_now_iso()
+                session.add(job)
+                session.commit()
+
+                logger.info(
+                    "stream_render_success job=%s chunks=%d duration_ms=%d characters=%d",
+                    job.id, chunk_count, total_duration_ms, total_characters,
+                )
+
+                yield {
+                    "event": "completed",
+                    "job_id": job.id,
+                    "total_chunks": chunk_count,
+                    "total_duration_ms": total_duration_ms,
+                    "total_characters": total_characters,
+                    "audio_asset": {
+                        "id": audio_asset.id,
+                        "url": audio_asset.file_url,
+                    },
+                }
 
         except VoiceLabError as exc:
             job.status = JobStatus.failed
