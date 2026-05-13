@@ -2452,6 +2452,21 @@ function handleStopAsyncPolling() {
   // P8-4B: History job card helpers — no API calls, no state mutation
   // ============================================================
 
+  // P8-4D: Render download section for history job card
+  function historyDownloadEntryHtml(job) {
+    const assetId = getHistoryAudioAssetId(job);
+    if (assetId) {
+      return `<div style="margin-top:10px">
+        <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">下载入口</div>
+        <div class="action-row">${downloadBtnHtml(assetId)}</div>
+      </div>`;
+    }
+    return `<div style="margin-top:10px">
+      <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">下载入口</div>
+      <p style="font-size:0.82rem;color:#a0aec0">当前历史记录未返回可下载音频资产。</p>
+    </div>`;
+  }
+
   // P8-4B: Render a single history job card
   function historyJobCardHtml(job) {
     const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
@@ -2472,7 +2487,7 @@ function handleStopAsyncPolling() {
     }
 
     const audioPlayback = historyAudioPlaybackHtml(job);
-    const downloadHint = `<p style="font-size:0.78rem;color:#a0aec0;margin-top:6px">下载入口将在后续阶段补充。</p>`;
+    const downloadEntry = historyDownloadEntryHtml(job);
 
     return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:10px;background:#fff">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2497,7 +2512,7 @@ function handleStopAsyncPolling() {
       ${statusHint}
       ${diagnosticInfo}
       ${audioPlayback}
-      ${downloadHint}
+      ${downloadEntry}
     </div>`;
   }
 
