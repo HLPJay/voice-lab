@@ -254,6 +254,7 @@ class BatchOrchestrationService:
                 try:
                     segment = session.get(BatchSegment, segment_id)
                     if segment:
+                        changed = False
                         # If VoiceJob is still running/pending, mark it failed too.
                         if segment.voice_job_id:
                             voice_job = session.get(VoiceJob, segment.voice_job_id)
@@ -264,12 +265,16 @@ class BatchOrchestrationService:
                                 voice_job.error_message = str(exc)[:500]
                                 voice_job.updated_at = utc_now_iso()
                                 session.add(voice_job)
+                                changed = True
 
                         if segment.status != BatchStatus.failed:
                             segment.status = BatchStatus.failed
                             segment.error_message = str(exc)[:500]
                             segment.updated_at = utc_now_iso()
                             session.add(segment)
+                            changed = True
+
+                        if changed:
                             session.commit()
                 except Exception:
                     pass

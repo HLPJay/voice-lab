@@ -831,16 +831,18 @@ class TestBatchResourceGuard:
         assert batch_job.status == BatchStatus.failed
 
     @pytest.mark.asyncio
-    async def test_batch_segments_execute_without_t2a_sync_guard(self, session, seed_profile, seed_mock_binding):
-        """Batch segments do NOT go through t2a_sync guard; they call render_sync directly.
+    async def test_minimax_batch_segments_execute_without_t2a_sync_guard(self, session, seed_profile, seed_mock_binding):
+        """Minimax batch segments bypass t2a_sync guard even when t2a_sync slots are fully occupied.
 
-        This test verifies that even when t2a_sync guard slots are fully occupied,
-        batch segments can still execute because they bypass t2a_sync guard.
+        This test uses provider='minimax' with a fake adapter to verify that batch segments
+        do NOT go through the t2a_sync Resource Guard path, even when minimax:t2a_sync
+        slots are completely taken.
         """
         from app.models.batch_job import BatchJob, BatchSegment
         from app.core.time import utc_now_iso
         from app.services.resource_guard_service import get_resource_guard
         from unittest.mock import patch
+        from app.providers.base import ProviderRenderResult
 
         now = utc_now_iso()
         batch_id = "batch_no_double_guard_test"
@@ -849,7 +851,7 @@ class TestBatchResourceGuard:
             id=batch_id,
             mode="longtext",
             status=BatchStatus.pending,
-            provider="mock",
+            provider="minimax",
             output_format="mp3",
             total_segments=1,
             silence_between_ms=0,
@@ -877,24 +879,50 @@ class TestBatchResourceGuard:
         session.add(seg)
         session.commit()
 
-        # Hold ALL t2a_sync slots (limit=2) for minimax.
-        # Batch uses provider="mock" which does NOT use t2a_sync internally,
-        # so holding minimax t2a_sync slots should NOT affect batch execution.
+        class FakeMinimaxAdapter:
+            provider_name = "minimax"
+
+            async def render_sync(self, plan):
+                from app.utils.files import storage_path
+                from app.utils.id_generator import new_id
+                from app.utils.audio import write_silent_wav
+                audio_id = new_id("audio")
+                audio_path = storage_path("audio", f"{audio_id}.mp3")
+                write_silent_wav(audio_path, duration_ms=500, sample_rate=16000)
+                return ProviderRenderResult(
+                    audio_path=str(audio_path),
+                    duration_ms=500,
+                    usage_characters=len(plan.text),
+                    trace_id="mock_trace",
+                    response_json={},
+                    timeline=[],
+                    metadata={},
+                )
+
+        # Hold ALL minimax:t2a_sync slots (limit=2). If batch segments incorrectly
+        # enter t2a_sync guard, they will be rejected here.
         guard = get_resource_guard()
         lease1 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
         lease2 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
 
         try:
             service = BatchOrchestrationService()
-            await service.execute(session, batch_id)
+            with patch("app.services.batch_orchestration_service.get_provider", return_value=FakeMinimaxAdapter()):
+                with patch("app.services.batch_orchestration_service.validate_binding_provider_voice"):
+                    await service.execute(session, batch_id)
         finally:
             await guard._release(lease1)
             await guard._release(lease2)
 
         session.refresh(batch_job)
-        # Batch should succeed because mock segments bypass t2a_sync guard.
         assert batch_job.status == BatchStatus.success, \
-            f"Expected batch success, got {batch_job.status}. If failed, segments may have wrongly entered t2a_sync guard."
+            f"Expected batch success, got {batch_job.status}. If failed due to RESOURCE_LIMIT_EXCEEDED on t2a_sync, segments may have wrongly entered t2a_sync guard."
+        assert batch_job.completed_segments == 1
+
+        session.refresh(seg)
+        assert seg.status == BatchStatus.success, f"Expected segment success, got {seg.status}"
+        assert seg.voice_job_id is not None, "Segment should have voice_job_id after successful render"
+        assert seg.audio_asset_id is not None, "Segment should have audio_asset_id after successful render"
         assert batch_job.completed_segments == 1
 
     @pytest.mark.asyncio

@@ -872,6 +872,45 @@ python -m pytest tests/ -x -q
 - StreamRenderService 测试：9 passed
 - 全量测试：365 passed, 6 skipped
 
+---
+
+## P7-E2 Batch 状态机兜底与 no-double-guard 测试增强
+
+### 背景
+
+- P7-E1 首次提交后复核发现两个小问题
+- _process_segment_isolated 兜底中，若 segment.status 已是 failed 但 voice_job 刚被改为 failed，则不会 commit
+- test_batch_segments_execute_without_t2a_sync_guard 使用 provider="mock"，不能强证明 minimax batch segment 不走 t2a_sync guard
+
+### 修复内容
+
+- _process_segment_isolated 兜底改为 dirty flag 方式：changed = True 只要有任何一个对象被修改就 commit
+- no t2a_sync double guard 测试改为 provider="minimax" + FakeMinimaxAdapter，更强验证 minimax batch segment 不进入 t2a_sync guard
+
+### 修改文件
+
+- app/services/batch_orchestration_service.py
+- tests/test_batch_orchestration.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_batch_orchestration.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 测试：38 passed
+- BatchOrchestrationService 测试：18 passed
+- AsyncRenderService 测试：14 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：365 passed, 6 skipped
+
 ## P7-D1 异步与流式状态机边界修复
 
 ### 背景
