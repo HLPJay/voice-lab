@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-3B：
+截至 P8-3C：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -20,6 +20,7 @@
 * P8-2：音色选择 / 试听工作台已完成并收口
 * P8-3A：任务结果展示现状审查已完成，文档见 docs/P8_3_RESULT_DISPLAY_WORKSTATION.md
 * P8-3B：resultsArea 信息架构整理已完成（同步/异步/多版本结果卡片化、section label 统一、新增 resultSectionLabel helper、timelineTable 空状态处理）
+* P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、无 audio/subtitle 空状态准确化）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -63,7 +64,8 @@
 * P8-2：音色选择 / 试听工作台已完成并收口
 * P8-3A：任务结果展示现状审查已完成（文档：docs/P8_3_RESULT_DISPLAY_WORKSTATION.md）
 * P8-3B：resultsArea 信息架构整理已完成（resultsArea 已整理为任务结果展示区、同步/异步/多版本结果卡片化、section label 统一、timelineTable 空状态处理）
-* 下一阶段建议进入 P8-3C：同步 / 异步结果卡片化细化验收
+* P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、空状态准确化）
+* 下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2138,3 +2140,66 @@ git diff --check: 无 whitespace error
 ### 阶段结论
 
 P8-3B 已完成 resultsArea 信息架构整理。下一阶段建议进入 P8-3C：同步 / 异步结果卡片化细化验收。
+
+---
+
+## P8-3C 同步 / 异步结果卡片化细化验收
+
+### 背景
+
+P8-3C 是同步 / 异步结果卡片化细化验收阶段，目标是让状态、空状态、错误信息展示更准确，不改变任何业务链路。
+
+### 主要调整
+
+1. **新增 helper**：`resultStatusHintHtml(status)` 返回状态说明文本，无 API 调用，无状态读写
+2. **新增 helper**：`resultDiagnosticHtml(message)` 返回诊断信息 HTML，用于 failed 状态，无 API 调用，无状态读写
+3. **`renderResults` 非 variant 分支**（同步）：增加 `resultStatusHintHtml(job.status)` 状态说明；audio 不存在且 success 时显示"本次结果未返回音频资产"；无 subtitle 且 success 时显示"本次结果未返回字幕时间轴"；非 success 状态不提前展示空 audio/subtitle
+4. **`renderAsyncResult`**：三分支处理（processing/failed/success）；processing 仅展示状态说明，无 audio/下载/字幕 sections；failed 展示 `resultDiagnosticHtml`；success 展示音频/字幕（如无则显示准确空状态）
+5. **口径统一**：确认 `renderSyncResult` 不存在于代码中，同步结果走 `renderResults(data, isVariant=false)`
+6. **未改变**：handleGenerate、轮询、WebSocket、批量、流式、下载 API、timeline 数据结构
+
+### 修改文件
+
+- `app/static/index.html`（展示层代码调整）
+- `docs/P8_3_RESULT_DISPLAY_WORKSTATION.md`（追加 P8-3C 节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新摘要 + 追加本节）
+
+### 风险处理
+
+- 字幕播放同步缺失保留（留待后续阶段）
+- 流式和批量结果结构未调整（本阶段不处理）
+- 所有 API endpoint 和请求逻辑完全未变
+
+### 验证命令
+
+- DOM/display marker 检查：通过
+- JS function 检查：通过（包含新增 helpers）
+- API marker 检查：通过
+- handleGenerate 请求逻辑保留检查：通过
+- 异步轮询保留检查：通过
+- stream/batch 保留检查：通过
+- 文档标记检查：通过
+
+### 验证结果
+
+pytest: 375 passed, 6 skipped
+git diff --check: 无 whitespace error
+
+### 未做事项
+
+- 未处理字幕播放同步
+- 未处理流式下载 404 时序
+- 未处理批量字幕缓存
+- 未处理 Resource Guard 排队预估
+- 未处理异步轮询最大时长提示
+- 未处理批量脚本独立轮询状态
+- 未处理多版本费用防误点
+- 未处理批量结果卡片化
+- 未处理流式结果深度重构
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-3D
+
+### 阶段结论
+
+P8-3C 已完成同步 / 异步结果卡片化细化验收。下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一。

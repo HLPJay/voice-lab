@@ -2217,6 +2217,11 @@ function handleStopAsyncPolling() {
   function renderAsyncResult(data) {
     const audio = data.audio_asset;
     const sub = data.subtitle_asset;
+    const status = data.status;
+    const isFailed = status === 'failed';
+    const isSuccess = status === 'success';
+    const isProcessing = !isFailed && !isSuccess;
+
     let html = `
       <div class="card">
         <div class="result-label">任务结果</div>
@@ -2226,17 +2231,37 @@ function handleStopAsyncPolling() {
           ${data.model ? ` · Model: ${esc(data.model)}` : ''}
         </p>
         <div style="margin-top:8px">
-          <span class="${statusClass(data.status)}">${statusLabel(data.status)}</span>
+          <span class="${statusClass(status)}">${statusLabel(status)}</span>
         </div>
-        ${audio
-          ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
-          : ''}
-        ${audio
-          ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
-          : ''}
-        ${resultSectionLabel('字幕时间轴')}
-        ${sub ? timelineTable(sub.timeline) : timelineTable(null)}
+        ${resultStatusHintHtml(status)}`;
+
+    if (isProcessing) {
+      // queued / running / processing: show processing hint, no audio/download/subtitle
+      html += `
       </div>`;
+    } else if (isFailed) {
+      // failed: show diagnostic info, no audio/download/subtitle
+      const errMsg = data.error_message || data.detail || null;
+      html += resultDiagnosticHtml(errMsg);
+      html += `
+      </div>`;
+    } else {
+      // success: show audio, download, subtitle if present
+      html += audio
+        ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
+        : `<p style="font-size:0.82rem;color:#c53030;margin-top:10px">本次结果未返回音频资产。</p>`;
+      html += audio
+        ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
+        : '';
+      if (sub && sub.timeline && sub.timeline.length > 0) {
+        html += `${resultSectionLabel('字幕时间轴')}${timelineTable(sub.timeline)}`;
+      } else {
+        html += `<p style="font-size:0.82rem;color:#a0aec0;margin-top:6px">本次结果未返回字幕时间轴。</p>`;
+      }
+      html += `
+      </div>`;
+    }
+
     resultsArea.innerHTML = html;
     resultsArea.classList.add('visible');
   }
@@ -2272,6 +2297,7 @@ function handleStopAsyncPolling() {
       const job = data;
       const audio = job.audio_asset;
       const subtitle = job.subtitle_asset;
+      const statusOk = job.status === 'success';
       let html = `
       <div class="card">
         <div class="result-label">任务结果</div>
@@ -2284,14 +2310,16 @@ function handleStopAsyncPolling() {
         <div style="margin-top:8px">
           <span class="${statusClass(job.status)}">${statusLabel(job.status)}</span>
         </div>
+        ${resultStatusHintHtml(job.status)}
         ${audio
           ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
-          : ''}
+          : (statusOk ? `<p style="font-size:0.82rem;color:#c53030;margin-top:10px">本次结果未返回音频资产，请检查任务状态。</p>` : '')}
         ${audio
           ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
           : ''}
-        ${resultSectionLabel('字幕时间轴')}
-        ${subtitle ? timelineTable(subtitle.timeline) : timelineTable(null)}
+        ${subtitle && subtitle.timeline && subtitle.timeline.length > 0
+          ? `${resultSectionLabel('字幕时间轴')}${timelineTable(subtitle.timeline)}`
+          : (statusOk ? `<p style="font-size:0.82rem;color:#a0aec0;margin-top:6px">本次结果未返回字幕时间轴。</p>` : '')}
       </div>`;
       resultsArea.innerHTML = html;
     }
@@ -2333,6 +2361,30 @@ function handleStopAsyncPolling() {
   // P8-3B: small display helpers — only return HTML strings, no API calls, no state mutation
   function resultSectionLabel(text) {
     return `<div class="result-label" style="margin-top:16px">${text}</div>`;
+  }
+
+  // P8-3C: status hint helper — returns status explanation text by job status
+  function resultStatusHintHtml(status) {
+    const hints = {
+      success: '任务已完成，可以播放或下载音频。',
+      failed: '任务失败，请查看错误信息。',
+      running: '任务处理中，请稍候。',
+      pending: '任务等待中，请稍候。',
+      processing: '任务处理中，请稍候。',
+    };
+    const hint = hints[status] || (`当前任务状态：` + esc(status || '未知'));
+    return `<p style="font-size:0.85rem;color:#4a5568;margin-top:8px">${hint}</p>`;
+  }
+
+  // P8-3C: diagnostic info helper for failed/error states — no API calls, no state mutation
+  function resultDiagnosticHtml(message) {
+    if (!message) {
+      return `<div style="margin-top:10px"><p style="font-size:0.82rem;color:#718096">暂无更详细的错误信息。</p></div>`;
+    }
+    return `<div style="margin-top:10px">
+      <div class="result-label">诊断信息</div>
+      <p style="font-size:0.82rem;color:#c53030">${esc(message)}</p>
+    </div>`;
   }
 
   // ============================================================
