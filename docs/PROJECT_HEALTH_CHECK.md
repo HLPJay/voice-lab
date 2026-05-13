@@ -1,5 +1,53 @@
 # Voice Lab 项目健康检查
 
+## 当前最新状态摘要
+
+截至 P8-1E：
+
+* 当前工作分支：dev
+* 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
+* P7-I：真实 MiniMax 能力验证与修复收口已完成
+* P7-J0：并发架构边界归纳已完成
+* P8-0：前端产品化范围定义已完成
+* P8-1：前端信息架构重组已完成并收口
+* 当前前端已从测试面板重组为任务维度工作台
+* 当前主导航为：
+  * 创作工作台
+  * 长文本
+  * 剧本
+  * 音色
+  * 历史
+  * 高级
+* 当前后台核心能力基本稳定
+* 当前支持：
+  * 同步 T2A
+  * 异步 T2A
+  * WebSocket 流式 T2A
+  * 批量长文本
+  * 批量剧本
+  * 字幕生成
+  * 音色试听
+  * 历史记录
+  * 音频下载
+  * Admin 统计
+  * Resource Guard 友好提示
+* 当前不承诺高并发多人 SaaS
+* 当前不做：
+  * 登录系统
+  * BYOK
+  * 队列 / worker
+  * Redis
+  * PostgreSQL
+  * 开放 API
+  * 完整 SaaS 化
+* 声音克隆 / 声音设计仍属于高级工程验证能力，暂缓产品化
+* 下一阶段建议进入 P8-2：音色选择 / 试听工作台
+
+说明：
+本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
+
+---
+
 ## 1. 当前项目定位
 
 Voice Lab 当前定位为：AI 声音资产管理与语音生成工作台。
@@ -1659,7 +1707,28 @@ python -m pytest tests/ -x -q
 | 所有 JS function behaviors 未改变 | ✅ |
 | pytest 375 passed, 6 skipped | ✅ |
 
+### P8-1C 健康检查更新
+
+- 在 docs/PROJECT_HEALTH_CHECK.md 追加 P8-1 章节，记录 P8-1A 和 P8-1B 的执行与验收状态
+
+### P8-1D 最终验收
+
+- git status -sb：干净
+- pytest：375 passed, 6 skipped
+- 未执行真实 MiniMax smoke test（前端架构重组不需要消耗真实额度）
+
+### P8-1E 收口修正
+
+已完成：
+
+- 页面 title / h1 统一为：Voice Lab｜AI 音频创作工作台
+- 副标题改为：把文本、长文和多角色剧本转成可试听、可下载、可管理的音频资产
+- tab-workspace 顶部新增欢迎区和三条主流程卡片（单段旁白、长文本生成、多角色剧本）
+- 高级 tab 高成本警告扩展说明
+- docs/P8_1_FRONTEND_INFORMATION_ARCHITECTURE.md 补齐 P8-1B/C/D/E 执行记录
+- docs/PROJECT_HEALTH_CHECK.md 顶部新增"当前最新状态摘要"，避免旧状态段落误导
+
 ### 后续计划
 
-- P8-1C：更新 PROJECT_HEALTH_CHECK.md（本次）
-- P8-1D：最终验证 + 提交所有 P8-1 更改
+- P8-1E：收口修正（本次）
+- P8-2：音色选择 / 试听工作台

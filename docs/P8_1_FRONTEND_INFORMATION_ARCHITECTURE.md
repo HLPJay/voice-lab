@@ -459,3 +459,142 @@ git diff --check
 ### 本阶段结论
 
 P8-1A 审查完成，已记录当前 DOM id、JS 函数、tab 结构和安全修改边界。未做任何代码修改。
+
+---
+
+## 10. P8-1B 执行记录
+
+### 修改目标
+
+P8-1B 已将前端从接口测试维度整理为任务工作台维度。
+
+### 修改文件
+
+- app/static/index.html
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 主要变化
+
+- 页面从"Voice Lab 测试面板"调整为"AI 音频创作工作台"
+- 顶部导航从旧接口维度调整为：
+  - 创作工作台
+  - 长文本
+  - 剧本
+  - 音色
+  - 历史
+  - 高级
+- 原 T2A 生成区域迁移到 tab-workspace
+- 原历史记录区域迁移到 tab-history
+- 原批量长文本区域迁移到 tab-longtext
+- 原批量剧本区域迁移到 tab-script
+- 原声音克隆、声音设计、绑定管理收纳到 tab-advanced
+- tab-advanced 增加高成本 / 工程验证提示
+- 增加 switchAdvancedSubtab() 用于高级区子 tab 切换
+- 保留已有 DOM id
+- 保留已有 JS function behavior
+- 不改后端 API
+- 不改 Provider
+- 不改 Resource Guard
+
+### 提交记录
+
+- 53d178c feat(P8-1B): reorganize frontend tabs from test panel to workspace
+
+---
+
+## 11. P8-1C 健康检查更新记录
+
+### 修改目标
+
+更新 docs/PROJECT_HEALTH_CHECK.md，补充 P8-1 当前状态，避免旧状态记录误导后续执行。
+
+### 修改文件
+
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 状态说明
+
+P8-1 后，当前项目前端已从测试面板进入本地 Web App / 单用户 AI 音频创作工作台阶段。
+
+当前仍不做：
+
+- SaaS
+- 登录系统
+- BYOK
+- 队列 / worker
+- Redis
+- PostgreSQL
+- 开放 API
+- 声音克隆产品化
+- 声音设计产品化
+
+声音克隆和声音设计仍归类为高级工程验证能力。
+
+---
+
+## 12. P8-1D 验收记录
+
+### 验收命令
+
+```bash
+git status -sb
+git log --oneline -5
+git diff --check
+python -m pytest tests/ -x -q
+```
+
+### 验收结果
+
+- python -m pytest tests/ -x -q：375 passed, 6 skipped
+- 未执行真实 MiniMax smoke test
+- 原因：P8-1 是前端信息架构重组，不需要消耗真实 MiniMax 额度
+
+### 手工验收项
+
+- 页面能正常打开
+- 顶部导航显示：创作工作台、长文本、剧本、音色、历史、高级
+- 创作工作台保留 T2A 输入和生成入口
+- 同步生成入口保留
+- 异步生成入口保留
+- WebSocket 流式生成入口保留
+- 多版本试音入口保留
+- 长文本生成入口保留
+- 剧本生成入口保留
+- 音色列表 / 搜索 / 试听入口保留
+- 历史记录独立展示
+- 高级 tab 保留声音克隆、声音设计、绑定管理
+- 高级 tab 明确提示高成本 / 工程验证
+- 管理面板入口保留
+
+---
+
+## 13. P8-1E 收口修正记录
+
+### 收口目标
+
+P8-1E 用于补齐 P8-1 的品牌口径、欢迎区、流程说明和文档验收记录。
+
+### 修改内容
+
+- 将页面 title 统一为：Voice Lab｜AI 音频创作工作台
+- 将页面 h1 统一为：Voice Lab｜AI 音频创作工作台
+- 副标题改为：把文本、长文和多角色剧本转成可试听、可下载、可管理的音频资产
+- 补齐工作台欢迎区
+- 补齐三条主流程卡片：单段旁白、长文本生成、多角色剧本
+- 补齐 P8-1B / P8-1C / P8-1D / P8-1E 文档记录
+- 不改后端 API
+- 不改 Provider
+- 不改 Resource Guard
+- 不改业务 JS 逻辑
+- 不执行真实 MiniMax smoke test
+
+### P8-1E 验证命令
+
+```bash
+git diff --check
+python -m pytest tests/ -x -q
+```
+
+### P8-1E 阶段结论
+
+P8-1 前端信息架构重组完成并收口。下一阶段进入 P8-2：音色选择 / 试听工作台。
