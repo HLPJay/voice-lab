@@ -667,3 +667,40 @@ P7-I5a 为异步 T2A query provider 调用增加了 `set_job_id()` / `reset_job_
 
 异步 query 的 job_id context reset 逻辑已收口，异常路径不会二次 reset，也不会覆盖原始 provider 异常。
 pytest：375 passed, 6 skipped
+
+---
+
+## P7-I6 最终收口结论
+
+P7-I 真实能力验证与修复阶段完成。
+
+### 已验证
+
+- 同步 T2A
+- 异步 T2A
+- 批量长文本
+- 批量剧本
+- provider voice preview
+- WebSocket 流式
+- 音频播放 / 下载
+- 任务历史
+- Admin 统计主链路
+
+### 已修复
+
+- 异步字幕 end=0.0
+- smoke runner 进程残留
+- 异步轮询过频
+- 重复 timer / 无限轮询
+- Admin 字符数为 0
+- job_id context 泄漏
+- async query double reset
+
+### 暂缓
+
+- 声音克隆真实验证
+- 声音设计真实验证
+
+### 阶段结论
+
+当前无 P0/P1 阻塞，可以进入 P8 前端产品化规划。

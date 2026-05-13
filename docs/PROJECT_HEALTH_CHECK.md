@@ -1522,3 +1522,34 @@ python -m pytest tests/ -x -q
 ### 阶段结论
 
 异步 query 的 job_id context reset 逻辑已收口，异常路径不会二次 reset，也不会覆盖原始 provider 异常。
+
+---
+
+## P7-I6 真实能力验证与修复收口
+
+### 背景
+
+P7-I 阶段用于验证真实 MiniMax 主链路，并修复真实测试暴露的问题。
+
+### 收口内容
+
+- P7-I 真实 MiniMax smoke test 已完成
+- P7-I1 / I1a 异步字幕 timeline 修复完成
+- P7-I2 / I2a smoke runner 进程治理完成
+- P7-I3 / I3a 异步轮询退避与体验修复完成
+- P7-I5 / I5a / I5b Admin 统计、错误归因、job_id context 收口完成
+
+### 验证结果
+
+```bash
+python -m pytest tests/ -x -q
+# 375 passed, 6 skipped
+```
+
+### 当前结论
+
+- 无 P0/P1 阻塞
+- 同步 / 异步 / 流式 / 批量 / 字幕 / 下载 / 历史记录均可进入 P8 产品化候选
+- 声音克隆 / 声音设计继续暂缓
+- HTTP 流式端点是否补充仍属于产品/API 口径决策
+- 可以进入 P8 前端产品化规划
