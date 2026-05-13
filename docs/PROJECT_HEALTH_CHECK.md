@@ -1220,8 +1220,40 @@ tests/ -x -q                         → 366 passed, 6 skipped
 
 - **P1**：异步 T2A 耗时约 4.5 分钟（MiniMax 服务特性，非代码问题）
 - **P2-1**：HTTP 流式端点不存在，流式仅走 WebSocket
-- **P2-2**：异步任务 subtitle timeline end 为 0.0（需修复）
+- **P2-2**：异步任务 subtitle timeline end 为 0.0 → **P7-I1 已修复**
 
 ### 阶段结论
 
-**P7-I 真实 MiniMax smoke test 完成。同步 T2A、异步 T2A、批量生成、provider preview 均真实可用。建议修复 P2-2 后进入 P8 前端 UX 修复阶段。WebSocket 流式和前端交互需浏览器环境补充验证。**
+**P7-I 真实 MiniMax smoke test 完成。同步 T2A、异步 T2A、批量生成、provider preview 均真实可用。所有 P2 问题均已解决，可进入 P8 前端 UX 修复阶段。WebSocket 流式和前端交互需浏览器环境补充验证。**
+
+---
+
+## P7-I1 异步 T2A Subtitle Timeline 修复（P2-2）
+
+### 背景
+
+- P7-I 发现异步 T2A 任务完成后 subtitle timeline 的 end 时间为 0.0
+- 根因：MiniMax 异步任务返回 `duration_ms=None`，且 metadata 中无 timeline 时，代码未做兜底
+
+### 修复内容
+
+- **文件**：app/services/async_render_service.py
+- **修改**：`_complete_job` 方法中 `resolved_duration_ms` 增加 `estimate_duration_ms` 兜底
+  ```python
+  resolved_duration_ms = (
+      task_status.duration_ms
+      or task_status.metadata.get("duration_ms")
+      or task_status.metadata.get("audio_length")
+      or estimate_duration_ms(job.processed_text or job.input_text or "")
+  )
+  ```
+- 同时确保 `duration_ms` 参数传给 `ProviderRenderResult`（之前传的是 `task_status.duration_ms`）
+
+### 测试验证
+
+- 后端自动化测试：366 passed, 6 skipped
+- docs/P7_I_MINIMAX_SMOKE_TEST.md 更新：P2-2 标记为已修复
+
+### 阶段结论
+
+**P2-2 已修复，所有 P2 问题均已解决。**

@@ -514,3 +514,4 @@ class TestAsyncRenderResourceGuard:
 
         session.refresh(job)
         assert job.status == "processing", "Job should stay processing when provider query transiently fails"
+

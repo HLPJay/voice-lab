@@ -26,6 +26,7 @@ from app.services.asset_service import AssetService
 from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.cost_guard_service import CostGuardService
 from app.services.resource_guard_service import ResourceLimitExceeded, get_resource_guard
+from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 
@@ -261,14 +262,27 @@ class AsyncRenderService:
         subtitle_config = plan_data.get("subtitle", {})
         subtitle_type = subtitle_config.get("type", "sentence")
 
+        resolved_duration_ms = (
+            task_status.duration_ms
+            or task_status.metadata.get("duration_ms")
+            or task_status.metadata.get("audio_length")
+            or estimate_duration_ms(job.processed_text or job.input_text or "")
+        )
+
         timeline = task_status.metadata.get("timeline", [])
         if not timeline and subtitle_config.get("enabled"):
-            duration_s = round((task_status.duration_ms or 0) / 1000, 2)
-            timeline = [{"text": job.processed_text or job.input_text or "", "start": 0.0, "end": duration_s}]
+            duration_s = round(resolved_duration_ms / 1000, 2)
+            timeline = [
+                {
+                    "text": job.processed_text or job.input_text or "",
+                    "start": 0.0,
+                    "end": duration_s,
+                }
+            ]
 
         result = ProviderRenderResult(
             audio_path=str(audio_path),
-            duration_ms=task_status.duration_ms,
+            duration_ms=resolved_duration_ms,
             usage_characters=task_status.usage_characters,
             trace_id=task_status.trace_id,
             response_json=task_status.metadata.get("raw_response", {}),

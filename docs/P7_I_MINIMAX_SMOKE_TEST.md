@@ -317,10 +317,10 @@ curl http://127.0.0.1:8000/api/voice/jobs?page=1&page_size=5
 - 影响：习惯了 HTTP stream 的用户可能困惑
 - 建议：文档说明流式走 WebSocket，或补充 HTTP 流式端点
 
-**P2-2：异步任务 subtitle timeline end 为 0.0**
+**P2-2：异步任务 subtitle timeline end 为 0.0** ✅ P7-I1 已修复
 - 问题：异步完成的 job 的 subtitle timeline 中 end 时间为 0.0
 - 影响：字幕展示可能异常
-- 建议：检查 `_complete_job` 中 timeline 生成逻辑
+- 修复：在 `_complete_job` 中增加 `estimate_duration_ms` 兜底，使用文本长度估算时长填充 timeline end
 
 ### P3 优化建议
 
@@ -345,12 +345,6 @@ curl http://127.0.0.1:8000/api/voice/jobs?page=1&page_size=5
 | 任务历史 | API 正常 |
 | provider voice preview | 真实可用 |
 
-### 需要修复后进入 P8
-
-| 能力 | 问题 |
-|---|---|
-| 异步 T2A subtitle timeline | end 时间异常，需修复 |
-
 ### 暂缓
 
 | 能力 | 原因 |
@@ -371,9 +365,8 @@ curl http://127.0.0.1:8000/api/voice/jobs?page=1&page_size=5
 
 ## 10. 下一步建议
 
-1. **修复 P2-2（异步 subtitle timeline 异常）**后再进入 P8
-2. **补充浏览器环境验证**：WebSocket 流式、前端交互、Resource Guard 提示
-3. **评估 HTTP 流式端点**：确认是补充 HTTP 端点还是保持 WebSocket 专用
-4. **P8 前端 UX 修复**：内联创建人设、音色试听工作台、绑定反馈闭环、分页
+1. **补充浏览器环境验证**：WebSocket 流式、前端交互、Resource Guard 提示
+2. **评估 HTTP 流式端点**：确认是补充 HTTP 端点还是保持 WebSocket 专用
+3. **P8 前端 UX 修复**：内联创建人设、音色试听工作台、绑定反馈闭环、分页
 
-**建议**：在修复 P2-2 后，可进入 P8 前端 UX 修复阶段；WebSocket 流式和前端交互在后续测试中补充验证。
+**建议**：P2-2 已修复（P7-I1），所有 P2 问题均已解决，可进入 P8 前端 UX 修复阶段；WebSocket 流式和前端交互在后续测试中补充验证。
