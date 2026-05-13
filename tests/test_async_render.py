@@ -664,3 +664,50 @@ class TestAsyncRenderResourceGuard:
         assert timeline[0]["end"] == 1.23, f"First entry end should be 1.23, got {timeline[0]['end']}"
         assert timeline[1]["end"] == 2.5, f"Second entry end should be 2.5, got {timeline[1]['end']}"
 
+
+@pytest.mark.asyncio
+async def test_async_query_provider_exception_resets_job_id_once_and_preserves_error(
+    session, seed_profile, seed_mock_binding
+):
+    """provider query exception resets job_id context once and preserves original error."""
+    from unittest.mock import AsyncMock, patch
+    from app.core.context import get_job_id, set_job_id
+    from app.models.voice_job import VoiceJob
+    from app.services.async_render_service import AsyncRenderService
+
+    # Create a processing job with provider_task_id
+    job = VoiceJob(
+        id="job_exception_test",
+        job_type="async_render",
+        status="processing",
+        provider="mock",
+        model="speech-2.8-hd",
+        profile_id="deep_night_programmer",
+        binding_id="binding_001",
+        input_text="test",
+        processed_text="test",
+        render_plan_json="{}",
+        response_json='{"provider_task_id": "mock_task_123"}',
+        created_at="2026-05-13T10:00:00+00:00",
+        updated_at="2026-05-13T10:00:00+00:00",
+    )
+    session.add(job)
+    session.commit()
+
+    old_job_id = get_job_id()
+
+    class FailingQueryAdapter:
+        provider_name = "mock"
+
+        async def query_async_task(self, task_id):
+            raise RuntimeError("provider query boom")
+
+    svc = AsyncRenderService()
+
+    with patch("app.services.async_render_service.get_provider", return_value=FailingQueryAdapter()):
+        with pytest.raises(RuntimeError, match="provider query boom"):
+            await svc.query_status(session, "job_exception_test")
+
+    # Context should be restored
+    assert get_job_id() == old_job_id
+

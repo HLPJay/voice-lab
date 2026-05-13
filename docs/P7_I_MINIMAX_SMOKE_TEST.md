@@ -647,3 +647,23 @@ Admin 字符统计当前采用双来源兜底：
 - 同步/异步/流式三条链路的 provider 调用都已纳入 job_id context 管理
 - 统计 fallback 已覆盖 overview、by_provider、by_day、daily_trend 所有维度
 - pytest：374 passed, 6 skipped
+
+---
+
+## 18. P7-I5b async query job_id context double reset 修复
+
+### 背景
+
+P7-I5a 为异步 T2A query provider 调用增加了 `set_job_id()` / `reset_job_id()`，但异常路径中同时在 `except` 和 `finally` 中 reset 同一个 `ContextVar.Token`，存在 double reset 风险。
+
+### 修复内容
+
+- 删除 `except` 分支中的重复 `reset_job_id(token)`
+- 保留 `finally` 中的唯一 reset
+- 异常路径仍原样抛出 provider query 异常
+- 新增异常路径测试，确保不会出现 `Token has already been used`
+
+### 阶段结论
+
+异步 query 的 job_id context reset 逻辑已收口，异常路径不会二次 reset，也不会覆盖原始 provider 异常。
+pytest：375 passed, 6 skipped

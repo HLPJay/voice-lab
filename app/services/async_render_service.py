@@ -188,7 +188,6 @@ class AsyncRenderService:
                     task_status = await adapter.query_async_task(provider_task_id)
                 except Exception:
                     # Provider query transient failures keep job processing; re-raise for retry.
-                    reset_job_id(token)
                     raise
                 finally:
                     reset_job_id(token)

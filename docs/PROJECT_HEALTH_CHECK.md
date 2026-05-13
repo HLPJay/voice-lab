@@ -1488,3 +1488,37 @@ python -m pytest tests/ -x -q
 - 同步/异步/流式三条链路的 provider 调用都已纳入 job_id context 管理
 - 统计 fallback 已覆盖 overview、by_provider、by_day、daily_trend 所有维度
 - 所有 context 和 stats 测试通过
+
+---
+
+## P7-I5b async query job_id context double reset 修复
+
+### 背景
+
+- P7-I5a 已完成 job_id context reset 收口
+- 复核发现 `AsyncRenderService.query_status()` 的 provider query 异常路径存在 double reset
+- 同一个 `ContextVar.Token` 被 reset 两次可能覆盖原始 provider 异常
+
+### 修改内容
+
+- 删除 async query `except` 分支中的重复 `reset_job_id(token)`
+- 保留 `finally` 中的唯一 reset
+- 新增异常路径测试，验证原始异常不被 double reset 覆盖
+- 不改变 Resource Guard、job 状态机和 provider 调用逻辑
+
+### 新增测试
+
+- `test_async_query_provider_exception_resets_job_id_once_and_preserves_error`
+
+### 验证结果
+
+```bash
+python -m pytest tests/test_async_render.py -q
+# 17 passed
+python -m pytest tests/ -x -q
+# 375 passed, 6 skipped
+```
+
+### 阶段结论
+
+异步 query 的 job_id context reset 逻辑已收口，异常路径不会二次 reset，也不会覆盖原始 provider 异常。
