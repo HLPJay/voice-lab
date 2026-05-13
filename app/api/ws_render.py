@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 
 from app.core.database import get_session
 from app.core.errors import VoiceLabError
@@ -6,13 +6,17 @@ from app.core.logging import get_logger
 from app.domain.schemas import StreamRenderRequest
 from app.services.stream_render_service import StreamRenderService
 from app.utils.id_generator import new_id
+from sqlmodel import Session
 
 router = APIRouter()
 logger = get_logger("ws_render")
 
 
 @router.websocket("/ws/render")
-async def ws_render(websocket: WebSocket):
+async def ws_render(
+    websocket: WebSocket,
+    session: Session = Depends(get_session),
+):
     await websocket.accept()
     request_id = new_id("ws")
     logger.info("ws_connected request_id=%s", request_id)
@@ -67,16 +71,13 @@ async def ws_render(websocket: WebSocket):
             vol=start_msg.get("vol"),
             pitch=start_msg.get("pitch"),
             emotion=start_msg.get("emotion"),
+            confirm_cost=start_msg.get("confirm_cost", False),
         )
 
         # 5. Call Service streaming render
         service = StreamRenderService()
-        session = next(get_session())
-        try:
-            async for msg in service.render_stream(session, request):
-                await websocket.send_json(msg)
-        finally:
-            session.close()
+        async for msg in service.render_stream(session, request):
+            await websocket.send_json(msg)
 
     except WebSocketDisconnect:
         logger.info("ws_disconnected request_id=%s", request_id)

@@ -145,13 +145,44 @@ Voice Lab 当前定位为：AI 声音资产管理与语音生成工作台。
 
 ## 4. 当前测试状态
 
-本次执行测试命令：
+### 4.1 全量测试
 
 ```bash
-python -m pytest tests/ -x -q --ignore=tests/test_ws_render.py
+python -m pytest tests/ -x -q
 ```
 
-测试结果：待执行后填写。
+测试结果：
+
+```text
+322 passed, 6 skipped in 171.42s (0:02:51)
+```
+
+- 总测试数量：328（322 passed + 6 skipped）
+- 通过数量：322
+- 跳过数量：6（均为 E2E 测试，需要真实 API Key）
+- 失败数量：0
+
+### 4.2 WebSocket 专项测试
+
+```bash
+python -m pytest tests/test_ws_render.py -q
+```
+
+测试结果：
+
+```text
+6 passed in 2.91s
+```
+
+### 4.3 历史遗留问题记录
+
+**问题：WebSocket 端点无法通过测试 fixture 注入数据库会话**
+
+- 发现时间：2026-05-12
+- 根本原因：`ws_render.py` 使用 `session = next(get_session())` 绕过 FastAPI 的 `dependency_overrides` 机制，导致测试中 `ws_patched_session` fixture 无法替换为测试引擎会话
+- 修复方案：将 `session = next(get_session())` 改为 FastAPI 依赖注入 `session: Session = Depends(get_session)`，让 FastAPI 的 `dependency_overrides` 在测试中生效
+- 修改文件：`app/api/ws_render.py`
+- 状态：**已修复并验证通过**
 
 ## 5. 当前试用准备度评估
 
@@ -195,22 +226,24 @@ Voice Lab 当前已经从 API Demo 进入声音工作台雏形阶段。
 
 ## 7. 本次测试执行记录
 
+### 全量测试
+
 测试命令：
 
 ```bash
-python -m pytest tests/ -x -q --ignore=tests/test_ws_render.py
+python -m pytest tests/ -x -q
 ```
 
 测试输出：
 
 ```text
-300 passed, 6 skipped in 104.64s (0:01:44)
+322 passed, 6 skipped in 171.42s (0:02:51)
 ```
 
 测试结果摘要：
 
-- 总测试数量：306（300 passed + 6 skipped）
-- 通过数量：300
+- 总测试数量：328（322 passed + 6 skipped）
+- 通过数量：322
 - 跳过数量：6（均为 E2E 测试，需要真实 API Key）
 - 失败数量：0
 - 第一个失败测试：无
