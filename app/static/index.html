@@ -1809,32 +1809,29 @@ function handleStopAsyncPolling() {
 
       if (offset === 0) listEl.innerHTML = '';
       if (jobs.length === 0 && offset === 0) {
-        listEl.innerHTML = '<div style="font-size:0.82rem;color:#718096">暂无历史记录</div>';
+        listEl.innerHTML = historyEmptyStateHtml();
         moreBtn.style.display = 'none';
         return;
       }
 
       const fragment = document.createDocumentFragment();
-      const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
       jobs.forEach(job => {
-        const typeLabel = typeMap[job.job_type] || job.job_type;
-        const textSnippet = (job.input_text || '').slice(0, 30) + ((job.input_text || '').length > 30 ? '…' : '');
-        const time = job.created_at ? job.created_at.replace('T', ' ').slice(0, 19) : '';
         const div = document.createElement('div');
-        div.style.cssText = 'display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:0.82rem';
-        div.innerHTML = `<span style="color:#718096;min-width:140px">${esc(time)}</span>
-          <span class="tag" style="min-width:50px">${esc(typeLabel)}</span>
-          <span class="job-status status-${job.status}">${esc(job.status)}</span>
-          <span style="flex:1;color:#4a5568" title="${esc(job.input_text || '')}">${esc(textSnippet)}</span>
-          <span style="color:#a0aec0">${esc(job.provider || '')}</span>`;
-        fragment.appendChild(div);
+        div.innerHTML = historyJobCardHtml(job);
+        fragment.appendChild(div.firstElementChild);
       });
       listEl.appendChild(fragment);
 
       _historyOffset = offset + jobs.length;
-      moreBtn.style.display = _historyOffset < _historyTotal ? '' : 'none';
+      const hasMore = _historyOffset < _historyTotal;
+      moreBtn.style.display = hasMore ? '' : 'none';
+      if (!hasMore && _historyTotal > 0) {
+        const endHint = document.createElement('div');
+        endHint.innerHTML = historyEndStateHtml();
+        listEl.appendChild(endHint);
+      }
     } catch (e) {
-      if (offset === 0) listEl.innerHTML = '<div style="font-size:0.82rem;color:#c53030">加载失败</div>';
+      if (offset === 0) listEl.innerHTML = historyLoadErrorHtml(e.message || '');
     } finally {
       _historyLoading = false;
     }
@@ -2449,6 +2446,80 @@ function handleStopAsyncPolling() {
       <div class="result-label">诊断信息</div>
       <p style="font-size:0.82rem;color:#c53030">${esc(message)}</p>
     </div>`;
+  }
+
+  // ============================================================
+  // P8-4B: History job card helpers — no API calls, no state mutation
+  // ============================================================
+
+  // P8-4B: Render a single history job card
+  function historyJobCardHtml(job) {
+    const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
+    const typeLabel = typeMap[job.job_type] || job.job_type || '-';
+    const time = job.created_at ? job.created_at.replace('T', ' ').slice(0, 19) : '-';
+    const textSnippet = (job.input_text || '').slice(0, 80) + ((job.input_text || '').length > 80 ? '…' : '');
+    const textDisplay = textSnippet || '<span style="color:#a0aec0">未记录生成文本。</span>';
+    const providerDisplay = job.provider ? esc(job.provider) : '-';
+    const jobIdDisplay = job.id || job.job_id ? esc(job.id || job.job_id) : '-';
+
+    const statusBadge = `<span class="job-status ${statusClass(job.status)}">${statusLabel(job.status)}</span>`;
+    const statusHint = resultStatusHintHtml(job.status);
+
+    let diagnosticInfo = '';
+    if (isResultFailedStatus(job.status)) {
+      const errMsg = extractErrorMessage(job);
+      diagnosticInfo = resultDiagnosticHtml(errMsg);
+    }
+
+    const futureEntryHint = `<p style="font-size:0.78rem;color:#a0aec0;margin-top:6px">播放和下载入口将在后续阶段补充。</p>`;
+
+    return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:10px;background:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-weight:600;font-size:0.88rem;color:#2d3748">历史任务</span>
+          <span class="tag">${esc(typeLabel)}</span>
+          ${statusBadge}
+        </div>
+        <span style="font-size:0.78rem;color:#a0aec0">${esc(time)}</span>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:0.78rem;color:#718096;margin-bottom:4px">生成文本</div>
+        <div style="font-size:0.85rem;color:#2d3748;line-height:1.5">${textDisplay}</div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:10px">
+        <div>
+          <span style="font-size:0.78rem;color:#718096">任务信息</span>
+          <div style="font-size:0.82rem;color:#4a5568;margin-top:2px">Provider: ${providerDisplay}</div>
+          <div style="font-size:0.82rem;color:#4a5568;margin-top:2px">Job ID: <span style="font-family:monospace;font-size:0.75rem">${jobIdDisplay}</span></div>
+        </div>
+      </div>
+      ${statusHint}
+      ${diagnosticInfo}
+      ${futureEntryHint}
+    </div>`;
+  }
+
+  // P8-4B: Empty state for history list
+  function historyEmptyStateHtml() {
+    return `<div style="text-align:center;padding:32px 16px;color:#718096">
+      <div style="font-size:0.88rem;margin-bottom:8px">暂无历史记录</div>
+      <div style="font-size:0.82rem">完成一次音频生成后，历史任务会出现在这里。</div>
+    </div>`;
+  }
+
+  // P8-4B: Load error state for history list
+  function historyLoadErrorHtml(message) {
+    const msg = message ? esc(message) : '';
+    return `<div style="text-align:center;padding:24px 16px;color:#c53030">
+      <div style="font-size:0.88rem;margin-bottom:8px">历史记录加载失败</div>
+      <div style="font-size:0.82rem;color:#718096">请确认本地服务仍在运行，稍后再试。</div>
+      ${msg ? `<div style="font-size:0.78rem;margin-top:8px;color:#c53030">${msg}</div>` : ''}
+    </div>`;
+  }
+
+  // P8-4B: End-of-list hint for history
+  function historyEndStateHtml() {
+    return `<div style="text-align:center;padding:16px;color:#a0aec0;font-size:0.82rem">没有更多历史记录了。</div>`;
   }
 
   // ============================================================

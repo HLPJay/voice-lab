@@ -505,3 +505,390 @@ P8-4A documentation marker check passed
 ## 12. P8-4A 结论
 
 P8-4A 只完成历史记录和下载体验现状审查和文档化，不修改前端，不修改后端。下一阶段建议进入 P8-4B：历史记录信息架构整理。
+
+---
+
+# P8-4B 历史记录信息架构整理
+
+## 13. P8-4B 执行背景
+
+- P8-4A 已完成现状审查。
+- 当前历史记录是纯文本工程列表。
+- 当前历史记录缺少任务 card 结构。
+- 当前历史记录没有播放/下载入口。
+- 本阶段先做历史记录信息架构整理。
+- 本阶段不改后端、不改 API、不改下载接口。
+
+---
+
+## 14. P8-4B 本阶段目标
+
+- 历史记录从纯文本行改为历史任务 card。
+- 状态展示复用 P8-3 helper。
+- 失败任务展示诊断信息。
+- 空状态更友好。
+- 加载失败更友好。
+- 加载更多/到底提示更清楚。
+- 保留 DOM id。
+- 保留 JS function 行为。
+- 不改 API。
+
+---
+
+## 15. P8-4B 问题与风险分析
+
+1. 历史记录当前为纯文本行，信息层级弱。
+2. 历史记录当前直接输出英文 status。
+3. 历史记录当前加载失败只显示"加载失败"。
+4. 历史记录当前分页到底无提示。
+5. 历史记录当前没有播放/下载入口。
+6. 本阶段如果强行新增播放/下载，可能依赖后端数据字段，风险较高。
+7. 本阶段应先完成信息架构整理，再进入 P8-4C/P8-4D。
+8. 本阶段不能改 `/api/voice/jobs`。
+9. 本阶段不能改下载接口。
+
+---
+
+## 16. P8-4B 方案判断
+
+- 采用前端展示层整理方案。
+- 新增或调整历史 card helper。
+- 复用 `statusLabel` / `statusClass`。
+- 复用 `resultStatusHintHtml`。
+- 失败任务复用 `resultDiagnosticHtml`。
+- 不新增播放/下载入口。
+- 不新增搜索/筛选。
+- 不改 `loadHistory(offset)` 请求语义。
+- 不改分页状态。
+- 不改后端 API。
+
+---
+
+## 17. P8-4B 修改范围
+
+记录实际修改：
+
+- `app/static/index.html` — 历史记录 card 化、新增 helper 函数
+- `docs/P8_4_HISTORY_DOWNLOAD_EXPERIENCE.md` — 追加 P8-4B 章节
+- `docs/PROJECT_HEALTH_CHECK.md` — 更新当前最新状态摘要
+
+---
+
+## 18. P8-4B 历史任务 card 结构说明
+
+调整后的 card 结构：
+
+1. 历史任务标题
+2. 类型 / 状态 / 时间
+3. 生成文本片段（80字符截断）
+4. 任务信息（provider / job_id）
+5. 状态说明（resultStatusHintHtml）
+6. 失败诊断信息（resultDiagnosticHtml，如有）
+7. 后续播放/下载入口提示
+
+---
+
+## 19. P8-4B 状态展示统一说明
+
+- 历史任务状态展示从英文原文改为 `statusLabel(job.status)`。
+- 状态 class 使用 `statusClass(job.status)`。
+- 状态说明使用 `resultStatusHintHtml(job.status)`。
+- 是否改变状态语义：否。
+
+---
+
+## 20. P8-4B 空状态与错误展示说明
+
+- 无历史记录：`historyEmptyStateHtml()` 返回"暂无历史记录"+"完成一次音频生成后，历史任务会出现在这里。"
+- 加载失败：`historyLoadErrorHtml(message)` 返回"历史记录加载失败"+"请确认本地服务仍在运行，稍后再试。"
+- 分页到底：`historyEndStateHtml()` 返回"没有更多历史记录了。"
+- 是否新增 API：否。
+- 是否新增重试：否。
+
+---
+
+## 21. P8-4B 播放/下载入口处理说明
+
+- 本阶段未新增完整播放入口。
+- 本阶段未新增完整下载入口。
+- 原因：P8-4B 聚焦信息架构整理，播放/下载产品化留给 P8-4C/P8-4D。
+- 未改 `/api/voice/assets/{assetId}/download`。
+- 未伪造不存在的下载入口。
+
+---
+
+## 22. P8-4B DOM id 保留说明
+
+静态检查结果：所有关键 DOM id 仍存在。
+
+- `tab-history` — 存在
+- `historyCard` — 存在
+- `historyToggle` — 存在
+- `historyArea` — 存在
+- `historyList` — 存在
+- `loadMoreHistory` — 存在
+
+---
+
+## 23. P8-4B JS function 行为保留说明
+
+静态检查结果：所有关键函数仍存在。
+
+| 函数 | 用途 | API 调用 | 状态读写 | 业务行为改变 |
+|---|---|---|---|---|
+| `toggleHistory` | 展开/收起历史记录 | 无 | DOM 状态 | 无 |
+| `loadHistory(offset)` | 加载历史记录 | `/api/voice/jobs` | `_historyOffset/_historyTotal/_historyLoading` | 渲染逻辑改为 card |
+| `loadMoreHistory` | 加载更多 | 调用 loadHistory | 同上 | 无 |
+| `statusLabel(s)` | 状态中文 label | 无 | 无 | 无 |
+| `statusClass(s)` | 状态 CSS class | 无 | 无 | 无 |
+| `resultStatusHintHtml(status)` | 状态说明 HTML | 无 | 无 | 无 |
+| `resultDiagnosticHtml(message)` | 诊断信息 HTML | 无 | 无 | 无 |
+| `isResultFailedStatus(status)` | 判断失败状态 | 无 | 无 | 无 |
+| `extractErrorMessage(data)` | 提取错误信息 | 无 | 无 | 无 |
+| `esc(s)` | HTML 转义 | 无 | 无 | 无 |
+| `apiJson` | API JSON helper | 无 | 无 | 无 |
+
+新增 helper（P8-4B）：
+
+| 函数 | 用途 | API 调用 | 状态读写 | 业务行为改变 |
+|---|---|---|---|---|
+| `historyJobCardHtml(job)` | 渲染单条历史 job card | 无 | 无 | 仅返回 HTML 字符串 |
+| `historyEmptyStateHtml()` | 空状态 HTML | 无 | 无 | 仅返回 HTML 字符串 |
+| `historyLoadErrorHtml(message)` | 加载失败 HTML | 无 | 无 | 仅返回 HTML 字符串 |
+| `historyEndStateHtml()` | 到底提示 HTML | 无 | 无 | 仅返回 HTML 字符串 |
+
+---
+
+## 24. P8-4B API endpoint 不变说明
+
+- 历史记录列表 endpoint 未变：`/api/voice/jobs`
+- 分页参数未变：`limit=10&offset={offset}`
+- 下载 endpoint 未变：`/api/voice/assets/`
+- 未新增 API。
+- 未删除 API。
+
+---
+
+## 25. P8-4B 未处理事项
+
+必须写明：
+
+- 未新增历史播放入口
+- 未新增历史下载入口
+- 未新增历史字幕/timeline 展示
+- 未新增历史详情页
+- 未新增历史搜索
+- 未新增历史筛选
+- 未新增历史删除
+- 未改后端 API
+- 未改下载接口
+- 未处理桌面宽屏 P8-UX1
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-4C
+
+---
+
+## 26. P8-4B 执行命令记录
+
+### 基线检查
+
+```bash
+git fetch origin
+git checkout dev
+git pull --ff-only origin dev
+git status -sb
+git log --oneline -20
+```
+
+### 静态检查
+
+```bash
+grep -n "tab-history\|historyCard\|historyToggle\|historyArea\|historyList\|loadMoreHistory" app/static/index.html
+grep -n "function toggleHistory\|function loadHistory\|function loadMoreHistory\|_historyOffset\|_historyTotal\|_historyLoading" app/static/index.html
+grep -n "/api/voice/jobs\|limit=10\|offset=" app/static/index.html
+grep -n "function statusLabel\|function statusClass\|function resultStatusHintHtml\|function resultDiagnosticHtml\|function resultSectionLabel\|function esc" app/static/index.html
+```
+
+### 文档标记检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","历史任务","任务状态","生成文本","任务信息"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("DOM/display marker check passed")
+PY
+```
+
+---
+
+## 27. P8-4B 验证命令记录
+
+### DOM marker 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","历史任务","任务状态","生成文本","任务信息"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4B DOM/display marker check passed")
+PY
+```
+
+### JS function 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_functions = ["function toggleHistory","function loadHistory","function loadMoreHistory","function statusLabel","function statusClass","function resultStatusHintHtml","function resultDiagnosticHtml","function isResultFailedStatus","function extractErrorMessage","function esc","function apiJson"]
+missing = [x for x in required_functions if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4B JS function check passed")
+PY
+```
+
+### History helper 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_any = ["historyJobCardHtml","历史任务","resultStatusHintHtml","resultDiagnosticHtml"]
+missing = [x for x in required_any if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4B history helper/card check passed")
+PY
+```
+
+### API marker 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_api_markers = ["/api/voice/jobs","limit=10","offset=","apiJson","/api/voice/assets/"]
+missing = [x for x in required_api_markers if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4B API marker check passed")
+PY
+```
+
+### loadHistory 语义保留检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+start = html.find("function loadHistory")
+end = html.find("function loadMoreHistory", start)
+block = html[start:end]
+required = ["/api/voice/jobs","limit=10","offset=","_historyOffset","_historyTotal","_historyLoading"]
+missing = [x for x in required if x not in block]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4B loadHistory semantic retention check passed")
+PY
+```
+
+### 不新增播放/下载入口检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+start = html.find("function historyJobCardHtml")
+end_candidates = [html.find("function loadMoreHistory", start), html.find("function toggleHistory", start)]
+end_candidates = [x for x in end_candidates if x > start]
+end = max(end_candidates) if end_candidates else start + 12000
+block = html[start:end]
+forbidden = ["audioPlayerHtml(","downloadBtnHtml(","<audio"]
+found = [x for x in forbidden if x in block]
+if found: raise SystemExit(f"Should not add: {found}")
+print("P8-4B no playback/download entry check passed")
+PY
+```
+
+### 全量测试
+
+```bash
+python -m pytest tests/ -x -q
+```
+
+---
+
+## 28. P8-4B 验证结果
+
+### git 检查
+
+```
+## dev...origin/dev
+ M app/static/index.html
+app/static/index.html | 99 +++++++++++++++++++++++++++++++++++++++++++--------
+1 file changed, 85 insertions(+), 14 deletions(-)
+```
+
+### DOM marker 检查
+
+```
+P8-4B DOM/display marker check passed
+```
+
+### JS function 检查
+
+```
+P8-4B JS function check passed
+```
+
+### History helper 检查
+
+```
+P8-4B history helper/card check passed
+```
+
+### API marker 检查
+
+```
+P8-4B API marker check passed
+```
+
+### loadHistory 语义保留检查
+
+```
+P8-4B loadHistory semantic retention check passed
+```
+
+### 不新增播放/下载入口检查
+
+```
+P8-4B no playback/download entry check passed
+```
+
+### 测试结果
+
+```
+pytest: 375 passed, 6 skipped
+```
+
+---
+
+## 29. P8-4B 阶段结论
+
+P8-4B 已完成。历史记录已从纯文本工程列表整理为历史任务 card 列表。状态展示已复用 P8-3 helper（statusLabel/statusClass/resultStatusHintHtml/resultDiagnosticHtml）。空状态、加载失败、到底提示已产品化。未新增播放/下载入口。下一阶段建议进入 P8-4C：历史任务卡片播放入口整理。
+
+---
+
+## 30. P8-4B 下一阶段建议
+
+建议 P8-4C 聚焦：
+
+- 历史任务音频播放入口
+- 根据 `/api/voice/jobs` 当前返回字段判断是否可复用 `audioPlayerHtml`
+- 若存在 `audio_asset` / `audio_asset_id`，在历史 card 中加入播放器
+- 不改后端 API
+- 不改下载接口
+
