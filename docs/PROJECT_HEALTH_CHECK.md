@@ -1318,3 +1318,34 @@ tests/ -x -q                         → 366 passed, 6 skipped
 
 - 不修改业务代码
 - 不真实消耗 MiniMax token（除非显式 `--real-minimax`）
+
+---
+
+## P7-I3 前端异步轮询退避与慢任务体验优化
+
+### 背景
+
+- P7-I 浏览器简测发现功能主链路正常
+- 异步 T2A 回复较慢，符合 MiniMax 异步服务特性
+- 原有前端固定 3 秒轮询导致日志刷屏和 provider query 压力
+
+### 修改内容
+
+- `app/static/index.html` 增加异步轮询状态对象 `asyncPollingState`
+- 增加轮询退避策略 `getAsyncPollingDelay()`：0-30s 每 3s，30s-2min 每 10s，2min+ 每 20s
+- 提交后显示"可能需要 1-5 分钟"慢任务提示
+- 增加手动刷新（`manualRefreshAsyncJob`）和停止自动刷新（`stopAsyncPolling`）按钮
+- Resource Guard 查询拒绝时停止自动轮询
+- 添加空 favicon `data:,`，避免 `/favicon.ico` 404 日志噪音
+
+### 验证结果
+
+- 前端：异步 submit 成功后显示慢任务提示；轮询退避生效；手动/停止按钮可用；成功失败渲染正常
+- pytest：368 passed, 6 skipped
+- 不消耗 MiniMax token（前端体验优化，无后端改动）
+
+### 阶段边界
+
+- 不修改 `app/services/*`、`app/providers/*` 等业务代码
+- 不修改 Resource Guard 策略
+- 不实现新的后端能力

@@ -450,4 +450,28 @@ python scripts/stop_smoke_server.py
 - 删除 `--include-async` / `--include-batch` 参数（预留但暂不执行，避免误以为已覆盖）
 - Ctrl+C 时使用 try/finally 保证清理
 - Ready 阶段失败时也正确清理
+
+---
+
+## 13. P7-I3 前端异步轮询退避与慢任务体验优化
+
+### 背景
+
+- 浏览器测试发现异步 T2A 能正常提交和查询
+- MiniMax 异步任务可能耗时数分钟
+- 原有前端固定 3 秒轮询，导致日志较多，增加 provider query 压力
+
+### 修复内容
+
+- 前端异步轮询改为退避策略：0-30s 每 3 秒，30s-2min 每 10 秒，2min 后每 20 秒
+- 异步任务提交后显示"可能需要 1-5 分钟"提示
+- 增加手动刷新和停止自动刷新按钮
+- Resource Guard 拒绝查询时停止自动轮询，显示友好提示
+- 增加空 favicon（`<link rel="icon" href="data:,">`），避免 `/favicon.ico` 404 日志噪音
+
+### 阶段结论
+
+- 异步任务慢属于 MiniMax 服务特性，不作为后端错误
+- 前端已降低轮询频率并增强用户提示
+
 - 结果文件 `started_at / ended_at` 记录真实时间

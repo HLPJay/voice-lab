@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voice Lab 测试面板</title>
+<link rel="icon" href="data:,">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1618,6 +1619,41 @@
 
   let pollTimer = null;
 
+// Async polling state (one active polling at a time)
+const asyncPollingState = {
+  jobId: null,
+  timer: null,
+  startedAt: null,
+  attempt: 0,
+  stopped: false,
+};
+
+function getAsyncPollingDelay(attempt, elapsedMs) {
+  if (elapsedMs < 30_000) return 3_000;      // 0-30s: 3s
+  if (elapsedMs < 120_000) return 10_000;   // 30s-2min: 10s
+  return 20_000;                             // 2min+: 20s
+}
+
+function stopAsyncPolling() {
+  if (asyncPollingState.timer) {
+    clearTimeout(asyncPollingState.timer);
+    asyncPollingState.timer = null;
+  }
+  asyncPollingState.stopped = true;
+}
+
+function resetAsyncPollingState(jobId) {
+  stopAsyncPolling();
+  asyncPollingState.jobId = jobId;
+  asyncPollingState.startedAt = Date.now();
+  asyncPollingState.attempt = 0;
+  asyncPollingState.stopped = false;
+}
+
+async function manualRefreshAsyncJob(jobId) {
+  await pollAsyncJob(jobId, { manual: true });
+}
+
   // ============================================================
   // History
   // ============================================================
@@ -1714,6 +1750,7 @@
     const emotion = document.getElementById('paramEmotion').value;
 
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    stopAsyncPolling();
     setLoading(true);
     resultsArea.classList.remove('visible');
     resultsArea.innerHTML = '';
@@ -1918,71 +1955,134 @@
   }
 
   function startAsyncPolling(jobId) {
-    let pollCount = 0;
-    const maxPolls = 120;
+    resetAsyncPollingState(jobId);
 
     resultsArea.innerHTML = `
       <div class="card" id="asyncStatusCard">
         <div class="result-label">异步任务</div>
         <p>任务ID：<code>${esc(jobId)}</code></p>
-        <div class="poll-status"><span class="spinner"></span>轮询中…</div>
+        <div class="success-msg" style="margin-top:6px;font-size:0.85rem">
+          <strong>异步任务已提交</strong>
+          <div style="margin-top:4px;color:#4a5568">
+            MiniMax 异步生成可能需要 1-5 分钟，请保持页面打开。系统会自动刷新状态，也可以手动刷新。
+          </div>
+        </div>
+        <div class="poll-status" id="asyncPollStatus"><span class="spinner"></span>等待首次查询…</div>
+        <div class="action-row" id="asyncPollActions">
+          <button class="btn-sm" type="button" onclick="manualRefreshAsyncJob('${esc(jobId)}')">手动刷新</button>
+          <button class="btn-sm" type="button" onclick="stopAsyncPolling()">停止自动刷新</button>
+        </div>
       </div>`;
     resultsArea.classList.add('visible');
 
-    async function poll() {
-      pollCount++;
-      try {
-        const resp = await fetch(`/api/voice/render/async/${jobId}/status`);
+    pollAsyncJob(jobId);
+  }
 
-        if (!resp.ok) {
-          const err = await parseApiError(resp);
-          clearInterval(pollTimer); pollTimer = null;
-          if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
-            resultsArea.innerHTML = renderApiError(err);
-          } else {
-            resultsArea.innerHTML = `<div class="error-msg">查询失败：${esc(err.message)}</div>`;
-          }
-          setLoading(false);
-          return;
-        }
+  async function pollAsyncJob(jobId, options = {}) {
+    const manual = options.manual === true;
 
-        const data = await resp.json();
-
-        if (data.status === 'success') {
-          clearInterval(pollTimer); pollTimer = null;
-          renderAsyncResult(data);
-          setLoading(false);
-          loadHistory(0);
-          return;
-        }
-
-        if (data.status === 'failed') {
-          clearInterval(pollTimer); pollTimer = null;
-          resultsArea.innerHTML = `<div class="error-msg">任务失败：${esc(data.error_message || '未知错误')}</div>`;
-          setLoading(false);
-          return;
-        }
-
-        const statusCard = document.getElementById('asyncStatusCard');
-        if (statusCard) {
-          const pollStatus = statusCard.querySelector('.poll-status');
-          if (pollStatus) pollStatus.innerHTML = `<span class="spinner"></span>轮询中… (${pollCount}/${maxPolls})`;
-        }
-
-        if (pollCount >= maxPolls) {
-          clearInterval(pollTimer); pollTimer = null;
-          resultsArea.innerHTML += `<div class="error-msg">轮询超时，请稍后手动查询</div>`;
-          setLoading(false);
-        }
-      } catch (e) {
-        clearInterval(pollTimer); pollTimer = null;
-        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e && e.message ? e.message : String(e))}</div>`;
-        setLoading(false);
-      }
+    if (!asyncPollingState.startedAt) {
+      asyncPollingState.startedAt = Date.now();
     }
 
-    poll();
-    pollTimer = setInterval(poll, 3000);
+    if (asyncPollingState.jobId !== jobId) {
+      asyncPollingState.jobId = jobId;
+    }
+    asyncPollingState.attempt += 1;
+
+    try {
+      const resp = await fetch(`/api/voice/render/async/${jobId}/status`);
+
+      if (!resp.ok) {
+        const err = await parseApiError(resp);
+        stopAsyncPolling();
+        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          resultsArea.innerHTML = renderApiError(err);
+        } else {
+          resultsArea.innerHTML = `
+            <div class="error-msg">
+              <strong>查询失败</strong>
+              <div style="margin-top:4px">${esc(err.message)}</div>
+            </div>
+            <div class="action-row">
+              <button class="btn-sm" type="button" onclick="manualRefreshAsyncJob('${esc(jobId)}')">稍后手动刷新</button>
+            </div>`;
+        }
+        resultsArea.classList.add('visible');
+        setLoading(false);
+        return;
+      }
+
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        stopAsyncPolling();
+        renderAsyncResult(data);
+        setLoading(false);
+        loadHistory(0);
+        return;
+      }
+
+      if (data.status === 'failed') {
+        stopAsyncPolling();
+        renderAsyncFailed(data);
+        setLoading(false);
+        return;
+      }
+
+      // Still processing
+      const elapsedMs = Date.now() - asyncPollingState.startedAt;
+      const nextDelayMs = getAsyncPollingDelay(asyncPollingState.attempt, elapsedMs);
+      const elapsedSec = Math.floor(elapsedMs / 1000);
+      const nextSec = Math.ceil(nextDelayMs / 1000);
+
+      updateAsyncPollStatus(jobId, data.status || 'processing', asyncPollingState.attempt, elapsedSec, nextSec);
+
+      if (!manual && !asyncPollingState.stopped) {
+        asyncPollingState.timer = setTimeout(() => pollAsyncJob(jobId), nextDelayMs);
+      } else if (manual && !asyncPollingState.stopped) {
+        // After manual refresh, resume auto-polling with next delay
+        asyncPollingState.timer = setTimeout(() => pollAsyncJob(jobId), nextDelayMs);
+      }
+    } catch (e) {
+      stopAsyncPolling();
+      resultsArea.innerHTML = `
+        <div class="error-msg">
+          <strong>网络错误</strong>
+          <div style="margin-top:4px">${esc(e && e.message ? e.message : String(e))}</div>
+        </div>
+        <div class="action-row">
+          <button class="btn-sm" type="button" onclick="manualRefreshAsyncJob('${esc(jobId)}')">稍后手动刷新</button>
+        </div>`;
+      resultsArea.classList.add('visible');
+      setLoading(false);
+    }
+  }
+
+  function updateAsyncPollStatus(jobId, status, attempt, elapsedSec, nextSec) {
+    const statusCard = document.getElementById('asyncStatusCard');
+    if (!statusCard) return;
+    const el = statusCard.querySelector('#asyncPollStatus');
+    if (el) {
+      el.innerHTML = `<span class="spinner"></span>第 ${attempt} 次查询 · 已等待 ${elapsedSec} 秒 · 下次约 ${nextSec} 秒后自动刷新`;
+    }
+  }
+
+  function renderAsyncFailed(data) {
+    resultsArea.innerHTML = `
+      <div class="card">
+        <div class="error-msg">
+          <strong>异步任务失败</strong>
+          <div style="margin-top:6px">${esc(data.error_message || '任务执行失败')}</div>
+        </div>
+        <p style="font-size:0.82rem;color:#718096;margin-top:8px">
+          任务ID：<code>${esc(data.job_id)}</code>
+        </p>
+        <div class="action-row" style="margin-top:12px">
+          <a class="btn-sm" href="/static/index.html">重新提交</a>
+        </div>
+      </div>`;
+    resultsArea.classList.add('visible');
   }
 
   function renderAsyncResult(data) {
