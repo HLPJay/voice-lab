@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Voice Lab 架构师视角图谱</title>
+<style>
+:root{
+  --bg:#f4f7fb;
+  --panel:#ffffff;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --line:#cbd5e1;
+  --blue:#2563eb;
+  --blue-bg:#dbeafe;
+  --green:#059669;
+  --green-bg:#d1fae5;
+  --orange:#d97706;
+  --orange-bg:#ffedd5;
+  --red:#dc2626;
+  --red-bg:#fee2e2;
+  --purple:#7c3aed;
+  --purple-bg:#ede9fe;
+  --cyan:#0891b2;
+  --cyan-bg:#cffafe;
+  --gray-bg:#f1f5f9;
+  --shadow:0 8px 28px rgba(15,23,42,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%);
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.55;
+}
+header{
+  background:#fff;
+  border-bottom:1px solid #dbe4f0;
+  padding:30px 36px 24px;
+}
+header h1{
+  margin:0;
+  font-size:34px;
+  letter-spacing:-.6px;
+}
+header p{
+  margin:8px 0 0;
+  max-width:1180px;
+  color:var(--muted);
+}
+.wrap{max-width:1540px;margin:0 auto;padding:24px}
+.nav{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:10px;
+  margin-bottom:22px;
+}
+.nav a{
+  color:#0f172a;
+  text-decoration:none;
+  background:#fff;
+  border:1px solid #dbe4f0;
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 2px 10px rgba(15,23,42,.04);
+  font-weight:700;
+  font-size:13px;
+}
+.section{
+  background:#fff;
+  border:1px solid #dbe4f0;
+  border-radius:24px;
+  padding:24px;
+  margin-bottom:26px;
+  box-shadow:var(--shadow);
+}
+.section h2{margin:0 0 6px;font-size:25px}
+.section .intro{margin:0 0 18px;color:var(--muted);font-size:14px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:12px}
+.legend span{display:flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:4px;border:1px solid #cbd5e1}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.done{background:var(--green-bg);color:#065f46;border:1px solid #86efac}
+.todo{background:var(--orange-bg);color:#92400e;border:1px solid #fdba74}
+.risk{background:var(--red-bg);color:#991b1b;border:1px solid #fecaca}
+.info{background:var(--blue-bg);color:#1d4ed8;border:1px solid #93c5fd}
+.future{background:var(--purple-bg);color:#5b21b6;border:1px solid #c4b5fd}
+.note{
+  border-left:5px solid var(--blue);
+  background:#f8fafc;
+  padding:14px 16px;
+  border-radius:14px;
+  color:#475569;
+  font-size:14px;
+}
+.arch-svg{
+  width:100%;
+  height:auto;
+  background:#fbfdff;
+  border:1px solid #dbe4f0;
+  border-radius:20px;
+}
+.map-grid{
+  display:grid;
+  grid-template-columns:1.05fr 1.2fr;
+  gap:18px;
+}
+.tree{
+  background:#0f172a;
+  color:#dbeafe;
+  border-radius:18px;
+  padding:18px;
+  font-family:"SFMono-Regular",Consolas,Menlo,monospace;
+  font-size:13px;
+  line-height:1.65;
+  overflow:auto;
+  min-height:640px;
+}
+.tree .dir{color:#93c5fd;font-weight:800}
+.tree .file{color:#e2e8f0}
+.tree .ok{color:#86efac}
+.tree .warn{color:#fdba74}
+.tree .todo{color:#c4b5fd}
+table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+  border:1px solid #dbe4f0;
+  border-radius:18px;
+  background:#fff;
+  font-size:13px;
+}
+th,td{
+  text-align:left;
+  vertical-align:top;
+  padding:11px 12px;
+  border-bottom:1px solid #e5edf7;
+}
+th{background:#f8fafc;color:#334155;font-size:12px}
+tr:last-child td{border-bottom:none}
+td:first-child{font-weight:800}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+.card{
+  border:1.5px solid #dbe4f0;
+  border-radius:18px;
+  background:#fff;
+  padding:16px;
+  min-height:170px;
+}
+.card h3{margin:8px 0 8px;font-size:16px}
+.card p{margin:0;color:var(--muted);font-size:13px}
+.layer{
+  display:grid;
+  grid-template-columns:210px 1fr 1fr 1fr;
+  gap:10px;
+  align-items:stretch;
+  margin-bottom:10px;
+}
+.layer .head{
+  border-radius:16px;
+  padding:14px;
+  background:#0f172a;
+  color:#fff;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+}
+.cell{
+  border:1.5px solid #dbe4f0;
+  border-radius:16px;
+  padding:14px;
+  background:#fff;
+}
+.cell h4{margin:0 0 6px;font-size:14px}
+.cell ul{margin:0;padding-left:18px;color:#475569;font-size:13px}
+.flow-row{
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+  flex-wrap:nowrap;
+  overflow:auto;
+  padding-bottom:6px;
+}
+.flow-box{
+  flex:0 0 170px;
+  border:1.5px solid #dbe4f0;
+  border-radius:16px;
+  background:#fff;
+  padding:12px;
+  min-height:96px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.flow-box strong{font-size:13px}
+.flow-box small{color:var(--muted);font-size:12px}
+.arrow{
+  flex:0 0 26px;
+  color:#2563eb;
+  font-size:24px;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.print{color:#64748b;font-size:12px;margin-top:6px}
+@media(max-width:1180px){
+  .nav{grid-template-columns:repeat(3,1fr)}
+  .map-grid{grid-template-columns:1fr}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .layer{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  header{padding:24px 18px}
+  header h1{font-size:25px}
+  .wrap{padding:14px}
+  .nav{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr}
+}
+@media print{
+  body{background:#fff}
+  .section{box-shadow:none;break-inside:avoid}
+  .nav{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Voice Lab 架构师视角图谱</h1>
+  <p>目标：用“整体架构图 → 目录对应关系 → 分层能力视图 → 调用链 → 待建构模块”的方式，帮助理解当前项目架构与后续 Resource Guard / MiMo / 手机端扩展的落点。</p>
+  <p class="print">当前基线：dev 分支，已完成 Cost Guard P0 统一入口、架构 Guard 审计、架构可扩展性自检；尚未完成 Resource Guard、ProviderCapabilities、RenderPlan v2。</p>
+</header>
+
+<main class="wrap">
+  <nav class="nav">
+    <a href="#big-picture">1. 整体架构总图</a>
+    <a href="#directory-map">2. 目录到架构映射</a>
+    <a href="#layer-view">3. 分层能力图</a>
+    <a href="#domain-model">4. 核心对象关系</a>
+    <a href="#call-chain">5. 生成调用链</a>
+    <a href="#next-modules">6. 待开发模块意义</a>
+  </nav>
+
+  <section class="section" id="big-picture">
+    <h2>1. 整体架构总图：当前 Voice Lab 如何运转</h2>
+    <p class="intro">这张图是总入口：用户请求从前端进入 API，经 Service 进行业务编排，穿过音色校验、Cost Guard、未来 Resource Guard，再形成 RenderPlan，最后由 Provider Adapter 调用 MiniMax / mock / 未来 MiMo 或本地模型。</p>
+
+    <svg class="arch-svg" viewBox="0 0 1500 820" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+        </marker>
+        <style>
+          .t{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;fill:#0f172a}
+          .muted{fill:#64748b;font-size:14px}
+          .title{font-weight:800;font-size:18px}
+          .small{font-size:13px;fill:#475569}
+          .box{fill:#fff;stroke:#cbd5e1;stroke-width:2}
+          .blue{fill:#dbeafe;stroke:#60a5fa}
+          .green{fill:#d1fae5;stroke:#34d399}
+          .orange{fill:#ffedd5;stroke:#fb923c}
+          .purple{fill:#ede9fe;stroke:#a78bfa}
+          .cyan{fill:#cffafe;stroke:#22d3ee}
+          .red{fill:#fee2e2;stroke:#f87171}
+          .gray{fill:#f1f5f9;stroke:#cbd5e1}
+          .line{stroke:#2563eb;stroke-width:2.4;marker-end:url(#arrow);fill:none}
+          .dash{stroke-dasharray:7 5}
+        </style>
+      </defs>
+
+      <!-- Row labels -->
+      <text x="40" y="44" class="t title">用户/入口层</text>
+      <text x="40" y="180" class="t title">API + Service 业务层</text>
+      <text x="40" y="332" class="t title">横切保护层</text>
+      <text x="40" y="486" class="t title">执行计划 + Provider 适配层</text>
+      <text x="40" y="640" class="t title">底层模型 + 数据资产层</text>
+
+      <!-- Frontend -->
+      <rect x="220" y="24" width="260" height="86" rx="16" class="blue"/>
+      <text x="350" y="58" text-anchor="middle" class="t title">app/static/index.html</text>
+      <text x="350" y="82" text-anchor="middle" class="small">当前：测试面板形态</text>
+      <text x="350" y="101" text-anchor="middle" class="small">后续：创作工作台</text>
+
+      <rect x="520" y="24" width="260" height="86" rx="16" class="blue"/>
+      <text x="650" y="56" text-anchor="middle" class="t title">guardedJsonFetch</text>
+      <text x="650" y="82" text-anchor="middle" class="small">前端高风险操作确认</text>
+      <text x="650" y="101" text-anchor="middle" class="small">注入 confirm_cost=true</text>
+
+      <!-- API/Service -->
+      <rect x="220" y="154" width="230" height="92" rx="16" class="box"/>
+      <text x="335" y="189" text-anchor="middle" class="t title">app/api/*</text>
+      <text x="335" y="214" text-anchor="middle" class="small">HTTP / WebSocket 路由</text>
+      <text x="335" y="234" text-anchor="middle" class="small">render / batch / provider voices</text>
+
+      <rect x="500" y="154" width="310" height="92" rx="16" class="box"/>
+      <text x="655" y="188" text-anchor="middle" class="t title">app/services/*</text>
+      <text x="655" y="214" text-anchor="middle" class="small">业务编排：render / clone / design</text>
+      <text x="655" y="234" text-anchor="middle" class="small">preview / import / variant / batch</text>
+
+      <rect x="850" y="154" width="245" height="92" rx="16" class="cyan"/>
+      <text x="972" y="188" text-anchor="middle" class="t title">app/repositories/*</text>
+      <text x="972" y="214" text-anchor="middle" class="small">数据访问层</text>
+      <text x="972" y="234" text-anchor="middle" class="small">ProviderVoice / Binding / Asset</text>
+
+      <!-- Guards -->
+      <rect x="220" y="304" width="250" height="96" rx="16" class="green"/>
+      <text x="345" y="338" text-anchor="middle" class="t title">ProviderVoice 校验</text>
+      <text x="345" y="364" text-anchor="middle" class="small">binding_validation_service</text>
+      <text x="345" y="384" text-anchor="middle" class="small">存在且 status=available</text>
+
+      <rect x="515" y="304" width="250" height="96" rx="16" class="green"/>
+      <text x="640" y="338" text-anchor="middle" class="t title">Cost Guard</text>
+      <text x="640" y="364" text-anchor="middle" class="small">已完成 P0 统一入口</text>
+      <text x="640" y="384" text-anchor="middle" class="small">require_confirmed()</text>
+
+      <rect x="810" y="304" width="250" height="96" rx="16" class="orange"/>
+      <text x="935" y="338" text-anchor="middle" class="t title">Resource Guard</text>
+      <text x="935" y="364" text-anchor="middle" class="small">待实现</text>
+      <text x="935" y="384" text-anchor="middle" class="small">并发 / 限流 / API Key</text>
+
+      <rect x="1105" y="304" width="250" height="96" rx="16" class="purple"/>
+      <text x="1230" y="338" text-anchor="middle" class="t title">OperationPolicy</text>
+      <text x="1230" y="364" text-anchor="middle" class="small">规划中</text>
+      <text x="1230" y="384" text-anchor="middle" class="small">operation 风险策略表</text>
+
+      <!-- Plan/provider -->
+      <rect x="220" y="458" width="270" height="96" rx="16" class="purple"/>
+      <text x="355" y="492" text-anchor="middle" class="t title">RenderPlan</text>
+      <text x="355" y="518" text-anchor="middle" class="small">当前：provider/model/voice_id</text>
+      <text x="355" y="538" text-anchor="middle" class="small">后续：v2 + metadata/source_type</text>
+
+      <rect x="540" y="458" width="290" height="96" rx="16" class="purple"/>
+      <text x="685" y="492" text-anchor="middle" class="t title">SpeechProvider Adapter</text>
+      <text x="685" y="518" text-anchor="middle" class="small">providers/base.py</text>
+      <text x="685" y="538" text-anchor="middle" class="small">屏蔽底层模型 API 差异</text>
+
+      <rect x="880" y="458" width="270" height="96" rx="16" class="orange"/>
+      <text x="1015" y="492" text-anchor="middle" class="t title">ProviderCapabilities</text>
+      <text x="1015" y="518" text-anchor="middle" class="small">待实现</text>
+      <text x="1015" y="538" text-anchor="middle" class="small">声明 Provider 支持能力</text>
+
+      <!-- Model/data -->
+      <rect x="220" y="612" width="210" height="98" rx="16" class="green"/>
+      <text x="325" y="646" text-anchor="middle" class="t title">mock</text>
+      <text x="325" y="672" text-anchor="middle" class="small">测试 Provider</text>
+
+      <rect x="465" y="612" width="210" height="98" rx="16" class="green"/>
+      <text x="570" y="646" text-anchor="middle" class="t title">MiniMax</text>
+      <text x="570" y="672" text-anchor="middle" class="small">当前真实 Provider</text>
+
+      <rect x="710" y="612" width="210" height="98" rx="16" class="orange"/>
+      <text x="815" y="646" text-anchor="middle" class="t title">MiMo</text>
+      <text x="815" y="672" text-anchor="middle" class="small">待接入</text>
+
+      <rect x="955" y="612" width="210" height="98" rx="16" class="orange"/>
+      <text x="1060" y="646" text-anchor="middle" class="t title">本地模型</text>
+      <text x="1060" y="672" text-anchor="middle" class="small">GPT-SoVITS / CosyVoice</text>
+
+      <rect x="1200" y="612" width="210" height="98" rx="16" class="cyan"/>
+      <text x="1305" y="646" text-anchor="middle" class="t title">SQLite / storage</text>
+      <text x="1305" y="672" text-anchor="middle" class="small">AudioAsset / Log / DB</text>
+
+      <!-- arrows -->
+      <path d="M480 67 L520 67" class="line"/>
+      <path d="M650 110 L650 154" class="line"/>
+      <path d="M450 200 L500 200" class="line"/>
+      <path d="M810 200 L850 200" class="line"/>
+      <path d="M655 246 L345 304" class="line"/>
+      <path d="M470 352 L515 352" class="line"/>
+      <path d="M765 352 L810 352" class="line"/>
+      <path d="M1060 352 L1105 352" class="line"/>
+      <path d="M935 400 L355 458" class="line"/>
+      <path d="M490 506 L540 506" class="line"/>
+      <path d="M830 506 L880 506" class="line"/>
+      <path d="M685 554 L570 612" class="line"/>
+      <path d="M685 554 L325 612" class="line"/>
+      <path d="M685 554 L815 612" class="line dash"/>
+      <path d="M685 554 L1060 612" class="line dash"/>
+      <path d="M810 200 C1180 220,1290 380,1305 612" class="line dash"/>
+    </svg>
+
+    <div class="legend">
+      <span><i class="sw" style="background:var(--green-bg)"></i>已完成或当前主要能力</span>
+      <span><i class="sw" style="background:var(--orange-bg)"></i>待实现或高优先级问题</span>
+      <span><i class="sw" style="background:var(--purple-bg)"></i>架构抽象层</span>
+      <span><i class="sw" style="background:var(--cyan-bg)"></i>数据与持久化</span>
+    </div>
+  </section>
+
+  <section class="section" id="directory-map">
+    <h2>2. 当前代码目录与架构职责对应关系</h2>
+    <p class="intro">目录不是简单的文件分类，而是对应不同架构层。理解目录映射后，后续开发 Resource Guard 时就知道应该放在哪里、接入哪些 service、不能改哪些层。</p>
+
+    <div class="map-grid">
+      <div class="tree">
+<span class="dir">voice-lab/</span>
+├─ <span class="dir">app/</span>
+│  ├─ <span class="dir">api/</span>                 <span class="ok"># 接入层：HTTP / WebSocket 路由</span>
+│  │  ├─ <span class="file">voice_render.py</span>
+│  │  ├─ <span class="file">async_render.py</span>
+│  │  ├─ <span class="file">ws_render.py</span>
+│  │  ├─ <span class="file">provider_voices.py</span>
+│  │  ├─ <span class="file">voice_cost.py</span>
+│  │  └─ <span class="file">batch.py</span>
+│  │
+│  ├─ <span class="dir">services/</span>            <span class="ok"># 业务编排层：主要开发落点</span>
+│  │  ├─ <span class="file">voice_render_service.py</span>
+│  │  ├─ <span class="file">async_render_service.py</span>
+│  │  ├─ <span class="file">stream_render_service.py</span>
+│  │  ├─ <span class="file">voice_preview_service.py</span>
+│  │  ├─ <span class="file">provider_voice_preview_service.py</span>
+│  │  ├─ <span class="file">provider_voice_import_service.py</span>
+│  │  ├─ <span class="file">voice_variant_service.py</span>
+│  │  ├─ <span class="file">voice_design_service.py</span>
+│  │  ├─ <span class="file">voice_clone_service.py</span>
+│  │  ├─ <span class="file">batch_orchestration_service.py</span>
+│  │  ├─ <span class="file">binding_validation_service.py</span>
+│  │  └─ <span class="file">cost_guard_service.py</span>
+│  │     <span class="warn">resource_guard_service.py：下一步待新增</span>
+│  │
+│  ├─ <span class="dir">providers/</span>           <span class="ok"># Provider Adapter 层</span>
+│  │  ├─ <span class="file">base.py</span>           <span class="ok"># SpeechProvider 抽象</span>
+│  │  ├─ <span class="file">registry.py</span>       <span class="ok"># mock/minimax 注册</span>
+│  │  ├─ <span class="file">mock_speech_adapter.py</span>
+│  │  └─ <span class="file">minimax_speech_adapter.py</span>
+│  │     <span class="warn">mimo_speech_adapter.py：未来</span>
+      </div>
+
+      <div class="tree">
+│  ├─ <span class="dir">domain/</span>              <span class="ok"># 领域协议层：Schema / RenderPlan</span>
+│  │  ├─ <span class="file">schemas.py</span>       <span class="ok"># 请求响应模型，含 confirm_cost</span>
+│  │  ├─ <span class="file">render_plan.py</span>   <span class="warn"># 当前偏 MiniMax voice_id 模式</span>
+│  │  └─ <span class="file">enums.py</span>
+│  │     <span class="todo">OperationPolicy / ProviderCapabilities 待设计</span>
+│  │
+│  ├─ <span class="dir">models/</span>              <span class="ok"># 持久化模型层</span>
+│  │  ├─ <span class="file">provider_voice.py</span>
+│  │  ├─ <span class="file">provider_call_log.py</span>
+│  │  ├─ <span class="file">voice_binding.py</span>
+│  │  ├─ <span class="file">voice_job.py</span>
+│  │  ├─ <span class="file">voice_asset.py</span>
+│  │  └─ <span class="file">batch_job.py</span>
+│  │
+│  ├─ <span class="dir">repositories/</span>        <span class="ok"># 数据访问层</span>
+│  │  ├─ <span class="file">provider_voice_repo.py</span>
+│  │  ├─ <span class="file">voice_binding_repo.py</span>
+│  │  ├─ <span class="file">voice_profile_repo.py</span>
+│  │  └─ <span class="file">voice_asset_repo.py</span>
+│  │
+│  ├─ <span class="dir">core/</span>                <span class="ok"># 基础设施层</span>
+│  │  ├─ <span class="file">config.py</span>         <span class="warn"># sqlite/storage/logs 相对路径，batch=5</span>
+│  │  ├─ <span class="file">database.py</span>
+│  │  ├─ <span class="file">errors.py</span>
+│  │  └─ <span class="file">logging.py</span>
+│  │
+│  └─ <span class="dir">static/</span>              <span class="warn"># 当前前端仍是测试台</span>
+│     ├─ <span class="file">index.html</span>
+│     └─ <span class="file">admin.html</span>
+│
+├─ <span class="dir">docs/</span>                   <span class="ok"># 当前架构理解的事实来源</span>
+│  ├─ <span class="file">PROJECT_HEALTH_CHECK.md</span>
+│  ├─ <span class="file">KNOWN_ISSUES.md</span>
+│  ├─ <span class="file">NEXT_ACTION_PLAN.md</span>
+│  ├─ <span class="file">ARCHITECTURE_GUARD_AUDIT.md</span>
+│  └─ <span class="file">ARCHITECTURE_EXTENSIBILITY_REVIEW.md</span>
+└─ <span class="dir">tests/</span>                  <span class="ok"># 当前 316 passed / 6 skipped</span>
+      </div>
+    </div>
+
+    <table style="margin-top:18px">
+      <thead>
+        <tr><th>目录</th><th>架构层</th><th>当前职责</th><th>与 Resource Guard 的关系</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>app/api</td>
+          <td>接入层</td>
+          <td>接收 HTTP / WebSocket 请求，转换为 schema</td>
+          <td>通常不放复杂限流逻辑，只透传 request 信息</td>
+        </tr>
+        <tr>
+          <td>app/services</td>
+          <td>业务编排层</td>
+          <td>组织校验、生成、导入、克隆、批量等业务流程</td>
+          <td><strong>Resource Guard 第一版主要接入点</strong></td>
+        </tr>
+        <tr>
+          <td>app/domain</td>
+          <td>领域协议层</td>
+          <td>RenderPlan、请求/响应 schema、枚举</td>
+          <td>后续定义 OperationPolicy、ResourcePolicy、RenderPlan v2</td>
+        </tr>
+        <tr>
+          <td>app/providers</td>
+          <td>底层适配层</td>
+          <td>将统一 RenderPlan 翻译成 MiniMax/mock 请求</td>
+          <td>不建议把 Resource Guard 写进 Adapter；Adapter 只负责调用底层</td>
+        </tr>
+        <tr>
+          <td>app/models / repositories</td>
+          <td>数据层</td>
+          <td>保存 ProviderVoice、Binding、Job、Asset、CallLog</td>
+          <td>后续 Resource Guard 如果要持久化队列或预算，会涉及这里</td>
+        </tr>
+        <tr>
+          <td>app/static</td>
+          <td>前端层</td>
+          <td>当前测试面板，已有 guardedJsonFetch</td>
+          <td>前端可防重复点击，但后端 Resource Guard 才是安全边界</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section" id="layer-view">
+    <h2>3. 分层结构：当前能力与待建构能力</h2>
+    <p class="intro">这个视图按架构层列出“已经有的、当前问题、下一步应该补什么”。</p>
+
+    <div class="layer">
+      <div class="head">用户 / 前端层</div>
+      <div class="cell"><h4>已有能力</h4><ul><li>index.html 单页测试台</li><li>guardedJsonFetch 高风险确认</li><li>同步/异步/流式/批量操作入口</li></ul></div>
+      <div class="cell"><h4>当前问题</h4><ul><li>仍是测试面板</li><li>创作主流程不突出</li><li>管理功能和创作功能混合</li></ul></div>
+      <div class="cell"><h4>后续建设</h4><ul><li>创作工作台</li><li>声音资产页</li><li>生成历史页</li><li>手机端 H5/PWA</li></ul></div>
+    </div>
+
+    <div class="layer">
+      <div class="head">API / Service 层</div>
+      <div class="cell"><h4>已有能力</h4><ul><li>render / preview / clone / design</li><li>variant / async / stream / batch</li><li>导入验证和删除生命周期</li></ul></div>
+      <div class="cell"><h4>当前问题</h4><ul><li>真实 Provider 调用分散在多个 service</li><li>没有统一资源调度</li><li>usage 回填不完整</li></ul></div>
+      <div class="cell"><h4>后续建设</h4><ul><li>ResourceGuardService</li><li>OperationExecutor</li><li>ProviderCallContext</li></ul></div>
+    </div>
+
+    <div class="layer">
+      <div class="head">Guard 横切层</div>
+      <div class="cell"><h4>已有能力</h4><ul><li>ProviderVoice 状态校验</li><li>CostGuardService.require_confirmed</li><li>10 个高风险入口覆盖</li></ul></div>
+      <div class="cell"><h4>当前问题</h4><ul><li>Resource Guard 缺失</li><li>Budget Guard 缺失</li><li>没有 api_key_id 维度</li></ul></div>
+      <div class="cell"><h4>后续建设</h4><ul><li>provider + model + operation 并发</li><li>高风险操作串行</li><li>预算预占和实际结算</li></ul></div>
+    </div>
+
+    <div class="layer">
+      <div class="head">领域模型层</div>
+      <div class="cell"><h4>已有能力</h4><ul><li>VoiceProfile</li><li>ProviderVoice</li><li>VoiceBinding</li><li>RenderPlan</li></ul></div>
+      <div class="cell"><h4>当前问题</h4><ul><li>RenderPlan 偏 MiniMax voice_id</li><li>metadata_json 没有标准语义</li><li>没有 ProviderCapabilities</li></ul></div>
+      <div class="cell"><h4>后续建设</h4><ul><li>RenderPlan v2</li><li>ProviderVoiceMetadataSpec</li><li>OperationPolicy</li></ul></div>
+    </div>
+
+    <div class="layer">
+      <div class="head">Provider 适配层</div>
+      <div class="cell"><h4>已有能力</h4><ul><li>SpeechProvider 抽象</li><li>mock adapter</li><li>MiniMax adapter</li></ul></div>
+      <div class="cell"><h4>当前问题</h4><ul><li>Provider 没有能力声明</li><li>新 Provider 需要大量特判</li><li>不适配 stateless voice 形态</li></ul></div>
+      <div class="cell"><h4>后续建设</h4><ul><li>ProviderCapabilities</li><li>MiMo adapter</li><li>本地模型 adapter</li></ul></div>
+    </div>
+
+    <div class="layer">
+      <div class="head">数据 / 基础设施层</div>
+      <div class="cell"><h4>已有能力</h4><ul><li>SQLite</li><li>storage 音频文件</li><li>ProviderCallLog</li><li>StatsService 雏形</li></ul></div>
+      <div class="cell"><h4>当前问题</h4><ul><li>相对路径风险</li><li>SQLite 多人试用风险</li><li>batch_max_concurrency=5 偏高</li></ul></div>
+      <div class="cell"><h4>后续建设</h4><ul><li>启动配置自检</li><li>PostgreSQL</li><li>UsageLogger / BudgetLedger</li></ul></div>
+    </div>
+  </section>
+
+  <section class="section" id="domain-model">
+    <h2>4. 核心对象关系图：为什么不是直接传 voice_id</h2>
+    <p class="intro">Voice Lab 的核心抽象是：业务上使用 VoiceProfile，底层真实可调用的是 ProviderVoice，中间通过 VoiceBinding 连接。RenderPlan 则是一张执行说明书。</p>
+
+    <svg class="arch-svg" viewBox="0 0 1400 560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/>
+        </marker>
+        <style>
+          .t{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;fill:#0f172a}
+          .muted{fill:#64748b;font-size:14px}
+          .title{font-weight:800;font-size:18px}
+          .small{font-size:13px;fill:#475569}
+          .line{stroke:#2563eb;stroke-width:2.4;marker-end:url(#arrow2);fill:none}
+          .box{fill:#fff;stroke:#cbd5e1;stroke-width:2}
+          .green{fill:#d1fae5;stroke:#34d399}
+          .purple{fill:#ede9fe;stroke:#a78bfa}
+          .blue{fill:#dbeafe;stroke:#60a5fa}
+          .orange{fill:#ffedd5;stroke:#fb923c}
+          .cyan{fill:#cffafe;stroke:#22d3ee}
+        </style>
+      </defs>
+
+      <rect x="70" y="70" width="230" height="105" rx="18" class="green"/>
+      <text x="185" y="108" text-anchor="middle" class="t title">VoiceProfile</text>
+      <text x="185" y="136" text-anchor="middle" class="small">业务声音人设</text>
+      <text x="185" y="156" text-anchor="middle" class="small">如：深夜程序员</text>
+
+      <rect x="380" y="70" width="250" height="105" rx="18" class="green"/>
+      <text x="505" y="108" text-anchor="middle" class="t title">VoiceBinding</text>
+      <text x="505" y="136" text-anchor="middle" class="small">人设绑定底层音色</text>
+      <text x="505" y="156" text-anchor="middle" class="small">provider / model / params</text>
+
+      <rect x="710" y="70" width="260" height="105" rx="18" class="green"/>
+      <text x="840" y="108" text-anchor="middle" class="t title">ProviderVoice</text>
+      <text x="840" y="136" text-anchor="middle" class="small">底层音色资产</text>
+      <text x="840" y="156" text-anchor="middle" class="small">provider_voice_id / status</text>
+
+      <rect x="1050" y="70" width="260" height="105" rx="18" class="orange"/>
+      <text x="1180" y="108" text-anchor="middle" class="t title">metadata_json</text>
+      <text x="1180" y="136" text-anchor="middle" class="small">扩展字段</text>
+      <text x="1180" y="156" text-anchor="middle" class="small">待标准化 source_type</text>
+
+      <path d="M300 122 L380 122" class="line"/>
+      <path d="M630 122 L710 122" class="line"/>
+      <path d="M970 122 L1050 122" class="line"/>
+
+      <rect x="245" y="285" width="270" height="115" rx="18" class="purple"/>
+      <text x="380" y="325" text-anchor="middle" class="t title">RenderPlan</text>
+      <text x="380" y="354" text-anchor="middle" class="small">一次生成任务说明书</text>
+      <text x="380" y="374" text-anchor="middle" class="small">text / voice / model / params</text>
+
+      <rect x="600" y="285" width="270" height="115" rx="18" class="blue"/>
+      <text x="735" y="325" text-anchor="middle" class="t title">SpeechProvider</text>
+      <text x="735" y="354" text-anchor="middle" class="small">底层模型适配器</text>
+      <text x="735" y="374" text-anchor="middle" class="small">mock / minimax / future mimo</text>
+
+      <rect x="955" y="285" width="270" height="115" rx="18" class="cyan"/>
+      <text x="1090" y="325" text-anchor="middle" class="t title">AudioAsset / Logs</text>
+      <text x="1090" y="354" text-anchor="middle" class="small">生成结果与调用记录</text>
+      <text x="1090" y="374" text-anchor="middle" class="small">音频 / 字幕 / usage / trace</text>
+
+      <path d="M505 175 C505 240, 380 240, 380 285" class="line"/>
+      <path d="M840 175 C840 245, 520 245, 515 330" class="line"/>
+      <path d="M515 342 L600 342" class="line"/>
+      <path d="M870 342 L955 342" class="line"/>
+    </svg>
+  </section>
+
+  <section class="section" id="call-chain">
+    <h2>5. 当前主要调用链：Resource Guard 应插在哪里</h2>
+    <p class="intro">这些链路都会触发真实 Provider 调用。Resource Guard 不能只写在单个接口，而应该作为所有真实 Provider 调用前的统一资源闸门。</p>
+
+    <h3>5.1 同步生成 / 普通 T2A</h3>
+    <div class="flow-row">
+      <div class="flow-box"><strong>用户点击生成</strong><small>index.html</small></div><div class="arrow">→</div>
+      <div class="flow-box"><strong>voice_render API</strong><small>接收 request</small></div><div class="arrow">→</div>
+      <div class="flow-box"><strong>VoiceRenderService</strong><small>解析 profile/binding</small></div><div class="arrow">→</div>
+      <div class="flow-box"><strong>ProviderVoice 校验</strong><small>available</small></div><div class="arrow">→</div>
+      <div class="flow-box"><strong>Cost Guard</strong><small>高风险确认</small></div><div class="arrow">→</div>
+      <div class="flow-box" style="background:#fff7ed;border-color:#fb923c"><strong>Resource Guard</strong><small>待插入</small></div><div class="arrow">→</div>
+      <div class="flow-box"><strong>RenderPlan</strong><small>执行说明书</small></div><div class="arrow">→</div>
+      <div class="flow-box"><strong>Provider.render_sync</strong><small>MiniMax/mock</small></div>
+    </div>
+
+    <h3>5.2 高风险操作：试听 / 克隆 / 设计 / 多版本 / 批量</h3>
+    <table>
+      <thead>
+        <tr><th>入口</th><th>当前状态</th><th>真实 Provider 调用</th><th>Resource Guard 第一版策略</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>provider_voice_preview</td><td><span class="badge done">Cost Guard 已接</span></td><td>render_sync</td><td>preview 并发 1~2</td></tr>
+        <tr><td>provider_voice_import_verify</td><td><span class="badge done">Cost Guard 已接</span></td><td>内部 preview → render_sync</td><td>视为 preview，高风险并发 1</td></tr>
+        <tr><td>voice_clone</td><td><span class="badge done">Cost Guard 已接</span></td><td>clone_voice</td><td>clone 并发 1</td></tr>
+        <tr><td>voice_design</td><td><span class="badge done">Cost Guard 已接</span></td><td>design_voice</td><td>design 并发 1</td></tr>
+        <tr><td>voice_variants</td><td><span class="badge done">Cost Guard 已接</span></td><td>最多 5 次 render_sync</td><td>整体任务并发 1，内部可串行</td></tr>
+        <tr><td>batch_longtext / batch_script</td><td><span class="badge done">Cost Guard 已接</span></td><td>多个 segment render_sync</td><td>全局 batch 并发 1，segment 并发 1~2</td></tr>
+        <tr><td>async_render</td><td><span class="badge done">Cost Guard 已接</span></td><td>create_async_task</td><td>async submit 并发 1~2</td></tr>
+        <tr><td>stream_render</td><td><span class="badge done">Cost Guard 已接</span></td><td>render_stream</td><td>stream 并发 1~2</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section" id="next-modules">
+    <h2>6. 待开发模块的意义：为什么先理解再开发</h2>
+    <p class="intro">下面不是功能清单，而是架构模块清单。每个模块都解决一个系统性问题。</p>
+
+    <div class="cards">
+      <div class="card">
+        <span class="badge todo">下一步候选</span>
+        <h3>ResourceGuardService</h3>
+        <p>解决“现在能不能执行”。按 provider + model + operation + api_key_id 控制并发，避免云端费用和限流失控。</p>
+      </div>
+      <div class="card">
+        <span class="badge future">架构收敛</span>
+        <h3>OperationPolicy</h3>
+        <p>集中声明每个 operation 的风险、是否需要 CostGuard、ResourceGuard、ProviderVoice、usage 回填。</p>
+      </div>
+      <div class="card">
+        <span class="badge future">多 Provider 基础</span>
+        <h3>ProviderCapabilities</h3>
+        <p>让每个 Provider 自己声明支持什么，避免前端和 service 到处写 provider == minimax。</p>
+      </div>
+      <div class="card">
+        <span class="badge future">多模型基础</span>
+        <h3>RenderPlan v2</h3>
+        <p>让生成计划能表达 source_type、metadata、voice_prompt、reference_audio_path、provider_options。</p>
+      </div>
+      <div class="card">
+        <span class="badge future">音色资产标准</span>
+        <h3>ProviderVoiceMetadataSpec</h3>
+        <p>规范 metadata_json，支持 remote_voice_id、stateless_design、stateless_clone、local_reference 等声音来源。</p>
+      </div>
+      <div class="card">
+        <span class="badge future">成本系统</span>
+        <h3>BudgetGuard</h3>
+        <p>从 confirm_cost 防误触升级为 estimate_id、预算预占、实际 usage 结算、用户/API Key 限额。</p>
+      </div>
+      <div class="card">
+        <span class="badge future">可观测性</span>
+        <h3>ProviderCallContext</h3>
+        <p>统一记录 provider、operation、job_id、trace_id、duration、usage、error，避免 usage 回填散落。</p>
+      </div>
+      <div class="card">
+        <span class="badge todo">产品化</span>
+        <h3>创作工作台</h3>
+        <p>把测试面板改成“选择场景 → 选择声音 → 输入文案 → 成本提示 → 生成试听”的产品主流程。</p>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:18px">
+      <strong>架构师结论：</strong>
+      当前项目的首要问题不是“功能少”，而是“横切能力开始复杂”。Resource Guard 开发前，应该先明确 operation、provider、model、api_key_id 四个维度，否则很容易又变成每个 service 各写一套 semaphore。
+    </div>
+  </section>
+</main>
+</body>
+</html>
