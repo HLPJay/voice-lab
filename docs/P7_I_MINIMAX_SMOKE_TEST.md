@@ -393,16 +393,10 @@ python scripts/run_minimax_smoke.py --dry-run
 python scripts/run_minimax_smoke.py --skip-minimax
 ```
 
-真实 MiniMax 最小测试（仅同步 T2A）：
+真实 MiniMax 最小测试（同步 T2A + provider voice preview）：
 
 ```bash
 python scripts/run_minimax_smoke.py --real-minimax --sync-only
-```
-
-包含批量测试：
-
-```bash
-python scripts/run_minimax_smoke.py --real-minimax --include-batch
 ```
 
 停止残留 smoke server：
@@ -423,15 +417,17 @@ python scripts/stop_smoke_server.py
 
 ### 真实 MiniMax 测试范围
 
-| 测试 | 默认 | 说明 |
-|---|---|---|
-| 同步 T2A 短文本 | ✅ sync-only 时执行 | 低成本 |
-| provider voice preview | ✅ sync-only 时执行 | 低成本 |
-| 异步 T2A | ❌ 需 `--include-async` | ~4.5分钟/任务 |
-| 批量长文本 | ❌ 需 `--include-batch` | 成本较高 |
-| 批量剧本 | ❌ 需 `--include-batch` | 成本较高 |
-| 声音克隆 | ❌ 不测试 | 高成本 |
-| 声音设计 | ❌ 不测试 | 高成本，效果主观 |
+| 测试 | 说明 |
+|---|---|
+| 同步 T2A 短文本 | `--sync-only` 时执行，低成本 |
+| provider voice preview | `--sync-only` 时执行，低成本 |
+| 异步 T2A | 预留，当前 runner 不执行（约 4.5 分钟/任务） |
+| 批量长文本 | 预留，当前 runner 不执行 |
+| 批量剧本 | 预留，当前 runner 不执行 |
+| 声音克隆 | 不测试，高成本 |
+| 声音设计 | 不测试，高成本，效果主观 |
+
+> 注：`--include-async` / `--include-batch` 已在 P7-I2a 中删除；异步和批量测试如有需要，按 P7-I 文档手动 API 流程执行，后续单独实现。
 
 ### 注意
 
@@ -439,3 +435,19 @@ python scripts/stop_smoke_server.py
 - WebSocket 流式需浏览器或 websocat 验证
 - 前端交互需浏览器验证
 - 声音克隆和声音设计本轮不纳入 smoke runner
+
+---
+
+## 12. P7-I2a Smoke Runner 可靠性收口
+
+### 修复内容
+
+- runner 自己启动的 uvicorn 使用 `proc.terminate()` / `proc.kill()` 优先清理，不再依赖 pidfile + wmic
+- pidfile 仅用于启动前清理上一次残留 smoke server
+- 修正 `stop_smoke_server.py` 的 `is_process_alive()` 判断：解析 tasklist CSV 输出，不再只看 returncode
+- `--dry-run / --skip-minimax / --real-minimax` 三种模式互斥（argparse mutually exclusive group）
+- 测试结果状态统一为 `passed / failed / skipped`
+- 删除 `--include-async` / `--include-batch` 参数（预留但暂不执行，避免误以为已覆盖）
+- Ctrl+C 时使用 try/finally 保证清理
+- Ready 阶段失败时也正确清理
+- 结果文件 `started_at / ended_at` 记录真实时间

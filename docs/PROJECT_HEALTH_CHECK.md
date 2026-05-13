@@ -1291,3 +1291,30 @@ tests/ -x -q                         → 366 passed, 6 skipped
 ### 阶段结论
 
 **P7-I2 smoke runner 已就绪，可安全执行 dry-run 和真实 smoke test，无需手动管理进程。**
+
+---
+
+## P7-I2a Smoke Runner 可靠性收口
+
+### 修复内容
+
+- runner 自己启动的 uvicorn 优先通过 `proc.terminate()` / `proc.kill()` 清理，pidfile 仅用于残留清理
+- 修正 stop 脚本 process alive 判断（tasklist CSV 输出解析，中英双语兼容）
+- argparse 模式改为互斥组（`--dry-run | --skip-minimax | --real-minimax`）
+- 结果状态统一为 `passed / failed / skipped`
+- 删除 `--include-async` / `--include-batch` 参数（预留，暂不执行）
+- Ctrl+C / ready 失败时正确清理
+- 结果文件记录真实 `started_at / ended_at`
+
+### 验证结果
+
+- `--dry-run`：PASS ready_check，Cleanup: terminated
+- `--skip-minimax`：PASS ready_check + jobs_history
+- `stop_smoke_server.py`：no pidfile 时 clean
+- `--dry-run --skip-minimax`：argparse 报错 "not allowed with argument"
+- pytest：368 passed, 6 skipped
+
+### 阶段边界
+
+- 不修改业务代码
+- 不真实消耗 MiniMax token（除非显式 `--real-minimax`）

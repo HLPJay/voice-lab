@@ -3,21 +3,24 @@
 Standard smoke test runner for voice_lab.
 
 Usage:
-    python scripts/run_minimax_smoke.py --dry-run          # no real calls, just server start/check
+    python scripts/run_minimax_smoke.py --dry-run          # server start + ready check, no calls
     python scripts/run_minimax_smoke.py --skip-minimax     # non-MiniMax checks only
     python scripts/run_minimax_smoke.py --real-minimax --sync-only   # minimal real test
-    python scripts/run_minimax_smoke.py --real-minimax --include-batch
     python scripts/stop_smoke_server.py                    # stop any residual server
 
 Environment variables:
     SMOKE_HOST   override host (default: 127.0.0.1)
     SMOKE_PORT   override port (default: 8010)
+
+Modes (mutually exclusive):
+    --dry-run       no real calls, just server start/check/stop
+    --skip-minimax  basic API checks (jobs history), no MiniMax
+    --real-minimax  allow real MiniMax calls (sync T2A + provider preview)
 """
 
 import argparse
 import json
 import os
-import signal
 import subprocess
 import sys
 import time
@@ -71,7 +74,6 @@ def delete_pidfile():
 def is_process_smoke_server(pid):
     """Check if a PID belongs to our smoke server."""
     try:
-        # Windows: use tasklist and wmic
         proc = subprocess.run(
             ["wmic", "process", "where", f"processid={pid}", "get", "CommandLine"],
             capture_output=True,
@@ -92,8 +94,17 @@ def kill_process(pid):
         return False
 
 
-def stop_server():
-    """Stop the smoke server if running."""
+def stop_server_by_pid(pid):
+    """Stop a specific smoke server by PID (for residual cleanup only)."""
+    if not is_process_smoke_server(pid):
+        return "not_our_server"
+    if kill_process(pid):
+        return "killed"
+    return "already_dead"
+
+
+def stop_residual_smoke_server():
+    """Stop any previous residual smoke server from pidfile."""
     info = load_pidfile()
     if not info:
         return "no_pidfile"
@@ -103,26 +114,46 @@ def stop_server():
         delete_pidfile()
         return "no_pid"
 
-    # Check if process exists
-    if not is_process_smoke_server(pid):
-        # PID exists but not our smoke server
+    if not is_process_alive(pid):
         delete_pidfile()
-        return "not_our_server"
+        return "not_running"
 
-    if kill_process(pid):
-        delete_pidfile()
+    result = stop_server_by_pid(pid)
+    delete_pidfile()
+    return result
+
+
+def terminate_process(proc, timeout_seconds=5):
+    """Terminate a process started by this runner via its Popen object."""
+    if proc is None:
+        return "no_process"
+    if proc.poll() is not None:
+        return "already_exited"
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=timeout_seconds)
+        return "terminated"
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=timeout_seconds)
         return "killed"
-    else:
-        # Process might have already exited
-        delete_pidfile()
-        return "already_dead"
 
 
-def cleanup_on_exit(pid, host, port):
-    """Clean up when exiting."""
-    info = load_pidfile()
-    if info and info.get("pid") == pid:
-        stop_server()
+def is_process_alive(pid):
+    """Check if a PID is currently running (Windows, bilingual)."""
+    try:
+        proc = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+        )
+        out = proc.stdout.strip()
+        if not out or "No tasks" in out or "没有运行" in out or "没有" in out:
+            return False
+        return str(pid) in out
+    except Exception:
+        return False
 
 
 def port_is_free(host, port):
@@ -174,10 +205,9 @@ def run_ready_check(host, port):
     }
 
 
-def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_async):
+def run_tests(host, port, mode, real_minimax):
     """Run the appropriate tests based on mode."""
     import urllib.request
-    import urllib.error
 
     results = []
 
@@ -189,7 +219,6 @@ def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_
 
     # --- Non-MiniMax checks (skip-minimax) ---
     try:
-        # Jobs history list - safe, no MiniMax cost
         url = f"http://{host}:{port}/api/voice/jobs?page=1&page_size=5"
         start = time.time()
         req = urllib.request.Request(url)
@@ -218,7 +247,6 @@ def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_
 
     # Sync T2A - short text
     try:
-        import urllib.request
         import json as json_mod
 
         url = f"http://{host}:{port}/api/voice/render"
@@ -236,7 +264,7 @@ def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_
         data = json_mod.loads(resp.read())
         results.append({
             "name": "sync_t2a",
-            "status": "success" if data.get("status") == "success" else "failed",
+            "status": "passed" if data.get("status") == "success" else "failed",
             "duration_ms": duration_ms,
             "detail": f"job_id={data.get('job_id')}, status={data.get('status')}",
         })
@@ -250,6 +278,8 @@ def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_
 
     # Provider voice preview - short text
     try:
+        import json as json_mod
+
         url = f"http://{host}:{port}/api/voice/provider-voices/preview"
         payload = json_mod.dumps({
             "provider": "minimax",
@@ -265,7 +295,7 @@ def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_
         data = json_mod.loads(resp.read())
         results.append({
             "name": "provider_preview",
-            "status": "success" if data.get("status") == "success" else "failed",
+            "status": "passed" if data.get("status") == "success" else "failed",
             "duration_ms": duration_ms,
             "detail": f"job_id={data.get('job_id')}, status={data.get('status')}",
         })
@@ -277,39 +307,17 @@ def run_tests(host, port, mode, real_minimax, sync_only, include_batch, include_
             "detail": str(e),
         })
 
-    if include_async:
-        results.append({
-            "name": "async_t2a",
-            "status": "skipped",
-            "duration_ms": 0,
-            "detail": "async T2A skipped by default (4.5min per task); use --include-async to enable",
-        })
-
-    if include_batch:
-        results.append({
-            "name": "batch_longtext",
-            "status": "skipped",
-            "duration_ms": 0,
-            "detail": "batch longtext skipped by default; use --include-batch to enable",
-        })
-        results.append({
-            "name": "batch_script",
-            "status": "skipped",
-            "duration_ms": 0,
-            "detail": "batch script skipped by default; use --include-batch to enable",
-        })
-
     return results
 
 
-def write_results(mode, real_minimax, base_url, results, cleanup_status):
+def write_results(mode, real_minimax, base_url, results, cleanup_status, started_at, ended_at):
     ensure_tmp()
     result_file = RESULT_DIR / "latest.json"
     result_file.write_text(
         json.dumps(
             {
-                "started_at": datetime.now(timezone.utc).isoformat(),
-                "ended_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": started_at,
+                "ended_at": ended_at,
                 "base_url": base_url,
                 "mode": mode,
                 "real_minimax": real_minimax,
@@ -324,47 +332,31 @@ def write_results(mode, real_minimax, base_url, results, cleanup_status):
 
 def main():
     parser = argparse.ArgumentParser(description="voice_lab smoke test runner")
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument(
         "--dry-run",
         action="store_true",
         help="Start server, ready check, stop. No MiniMax calls.",
     )
-    parser.add_argument(
+    mode_group.add_argument(
         "--skip-minimax",
         action="store_true",
-        help="Run non-MiniMax API checks only.",
+        help="Run non-MiniMax API checks only (jobs history).",
     )
-    parser.add_argument(
+    mode_group.add_argument(
         "--real-minimax",
         action="store_true",
-        help="Allow real MiniMax API calls. Required for actual smoke testing.",
+        help="Allow real MiniMax API calls. Requires --sync-only.",
     )
     parser.add_argument(
         "--sync-only",
         action="store_true",
-        help="Only run sync T2A (no async, no batch). Default when --real-minimax is used.",
-    )
-    parser.add_argument(
-        "--include-batch",
-        action="store_true",
-        help="Include batch longtext/script tests (requires --real-minimax).",
-    )
-    parser.add_argument(
-        "--include-async",
-        action="store_true",
-        help="Include async T2A test (requires --real-minimax, ~4.5min).",
+        help="Run minimal real MiniMax set (sync T2A + provider preview). Implied by --real-minimax.",
     )
     args = parser.parse_args()
 
-    if not (args.dry_run or args.skip_minimax or args.real_minimax):
-        parser.print_help()
-        print("\nError: must specify one of --dry-run, --skip-minimax, or --real-minimax")
-        sys.exit(1)
-
-    if args.real_minimax and not (
-        args.sync_only or args.include_batch or args.include_async
-    ):
-        # Default to sync-only when running real minimax
+    if args.real_minimax and not args.sync_only:
+        print("[smoke] NOTE: --real-minimax implies --sync-only (sync T2A + provider preview)")
         args.sync_only = True
 
     mode = "dry-run"
@@ -381,7 +373,7 @@ def main():
 
     # --- Step 1: Stop any previous residual server ---
     print("[smoke] Checking for residual smoke server...")
-    prev = stop_server()
+    prev = stop_residual_smoke_server()
     if prev == "killed":
         print("[smoke] Stopped residual smoke server")
     elif prev == "no_pidfile":
@@ -390,8 +382,10 @@ def main():
         print("[smoke] pidfile had no pid, deleted")
     elif prev == "not_our_server":
         print("[smoke] pidfile PID is not our smoke server, deleted")
+    elif prev == "not_running":
+        print("[smoke] pidfile PID not running, deleted")
     elif prev == "already_dead":
-        print("[smoke] Process already dead, deleted pidfile")
+        print("[smoke] Residual process already dead, deleted pidfile")
 
     # --- Step 2: Check port availability ---
     if not port_is_free(host, port):
@@ -417,6 +411,7 @@ def main():
         "--port",
         str(port),
     ]
+    started_at = datetime.now(timezone.utc).isoformat()
     proc = subprocess.Popen(
         cmd,
         cwd=str(ROOT),
@@ -427,42 +422,57 @@ def main():
     write_pidfile(pid, host, port, " ".join(cmd))
     print(f"[smoke] uvicorn started pid={pid}")
 
-    # --- Step 4: Wait for ready ---
-    print(f"[smoke] Waiting for ready (timeout={READY_TIMEOUT_SECONDS}s)...")
-    ready, path, error = wait_for_ready(host, port)
-    if not ready:
-        print(f"[smoke] ERROR: Server did not become ready within {READY_TIMEOUT_SECONDS}s")
-        print(f"[smoke] stderr:\n{proc.stderr.read1(4096).decode(errors='replace')}")
-        cleanup_status = stop_server()
-        print(f"[smoke] Cleanup: {cleanup_status}")
-        sys.exit(1)
-
-    print(f"[smoke] Server ready at {base_url}{path}")
-
-    # --- Step 5: Run tests ---
+    results = []
     cleanup_status = "not_run"
+    ended_at = datetime.now(timezone.utc).isoformat()
+
+    # --- Step 4: Wait for ready, then run tests, always cleanup ---
     try:
+        print(f"[smoke] Waiting for ready (timeout={READY_TIMEOUT_SECONDS}s)...")
+        ready, path, error = wait_for_ready(host, port)
+        if not ready:
+            print(f"[smoke] ERROR: Server did not become ready within {READY_TIMEOUT_SECONDS}s")
+            stderr_output = proc.stderr.read1(4096).decode(errors="replace")
+            if stderr_output:
+                print(f"[smoke] stderr:\n{stderr_output}")
+            cleanup_status = terminate_process(proc)
+            print(f"[smoke] Cleanup: {cleanup_status}")
+            delete_pidfile()
+            write_results(mode, args.real_minimax, base_url, [], cleanup_status, started_at, datetime.now(timezone.utc).isoformat())
+            sys.exit(1)
+
+        print(f"[smoke] Server ready at {base_url}{path}")
+
+        # --- Step 5: Run tests ---
         results = run_tests(
             host=host,
             port=port,
             mode=mode,
             real_minimax=args.real_minimax,
-            sync_only=args.sync_only,
-            include_batch=args.include_batch,
-            include_async=args.include_async,
         )
         # Print summary
         print("\n[smoke] Results:")
         for r in results:
             icon = "PASS" if r["status"] == "passed" else "FAIL" if r["status"] == "failed" else "SKIP"
             print(f"  [{icon}] {r['name']}: {r['detail']} ({r['duration_ms']}ms)")
-    finally:
-        # --- Step 6: Cleanup ---
-        print("[smoke] Stopping server...")
-        cleanup_status = stop_server()
-        print(f"[smoke] Cleanup: {cleanup_status}")
 
-    write_results(mode, args.real_minimax, base_url, results, cleanup_status)
+    except KeyboardInterrupt:
+        print("\n[smoke] Interrupted by user")
+        cleanup_status = terminate_process(proc)
+        print(f"[smoke] Cleanup: {cleanup_status}")
+        delete_pidfile()
+        write_results(mode, args.real_minimax, base_url, results, cleanup_status, started_at, datetime.now(timezone.utc).isoformat())
+        sys.exit(130)
+
+    finally:
+        # --- Step 6: Always cleanup this runner's process ---
+        print("[smoke] Stopping server...")
+        cleanup_status = terminate_process(proc)
+        print(f"[smoke] Cleanup: {cleanup_status}")
+        delete_pidfile()
+        ended_at = datetime.now(timezone.utc).isoformat()
+
+    write_results(mode, args.real_minimax, base_url, results, cleanup_status, started_at, ended_at)
 
     # Exit code based on test results
     if mode != "dry-run":

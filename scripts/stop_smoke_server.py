@@ -18,6 +18,22 @@ ROOT = Path(__file__).parent.parent.resolve()
 PID_FILE = ROOT / ".tmp" / "uvicorn-smoke.pid"
 
 
+def is_process_alive(pid):
+    """Check if a PID is currently running (Windows, bilingual)."""
+    try:
+        proc = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+        )
+        out = proc.stdout.strip()
+        if not out or "No tasks" in out or "没有运行" in out or "没有" in out:
+            return False
+        return str(pid) in out
+    except Exception:
+        return False
+
+
 def is_process_smoke_server(pid):
     """Check if PID belongs to our smoke server (uvicorn + app.main:app)."""
     try:
@@ -59,15 +75,16 @@ def main():
         PID_FILE.unlink()
         sys.exit(0)
 
+    if not is_process_alive(pid):
+        print(f"stop_smoke: pid {pid} is not running, deleting pidfile")
+        PID_FILE.unlink()
+        sys.exit(0)
+
     if not is_process_smoke_server(pid):
-        if is_process_alive(pid):
-            print(f"stop_smoke: pid {pid} exists but is not a smoke server, not killing")
-            print(f"stop_smoke: command line check: {get_commandline(pid)}")
-            sys.exit(1)
-        else:
-            print(f"stop_smoke: pid {pid} is not running, deleting pidfile")
-            PID_FILE.unlink()
-            sys.exit(0)
+        cmdline = get_commandline(pid)
+        print(f"stop_smoke: pid {pid} exists but is not a smoke server, not killing")
+        print(f"stop_smoke: command line: {cmdline}")
+        sys.exit(1)
 
     if kill_process(pid):
         print(f"stop_smoke: killed pid {pid}")
@@ -78,20 +95,6 @@ def main():
         print(f"stop_smoke: kill failed for pid {pid}, process may have already exited")
         PID_FILE.unlink()
         sys.exit(0)
-
-
-def is_process_alive(pid):
-    """Check if a process exists."""
-    try:
-        subprocess.run(
-            ["tasklist", "/FI", f"PID eq {pid}"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return True
-    except subprocess.CalledProcessError:
-        return False
 
 
 def get_commandline(pid):
