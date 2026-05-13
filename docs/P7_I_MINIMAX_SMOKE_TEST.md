@@ -474,4 +474,26 @@ python scripts/stop_smoke_server.py
 - 异步任务慢属于 MiniMax 服务特性，不作为后端错误
 - 前端已降低轮询频率并增强用户提示
 
+---
+
+## 14. P7-I3a 异步轮询收口
+
+### 背景
+
+P7-I3 已将异步 T2A 轮询改为退避策略，但复核发现手动刷新可能导致重复 timer，自动轮询无最大时长限制。
+
+### 修复内容
+
+- 新增 `clearAsyncPollingTimer()`，只清 timer 不设置 stopped
+- `stopAsyncPolling()` 改为调用 `clearAsyncPollingTimer()` + 设置 stopped
+- 手动刷新前清理旧 timer，避免重复轮询链
+- 设置新 timer 前先清理旧 timer，确保任意时刻最多一个 async polling timer
+- `pollAsyncJob()` 增加 jobId 防护：旧 job 的延迟 timer 不再污染当前 job
+- 增加最大自动轮询时长（15 分钟），超过后暂停自动刷新，不标记 failed
+- 停止自动刷新按钮增加 UI 反馈
+
+### 阶段结论
+
+异步轮询已从固定 3 秒轮询升级为可控退避轮询，防止重复 timer 和无限自动轮询。
+
 - 结果文件 `started_at / ended_at` 记录真实时间

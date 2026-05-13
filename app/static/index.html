@@ -1628,22 +1628,29 @@ const asyncPollingState = {
   stopped: false,
 };
 
+const ASYNC_MAX_AUTO_POLL_MS = 15 * 60 * 1000; // 15 minutes max auto polling
+
 function getAsyncPollingDelay(attempt, elapsedMs) {
   if (elapsedMs < 30_000) return 3_000;      // 0-30s: 3s
   if (elapsedMs < 120_000) return 10_000;   // 30s-2min: 10s
   return 20_000;                             // 2min+: 20s
 }
 
-function stopAsyncPolling() {
+// Only clear the timer, do not set stopped flag
+function clearAsyncPollingTimer() {
   if (asyncPollingState.timer) {
     clearTimeout(asyncPollingState.timer);
     asyncPollingState.timer = null;
   }
+}
+
+function stopAsyncPolling() {
+  clearAsyncPollingTimer();
   asyncPollingState.stopped = true;
 }
 
 function resetAsyncPollingState(jobId) {
-  stopAsyncPolling();
+  clearAsyncPollingTimer();
   asyncPollingState.jobId = jobId;
   asyncPollingState.startedAt = Date.now();
   asyncPollingState.attempt = 0;
@@ -1651,7 +1658,16 @@ function resetAsyncPollingState(jobId) {
 }
 
 async function manualRefreshAsyncJob(jobId) {
+  clearAsyncPollingTimer();
   await pollAsyncJob(jobId, { manual: true });
+}
+
+function handleStopAsyncPolling() {
+  stopAsyncPolling();
+  const el = document.getElementById('asyncPollStatus');
+  if (el) {
+    el.innerHTML = '自动刷新已停止。你可以稍后手动刷新状态。';
+  }
 }
 
   // ============================================================
@@ -1970,7 +1986,7 @@ async function manualRefreshAsyncJob(jobId) {
         <div class="poll-status" id="asyncPollStatus"><span class="spinner"></span>等待首次查询…</div>
         <div class="action-row" id="asyncPollActions">
           <button class="btn-sm" type="button" onclick="manualRefreshAsyncJob('${esc(jobId)}')">手动刷新</button>
-          <button class="btn-sm" type="button" onclick="stopAsyncPolling()">停止自动刷新</button>
+          <button class="btn-sm" type="button" onclick="handleStopAsyncPolling()">停止自动刷新</button>
         </div>
       </div>`;
     resultsArea.classList.add('visible');
@@ -1981,12 +1997,13 @@ async function manualRefreshAsyncJob(jobId) {
   async function pollAsyncJob(jobId, options = {}) {
     const manual = options.manual === true;
 
-    if (!asyncPollingState.startedAt) {
-      asyncPollingState.startedAt = Date.now();
+    // Guard: ignore if this is a stale timer for an old job
+    if (asyncPollingState.jobId !== jobId) {
+      return;
     }
 
-    if (asyncPollingState.jobId !== jobId) {
-      asyncPollingState.jobId = jobId;
+    if (!asyncPollingState.startedAt) {
+      asyncPollingState.startedAt = Date.now();
     }
     asyncPollingState.attempt += 1;
 
@@ -2030,18 +2047,38 @@ async function manualRefreshAsyncJob(jobId) {
         return;
       }
 
-      // Still processing
+      // Still processing - check max auto poll duration
       const elapsedMs = Date.now() - asyncPollingState.startedAt;
+
+      if (elapsedMs >= ASYNC_MAX_AUTO_POLL_MS) {
+        stopAsyncPolling();
+        const status = data.status || 'processing';
+        resultsArea.innerHTML = `
+          <div class="card" id="asyncStatusCard">
+            <div class="result-label">异步任务</div>
+            <p>任务ID：<code>${esc(jobId)}</code></p>
+            <p>当前状态：<span class="job-status status-${esc(status)}">${esc(status)}</span></p>
+            <div class="success-msg" style="margin-top:10px">
+              自动刷新已暂停。MiniMax 异步任务可能仍在处理中，请稍后手动刷新。
+            </div>
+            <div class="action-row" style="margin-top:12px">
+              <button class="btn-sm" type="button" onclick="manualRefreshAsyncJob('${esc(jobId)}')">手动刷新</button>
+            </div>
+          </div>`;
+        resultsArea.classList.add('visible');
+        setLoading(false);
+        return;
+      }
+
       const nextDelayMs = getAsyncPollingDelay(asyncPollingState.attempt, elapsedMs);
       const elapsedSec = Math.floor(elapsedMs / 1000);
       const nextSec = Math.ceil(nextDelayMs / 1000);
 
       updateAsyncPollStatus(jobId, data.status || 'processing', asyncPollingState.attempt, elapsedSec, nextSec);
 
-      if (!manual && !asyncPollingState.stopped) {
-        asyncPollingState.timer = setTimeout(() => pollAsyncJob(jobId), nextDelayMs);
-      } else if (manual && !asyncPollingState.stopped) {
-        // After manual refresh, resume auto-polling with next delay
+      // Resume auto-polling if not stopped (clear any stale timer first)
+      if (!asyncPollingState.stopped) {
+        clearAsyncPollingTimer();
         asyncPollingState.timer = setTimeout(() => pollAsyncJob(jobId), nextDelayMs);
       }
     } catch (e) {
