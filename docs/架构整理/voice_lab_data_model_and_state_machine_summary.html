@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Lab 核心架构汇总：数据模型与状态机</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --ink: #172033;
+      --muted: #657083;
+      --line: #e4e8f0;
+      --blue: #4f46e5;
+      --blue-soft: #eef2ff;
+      --green: #059669;
+      --green-soft: #ecfdf5;
+      --orange: #d97706;
+      --orange-soft: #fff7ed;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --slate: #111827;
+      --code: #e5e7eb;
+      --shadow: 0 14px 36px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(79,70,229,.16), transparent 30rem),
+        radial-gradient(circle at 90% 6%, rgba(5,150,105,.12), transparent 28rem),
+        var(--bg);
+      line-height: 1.72;
+    }
+
+    .page {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 36px 18px 80px;
+    }
+
+    header {
+      background: rgba(255,255,255,.94);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 38px 36px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #3730a3;
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.12;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .toc a {
+      text-decoration: none;
+      display: block;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--ink);
+      padding: 14px;
+      min-height: 92px;
+    }
+
+    .toc span {
+      display: block;
+      color: var(--blue);
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 8px 22px rgba(23, 32, 51, .05);
+      padding: 26px;
+      margin: 18px 0;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 25px;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+
+    .card h3 {
+      margin: 24px 0 8px;
+      font-size: 18px;
+    }
+
+    .lead {
+      font-size: 18px;
+      font-weight: 760;
+      margin: 0 0 10px;
+    }
+
+    .muted { color: var(--muted); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .mini-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 16px;
+    }
+
+    .note, .success, .warning, .danger {
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin: 14px 0;
+      border: 1px solid;
+    }
+
+    .note {
+      background: var(--blue-soft);
+      border-color: #c7d2fe;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #a7f3d0;
+    }
+
+    .warning {
+      background: var(--orange-soft);
+      border-color: #fed7aa;
+    }
+
+    .danger {
+      background: var(--red-soft);
+      border-color: #fecaca;
+    }
+
+    pre.flow {
+      background: var(--slate);
+      color: var(--code);
+      border-radius: 18px;
+      padding: 18px;
+      overflow-x: auto;
+      line-height: 1.7;
+      font-size: 14px;
+      white-space: pre;
+      margin: 14px 0;
+    }
+
+    code {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f9fafb;
+      color: #374151;
+    }
+
+    ul, ol { padding-left: 1.35em; margin: 10px 0; }
+    li { margin: 5px 0; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: var(--blue-soft);
+      color: #3730a3;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+
+    .tag.green { background: var(--green-soft); color: #047857; }
+    .tag.orange { background: var(--orange-soft); color: #b45309; }
+    .tag.red { background: var(--red-soft); color: #b91c1c; }
+
+    .diagram {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background: #fff;
+      position: relative;
+    }
+
+    .box .title {
+      font-weight: 850;
+      color: var(--blue);
+      margin-bottom: 4px;
+    }
+
+    .arrow {
+      text-align: center;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .toc, .grid-2, .grid-3, .split { grid-template-columns: 1fr; }
+      header, .card { padding: 22px; }
+      .toc a { min-height: unset; }
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      margin-top: 26px;
+      font-size: 13px;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { padding: 0; }
+      header, .card, .mini-card, .box { box-shadow: none; break-inside: avoid; }
+      .toc { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">Voice Lab 核心架构汇总</div>
+      <h1>数据模型与状态机：项目可扩展性的核心骨架</h1>
+      <p class="subtitle">
+        这份文档只聚焦两个方向：第一，当前 Voice Lab 的数据模型如何组织，以及它为什么具备扩展能力；
+        第二，状态机如何承载同步、异步、流式、批量等不同任务下发，并让任务过程可追踪、可恢复、可治理。
+      </p>
+      <div class="meta">
+        <span class="pill">主题一：数据模型</span>
+        <span class="pill">主题二：状态机</span>
+        <span class="pill">目的：架构复盘 / 后续分析 / 项目存档</span>
+      </div>
+      <nav class="toc">
+        <a href="#overview"><span>01 总览</span>两条主线如何构成项目骨架</a>
+        <a href="#data"><span>02 数据模型</span>对象、关系、扩展机制</a>
+        <a href="#state"><span>03 状态机</span>任务类型、状态流转、终态规则</a>
+        <a href="#issues"><span>04 自检结论</span>当前优点、潜在问题、后续演进</a>
+      </nav>
+    </header>
+
+    <section class="card" id="overview">
+      <h2>一、总览：为什么数据模型和状态机是架构核心</h2>
+      <p class="lead">
+        数据模型决定系统“能表达什么”，状态机决定这些对象“如何变化”。
+      </p>
+      <p>
+        Voice Lab 不是一个简单的 MiniMax API Demo，而是一个逐步演进中的声音生产工作台。
+        它需要管理声音人设、Provider 音色、绑定策略、生成任务、音频资产、批量分段和调用日志。
+        如果数据模型没有抽象好，后续每接入一个 Provider 都会改业务；如果状态机没有设计好，异步、流式、批量任务就会出现长期 processing、失败不可追踪、成功无资产等问题。
+      </p>
+
+      <div class="grid-2">
+        <div class="mini-card">
+          <strong>数据模型回答的问题</strong>
+          <ul>
+            <li>系统里有哪些核心对象？</li>
+            <li>用户看到的“声音”和 Provider 的 voice_id 如何解耦？</li>
+            <li>生成任务和生成结果如何关联？</li>
+            <li>未来如何接入更多 Provider？</li>
+          </ul>
+        </div>
+        <div class="mini-card">
+          <strong>状态机回答的问题</strong>
+          <ul>
+            <li>任务从创建到完成经历哪些状态？</li>
+            <li>同步、异步、流式、批量任务如何统一管理？</li>
+            <li>失败如何落库？成功如何证明？</li>
+            <li>批量部分失败如何表达？</li>
+          </ul>
+        </div>
+      </div>
+
+      <pre class="flow">Voice Lab 核心骨架：
+
+数据模型：
+  VoiceProfile / ProviderVoice / VoiceBinding / RenderPlan / VoiceJob / Asset
+
+状态机：
+  JobType + JobStatus + BatchStatus + 资产生命周期状态
+
+控制层：
+  Binding Validation / Cost Guard / Resource Guard
+
+三者关系：
+  数据模型定义对象
+    ↓
+  状态机定义对象变化
+    ↓
+  控制层决定哪些变化或调用允许发生</pre>
+
+      <div class="success">
+        <strong>核心结论：</strong>当前项目的数据模型方向是正确的，已经具备声音中台雏形；状态机基本可用，但后续需要围绕 operation、异步超时、批量汇总等方向继续精细化。
+      </div>
+    </section>
+
+    <section class="card" id="data">
+      <h2>二、数据模型汇总：当前系统如何表达声音业务</h2>
+      <p>
+        当前数据模型的设计思路是：不要让业务层直接依赖 MiniMax 原始 voice_id，而是通过一层自己的业务抽象，把“用户想要的声音”和“Provider 真实音色”隔离开。
+      </p>
+
+      <h3>2.1 数据模型分层</h3>
+      <div class="diagram">
+        <div class="box">
+          <div class="title">声音抽象层：VoiceProfile</div>
+          <div>表达用户理解的声音人设，例如“奶娘”“深夜程序员”“旁白”。它描述风格，不直接绑定某个厂商的 voice_id。</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="box">
+          <div class="title">Provider 资产层：ProviderVoice</div>
+          <div>表达 Provider 侧真实音色资产，例如 MiniMax 的某个 provider_voice_id。它管理厂商音色、状态和 metadata。</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="box">
+          <div class="title">绑定决策层：VoiceBinding</div>
+          <div>把 VoiceProfile 和 ProviderVoice 连接起来，决定某个人设使用哪个 provider、model、voice_id、参数和优先级。</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="box">
+          <div class="title">标准协议层：RenderPlan</div>
+          <div>统一描述一次生成计划，包括文本、provider、model、provider_voice_id、voice_params、audio_params、subtitle 等。</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="box">
+          <div class="title">任务与结果层：VoiceJob → AudioAsset / SubtitleAsset</div>
+          <div>VoiceJob 记录生成过程和状态；AudioAsset / SubtitleAsset 记录生成结果和文件资产。</div>
+        </div>
+      </div>
+
+      <h3>2.2 核心模型清单</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>一句话理解</th>
+            <th>主要字段 / 信息</th>
+            <th>架构价值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>VoiceProfile</code></td>
+            <td>声音人设</td>
+            <td>name、description、gender_style、age_style、tone_style、emotion_style、scene_tags_json、is_active</td>
+            <td>把“用户想要的声音风格”抽象出来，避免直接依赖 Provider voice_id。</td>
+          </tr>
+          <tr>
+            <td><code>ProviderVoice</code></td>
+            <td>Provider 音色资产</td>
+            <td>provider、provider_voice_id、voice_type、name、language、gender、status、metadata_json、synced_at</td>
+            <td>统一管理多个 Provider 的真实音色，并通过 provider + provider_voice_id 避免冲突。</td>
+          </tr>
+          <tr>
+            <td><code>VoiceBinding</code></td>
+            <td>人设到音色的绑定策略</td>
+            <td>profile_id、provider、model、provider_voice_id、params_json、priority、status</td>
+            <td>让人设和真实 Provider 音色解耦，支持切换、废弃、优先级和未来 fallback。</td>
+          </tr>
+          <tr>
+            <td><code>RenderPlan</code></td>
+            <td>标准生成计划</td>
+            <td>text、processed_text、profile_id、provider、model、provider_voice_id、voice_params、audio_params、subtitle、output_format</td>
+            <td>把业务请求转成统一协议，Provider Adapter 只负责把 RenderPlan 转换成厂商请求。</td>
+          </tr>
+          <tr>
+            <td><code>VoiceJob</code></td>
+            <td>一次生成任务</td>
+            <td>job_type、status、provider、model、profile_id、binding_id、input_text、processed_text、render_plan_json、response_json、error_message</td>
+            <td>统一承载同步、异步、流式、批量等任务过程，方便历史、状态、错误和统计。</td>
+          </tr>
+          <tr>
+            <td><code>AudioAsset</code></td>
+            <td>音频结果资产</td>
+            <td>job_id、provider、model、file_path、file_url、format、duration_ms、sample_rate、usage_characters、metadata_json</td>
+            <td>把生成结果资产化，支撑下载、复用、历史记录、缓存和素材库。</td>
+          </tr>
+          <tr>
+            <td><code>SubtitleAsset</code></td>
+            <td>字幕结果资产</td>
+            <td>job_id、audio_asset_id、subtitle_type、file_path、srt_path、timeline_json</td>
+            <td>让字幕与音频结果可追踪、可合并、可导出。</td>
+          </tr>
+          <tr>
+            <td><code>ProviderCallLog</code></td>
+            <td>真实 Provider 调用日志</td>
+            <td>provider、api_path、status_code、duration_ms、usage_characters、provider_trace_id、error_message</td>
+            <td>支撑调用审计、成本统计、失败排查和 Provider 质量评估。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.3 数据模型的扩展机制</h3>
+      <div class="grid-3">
+        <div class="mini-card">
+          <strong>业务和厂商解耦</strong>
+          <p>用户选择 VoiceProfile，系统通过 VoiceBinding 找到 ProviderVoice。用户不直接依赖 MiniMax voice_id。</p>
+        </div>
+        <div class="mini-card">
+          <strong>Provider 多态</strong>
+          <p>ProviderVoice 用 provider + provider_voice_id 表达真实音色，未来可以同时支持 MiniMax、MiMo、ElevenLabs、本地模型。</p>
+        </div>
+        <div class="mini-card">
+          <strong>绑定策略可变</strong>
+          <p>VoiceBinding 包含 model、params_json、priority、status，可以支持优先级、废弃、切换、fallback。</p>
+        </div>
+        <div class="mini-card">
+          <strong>标准生成协议</strong>
+          <p>RenderPlan 是内部标准协议，业务不直接拼厂商请求。新增 Provider 只需要新增 Adapter。</p>
+        </div>
+        <div class="mini-card">
+          <strong>任务与结果分离</strong>
+          <p>VoiceJob 记录过程，AudioAsset 记录结果。过程失败不会污染结果资产，结果资产可以复用。</p>
+        </div>
+        <div class="mini-card">
+          <strong>JSON 扩展空间</strong>
+          <p>params_json、metadata_json、response_json 提供早期扩展性，但未来高频统计字段应结构化。</p>
+        </div>
+      </div>
+
+      <h3>2.4 一个完整生成请求中的数据模型协作</h3>
+      <pre class="flow">用户输入：
+  profile_id = “奶娘”
+  text = “今天的故事开始了”
+
+系统内部：
+  1. 查 VoiceProfile
+  2. 查 VoiceBinding(profile_id, provider)
+  3. 查 ProviderVoice(provider, provider_voice_id, status=available)
+  4. 构造 RenderPlan
+  5. 创建 VoiceJob
+  6. 调用 Provider Adapter
+  7. 保存 AudioAsset / SubtitleAsset
+  8. 更新 VoiceJob.status = success / failed</pre>
+
+      <div class="note">
+        <strong>架构意义：</strong>用户只关心“我要什么声音”，系统内部通过数据模型完成“这个声音由哪个 Provider、哪个模型、哪个 voice_id、哪些参数来实现”的决策。
+      </div>
+    </section>
+
+    <section class="card" id="state">
+      <h2>三、状态机汇总：不同任务如何统一下发与追踪</h2>
+      <p>
+        Voice Lab 的任务不是单一类型。同步生成、异步生成、流式生成、批量任务的执行方式不同，
+        但它们都需要统一的任务生命周期。当前项目通过 <code>JobType</code> + <code>JobStatus</code> + <code>BatchStatus</code> 来完成这一点。
+      </p>
+
+      <h3>3.1 当前状态枚举</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>枚举</th>
+            <th>状态值</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>JobStatus</code></td>
+            <td>pending / running / processing / success / failed</td>
+            <td>描述单个 VoiceJob 的生命周期。</td>
+          </tr>
+          <tr>
+            <td><code>JobType</code></td>
+            <td>sync_render / async_render / stream_render / batch_render</td>
+            <td>描述任务执行类型。</td>
+          </tr>
+          <tr>
+            <td><code>BatchStatus</code></td>
+            <td>pending / running / success / partial / failed</td>
+            <td>描述批量任务的整体汇总状态。</td>
+          </tr>
+          <tr>
+            <td><code>BindingStatus</code></td>
+            <td>available / deprecated</td>
+            <td>描述绑定是否可用于新生成。</td>
+          </tr>
+          <tr>
+            <td><code>ProviderVoiceStatus</code></td>
+            <td>available / deprecated</td>
+            <td>描述 Provider 音色是否可用于新生成。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 通用 VoiceJob 状态机</h3>
+      <pre class="flow">VoiceJob 通用生命周期：
+
+pending
+  ↓
+running / processing
+  ↓
+success / failed</pre>
+
+      <div class="grid-2">
+        <div class="mini-card">
+          <strong>pending</strong>
+          <p>任务已创建，但尚未真正开始执行。</p>
+        </div>
+        <div class="mini-card">
+          <strong>running</strong>
+          <p>本地进程正在执行任务，例如同步生成、流式连接期间。</p>
+        </div>
+        <div class="mini-card">
+          <strong>processing</strong>
+          <p>任务已提交，外部 Provider 或后台流程仍在处理中，例如异步 T2A。</p>
+        </div>
+        <div class="mini-card">
+          <strong>success / failed</strong>
+          <p>任务进入明确终态。success 应该有结果资产，failed 应该有错误信息。</p>
+        </div>
+      </div>
+
+      <h3>3.3 不同 JobType 的状态流转</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>任务类型</th>
+            <th>状态流转</th>
+            <th>说明</th>
+            <th>关键风险</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>sync_render</code></td>
+            <td>pending → running → success / failed</td>
+            <td>同步生成在一次请求内完成。</td>
+            <td>Provider 调用失败后必须 failed；success 前必须保存 AudioAsset。</td>
+          </tr>
+          <tr>
+            <td><code>async_render</code></td>
+            <td>pending → processing → success / failed</td>
+            <td>异步任务提交后由 Provider 后台处理，前端轮询推进状态。</td>
+            <td>前端停止轮询、Provider expired、file_url 缺失可能导致长期 processing。</td>
+          </tr>
+          <tr>
+            <td><code>stream_render</code></td>
+            <td>pending → running → success / failed</td>
+            <td>WebSocket 连接期间持续输出音频 chunk。</td>
+            <td>连接异常断开时必须释放资源，并进入明确状态。</td>
+          </tr>
+          <tr>
+            <td><code>batch_render</code></td>
+            <td>pending → running → success / partial / failed</td>
+            <td>批量任务由多个 segment 汇总结果。</td>
+            <td>部分段落失败时不能丢掉成功段；合并失败要有明确规则。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.4 Batch 状态机</h3>
+      <pre class="flow">BatchJob：
+pending
+  ↓
+running
+  ↓
+success / partial / failed
+
+BatchSegment：
+pending
+  ↓
+running
+  ↓
+success / failed / skipped</pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Batch 终态</th>
+            <th>含义</th>
+            <th>适用场景</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>success</code></td>
+            <td>所有 segment 成功，音频和字幕合并成功。</td>
+            <td>完整批量任务成功。</td>
+          </tr>
+          <tr>
+            <td><code>partial</code></td>
+            <td>部分 segment 成功，部分失败；或主结果部分可用。</td>
+            <td>允许保留成功段，后续重试失败段。</td>
+          </tr>
+          <tr>
+            <td><code>failed</code></td>
+            <td>整体无法执行，或全部 segment 失败。</td>
+            <td>初始化失败、绑定失败、Provider 全部失败。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="success">
+        <strong>批量任务的关键：</strong>BatchJob 的状态应该由 BatchSegment 汇总。成功段要能复用，失败段要能重试，不能因为一个分段失败就抹掉全部成果。
+      </div>
+
+      <h3>3.5 ProviderVoice / VoiceBinding 生命周期</h3>
+      <pre class="flow">ProviderVoice：
+available
+  ↓
+deprecated
+
+VoiceBinding：
+available
+  ↓
+deprecated</pre>
+
+      <p>
+        这里使用软废弃，而不是硬删除。原因是历史任务可能仍然引用旧音色或旧绑定。
+        <code>deprecated</code> 的意义是：不允许新生成继续使用，但历史数据保留。
+      </p>
+
+      <div class="warning">
+        <strong>关键规则：</strong>生成前不能只检查 VoiceBinding.status，还要检查 ProviderVoice.status。Binding 可用不代表 ProviderVoice 一定可用。
+      </div>
+
+      <h3>3.6 状态机设计原则</h3>
+      <ol>
+        <li><strong>所有任务必须进入明确终态：</strong>不能长期停在 running / processing。</li>
+        <li><strong>success 必须有结果资产：</strong>没有 AudioAsset 的 success 是不完整状态。</li>
+        <li><strong>failed 必须有错误信息：</strong>没有 error_message 的 failed 难以排查。</li>
+        <li><strong>状态变化必须更新 updated_at：</strong>用于判断任务是否卡住。</li>
+        <li><strong>异步任务要处理跨请求风险：</strong>前端停止轮询、Provider expired、file_url 缺失。</li>
+        <li><strong>批量任务要支持 partial：</strong>允许部分结果可用，避免全盘失败。</li>
+        <li><strong>控制层失败也要进入明确处理：</strong>如果 job 已创建，Resource Guard 拒绝时应标记 failed。</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>四、数据模型与状态机如何协作</h2>
+      <p>
+        数据模型负责承载对象，状态机负责管理这些对象的生命周期。一次真实生成任务中，两者是同时工作的。
+      </p>
+
+      <pre class="flow">一次生成任务的协作流程：
+
+1. 用户选择 VoiceProfile
+2. 系统查 VoiceBinding
+3. 系统校验 ProviderVoice.status == available
+4. 构造 RenderPlan
+5. 创建 VoiceJob(status=pending)
+6. 通过 Cost Guard / Resource Guard
+7. 调用 Provider Adapter
+8. 保存 AudioAsset / SubtitleAsset
+9. VoiceJob.status = success
+
+如果失败：
+  VoiceJob.status = failed
+  VoiceJob.error_message = 错误原因</pre>
+
+      <h3>4.1 为什么任务要记录 RenderPlan</h3>
+      <p>
+        <code>VoiceJob.render_plan_json</code> 的价值是复盘。它可以记录当时到底使用了哪个 provider、model、voice_id、文本、参数和输出格式。
+        这让后续排查“为什么这次生成效果不一样”成为可能。
+      </p>
+
+      <h3>4.2 为什么结果要拆成 Asset</h3>
+      <p>
+        如果 VoiceJob 只记录任务状态，而 AudioAsset 记录真实结果文件，系统就可以支持历史下载、结果复用、批量合并、缓存和素材库。
+        任务失败不会污染资产，资产存在也可以被多个上层流程复用。
+      </p>
+
+      <h3>4.3 为什么 Binding 和 ProviderVoice 都要有 status</h3>
+      <p>
+        Binding 表示“这个人设是否还允许使用这个绑定策略”，ProviderVoice 表示“这个真实厂商音色是否还可用”。
+        两者状态不完全等价。ProviderVoice 被删除或废弃后，相关 Binding 也应该废弃，但历史记录仍然保留。
+      </p>
+    </section>
+
+    <section class="card" id="issues">
+      <h2>五、当前自检结论：优点、潜在问题与演进方向</h2>
+
+      <h3>5.1 当前架构优点</h3>
+      <div class="grid-2">
+        <div class="mini-card">
+          <strong>人设和音色解耦</strong>
+          <p>VoiceProfile / ProviderVoice / VoiceBinding 三层设计，使用户声音选择不直接依赖 Provider voice_id。</p>
+        </div>
+        <div class="mini-card">
+          <strong>Provider 可扩展</strong>
+          <p>ProviderVoice + RenderPlan + Provider Adapter 让未来接入其他 Provider 成为可能。</p>
+        </div>
+        <div class="mini-card">
+          <strong>任务过程可追踪</strong>
+          <p>VoiceJob 记录输入、状态、render_plan_json、response_json、error_message。</p>
+        </div>
+        <div class="mini-card">
+          <strong>结果资产化</strong>
+          <p>AudioAsset / SubtitleAsset 让生成结果可以下载、复用、合并和沉淀为素材。</p>
+        </div>
+        <div class="mini-card">
+          <strong>软废弃机制</strong>
+          <p>available / deprecated 能保留历史关系，避免硬删除破坏历史任务。</p>
+        </div>
+        <div class="mini-card">
+          <strong>批量支持 partial</strong>
+          <p>BatchStatus 有 partial，说明系统已经考虑部分成功的真实业务场景。</p>
+        </div>
+      </div>
+
+      <h3>5.2 当前潜在问题</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>影响</th>
+            <th>当前建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>VoiceJob</code> 缺少 <code>operation</code> 字段</td>
+            <td>难以区分普通生成、试听、设计、克隆、导入验证等业务动作。</td>
+            <td>先记录，不急改；等 Resource Guard 接入和统计需求稳定后再考虑。</td>
+          </tr>
+          <tr>
+            <td><code>JobType</code> 粒度偏粗</td>
+            <td>只有 sync / async / stream / batch，业务语义不够细。</td>
+            <td>未来可采用 job_type + operation 双维度。</td>
+          </tr>
+          <tr>
+            <td><code>running</code> 和 <code>processing</code> 边界需要文档化</td>
+            <td>多人开发时可能混用状态。</td>
+            <td>建议定义：running = 本地执行中，processing = 外部 Provider / 后台处理中。</td>
+          </tr>
+          <tr>
+            <td>异步任务可能长期 processing</td>
+            <td>前端停止轮询或 Provider 边界状态会导致任务不进入终态。</td>
+            <td>后续单独设计超时、refresh、reconciler。</td>
+          </tr>
+          <tr>
+            <td>批量状态汇总规则需要更明确</td>
+            <td>partial / failed / success 的边界可能在复杂场景下混乱。</td>
+            <td>建议后续沉淀 Batch 状态机文档。</td>
+          </tr>
+          <tr>
+            <td>JSON 字段长期统计能力有限</td>
+            <td>如果某些字段要统计，只放 JSON 会不方便。</td>
+            <td>等统计需求明确后再结构化。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5.3 当前是否需要立刻优化</h3>
+      <div class="warning">
+        <strong>结论：</strong>当前不建议立刻大改数据模型和状态机。P6 baseline 已稳定，P7 Resource Guard 正在推进，底层模型大改会扩大风险。更合理的方式是先记录架构债，继续完成 Resource Guard，再根据真实使用和统计需求决定是否升级模型。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>六、后续研究建议</h2>
+      <p>如果要继续深入这个架构，建议后续沉淀一份 <code>CORE_ARCHITECTURE_MAP.md</code>，专门记录三张图。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>图谱</th>
+            <th>应该包含什么</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>数据模型图谱</td>
+            <td>VoiceProfile、ProviderVoice、VoiceBinding、RenderPlan、VoiceJob、Asset、ProviderCallLog 的关系。</td>
+          </tr>
+          <tr>
+            <td>状态机图谱</td>
+            <td>JobStatus、JobType、BatchStatus、ProviderVoiceStatus、BindingStatus 的流转规则。</td>
+          </tr>
+          <tr>
+            <td>控制层图谱</td>
+            <td>Binding Validation、Cost Guard、Resource Guard 在生成链路中的位置，以及拒绝时如何影响状态。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="success">
+        <strong>最终总结：</strong>数据模型通过分层解耦保证可扩展；状态机通过统一生命周期保证可追踪；控制层通过准入和保护机制保证可控。Voice Lab 后续所有扩展都应该先回答：它属于哪个模型？如何进入状态机？经过哪些控制层？
+      </div>
+    </section>
+
+    <footer>
+      Voice Lab 核心架构汇总 · 数据模型与状态机专题 · 用于项目存档、复盘和后续分析
+    </footer>
+  </main>
+</body>
+</html>

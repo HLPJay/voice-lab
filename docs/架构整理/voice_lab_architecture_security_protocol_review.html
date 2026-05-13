@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Lab 架构自检与优化优先级：数据模型、状态机、安全性与协议选择</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --paper: #ffffff;
+      --ink: #172033;
+      --muted: #657083;
+      --line: #e4e8f0;
+      --blue: #4f46e5;
+      --blue-soft: #eef2ff;
+      --green: #059669;
+      --green-soft: #ecfdf5;
+      --orange: #d97706;
+      --orange-soft: #fff7ed;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --slate: #111827;
+      --code-text: #e5e7eb;
+      --shadow: 0 12px 34px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(79, 70, 229, .18), transparent 28rem),
+        radial-gradient(circle at 90% 8%, rgba(5, 150, 105, .12), transparent 24rem),
+        var(--bg);
+      line-height: 1.72;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 36px 18px 80px;
+    }
+
+    header {
+      background: rgba(255, 255, 255, .93);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 36px 34px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #3730a3;
+      font-weight: 750;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.12;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 880px) {
+      .toc { grid-template-columns: 1fr; }
+    }
+
+    .toc a {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .toc span {
+      display: block;
+      color: var(--blue);
+      font-weight: 750;
+      margin-bottom: 4px;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 8px 22px rgba(23, 32, 51, .05);
+      padding: 26px;
+      margin: 18px 0;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 25px;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+
+    .card h3 {
+      margin: 24px 0 8px;
+      font-size: 18px;
+    }
+
+    .lead {
+      font-size: 18px;
+      font-weight: 750;
+      margin: 0 0 10px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 880px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      header, .card { padding: 22px; }
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .mini-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+    }
+
+    .note, .success, .warning, .danger {
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin: 14px 0;
+      border: 1px solid;
+    }
+
+    .note {
+      background: var(--blue-soft);
+      border-color: #c7d2fe;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #a7f3d0;
+    }
+
+    .warning {
+      background: var(--orange-soft);
+      border-color: #fed7aa;
+    }
+
+    .danger {
+      background: var(--red-soft);
+      border-color: #fecaca;
+    }
+
+    pre.flow {
+      background: var(--slate);
+      color: var(--code-text);
+      border-radius: 18px;
+      padding: 18px;
+      overflow-x: auto;
+      line-height: 1.7;
+      font-size: 14px;
+      white-space: pre;
+      margin: 14px 0;
+    }
+
+    code {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f9fafb;
+      color: #374151;
+    }
+
+    ul, ol { padding-left: 1.35em; margin: 10px 0; }
+    li { margin: 5px 0; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      background: var(--blue-soft);
+      color: #3730a3;
+      margin-right: 4px;
+    }
+
+    .tag.green { background: var(--green-soft); color: #047857; }
+    .tag.orange { background: var(--orange-soft); color: #b45309; }
+    .tag.red { background: var(--red-soft); color: #b91c1c; }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      margin: 12px 0;
+      background: #fff;
+    }
+
+    .decision .label {
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    @media (max-width: 680px) {
+      .decision { grid-template-columns: 1fr; }
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      margin-top: 26px;
+      font-size: 13px;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { padding: 0; }
+      .card, header, .mini-card { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">Voice Lab 架构自检与后续优化判断</div>
+      <h1>数据模型、状态机、安全性与传输协议选择</h1>
+      <p class="subtitle">
+        这份文档整理了关于当前项目是否需要优化、哪些安全性问题更值得优先处理，以及自定义结构体 / JSON 协议 / Protobuf 之间如何取舍的讨论结论。它适合作为项目存档、后期复盘和后续开发决策依据。
+      </p>
+      <div class="meta">
+        <span class="pill">当前阶段：P6 baseline 完成，P7 Resource Guard 推进中</span>
+        <span class="pill">重点判断：先安全控制，后模型大改</span>
+        <span class="pill">协议建议：当前 JSON + Pydantic，不急用 Protobuf</span>
+      </div>
+      <nav class="toc">
+        <a href="#decision"><span>01 当前决策</span>哪些现在做，哪些后置</a>
+        <a href="#security"><span>02 安全性优化</span>成本、接口、上传、日志、文件</a>
+        <a href="#protocol"><span>03 协议选择</span>结构体、JSON、Protobuf</a>
+        <a href="#roadmap"><span>04 路线图</span>当前阶段到产品化前</a>
+      </nav>
+    </header>
+
+    <section class="card" id="decision">
+      <h2>一、当前是否需要优化：结论先行</h2>
+      <p class="lead">当前不建议马上大改数据模型和状态机；更值得优先推进真实调用安全与资源保护。</p>
+
+      <div class="decision">
+        <div class="label">现在不建议动</div>
+        <div>
+          <p>不要马上改 <code>VoiceJob</code>、<code>JobType</code>、<code>ProviderVoiceStatus</code>、数据库字段结构化等底层模型。</p>
+          <p class="muted">原因：P6 baseline 已稳定，P7 Resource Guard 正在推进。此时改底层模型会引入迁移、兼容、测试和历史数据问题。</p>
+        </div>
+      </div>
+
+      <div class="decision">
+        <div class="label">现在应该做</div>
+        <div>
+          <p>继续推进 <strong>P7 Resource Guard</strong>：先实现基础模块，再分阶段接入核心路径。</p>
+          <p class="muted">原因：当前真实风险不是“模型不够优雅”，而是多条真实 MiniMax 调用路径还没有统一资源闸门。</p>
+        </div>
+      </div>
+
+      <div class="decision">
+        <div class="label">可以记录不开发</div>
+        <div>
+          <p>将数据模型、状态机、控制层的架构债整理到文档，例如 <code>CORE_ARCHITECTURE_MAP.md</code>。</p>
+          <p class="muted">目的：帮助后续分析，不破坏当前稳定状态。</p>
+        </div>
+      </div>
+
+      <h3>1.1 哪些数据模型问题暂时只记录</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>潜在问题</th>
+            <th>为什么确实存在</th>
+            <th>为什么现在不急着改</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>VoiceJob</code> 缺少 <code>operation</code> 字段</td>
+            <td>当前 <code>job_type</code> 只能区分 sync / async / stream / batch，不能区分普通生成、试听、克隆、设计等业务动作。</td>
+            <td>Resource Guard 还没接入业务链路；现在改会涉及模型迁移和多处 Service 调整。</td>
+          </tr>
+          <tr>
+            <td><code>JobType</code> 粒度偏粗</td>
+            <td>voice_design、voice_clone、preview 是否应独立成 JobType，当前还不清晰。</td>
+            <td>可等真实审计和统计需求明确后再扩展。</td>
+          </tr>
+          <tr>
+            <td><code>ProviderVoiceStatus</code> 状态偏少</td>
+            <td>目前只有 available / deprecated，未来可能需要 missing_remote、invalid、pending_verify 等。</td>
+            <td>当前 Provider 同步复杂度还不高，暂时够用。</td>
+          </tr>
+          <tr>
+            <td>部分 JSON 字段未来统计困难</td>
+            <td><code>metadata_json</code>、<code>response_json</code>、<code>params_json</code> 灵活但不利于查询统计。</td>
+            <td>需要等哪些字段真正进入统计和查询后，再结构化。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="success">
+        <strong>当前策略：</strong>底层模型大改后置；先把真实调用的资源和成本控制做好。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>二、当前优先做 Resource Guard 的原因</h2>
+      <p>
+        当前项目已经具备同步、异步、流式、声音设计、声音克隆、试听、批量生成等多条真实 Provider 调用路径。
+        这些能力已经足够丰富，继续产品化前最需要的是“真实调用可控”。
+      </p>
+
+      <pre class="flow">当前更现实的风险：
+重复点击
+  ↓
+多次真实调用
+  ↓
+费用放大
+
+批量任务并发
+  ↓
+多个段落同时生成
+  ↓
+Provider 限流或成本失控
+
+WebSocket 流式长连接
+  ↓
+长时间占用资源
+  ↓
+其他请求被拖慢或失控</pre>
+
+      <h3>2.1 Resource Guard 当前路线</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>目标</th>
+            <th>是否改业务链路</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>P7-B</td>
+            <td>实现 <code>ResourceGuardService</code> 基础模块 + 单元测试</td>
+            <td><span class="tag green">不接业务</span></td>
+          </tr>
+          <tr>
+            <td>P7-C</td>
+            <td>接入核心同步与高风险路径，如同步生成、设计、克隆、试听</td>
+            <td><span class="tag orange">小范围接入</span></td>
+          </tr>
+          <tr>
+            <td>P7-D</td>
+            <td>接入流式与异步路径</td>
+            <td><span class="tag orange">谨慎接入</span></td>
+          </tr>
+          <tr>
+            <td>P7-E</td>
+            <td>接入批量路径，区分 submit 入口保护和 execute 生命周期保护</td>
+            <td><span class="tag red">重点设计</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="security">
+      <h2>三、安全性上还有哪些可优化</h2>
+      <p class="lead">安全性要分阶段处理。当前最优先的是成本和真实调用安全，而不是立刻做复杂用户系统。</p>
+
+      <h3>3.1 第一优先级：真实调用安全</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>风险</th>
+            <th>表现</th>
+            <th>优化方向</th>
+            <th>当前阶段建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>重复点击扣费</td>
+            <td>用户连续点击生成，触发多次 MiniMax 调用。</td>
+            <td>Resource Guard、前端按钮禁用、未来 Request Cache。</td>
+            <td><span class="tag green">优先</span></td>
+          </tr>
+          <tr>
+            <td>高风险操作误触</td>
+            <td>声音设计、声音克隆、批量任务消耗较高。</td>
+            <td>Cost Guard confirm_cost。</td>
+            <td><span class="tag green">已做第一版，继续保持</span></td>
+          </tr>
+          <tr>
+            <td>批量任务打爆 Provider</td>
+            <td>多批量、多 segment 并发导致成本和限流问题。</td>
+            <td>batch_longtext / batch_script 入口限流，后续 execute 生命周期保护。</td>
+            <td><span class="tag green">P7-E</span></td>
+          </tr>
+          <tr>
+            <td>WebSocket 长连接占用</td>
+            <td>流式生成连接长时间占用资源。</td>
+            <td>t2a_stream limit=1，断开必须 release。</td>
+            <td><span class="tag green">P7-D</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 第二优先级：接口访问安全</h3>
+      <p>如果项目只在本地自己测试，问题不大；但如果开放给别人试用，就必须考虑访问控制。</p>
+      <ul>
+        <li>Admin 接口鉴权。</li>
+        <li>测试面板访问控制。</li>
+        <li>真实 Provider 调用接口鉴权。</li>
+        <li>CORS 限制。</li>
+        <li>API Key 不能暴露给前端。</li>
+        <li>静态页面不要裸露高风险真实调用按钮给未授权用户。</li>
+      </ul>
+      <div class="warning">
+        小范围试用前，应至少给 Admin 面板和真实调用接口加简单鉴权；正式产品化前，再做完整用户系统和权限模型。
+      </div>
+
+      <h3>3.3 第三优先级：上传文件安全</h3>
+      <p>声音克隆涉及音频上传，上传功能天然需要更严格的安全边界。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>安全点</th>
+            <th>要防什么</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>文件大小限制</td><td>防止超大文件耗尽磁盘或内存。</td></tr>
+          <tr><td>文件类型校验</td><td>防止伪装成音频的恶意文件。</td></tr>
+          <tr><td>MIME + 扩展名双校验</td><td>避免只靠文件后缀判断。</td></tr>
+          <tr><td>文件名清洗</td><td>防止路径穿越，例如 <code>../xxx</code>。</td></tr>
+          <tr><td>临时文件清理</td><td>避免失败上传长期占用空间。</td></tr>
+          <tr><td>音频时长限制</td><td>防止不符合克隆要求或过长音频。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.4 第四优先级：日志和隐私安全</h3>
+      <ul>
+        <li>不在日志中打印 API Key。</li>
+        <li>用户输入文本必要时截断，不要全量无脑记录。</li>
+        <li>Provider 原始响应要谨慎落日志。</li>
+        <li><code>error_message</code> 做长度限制。</li>
+        <li>Admin 面板不要泄露密钥、内部绝对路径。</li>
+        <li>导出日志时避免包含用户隐私。</li>
+      </ul>
+
+      <h3>3.5 第五优先级：下载和文件访问安全</h3>
+      <ul>
+        <li>只能下载 storage 目录下的文件。</li>
+        <li>防止通过 file_path 访问系统任意文件。</li>
+        <li>下载 URL 不要暴露服务器绝对路径。</li>
+        <li>历史音频资产未来需要权限校验。</li>
+        <li>临时文件和长期文件要区分。</li>
+      </ul>
+
+      <div class="success">
+        <strong>安全优化总原则：</strong>当前先管真实调用成本和资源；小范围试用前补接口鉴权、上传安全、日志脱敏；正式产品化前再做用户系统、权限模型、预算系统和文件访问权限。
+      </div>
+    </section>
+
+    <section class="card" id="protocol">
+      <h2>四、传输协议：什么时候自定义结构体，什么时候 Protobuf</h2>
+      <p class="lead">当前项目最适合继续使用 Pydantic / SQLModel / JSON 协议，暂时不需要 Protobuf。</p>
+
+      <h3>4.1 先区分三类协议</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>类型</th>
+            <th>典型技术</th>
+            <th>在 Voice Lab 中的角色</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>内部结构体协议</td>
+            <td>Pydantic、dataclass、SQLModel</td>
+            <td>定义 <code>RenderPlan</code>、请求 schema、数据库模型。</td>
+          </tr>
+          <tr>
+            <td>外部 JSON 协议</td>
+            <td>REST JSON、WebSocket JSON event</td>
+            <td>前端和后端通信，方便调试。</td>
+          </tr>
+          <tr>
+            <td>二进制跨语言协议</td>
+            <td>Protobuf、gRPC</td>
+            <td>适合多语言服务、高性能 RPC、稳定 SDK。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 什么时候适合自定义结构体</h3>
+      <p>也就是用 Pydantic / dataclass / SQLModel 来定义标准结构。</p>
+      <div class="grid-2">
+        <div class="mini-card">
+          <strong>适合场景</strong>
+          <ul>
+            <li>Python 单体项目。</li>
+            <li>协议还在快速迭代。</li>
+            <li>业务字段经常调整。</li>
+            <li>需要可读、可调试。</li>
+            <li>前后端主要通过 JSON 通信。</li>
+            <li>还没有多语言 SDK 强需求。</li>
+          </ul>
+        </div>
+        <div class="mini-card">
+          <strong>Voice Lab 示例</strong>
+          <p><code>RenderPlan</code> 就是内部标准结构体：它统一描述 provider、model、provider_voice_id、text、voice_params、audio_params、subtitle、output_format。</p>
+          <p>Provider Adapter 只需要把 RenderPlan 转成 MiniMax 或未来 Provider 的请求体。</p>
+        </div>
+      </div>
+
+      <h3>4.3 什么时候适合 JSON 事件协议</h3>
+      <p>WebSocket 流式场景更适合 JSON event，而不是立刻上二进制协议。</p>
+      <pre class="flow">{
+  "event": "audio_chunk",
+  "job_id": "job_xxx",
+  "seq": 1,
+  "audio": "base64..."
+}</pre>
+      <ul>
+        <li>浏览器前端可以直接消费。</li>
+        <li>调试时能直接看消息内容。</li>
+        <li>事件类型清楚，消息量暂时不大。</li>
+        <li>不需要引入额外编译和解码工具链。</li>
+      </ul>
+
+      <h3>4.4 什么时候适合 Protobuf</h3>
+      <p>Protobuf 适合更成熟、更高性能、更跨语言的系统阶段。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>适合 Protobuf 的条件</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>多语言服务通信</td><td>例如 Python 后端 + Go 音频服务 + Rust 网关。</td></tr>
+          <tr><td>稳定长期协议</td><td>字段不再频繁变化，需要强版本兼容。</td></tr>
+          <tr><td>高吞吐 / 低带宽 / 低延迟</td><td>JSON 编解码或体积成为瓶颈。</td></tr>
+          <tr><td>需要生成多端 SDK</td><td>例如 iOS / Android / Web / 服务端 SDK。</td></tr>
+          <tr><td>微服务 RPC</td><td>适合 gRPC + Protobuf。</td></tr>
+          <tr><td>移动端 Native 高频通信</td><td>节省带宽和流量，增强版本约束。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.5 什么时候不适合 Protobuf</h3>
+      <div class="warning">
+        当前 Voice Lab 不适合马上引入 Protobuf。项目还在快速迭代，字段和状态机仍在调整，前端是网页，JSON 更自然；此时引入 Protobuf 会增加 proto 文件维护、生成代码、版本兼容、前端解码和调试复杂度。
+      </div>
+
+      <h3>4.6 协议选择建议表</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>推荐方式</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>后端内部标准生成计划</td>
+            <td>Pydantic / dataclass</td>
+            <td>易读、易改、和 Python 生态兼容。</td>
+          </tr>
+          <tr>
+            <td>数据库模型</td>
+            <td>SQLModel</td>
+            <td>当前项目已经使用，适合快速开发。</td>
+          </tr>
+          <tr>
+            <td>REST API</td>
+            <td>JSON + Pydantic schema</td>
+            <td>前端友好，调试方便。</td>
+          </tr>
+          <tr>
+            <td>WebSocket 流式事件</td>
+            <td>JSON event protocol</td>
+            <td>浏览器直接消费，排查方便。</td>
+          </tr>
+          <tr>
+            <td>Provider Adapter 输入</td>
+            <td>RenderPlan 结构体</td>
+            <td>隔离厂商差异。</td>
+          </tr>
+          <tr>
+            <td>多语言微服务 RPC</td>
+            <td>Protobuf / gRPC</td>
+            <td>强 schema、性能好、跨语言。</td>
+          </tr>
+          <tr>
+            <td>移动端高频二进制通信</td>
+            <td>Protobuf</td>
+            <td>节省带宽，版本管理强。</td>
+          </tr>
+          <tr>
+            <td>音频文件传输</td>
+            <td>文件 URL / bytes stream</td>
+            <td>不建议把大音频塞进 Protobuf 控制消息。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="roadmap">
+      <h2>五、推荐路线图</h2>
+      <p>根据当前项目阶段，建议分三段推进。</p>
+
+      <h3>5.1 当前阶段：P7 资源保护优先</h3>
+      <ul>
+        <li>继续完成 P7-B ResourceGuardService。</li>
+        <li>P7-C / P7-D / P7-E 分阶段接入业务路径。</li>
+        <li>不要在这个阶段做数据模型大改。</li>
+        <li>不要引入 Protobuf。</li>
+        <li>把架构债记录到文档，等待需求稳定后再处理。</li>
+      </ul>
+
+      <h3>5.2 小范围试用前：补基础安全</h3>
+      <ul>
+        <li>Admin / 真实调用接口加简单鉴权。</li>
+        <li>CORS 限制。</li>
+        <li>上传文件安全检查。</li>
+        <li>日志脱敏和错误截断。</li>
+        <li>前端高风险操作提示。</li>
+      </ul>
+
+      <h3>5.3 正式产品化前：再做系统性升级</h3>
+      <ul>
+        <li>用户系统和权限模型。</li>
+        <li>Budget Guard。</li>
+        <li>Request Cache。</li>
+        <li>文件访问权限。</li>
+        <li>数据保留策略。</li>
+        <li>多进程 / Redis 级 Resource Guard。</li>
+        <li>协议稳定后，再评估 Protobuf / gRPC。</li>
+      </ul>
+
+      <pre class="flow">当前最优路线：
+P7 Resource Guard
+  ↓
+小范围试用安全
+  ↓
+产品主流程稳定
+  ↓
+再评估数据模型扩展
+  ↓
+再评估 Protobuf / 微服务协议</pre>
+    </section>
+
+    <section class="card">
+      <h2>六、最终结论</h2>
+      <p class="lead">
+        现在最该优化的是真实调用安全和资源控制；数据模型大改、状态机扩展、Protobuf 协议化都应该后置。
+      </p>
+      <div class="grid-3">
+        <div class="mini-card">
+          <strong>数据模型</strong>
+          当前方向正确，有架构债但不急改。先记录，等统计、审计、产品化需求明确后再改。
+        </div>
+        <div class="mini-card">
+          <strong>安全性</strong>
+          当前最重要的是 Resource Guard、Cost Guard、批量保护、上传安全、日志脱敏。
+        </div>
+        <div class="mini-card">
+          <strong>协议选择</strong>
+          当前继续用 Pydantic / SQLModel / JSON。等多语言、高吞吐、稳定 SDK 需求出现后再考虑 Protobuf。
+        </div>
+      </div>
+      <div class="note">
+        判断标准：如果一个优化会破坏 P6 baseline、扩大修改范围、引入迁移风险，但短期无法明显降低真实调用风险，那么它就不应该现在做。
+      </div>
+    </section>
+
+    <footer>
+      Voice Lab 架构自检存档 · 数据模型 / 状态机 / 安全性 / 协议选择 · 用于后续复盘分析
+    </footer>
+  </main>
+</body>
+</html>
