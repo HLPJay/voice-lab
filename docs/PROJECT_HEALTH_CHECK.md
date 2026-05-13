@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-3C：
+截至 P8-3E：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -23,6 +23,7 @@
 * P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、无 audio/subtitle 空状态准确化）
 * P8-3C1：结果状态口径自检与收口修复已完成（新增 isResultSuccessStatus/isResultFailedStatus/isResultProcessingStatus helper、完成态统一识别 success/completed，失败态统一识别 failed/error，resultStatusHintHtml 补全 completed/error/queued 文案，诊断信息优先使用 extractErrorMessage）
 * P8-3D：流式/多版本结果展示统一已完成（renderStreamResult 升级为 card 结构、section label 统一、本地缓存提示增加、variants 空状态处理、单版本无 audio 红色提示）
+* P8-3E：错误 / Resource Guard / 下载入口产品化已完成（renderApiError 升级为 card 结构、Resource Guard 明确标注、downloadBtnHtml 改为"下载音频"、流式下载标签描述优化）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -67,13 +68,10 @@
 * P8-3A：任务结果展示现状审查已完成（文档：docs/P8_3_RESULT_DISPLAY_WORKSTATION.md）
 * P8-3B：resultsArea 信息架构整理已完成（resultsArea 已整理为任务结果展示区、同步/异步/多版本结果卡片化、section label 统一、timelineTable 空状态处理）
 * P8-3C：同步/异步结果卡片化细化验收已完成（同步结果口径统一、新增 resultStatusHintHtml/resultDiagnosticHtml helper、running/failed/completed 状态分支处理、空状态准确化）
-* 下一阶段建议进入 P8-3D：流式 / 多版本结果展示统一
-* 当前结果展示完成态统一识别 success / completed
-* 当前结果展示失败态统一识别 failed / error
-* 当前结果展示等待/处理中态统一识别 queued / pending / running / processing
-* 当前流式结果展示已与任务结果 card 对齐
-* 当前多版本结果展示已与任务结果 card 对齐
-* 下一阶段建议进入 P8-3E：错误 / Resource Guard / 下载入口产品化
+* P8-3C1：结果状态口径自检与收口修复已完成
+* P8-3D：流式/多版本结果展示统一已完成
+* P8-3E：错误 / Resource Guard / 下载入口产品化已完成
+* 下一阶段建议进入 P8-3F 或其他 P8 后续阶段
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2331,8 +2329,75 @@ git diff --check: 无 whitespace error
 - 未处理批量结果卡片化
 - 未拆分 `index.html`
 - 未执行真实 MiniMax smoke test
-- 未进入 P8-3E
+- 未进入 P8-3F
 
 ### 阶段结论
 
-P8-3D 已完成流式 / 多版本结果展示统一。下一阶段建议进入 P8-3E：错误 / Resource Guard / 下载入口产品化。
+P8-3D 已完成流式 / 多版本结果展示统一。下一阶段建议进入 P8-3F 或其他 P8 后续阶段。
+
+
+---
+
+## P8-3E 错误 / Resource Guard / 下载入口产品化
+
+### 背景
+
+P8-3E 是错误提示、Resource Guard 和下载入口产品化阶段，目标是让错误结果与任务结果一样使用统一的 card 结构展示，明确区分 Resource Guard 限制与系统异常，优化下载按钮文本和流式下载描述。
+
+### 主要调整
+
+1. **`renderApiError`**：从 `error-msg` div 升级为带 "错误提示" 标签的 card 结构，左边框颜色区分普通错误（红 #c53030）和资源限制（橙 #dd6b20），包含建议操作区域（💡 引导的 Resource Guard hint）和可展开的 "技术详情"
+2. **`friendlyErrorMessage`**：扩展支持 Provider error、cancellation、network error 三类用户友好的错误文案
+3. **`formatApiError`**：RESOURCE_LIMIT_EXCEEDED 消息明确标注 "触发资源限制（Resource Guard）"
+4. **`resourceLimitExtraHint`**：强调 "这是 Resource Guard 限制，不是系统异常"
+5. **`downloadBtnHtml`**：按钮文本从 "下载" 改为 "下载音频"
+6. **流式下载入口**：标签从 "下载(服务端)/下载(本地缓存)" 改为 "下载音频（服务端）/下载音频（浏览器缓存）"，添加描述文字说明两者差异
+
+### 修改文件
+
+- `app/static/index.html`（展示层代码调整）
+- `docs/P8_3_RESULT_DISPLAY_WORKSTATION.md`（追加 P8-3E 节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新摘要 + 追加本节）
+
+### 风险处理
+
+- Resource Guard 限制明确告知用户不是系统异常，减少困惑
+- Provider/cancellation/network 错误文案更清晰
+- 下载按钮文本 "下载音频" 比 "下载" 更明确
+- 流式下载两种方式的差异已明确说明
+
+### 验证命令
+
+- friendlyErrorMessage Provider error：✅
+- friendlyErrorMessage cancellation：✅
+- friendlyErrorMessage network error：✅
+- formatApiError Resource Guard 标注：✅
+- resourceLimitExtraHint 提示优化：✅
+- renderApiError card 结构：✅
+- downloadBtnHtml "下载音频"：✅
+- 流式下载服务端/浏览器缓存标签：✅
+- 流式下载描述文字：✅
+
+### 验证结果
+
+pytest: 375 passed, 6 skipped
+git diff --check: 无 whitespace error
+
+### 未做事项
+
+- 未处理字幕播放同步
+- 未处理流式下载 404 时序
+- 未处理 WebSocket 服务端结果资产化
+- 未处理批量字幕缓存
+- 未处理 Resource Guard 排队预估
+- 未处理异步轮询最大时长提示
+- 未处理批量脚本独立轮询状态
+- 未处理多版本费用防误点
+- 未处理批量结果卡片化
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-3F
+
+### 阶段结论
+
+P8-3E 已完成错误提示、Resource Guard 和下载入口产品化。下一阶段建议进入 P8-3F 或其他 P8 后续阶段。

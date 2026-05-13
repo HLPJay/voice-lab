@@ -1809,3 +1809,163 @@ P8-3D 已完成流式 / 多版本结果展示统一。下一阶段建议进入 P
 - 下载入口体验收口
 - 成本 / 高风险提示一致性
 - 不改后端 API
+
+
+---
+
+## 86. P8-3E 检查清单
+
+**baseline 检查**：
+- [x] 当前分支是 dev
+- [x] 工作区干净
+- [x] 最近提交：6e57590 p8-3d unify stream and variant result display
+
+**只读扫描**：
+- [x] 10.1 renderApiError 结构审计
+- [x] 10.2 RESOURCE_LIMIT_EXCEEDED 提示审计
+- [x] 10.3 Provider / network 错误审计
+- [x] 10.4 cost cancellation 提示审计
+- [x] 10.5 downloadBtnHtml 文本审计
+- [x] 10.6 流式下载入口审计
+- [x] 10.7 friendlyErrorMessage 覆盖审计
+- [x] 10.8 其他错误展示位审计
+
+---
+
+## 87. P8-3E 代码变更
+
+### 87.1 friendlyErrorMessage 扩展
+
+**位置**：index.html:1564
+
+**变更**：新增 Provider error、network error、cancellation 识别
+
+```
++    if (lower.includes('provider') || lower.includes('provider error')) {
++      return 'Provider 服务异常：请稍后重试。如果问题持续，请联系技术支持。';
++    }
++    if (lower.includes('cancelled') || lower.includes('canceled') || lower.includes('操作已取消')) {
++      return '操作已取消：本次生成请求已被取消，未产生费用。';
++    }
++    if (lower.includes('network') || lower.includes('fetch') || lower.includes('断开') || lower.includes('连接失败')) {
++      return '网络异常：请检查网络连接后重试。';
++    }
+```
+
+### 87.2 formatApiError RESOURCE_LIMIT_EXCEEDED 消息
+
+**位置**：index.html:1635
+
+**变更**：明确标注 "Resource Guard" 术语
+
+```
+- return `${opLabel}当前任务较多，请稍后再试。`;
++ return `${opLabel}触发资源限制（Resource Guard）：当前任务排队较多，请稍后再试。`;
+```
+
+### 87.3 resourceLimitExtraHint 提示优化
+
+**位置**：index.html:1664
+
+**变更**：强调 "这是 Resource Guard 限制，不是系统异常"
+
+```
+- return '这不是系统异常，任务可能仍在处理中。请稍后手动刷新状态。';
++ return '这是 Resource Guard 限制，不是系统异常。任务可能仍在后台处理中，请稍后手动刷新状态。';
+```
+
+### 87.4 renderApiError 卡片结构产品化
+
+**位置**：index.html:1684
+
+**变更**：从 `error-msg` div 升级为完整 card 结构，带 "错误提示" 标签、"建议操作" 区域（Resource Guard hint）、"技术详情" 可展开
+
+```
+- <div class="error-msg ${code === 'RESOURCE_LIMIT_EXCEEDED' ? 'resource-limit-msg' : ''}">
+-   <div><strong>${esc(message)}</strong></div>
++ <div class="card" style="border-left:4px solid ${isResourceLimit ? '#dd6b20' : '#c53030'}">
++   <div class="result-label" style="color:${isResourceLimit ? '#dd6b20' : '#c53030'}">错误提示</div>
++   <div style="margin-top:8px">
++     <strong style="font-size:0.95rem;color:#2d3748">${esc(message)}</strong>
++   </div>
++   ${extraHint ? `<div style="margin-top:8px;padding:8px;background:#fffaf0;border-radius:4px;font-size:0.82rem;color:#744210">💡 ${esc(extraHint)}</div>` : ''}
+```
+
+### 87.5 downloadBtnHtml 按钮文本优化
+
+**位置**：index.html:2382
+
+**变更**：`下载` → `下载音频`
+
+```
+- return \`<a class="btn-sm" href="/api/voice/assets/\${assetId}/download" download>下载</a>\`;
++ return \`<a class="btn-sm" href="/api/voice/assets/\${assetId}/download" download>下载音频</a>\`;
+```
+
+### 87.6 流式下载入口描述优化
+
+**位置**：index.html:2072
+
+**变更**：服务端/本地缓存标签明确化，并添加描述文字
+
+```
+- ${resultSectionLabel('下载音频')}
+- <div class="action-row">
+-   \${asset ? \`<a class="btn-sm" href="/api/voice/assets/\${asset.id}/download" download>下载(服务端)</a>\` : ''}
+-   <a class="btn-sm" href="\${blobUrl}" download="stream_audio.mp3">下载(本地缓存)</a>
+- </div>
++ ${resultSectionLabel('下载音频')}
++ <div class="action-row" style="flex-wrap:wrap;gap:8px">
++   \${asset ? \`<a class="btn-sm" href="/api/voice/assets/\${asset.id}/download" download>下载音频（服务端）</a>\` : ''}
++   <a class="btn-sm" href="\${blobUrl}" download="stream_audio.mp3">下载音频（浏览器缓存）</a>
++ </div>
++ <p style="font-size:0.78rem;color:#a0aec0;margin-top:6px">
++   \${asset ? '· 服务端音频：保存在服务器，可长期访问' : ''}
++   \${asset ? '<br>' : ''}
++   · 浏览器缓存：仅限当前会话，刷新页面后失效
++ </p>
++ \${!asset ? \`<p style="font-size:0.82rem;color:#718096;margin-top:6px">当前流式结果未返回服务端音频资产，仅提供浏览器缓存下载。</p>\` : ''}
+```
+
+**删除了原有重复提示段落**："提示：本地缓存音频来自浏览器当前会话..."
+
+---
+
+## 88. P8-3E 静态检查结果
+
+```
+issues: []
+```
+
+pytest: 375 passed, 6 skipped
+
+---
+
+## 89. P8-3E 验证记录
+
+| 检查项 | 状态 |
+|---|---|
+| friendlyErrorMessage Provider error | ✅ |
+| friendlyErrorMessage cancellation | ✅ |
+| friendlyErrorMessage network error | ✅ |
+| formatApiError Resource Guard 标注 | ✅ |
+| resourceLimitExtraHint 提示优化 | ✅ |
+| renderApiError card 结构 | ✅ |
+| downloadBtnHtml "下载音频" | ✅ |
+| 流式下载服务端/浏览器缓存标签 | ✅ |
+| 流式下载描述文字 | ✅ |
+| pytest | ✅ 375 passed |
+
+---
+
+## 90. P8-3E 阶段结论
+
+P8-3E 已完成错误提示、Resource Guard 和下载入口产品化：
+
+1. **renderApiError** 从 `error-msg` div 升级为带 "错误提示" 标签的 card 结构，左边框颜色区分普通错误（红）和资源限制（橙）
+2. **Resource Guard** 明确标注 "触发资源限制（Resource Guard）"，extra hint 以 "💡" 引导，强调 "这是 Resource Guard 限制，不是系统异常"
+3. **friendlyErrorMessage** 扩展支持 Provider error、cancellation、network error
+4. **downloadBtnHtml** 从 "下载" 改为 "下载音频"
+5. **流式下载** 标签从 "下载(服务端)/下载(本地缓存)" 改为 "下载音频（服务端）/下载音频（浏览器缓存）"，并添加说明文字
+
+下一阶段建议进入 P8-3F 或其他 P8 后续阶段。
