@@ -1171,3 +1171,57 @@ tests/ -x -q                         → 366 passed, 6 skipped
 ### 阶段结论
 
 **P7-H 能力验收完成。第一批核心能力工程链路已通过自动化测试和代码审查，真实 MiniMax 能力仍需小文本 smoke test；声音克隆和声音设计为高成本能力，暂缓真实验证，后续单独立项。手工验证尚未执行，建议补充实际浏览器测试后进入 P8 前端 UX 修复阶段。**
+
+---
+
+## P7-I 低成本真实 MiniMax Smoke Test 与前端手工验证
+
+### 背景
+
+- P7-H 已确认工程链路可用
+- 本阶段执行低成本真实 MiniMax smoke test（CLI 环境直接 API 调用）
+- 声音克隆和声音设计继续暂缓真实验证
+- 前端交互和 WebSocket 因无浏览器环境无法测试
+
+### 工作内容
+
+- 新增 docs/P7_I_MINIMAX_SMOKE_TEST.md
+- 执行后端自动化测试（366 passed, 6 skipped）
+- 启动 uvicorn 服务，直接 curl API 调用验证真实 MiniMax
+- 测试同步 T2A、异步 T2A、批量长文本、批量剧本、provider preview
+- 发现异步 subtitle timeline end 为 0.0 异常（P2-2）
+- 发现 HTTP 流式端点不存在（P2-1）
+
+### 修改文件
+
+- docs/P7_I_MINIMAX_SMOKE_TEST.md（新增）
+- docs/PROJECT_HEALTH_CHECK.md（追加本节）
+
+### 测试结果
+
+**自动化测试**：366 passed, 6 skipped
+
+**真实 MiniMax API 测试**：
+
+| 能力 | 结果 |
+|---|---|
+| 同步 T2A（url/hex） | ✅ 成功，~2s |
+| 异步 T2A | ✅ 成功，约 4.5min（MiniMax 服务特性） |
+| 批量长文本 | ✅ 成功，merged_audio + merged_subtitle |
+| 批量剧本（2角色） | ✅ 成功，多角色正常 |
+| provider voice preview | ✅ 成功 |
+| 任务历史 | ✅ 成功 |
+| WebSocket 流式 | ⚠️ 未测试（CLI 无浏览器） |
+| 前端交互 | ⚠️ 未测试（CLI 无浏览器） |
+| HTTP 流式端点 | ⚠️ 不存在（流式走 WebSocket） |
+| 声音克隆/设计 | **暂缓** |
+
+### 发现问题
+
+- **P1**：异步 T2A 耗时约 4.5 分钟（MiniMax 服务特性，非代码问题）
+- **P2-1**：HTTP 流式端点不存在，流式仅走 WebSocket
+- **P2-2**：异步任务 subtitle timeline end 为 0.0（需修复）
+
+### 阶段结论
+
+**P7-I 真实 MiniMax smoke test 完成。同步 T2A、异步 T2A、批量生成、provider preview 均真实可用。建议修复 P2-2 后进入 P8 前端 UX 修复阶段。WebSocket 流式和前端交互需浏览器环境补充验证。**
