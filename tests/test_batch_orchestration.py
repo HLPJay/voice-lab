@@ -533,3 +533,235 @@ def test_batch_job_default_output_format_is_hex():
     )
     assert job.output_format == "hex", \
         f"expected output_format='hex', got '{job.output_format}'"
+
+
+class TestBatchResourceGuard:
+    """Tests for Resource Guard integration in BatchOrchestrationService."""
+
+    @pytest.fixture(autouse=True)
+    def reset_guard(self):
+        """Reset resource guard state before and after each test."""
+        from app.services.resource_guard_service import reset_resource_guard_for_tests
+        reset_resource_guard_for_tests()
+        yield
+        reset_resource_guard_for_tests()
+
+    @pytest.mark.asyncio
+    async def test_submit_longtext_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
+        """When batch_longtext limit=1 is held, submit_longtext raises ResourceLimitExceeded."""
+        from app.services.resource_guard_service import get_resource_guard
+        from app.domain.schemas import LongtextBatchRequest
+
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="batch_longtext", job_id=None)
+
+        try:
+            service = BatchOrchestrationService()
+            request = LongtextBatchRequest(
+                text="测试文本。",
+                profile_id="deep_night_programmer",
+                provider="minimax",
+                segment_strategy="sentence",
+                max_segment_chars=2000,
+                confirm_cost=True,
+            )
+
+            with pytest.raises(Exception) as exc_info:
+                await service.submit_longtext(session, request)
+            assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value) or exc_info.type.__name__ == "ResourceLimitExceeded"
+        finally:
+            await guard._release(lease)
+
+    @pytest.mark.asyncio
+    async def test_submit_script_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
+        """When batch_script limit=1 is held, submit_script raises ResourceLimitExceeded."""
+        from app.services.resource_guard_service import get_resource_guard
+        from app.domain.schemas import ScriptBatchRequest, ScriptLine
+
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="batch_script", job_id=None)
+
+        try:
+            service = BatchOrchestrationService()
+            request = ScriptBatchRequest(
+                script=[
+                    ScriptLine(role="旁白", text="内容。", profile_id="deep_night_programmer"),
+                ],
+                provider="minimax",
+                confirm_cost=True,
+            )
+
+            with pytest.raises(Exception) as exc_info:
+                await service.submit_script(session, request)
+            assert "RESOURCE_LIMIT_EXCEEDED" in str(exc_info.value) or exc_info.type.__name__ == "ResourceLimitExceeded"
+        finally:
+            await guard._release(lease)
+
+    @pytest.mark.asyncio
+    async def test_execute_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
+        """When batch_execute limit=1 is held, execute raises ResourceLimitExceeded."""
+        from app.services.resource_guard_service import get_resource_guard
+        from app.models.batch_job import BatchJob, BatchSegment
+        from app.core.time import utc_now_iso
+
+        now = utc_now_iso()
+        batch_id = "batch_guard_test"
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="minimax",
+            output_format="mp3",
+            total_segments=1,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "测试。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        seg = BatchSegment(
+            id="seg_guard_test",
+            batch_job_id=batch_id,
+            index=0,
+            text="测试。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+        session.commit()
+
+        guard = get_resource_guard()
+        lease = await guard._acquire(provider="minimax", operation="batch_execute", job_id=None)
+
+        try:
+            service = BatchOrchestrationService()
+            await service.execute(session, batch_id)
+        finally:
+            await guard._release(lease)
+
+        session.refresh(batch_job)
+        # When guard rejects, batch status should be failed
+        assert batch_job.status == BatchStatus.failed
+
+    @pytest.mark.asyncio
+    async def test_segment_render_error_marks_voice_job_failed(self, session, seed_profile, seed_mock_binding):
+        """When segment render fails, the associated VoiceJob is marked as failed."""
+        from app.services.resource_guard_service import get_resource_guard
+        from app.models.voice_job import VoiceJob
+        from unittest.mock import patch
+
+        now = utc_now_iso()
+        batch_id = "batch_render_fail_test"
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="mock",
+            output_format="mp3",
+            total_segments=1,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "测试。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        seg = BatchSegment(
+            id="seg_render_fail",
+            batch_job_id=batch_id,
+            index=0,
+            text="测试。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+        session.commit()
+
+        class FailingAdapter:
+            provider_name = "minimax"
+
+            async def render_sync(self, plan):
+                raise RuntimeError("Provider render error")
+
+        service = BatchOrchestrationService()
+
+        with patch("app.services.batch_orchestration_service.get_provider", return_value=FailingAdapter()):
+            with patch("app.services.batch_orchestration_service.validate_binding_provider_voice"):
+                await service.execute(session, batch_id)
+
+        session.expire_all()
+
+        # Find the VoiceJob that was created for the segment
+        voice_jobs = list(session.exec(
+            select(VoiceJob).where(VoiceJob.job_type == "sync_render")
+        ).all())
+        # Filter to jobs created for this batch (job_id contains batch_id or the job was created during this execute)
+        # Since we can't easily correlate, check that at least one VoiceJob is marked failed with the render error
+        failed_jobs = [j for j in voice_jobs if j.status == "failed"]
+        assert len(failed_jobs) >= 1, "At least one VoiceJob should be marked as failed"
+        assert "Provider render error" in (failed_jobs[0].error_message or "")
+
+    @pytest.mark.asyncio
+    async def test_execute_success_path_no_double_guard(self, session, seed_profile, seed_mock_binding):
+        """Normal batch execution still works correctly (regression test)."""
+        from app.models.batch_job import BatchJob, BatchSegment
+        from app.core.time import utc_now_iso
+
+        now = utc_now_iso()
+        batch_id = "batch_success_regression"
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="mock",
+            output_format="mp3",
+            total_segments=2,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "第一句。第二句。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        for i in range(2):
+            seg = BatchSegment(
+                id=f"seg_regression_{i}",
+                batch_job_id=batch_id,
+                index=i,
+                text=f"回归测试{i}。",
+                profile_id="deep_night_programmer",
+                params_json="{}",
+                status=BatchStatus.pending,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(seg)
+        session.commit()
+
+        service = BatchOrchestrationService()
+        await service.execute(session, batch_id)
+
+        session.refresh(batch_job)
+        assert batch_job.status == BatchStatus.success
+        assert batch_job.completed_segments == 2
+        assert batch_job.failed_segments == 0
+        assert batch_job.merged_audio_asset_id is not None

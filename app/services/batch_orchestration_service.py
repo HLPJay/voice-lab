@@ -23,6 +23,7 @@ from app.providers.registry import get_provider
 from app.repositories import voice_asset_repo, voice_job_repo
 from app.repositories.voice_profile_repo import get_profile, resolve_binding
 from app.services.asset_service import AssetService
+from app.services.resource_guard_service import get_resource_guard, ResourceLimitExceeded
 from app.services.binding_validation_service import validate_binding_provider_voice
 from app.services.cost_guard_service import CostGuardService
 from app.services.audio_merge_service import AudioMergeService
@@ -72,48 +73,54 @@ class BatchOrchestrationService:
         batch_id = new_id("batch")
         config_json = json.dumps(request.model_dump(), ensure_ascii=False)
 
-        batch_job = BatchJob(
-            id=batch_id,
-            mode="longtext",
-            status=BatchStatus.pending,
+        async with get_resource_guard().guard(
             provider=provider,
-            output_format=request.output_format,
-            total_segments=len(texts),
-            silence_between_ms=request.silence_between_ms,
-            config_json=config_json,
-            created_at=now,
-            updated_at=now,
-        )
-        session.add(batch_job)
-
-        for i, text in enumerate(texts):
-            segment = BatchSegment(
-                id=new_id("seg"),
-                batch_job_id=batch_id,
-                index=i,
-                text=text,
-                profile_id=request.profile_id,
-                params_json=json.dumps(request.params or {}),
+            operation="batch_longtext",
+            model=binding.model,
+            job_id=None,
+        ):
+            batch_job = BatchJob(
+                id=batch_id,
+                mode="longtext",
                 status=BatchStatus.pending,
+                provider=provider,
+                output_format=request.output_format,
+                total_segments=len(texts),
+                silence_between_ms=request.silence_between_ms,
+                config_json=config_json,
                 created_at=now,
                 updated_at=now,
             )
-            session.add(segment)
+            session.add(batch_job)
 
-        session.commit()
+            for i, text in enumerate(texts):
+                segment = BatchSegment(
+                    id=new_id("seg"),
+                    batch_job_id=batch_id,
+                    index=i,
+                    text=text,
+                    profile_id=request.profile_id,
+                    params_json=json.dumps(request.params or {}),
+                    status=BatchStatus.pending,
+                    created_at=now,
+                    updated_at=now,
+                )
+                session.add(segment)
 
-        self.logger.info(
-            "batch_submit_longtext batch_id=%s segments=%d", batch_id, len(texts)
-        )
+            session.commit()
 
-        self._execute_with_session(batch_id, provider)
+            self.logger.info(
+                "batch_submit_longtext batch_id=%s segments=%d", batch_id, len(texts)
+            )
 
-        return BatchSubmitResponse(
-            batch_id=batch_id,
-            mode="longtext",
-            total_segments=len(texts),
-            status=BatchStatus.pending,
-        )
+            self._execute_with_session(batch_id, provider)
+
+            return BatchSubmitResponse(
+                batch_id=batch_id,
+                mode="longtext",
+                total_segments=len(texts),
+                status=BatchStatus.pending,
+            )
 
     async def submit_script(
         self,
@@ -137,53 +144,59 @@ class BatchOrchestrationService:
         batch_id = new_id("batch")
         config_json = json.dumps(request.model_dump(), ensure_ascii=False)
 
-        batch_job = BatchJob(
-            id=batch_id,
-            mode="script",
-            status=BatchStatus.pending,
+        async with get_resource_guard().guard(
             provider=provider,
-            output_format=request.output_format,
-            total_segments=len(request.script),
-            silence_between_ms=request.silence_between_ms,
-            config_json=config_json,
-            created_at=now,
-            updated_at=now,
-        )
-        session.add(batch_job)
-
-        for i, line in enumerate(request.script):
-            profile = get_profile(session, line.profile_id)
-            if not profile:
-                raise ProfileNotFound("Voice profile not found", line.profile_id)
-
-            segment = BatchSegment(
-                id=new_id("seg"),
-                batch_job_id=batch_id,
-                index=i,
-                text=line.text,
-                profile_id=line.profile_id,
-                role=line.role,
-                params_json=json.dumps(line.params or {}),
+            operation="batch_script",
+            model=None,
+            job_id=None,
+        ):
+            batch_job = BatchJob(
+                id=batch_id,
+                mode="script",
                 status=BatchStatus.pending,
+                provider=provider,
+                output_format=request.output_format,
+                total_segments=len(request.script),
+                silence_between_ms=request.silence_between_ms,
+                config_json=config_json,
                 created_at=now,
                 updated_at=now,
             )
-            session.add(segment)
+            session.add(batch_job)
 
-        session.commit()
+            for i, line in enumerate(request.script):
+                profile = get_profile(session, line.profile_id)
+                if not profile:
+                    raise ProfileNotFound("Voice profile not found", line.profile_id)
 
-        self.logger.info(
-            "batch_submit_script batch_id=%s segments=%d", batch_id, len(request.script)
-        )
+                segment = BatchSegment(
+                    id=new_id("seg"),
+                    batch_job_id=batch_id,
+                    index=i,
+                    text=line.text,
+                    profile_id=line.profile_id,
+                    role=line.role,
+                    params_json=json.dumps(line.params or {}),
+                    status=BatchStatus.pending,
+                    created_at=now,
+                    updated_at=now,
+                )
+                session.add(segment)
 
-        self._execute_with_session(batch_id, provider)
+            session.commit()
 
-        return BatchSubmitResponse(
-            batch_id=batch_id,
-            mode="script",
-            total_segments=len(request.script),
-            status=BatchStatus.pending,
-        )
+            self.logger.info(
+                "batch_submit_script batch_id=%s segments=%d", batch_id, len(request.script)
+            )
+
+            self._execute_with_session(batch_id, provider)
+
+            return BatchSubmitResponse(
+                batch_id=batch_id,
+                mode="script",
+                total_segments=len(request.script),
+                status=BatchStatus.pending,
+            )
 
     def _execute_with_session(self, batch_job_id: str, provider: str) -> asyncio.Task:
         """Execute batch job with a fresh session. Returns the Task so callers can hold a reference."""
@@ -258,165 +271,185 @@ class BatchOrchestrationService:
             self.logger.error("batch_execute batch_job_id=%s not found", batch_job_id)
             return
 
-        batch_job.status = BatchStatus.running
-        batch_job.updated_at = utc_now_iso()
-        session.add(batch_job)
-        session.commit()
-
-        segments = list(session.exec(
-            select(BatchSegment).where(
-                BatchSegment.batch_job_id == batch_job_id
-            ).order_by(BatchSegment.index)
-        ).all())
-
-        config = {}
-        try:
-            config = json.loads(batch_job.config_json or "{}")
-        except json.JSONDecodeError:
-            pass
-
         settings = get_settings()
         provider = batch_job.provider or settings.voice_provider
-        output_format = batch_job.output_format or "hex"
-        audio_format = config.get("audio_format", "mp3")
 
-        # Legacy compatibility: older batch jobs stored audio format (mp3/wav/flac)
-        # in batch_job.output_format before the P10 split.
-        if output_format in {"mp3", "wav", "flac"}:
-            audio_format = output_format
-            output_format = config.get("output_format", "hex")
-        silence_ms = batch_job.silence_between_ms or 300
+        try:
+            async with get_resource_guard().guard(
+                provider=provider,
+                operation="batch_execute",
+                model=None,
+                job_id=batch_job.id,
+            ):
+                batch_job.status = BatchStatus.running
+                batch_job.updated_at = utc_now_iso()
+                session.add(batch_job)
+                session.commit()
 
-        semaphore = asyncio.Semaphore(settings.batch_max_concurrency)
-        pending_tasks = []
+                segments = list(session.exec(
+                    select(BatchSegment).where(
+                        BatchSegment.batch_job_id == batch_job_id
+                    ).order_by(BatchSegment.index)
+                ).all())
 
-        for segment in segments:
-            if segment.status == BatchStatus.success:
-                continue
-            pending_tasks.append(
-                self._process_segment_isolated(
-                    semaphore, segment.id, provider, output_format, audio_format, config, db_engine
-                )
-            )
+                config = {}
+                try:
+                    config = json.loads(batch_job.config_json or "{}")
+                except json.JSONDecodeError:
+                    pass
 
-        if pending_tasks:
-            await asyncio.gather(*pending_tasks)
+                output_format = batch_job.output_format or "hex"
+                audio_format = config.get("audio_format", "mp3")
 
-        session.expire_all()
+                # Legacy compatibility: older batch jobs stored audio format (mp3/wav/flac)
+                # in batch_job.output_format before the P10 split.
+                if output_format in {"mp3", "wav", "flac"}:
+                    audio_format = output_format
+                    output_format = config.get("output_format", "hex")
+                silence_ms = batch_job.silence_between_ms or 300
 
-        segments = list(session.exec(
-            select(BatchSegment).where(
-                BatchSegment.batch_job_id == batch_job_id
-            ).order_by(BatchSegment.index)
-        ).all())
+                semaphore = asyncio.Semaphore(settings.batch_max_concurrency)
+                pending_tasks = []
 
-        success_audio_paths = []
-        success_timelines = []
-        success_durations = []
-
-        for segment in segments:
-            if segment.status == BatchStatus.success and segment.audio_asset_id:
-                audio_asset = session.get(AudioAsset, segment.audio_asset_id)
-                if audio_asset:
-                    success_audio_paths.append(audio_asset.file_path)
-                    subtitle_asset = session.exec(
-                        select(SubtitleAsset).where(
-                            SubtitleAsset.audio_asset_id == segment.audio_asset_id
-                        ).limit(1)
-                    ).one_or_none()
-                    timeline = json.loads(subtitle_asset.timeline_json) if subtitle_asset else []
-                    success_timelines.append(timeline)
-                    success_durations.append(segment.duration_ms or 0)
-
-        batch_job.completed_segments = sum(
-            1 for s in segments if s.status == BatchStatus.success
-        )
-        batch_job.failed_segments = sum(
-            1 for s in segments if s.status == BatchStatus.failed
-        )
-        batch_job.updated_at = utc_now_iso()
-        session.add(batch_job)
-        session.commit()
-
-        merged_audio_path = None
-        total_duration_ms = None
-
-        if success_audio_paths:
-            try:
-                merged_audio_path = self.audio_merger.merge(
-                    success_audio_paths, silence_ms, audio_format
-                )
-                merged_timeline = self.audio_merger.merge_timelines(
-                    success_timelines, success_durations, silence_ms
-                )
-
-                now = utc_now_iso()
-                merged_audio_id = new_id("audio")
-                merged_audio_asset = AudioAsset(
-                    id=merged_audio_id,
-                    job_id=batch_job_id,
-                    provider=provider,
-                    file_path=merged_audio_path,
-                    file_url=f"/api/voice/assets/{merged_audio_id}/download",
-                    format=audio_format,
-                    duration_ms=sum(success_durations) + (
-                        silence_ms * (len(success_durations) - 1)
-                        if len(success_durations) > 1 else 0
-                    ),
-                    created_at=now,
-                )
-                voice_asset_repo.create_audio_asset(session, merged_audio_asset)
-
-                if merged_timeline:
-                    merged_subtitle_id = new_id("subtitle")
-                    subtitle_json_path = storage_path("subtitles", f"{merged_subtitle_id}.json")
-                    subtitle_srt_path = storage_path("subtitles", f"{merged_subtitle_id}.srt")
-                    subtitle_json_path.write_text(
-                        json.dumps(merged_timeline, ensure_ascii=False, indent=2),
-                        encoding="utf-8",
+                for segment in segments:
+                    if segment.status == BatchStatus.success:
+                        continue
+                    pending_tasks.append(
+                        self._process_segment_isolated(
+                            semaphore, segment.id, provider, output_format, audio_format, config, db_engine
+                        )
                     )
-                    subtitle_srt_path.write_text(timeline_to_srt(merged_timeline), encoding="utf-8")
 
-                    merged_subtitle_asset = SubtitleAsset(
-                        id=merged_subtitle_id,
-                        job_id=batch_job_id,
-                        audio_asset_id=merged_audio_id,
-                        subtitle_type="sentence",
-                        file_path=str(subtitle_json_path),
-                        srt_path=str(subtitle_srt_path),
-                        timeline_json=json.dumps(merged_timeline, ensure_ascii=False),
-                        created_at=now,
-                    )
-                    voice_asset_repo.create_subtitle_asset(session, merged_subtitle_asset)
-                    batch_job.merged_subtitle_asset_id = merged_subtitle_id
+                if pending_tasks:
+                    await asyncio.gather(*pending_tasks)
 
-                batch_job.merged_audio_asset_id = merged_audio_id
-                total_duration_ms = sum(success_durations) + (
-                    silence_ms * (len(success_durations) - 1)
-                    if len(success_durations) > 1 else 0
+                session.expire_all()
+
+                segments = list(session.exec(
+                    select(BatchSegment).where(
+                        BatchSegment.batch_job_id == batch_job_id
+                    ).order_by(BatchSegment.index)
+                ).all())
+
+                success_audio_paths = []
+                success_timelines = []
+                success_durations = []
+
+                for segment in segments:
+                    if segment.status == BatchStatus.success and segment.audio_asset_id:
+                        audio_asset = session.get(AudioAsset, segment.audio_asset_id)
+                        if audio_asset:
+                            success_audio_paths.append(audio_asset.file_path)
+                            subtitle_asset = session.exec(
+                                select(SubtitleAsset).where(
+                                    SubtitleAsset.audio_asset_id == segment.audio_asset_id
+                                ).limit(1)
+                            ).one_or_none()
+                            timeline = json.loads(subtitle_asset.timeline_json) if subtitle_asset else []
+                            success_timelines.append(timeline)
+                            success_durations.append(segment.duration_ms or 0)
+
+                batch_job.completed_segments = sum(
+                    1 for s in segments if s.status == BatchStatus.success
                 )
-            except Exception as exc:
-                self.logger.error("merge_failed batch_id=%s error=%s", batch_job_id, str(exc))
+                batch_job.failed_segments = sum(
+                    1 for s in segments if s.status == BatchStatus.failed
+                )
+                batch_job.updated_at = utc_now_iso()
+                session.add(batch_job)
+                session.commit()
 
-        failed_count = sum(1 for s in segments if s.status == BatchStatus.failed)
-        if failed_count == len(segments):
+                merged_audio_path = None
+                total_duration_ms = None
+
+                if success_audio_paths:
+                    try:
+                        merged_audio_path = self.audio_merger.merge(
+                            success_audio_paths, silence_ms, audio_format
+                        )
+                        merged_timeline = self.audio_merger.merge_timelines(
+                            success_timelines, success_durations, silence_ms
+                        )
+
+                        now = utc_now_iso()
+                        merged_audio_id = new_id("audio")
+                        merged_audio_asset = AudioAsset(
+                            id=merged_audio_id,
+                            job_id=batch_job_id,
+                            provider=provider,
+                            file_path=merged_audio_path,
+                            file_url=f"/api/voice/assets/{merged_audio_id}/download",
+                            format=audio_format,
+                            duration_ms=sum(success_durations) + (
+                                silence_ms * (len(success_durations) - 1)
+                                if len(success_durations) > 1 else 0
+                            ),
+                            created_at=now,
+                        )
+                        voice_asset_repo.create_audio_asset(session, merged_audio_asset)
+
+                        if merged_timeline:
+                            merged_subtitle_id = new_id("subtitle")
+                            subtitle_json_path = storage_path("subtitles", f"{merged_subtitle_id}.json")
+                            subtitle_srt_path = storage_path("subtitles", f"{merged_subtitle_id}.srt")
+                            subtitle_json_path.write_text(
+                                json.dumps(merged_timeline, ensure_ascii=False, indent=2),
+                                encoding="utf-8",
+                            )
+                            subtitle_srt_path.write_text(timeline_to_srt(merged_timeline), encoding="utf-8")
+
+                            merged_subtitle_asset = SubtitleAsset(
+                                id=merged_subtitle_id,
+                                job_id=batch_job_id,
+                                audio_asset_id=merged_audio_id,
+                                subtitle_type="sentence",
+                                file_path=str(subtitle_json_path),
+                                srt_path=str(subtitle_srt_path),
+                                timeline_json=json.dumps(merged_timeline, ensure_ascii=False),
+                                created_at=now,
+                            )
+                            voice_asset_repo.create_subtitle_asset(session, merged_subtitle_asset)
+                            batch_job.merged_subtitle_asset_id = merged_subtitle_id
+
+                        batch_job.merged_audio_asset_id = merged_audio_id
+                        total_duration_ms = sum(success_durations) + (
+                            silence_ms * (len(success_durations) - 1)
+                            if len(success_durations) > 1 else 0
+                        )
+                    except Exception as exc:
+                        self.logger.error("merge_failed batch_id=%s error=%s", batch_job_id, str(exc))
+
+                failed_count = sum(1 for s in segments if s.status == BatchStatus.failed)
+                if failed_count == len(segments):
+                    batch_job.status = BatchStatus.failed
+                elif failed_count > 0:
+                    batch_job.status = BatchStatus.partial
+                else:
+                    batch_job.status = BatchStatus.success
+
+                batch_job.updated_at = utc_now_iso()
+                session.add(batch_job)
+                session.commit()
+
+                self.logger.info(
+                    "batch_complete batch_id=%s status=%s success=%d failed=%d duration_ms=%s",
+                    batch_job_id, batch_job.status,
+                    sum(1 for s in segments if s.status == BatchStatus.success),
+                    failed_count,
+                    total_duration_ms,
+                )
+
+        except ResourceLimitExceeded:
+            # Resource Guard rejected batch execution; mark batch as failed.
             batch_job.status = BatchStatus.failed
-        elif failed_count > 0:
-            batch_job.status = BatchStatus.partial
-        else:
-            batch_job.status = BatchStatus.success
-
-        batch_job.updated_at = utc_now_iso()
-        session.add(batch_job)
-        session.commit()
-
-        self.logger.info(
-            "batch_complete batch_id=%s status=%s success=%d failed=%d duration_ms=%s",
-            batch_job_id, batch_job.status,
-            sum(1 for s in segments if s.status == BatchStatus.success),
-            failed_count,
-            total_duration_ms,
-        )
+            batch_job.failed_segments = batch_job.total_segments
+            batch_job.updated_at = utc_now_iso()
+            session.add(batch_job)
+            session.commit()
+            self.logger.error(
+                "batch_execute_rejected batch_id=%s provider=%s", batch_job_id, provider
+            )
+            return
 
     async def _process_segment(
         self,
@@ -480,33 +513,41 @@ class BatchOrchestrationService:
         session.add(voice_job)
         session.commit()
 
-        result = await get_provider(provider).render_sync(plan)
+        try:
+            result = await get_provider(provider).render_sync(plan)
 
-        audio_asset, subtitle_asset = self.asset_service.save_assets(
-            session,
-            job_id=voice_job.id,
-            provider=provider,
-            model=binding.model,
-            result=result,
-            audio_params=audio_params,
-            subtitle_type="sentence",
-        )
+            audio_asset, subtitle_asset = self.asset_service.save_assets(
+                session,
+                job_id=voice_job.id,
+                provider=provider,
+                model=binding.model,
+                result=result,
+                audio_params=audio_params,
+                subtitle_type="sentence",
+            )
 
-        segment.status = BatchStatus.success
-        segment.voice_job_id = voice_job.id
-        segment.audio_asset_id = audio_asset.id
-        segment.duration_ms = result.duration_ms
-        segment.updated_at = utc_now_iso()
-        session.add(segment)
+            segment.status = BatchStatus.success
+            segment.voice_job_id = voice_job.id
+            segment.audio_asset_id = audio_asset.id
+            segment.duration_ms = result.duration_ms
+            segment.updated_at = utc_now_iso()
+            session.add(segment)
 
-        voice_job.status = JobStatus.success
-        voice_job.provider_trace_id = result.trace_id
-        voice_job.response_json = json.dumps(result.response_json, ensure_ascii=False)
-        voice_job.updated_at = utc_now_iso()
-        session.add(voice_job)
-        session.commit()
+            voice_job.status = JobStatus.success
+            voice_job.provider_trace_id = result.trace_id
+            voice_job.response_json = json.dumps(result.response_json, ensure_ascii=False)
+            voice_job.updated_at = utc_now_iso()
+            session.add(voice_job)
+            session.commit()
 
-        return segment
+            return segment
+        except Exception as exc:
+            voice_job.status = JobStatus.failed
+            voice_job.error_message = f"Segment render failed: {str(exc)[:200]}"
+            voice_job.updated_at = utc_now_iso()
+            session.add(voice_job)
+            session.commit()
+            raise
 
     async def get_status(self, session: Session, batch_job_id: str) -> BatchStatusResponse:
         """查询批量任务进度。"""

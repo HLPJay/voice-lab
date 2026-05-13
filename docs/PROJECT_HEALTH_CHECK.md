@@ -777,6 +777,48 @@ python -m pytest tests/ -x -q
 
 ---
 
+## P7-E Resource Guard 批量生成路径接入
+
+### 背景
+
+- P7-D1 已完成异步与流式路径的 Resource Guard 接入和状态机边界修复
+- BatchOrchestrationService 尚需接入 Resource Guard
+- submit_longtext 和 submit_script 需要在提交前做 admission control
+- execute 需要在整个执行生命周期做 admission control
+- segment 渲染失败时需要标记关联 VoiceJob 为 failed
+
+### 修复内容
+
+- submit_longtext: guard(batch_longtext) 包裹 BatchJob + BatchSegments 创建和 _execute_with_session 调用
+- submit_script: guard(batch_script) 包裹 BatchJob + BatchSegments 创建和 _execute_with_session 调用
+- execute: guard(batch_execute) 包裹整个执行生命周期；ResourceLimitExceeded 异常时标记 batch_job.status=failed 并返回
+- _process_segment: try/except 包裹 render_sync 和 save_assets，异常时标记关联 VoiceJob.status=failed 后重新抛出
+- 本次批量任务内的 segment 并发受 batch_max_concurrency 控制，不使用 t2a_sync guard（t2a_sync 是同步单次调用，无 guard）
+
+### 修改文件
+
+- app/services/batch_orchestration_service.py
+- tests/test_batch_orchestration.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_batch_orchestration.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 测试：38 passed
+- BatchOrchestrationService 测试：16 passed
+- AsyncRenderService 测试：14 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：363 passed, 6 skipped
+
 ## P7-D1 异步与流式状态机边界修复
 
 ### 背景
