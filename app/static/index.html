@@ -1293,7 +1293,12 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-' + tab).classList.add('active');
+      const content = document.getElementById('tab-' + tab);
+      if (content) {
+        content.classList.add('active');
+      } else {
+        console.warn('Missing tab content: tab-' + tab);
+      }
       // Tab switch callbacks for data refresh
       if (tab === 'advanced') {
         // Show first subtab (clone) when entering advanced
