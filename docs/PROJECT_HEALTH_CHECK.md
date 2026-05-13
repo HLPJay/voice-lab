@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-1E：
+截至 P8-2A：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -10,6 +10,7 @@
 * P7-J0：并发架构边界归纳已完成
 * P8-0：前端产品化范围定义已完成
 * P8-1：前端信息架构重组已完成并收口
+* P8-2A：音色选择 / 试听工作台现状审查已完成
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -41,7 +42,9 @@
   * 开放 API
   * 完整 SaaS 化
 * 声音克隆 / 声音设计仍属于高级工程验证能力，暂缓产品化
-* 下一阶段建议进入 P8-2：音色选择 / 试听工作台
+* P8-2 目标：将音色 tab 整理为音色选择 / 试听工作台
+* P8-2A 已完成审查和文档化
+* 下一阶段建议进入 P8-2B：音色 tab 信息架构整理
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -1732,3 +1735,48 @@ python -m pytest tests/ -x -q
 
 - P8-1E：收口修正（本次）
 - P8-2：音色选择 / 试听工作台
+
+---
+
+## P8-2A 音色选择 / 试听工作台现状审查
+
+### 背景
+
+P8-1 已完成前端信息架构重组。P8-2 目标是整理"音色"tab 为真正的音色选择 / 试听工作台。P8-2A 只做审查和文档化，不改代码。
+
+### 新增文档
+
+- `docs/P8_2_VOICE_SELECTION_WORKSTATION.md`
+
+### P8-2A 主要发现
+
+1. **删除音色在 tab-voices 内**（应在 tab-advanced），是最大风险点
+2. **tab-voices 承担 6+ 功能**，信息密度过高
+3. **试听工作台动态渲染在 voiceListResults 内部**，DOM 耦合严重
+4. **快速绑定**是弹出面板，交互需优化
+5. **tab-advanced/subtab-bindings 已有完整绑定管理**，与快速绑定有分层
+6. **试听产生成本但 confirm_cost=false**，需在高成本警告中体现
+7. **所有 DOM id 和 JS function behavior 应保留**，P8-2B 只做架构整理
+
+### 修改文件
+
+- `docs/P8_2_VOICE_SELECTION_WORKSTATION.md`（新增）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新状态摘要）
+
+### 验证命令
+
+```bash
+git status -sb
+git diff --check
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- git status -sb：干净
+- git diff --check：无 whitespace error
+- pytest：375 passed, 6 skipped
+
+### 阶段结论
+
+P8-2A 只完成审查和文档化。下一步进入 P8-2B：音色 tab 信息架构整理（只改 DOM 结构，不改 API 和 JS function behavior）。
