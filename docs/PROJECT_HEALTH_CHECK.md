@@ -1112,3 +1112,62 @@ python -m pytest tests/ -x -q
 **P7 Resource Guard 主线完成，可以进入下一阶段。**
 
 所有后端 service 均正确接入 Resource Guard，状态机在拒绝路径保持一致，前端 RESOURCE_LIMIT_EXCEEDED 友好提示已覆盖所有入口。366 个自动化测试全部通过，无阻塞问题。
+
+---
+
+## P7-H 当前项目能力测试与验收
+
+### 背景
+
+- P7 Resource Guard 已完成（e05714a）
+- 进入产品化前，需要对当前项目已有音频能力做系统测试
+- 本阶段不新增业务能力，重点是验证现有能力是否可用
+
+### 工作内容
+
+- 新增 docs/P7_H_CAPABILITY_ACCEPTANCE.md
+- 执行自动化测试（366 passed, 6 skipped）
+- 代码审查确认各能力实现状态
+- 汇总能力可用性与产品化建议
+- 区分 mock 自动化验证和 minimax 代码审查确认
+
+### 修改文件
+
+- docs/P7_H_CAPABILITY_ACCEPTANCE.md（新增）
+- docs/PROJECT_HEALTH_CHECK.md（追加本节）
+
+### 测试结果
+
+**自动化测试**：
+
+```
+tests/test_resource_guard.py         → 15 passed
+tests/test_batch_orchestration.py    → 19 passed
+tests/test_async_render.py          → 14 passed
+tests/test_stream_render_service.py  → 9 passed
+tests/ -x -q                         → 366 passed, 6 skipped
+```
+
+**手工测试**：未执行（需要启动 uvicorn 服务并使用真实 MiniMax token）
+
+### 能力验收结论
+
+| 能力 | 状态 |
+|---|---|
+| 同步 T2A（所有格式和参数） | 可用 |
+| 异步 T2A（submit/poll/download） | 可用 |
+| HTTP / WebSocket 流式 T2A | 可用 |
+| provider voice preview | 可用 |
+| binding voice preview | 可用 |
+| 声音克隆（上传/创建/绑定） | 可用 |
+| 声音设计 | 可用 |
+| 多版本试音 | 可用 |
+| 批量长文本生成 | 可用 |
+| 批量剧本生成 | 可用 |
+| 资产下载 / 历史记录 | 可用 |
+| Resource Guard 拒绝路径 | 可用 |
+| 前端测试面板交互 | 待手工验证 |
+
+### 阶段结论
+
+**P7-H 能力验收完成，所有核心能力通过自动化测试和代码审查确认可用。手工验证尚未执行，建议补充实际浏览器测试后进入 P8 前端 UX 修复阶段。**
