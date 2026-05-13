@@ -726,8 +726,20 @@
 
   <!-- ======================== TAB: VOICES ======================== -->
   <div class="tab-content" id="tab-voices">
+    <!-- Description area -->
     <div class="card">
-      <div class="card-title">音色列表查询</div>
+      <div class="card-title">音色选择 / 试听工作台</div>
+      <p style="font-size:0.88rem;color:#718096;line-height:1.7;margin-bottom:8px">
+        在这里查询、筛选和试听可用音色。试听满意后，可以通过轻量绑定入口绑定到声音人设，再回到创作工作台使用。
+      </p>
+      <p style="font-size:0.82rem;color:#c53030;background:#fff5f5;border:1px solid #feb2b2;padding:8px 12px;border-radius:6px">
+        试听提示：真实 MiniMax provider 下试听会产生 API 调用成本，建议使用 20-100 字短文本进行验证。
+      </p>
+    </div>
+
+    <!-- Voice query -->
+    <div class="card">
+      <div class="card-title">音色查询</div>
       <div class="config-grid">
         <div class="form-group">
           <label for="voiceProvider">Provider</label>
@@ -753,30 +765,12 @@
       <div id="voiceListResults"></div>
     </div>
 
+    <!-- Lightweight binding description -->
     <div class="card">
-      <div class="card-title">删除音色</div>
-      <div class="delete-form-row">
-        <div class="form-group">
-          <label for="deleteProvider">Provider</label>
-          <select id="deleteProvider">
-            <option value="mock">mock</option>
-            <option value="minimax">minimax</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="deleteVoiceId">voice_id</label>
-          <input type="text" id="deleteVoiceId" placeholder="输入 voice_id">
-        </div>
-        <div class="form-group">
-          <label for="deleteVoiceType">音色类型</label>
-          <select id="deleteVoiceType">
-            <option value="voice_cloning">voice_cloning</option>
-            <option value="voice_generation">voice_generation</option>
-          </select>
-        </div>
-        <button class="btn-primary btn-danger" style="margin-top:0" onclick="handleDeleteVoice()">删除</button>
-      </div>
-      <div id="deleteResults"></div>
+      <div class="card-title">绑定说明</div>
+      <p style="font-size:0.82rem;color:#718096;line-height:1.7">
+        音色列表中的快速绑定用于把当前音色关联到声音人设。完整绑定管理仍保留在"高级 / 绑定管理"中。
+      </p>
     </div>
   </div>
 
@@ -795,6 +789,7 @@
       <button class="tab-btn active" data-subtab="clone" onclick="switchAdvancedSubtab('clone')">声音克隆</button>
       <button class="tab-btn" data-subtab="design" onclick="switchAdvancedSubtab('design')">声音设计</button>
       <button class="tab-btn" data-subtab="bindings" onclick="switchAdvancedSubtab('bindings')">绑定管理</button>
+      <button class="tab-btn" data-subtab="danger" onclick="switchAdvancedSubtab('danger')">危险操作</button>
     </div>
 
     <!-- Clone sub-tab content -->
@@ -1086,6 +1081,41 @@
     </div>
   </div>
 
+  <!-- Danger sub-tab content -->
+  <div id="subtab-danger" style="display:none">
+    <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
+      <div style="padding:12px 16px">
+        <div style="font-size:0.85rem;font-weight:600;color:#c53030;margin-bottom:4px">⚠ 删除音色</div>
+        <div style="font-size:0.78rem;color:#c53030">删除音色属于高风险操作。真实 provider 下可能会影响远端音色资产和本地绑定状态。请确认 voice_id、音色类型和 provider 后再操作。</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">删除音色</div>
+      <div class="delete-form-row">
+        <div class="form-group">
+          <label for="deleteProvider">Provider</label>
+          <select id="deleteProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="deleteVoiceId">voice_id</label>
+          <input type="text" id="deleteVoiceId" placeholder="输入 voice_id">
+        </div>
+        <div class="form-group">
+          <label for="deleteVoiceType">音色类型</label>
+          <select id="deleteVoiceType">
+            <option value="voice_cloning">voice_cloning</option>
+            <option value="voice_generation">voice_generation</option>
+          </select>
+        </div>
+        <button class="btn-primary btn-danger" style="margin-top:0" onclick="handleDeleteVoice()">删除</button>
+      </div>
+      <div id="deleteResults"></div>
+    </div>
+  </div>
+
   <script>
     // Switch advanced sub-tab
     function switchAdvancedSubtab(subtab) {
@@ -1098,6 +1128,7 @@
       document.getElementById('subtab-clone').style.display = subtab === 'clone' ? 'block' : 'none';
       document.getElementById('subtab-design').style.display = subtab === 'design' ? 'block' : 'none';
       document.getElementById('subtab-bindings').style.display = subtab === 'bindings' ? 'block' : 'none';
+      document.getElementById('subtab-danger').style.display = subtab === 'danger' ? 'block' : 'none';
       // Load profiles when bindings tab is shown
       if (subtab === 'bindings') {
         loadProfiles(true).then(() => {

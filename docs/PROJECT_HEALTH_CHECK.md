@@ -43,8 +43,10 @@
   * 完整 SaaS 化
 * 声音克隆 / 声音设计仍属于高级工程验证能力，暂缓产品化
 * P8-2 目标：将音色 tab 整理为音色选择 / 试听工作台
-* P8-2A 已完成审查和文档化
-* 下一阶段建议进入 P8-2B：音色 tab 信息架构整理
+* P8-2A：现状审查已完成
+* P8-2B：音色 tab 信息架构整理已完成
+* 删除音色已从音色主流程迁移到高级危险操作区
+* 下一阶段建议进入 P8-2C：试听工作台产品化
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -1780,3 +1782,49 @@ python -m pytest tests/ -x -q
 ### 阶段结论
 
 P8-2A 只完成审查和文档化。下一步进入 P8-2B：音色 tab 信息架构整理（只改 DOM 结构，不改 API 和 JS function behavior）。
+
+---
+
+## P8-2B 音色 tab 信息架构整理
+
+### 背景
+
+P8-2A 发现删除音色仍在 tab-voices 内（应在 advanced）。P8-2B 目标是将 tab-voices 整理为更聚焦的音色选择 / 试听工作台。
+
+### 主要调整
+
+1. **tab-voices 新增说明区**：音色选择 / 试听工作台标题 + 试听成本提示 + 绑定说明
+2. **删除音色迁移**：从 tab-voices 移入 tab-advanced/subtab-danger
+3. **新增 danger 子 tab**：高级区增加"危险操作"子 tab，收纳删除音色
+4. **switchAdvancedSubtab 更新**：增加对 danger 子 tab 的支持
+
+### 风险处理
+
+- 保留所有 deleteProvider / deleteVoiceId / deleteVoiceType / deleteResults（静态 DOM）
+- 保留 handleDeleteVoice / handleVoiceDeleteFromList 行为不变
+- 保留所有音色查询、试听、绑定相关 JS 函数行为不变
+- 只做 DOM 迁移，不改 API endpoint
+
+### 修改文件
+
+- `app/static/index.html`
+- `docs/P8_2_VOICE_SELECTION_WORKSTATION.md`
+- `docs/PROJECT_HEALTH_CHECK.md`
+
+### 验证命令
+
+```bash
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- pytest：375 passed, 6 skipped
+- DOM marker check：passed
+- JS function check：passed
+- Advanced subtab mapping check：passed
+- 未执行真实 MiniMax smoke test
+
+### 阶段结论
+
+P8-2B 已完成音色 tab 信息架构整理。下一阶段建议进入 P8-2C：试听工作台产品化。
