@@ -234,65 +234,6 @@ class TestVoiceVariantResourceGuard:
         await guard._release(lease)
 
     @pytest.mark.asyncio
-    async def test_variants_not_affected_by_t2a_sync_limit(self, session, seed_profile, seed_mock_binding):
-        """When t2a_sync is full, voice_variants should still succeed because it uses resource_guard_already_acquired=True."""
-        from unittest.mock import patch
-        from app.services.voice_variant_service import VoiceVariantService
-        from app.services.voice_render_service import VoiceRenderService
-        from app.services.resource_guard_service import ResourceLimitExceeded, get_resource_guard
-        from app.domain.schemas import VoiceVariantRenderRequest, VoiceRenderRequest, VoiceRenderResponse
-
-        # Track render_voice calls and their resource_guard_already_acquired parameter
-        render_voice_calls = []
-
-        async def tracked_render_voice(sess, req, voice_overrides=None, resource_guard_already_acquired=False):
-            render_voice_calls.append({
-                "resource_guard_already_acquired": resource_guard_already_acquired,
-                "voice_overrides": voice_overrides,
-            })
-            # Return a mock response
-            from app.domain.schemas import AudioAssetResponse
-            return VoiceRenderResponse(
-                job_id="mock_job",
-                status="success",
-                audio_asset=AudioAssetResponse(id="mock_audio", url="/mock.wav", duration_ms=1000, format="wav"),
-                provider="minimax",
-                model="speech-2.8-hd",
-            )
-
-        svc = VoiceVariantService()
-
-        # Hold all t2a_sync slots (limit=2)
-        guard = get_resource_guard()
-        lease1 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
-        lease2 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
-
-        # t2a_sync is now full, but voice_variants should not be affected
-        with patch.object(VoiceRenderService, "render_voice", side_effect=tracked_render_voice):
-            req = VoiceVariantRenderRequest(
-                text="测试文本",
-                profile_id="deep_night_programmer",
-                provider="minimax",
-                variant_count=2,
-                confirm_cost=True,
-            )
-            # Should NOT raise ResourceLimitExceeded for t2a_sync
-            result = await svc.render_variants(session, req)
-
-        # Verify render_voice was called with resource_guard_already_acquired=True
-        assert len(render_voice_calls) == 2, f"Expected 2 render_voice calls, got {len(render_voice_calls)}"
-        for call in render_voice_calls:
-            assert call["resource_guard_already_acquired"] is True, "render_voice should be called with resource_guard_already_acquired=True"
-
-        # Verify result
-        assert result.group_id is not None
-        assert len(result.variants) == 2
-
-        # Cleanup
-        await guard._release(lease1)
-        await guard._release(lease2)
-
-    @pytest.mark.asyncio
     async def test_variants_success_path_works(self, session, seed_profile, seed_mock_binding):
         """Normal variants rendering should work correctly with mocked render_voice."""
         from unittest.mock import patch
@@ -326,3 +267,87 @@ class TestVoiceVariantResourceGuard:
         for v in result.variants:
             assert v.job_id == "variant_job"
             assert v.audio_asset_id == "variant_audio"
+
+    @pytest.mark.asyncio
+    async def test_variants_provider_none_passes_mock_to_render_voice(self, session, seed_profile, seed_mock_binding):
+        """When request.provider=None, VoiceRenderRequest.provider must be 'mock', not None.
+
+        This ensures outer guard (mock) and inner render_voice use the same provider,
+        so resource_guard_already_acquired=True is valid.
+        """
+        from unittest.mock import patch
+        from app.services.voice_variant_service import VoiceVariantService
+        from app.services.voice_render_service import VoiceRenderService
+        from app.domain.schemas import VoiceVariantRenderRequest, VoiceRenderResponse, AudioAssetResponse
+
+        captured_calls = []
+
+        async def tracked_render_voice(sess, req, voice_overrides=None, resource_guard_already_acquired=False):
+            captured_calls.append({
+                "request_provider": req.provider,
+                "resource_guard_already_acquired": resource_guard_already_acquired,
+            })
+            return VoiceRenderResponse(
+                job_id="variant_job",
+                status="success",
+                audio_asset=AudioAssetResponse(id="variant_audio", url="/variant.wav", duration_ms=2000, format="wav"),
+                provider="mock",
+                model="speech-2.8-hd",
+            )
+
+        svc = VoiceVariantService()
+
+        with patch.object(VoiceRenderService, "render_voice", side_effect=tracked_render_voice):
+            req = VoiceVariantRenderRequest(
+                text="测试",
+                profile_id="deep_night_programmer",
+                provider=None,  # None → resolved to "mock"
+                variant_count=2,
+                confirm_cost=True,
+            )
+            result = await svc.render_variants(session, req)
+
+        assert len(captured_calls) == 2
+        for call in captured_calls:
+            assert call["request_provider"] == "mock", "VoiceRenderRequest.provider must be 'mock', not None"
+            assert call["resource_guard_already_acquired"] is True, "resource_guard_already_acquired must be True when provider=mock"
+
+    @pytest.mark.asyncio
+    async def test_variants_real_provider_skips_resource_guard_flag(self, session, seed_profile, seed_mock_binding):
+        """When provider='minimax', resource_guard_already_acquired must be False so render_voice acquires t2a_sync."""
+        from unittest.mock import patch
+        from app.services.voice_variant_service import VoiceVariantService
+        from app.services.voice_render_service import VoiceRenderService
+        from app.domain.schemas import VoiceVariantRenderRequest, VoiceRenderResponse, AudioAssetResponse
+
+        captured_calls = []
+
+        async def tracked_render_voice(sess, req, voice_overrides=None, resource_guard_already_acquired=False):
+            captured_calls.append({
+                "request_provider": req.provider,
+                "resource_guard_already_acquired": resource_guard_already_acquired,
+            })
+            return VoiceRenderResponse(
+                job_id="variant_job",
+                status="success",
+                audio_asset=AudioAssetResponse(id="variant_audio", url="/variant.wav", duration_ms=2000, format="wav"),
+                provider="minimax",
+                model="speech-2.8-hd",
+            )
+
+        svc = VoiceVariantService()
+
+        with patch.object(VoiceRenderService, "render_voice", side_effect=tracked_render_voice):
+            req = VoiceVariantRenderRequest(
+                text="测试",
+                profile_id="deep_night_programmer",
+                provider="minimax",
+                variant_count=2,
+                confirm_cost=True,
+            )
+            result = await svc.render_variants(session, req)
+
+        assert len(captured_calls) == 2
+        for call in captured_calls:
+            assert call["request_provider"] == "minimax"
+            assert call["resource_guard_already_acquired"] is False, "resource_guard_already_acquired must be False for real provider"

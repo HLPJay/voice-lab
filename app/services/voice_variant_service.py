@@ -40,16 +40,20 @@ class VoiceVariantService:
             responses: list[VoiceVariantResponse] = []
             for combo in combos:
                 # resource_guard_already_acquired=True: voice_variants guard already admitted, skip t2a_sync guard
+                # Use resolved provider to ensure inner guard is on the same provider as outer guard.
+                # resource_guard_already_acquired=True: only safe when provider="mock" (no real t2a_sync
+                # guard needed), since voice_variants outer guard already provides the necessary protection.
+                # For real providers (e.g. minimax), t2a_sync guard inside render_voice is still needed.
                 render_response = await self.render_service.render_voice(
                     session,
                     VoiceRenderRequest(
                         text=request.text,
                         profile_id=request.profile_id,
-                        provider=request.provider,
+                        provider=provider,
                         need_subtitle=request.need_subtitle,
                     ),
                     voice_overrides=combo,
-                    resource_guard_already_acquired=True,
+                    resource_guard_already_acquired=(provider == "mock"),
                 )
                 variant = VoiceVariant(
                     id=new_id("variant"),

@@ -664,5 +664,14 @@ python -m pytest tests/ -x -q
 ### 验证结果
 
 - Resource Guard 单元测试：15 passed
-- VoiceVariant Service 测试：7 passed
-- 全量测试：345 passed, 6 skipped
+- VoiceVariant Service 测试：8 passed
+- 全量测试：346 passed, 6 skipped
+
+### 补充修复（P7-C1-provider）
+
+在 P7-C1 基础上额外修复 provider 透传问题：
+
+- `request.provider=None` 时，外层 guard 按 "mock" 处理，但内部 `render_voice` 收到 `None` 后会解析为真实 provider，导致外层/内层 provider 不一致
+- 修复：`VoiceRenderRequest(provider=provider)` 使用已解析 provider，而非 `request.provider`
+- `resource_guard_already_acquired=(provider == "mock")`：仅当 provider 为 "mock" 时跳过 t2a_sync guard（mock 无真实 t2a_sync 限流），真实 provider 仍需 t2a_sync guard
+- 新增测试：`test_variants_provider_none_passes_mock_to_render_voice`、`test_variants_real_provider_skips_resource_guard_flag`
