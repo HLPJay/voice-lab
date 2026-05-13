@@ -224,7 +224,117 @@ Voice Lab 当前已经从 API Demo 进入声音工作台雏形阶段。
 
 ---
 
-## 7. 本次测试执行记录
+## 7. P6 前端测试面板基础验证
+
+### 验证背景
+
+- 当前分支：dev
+- 当前阶段：P6 固化收尾
+- 验证方式：人工前端页面基础测试
+- 验证结论：暂未发现明显阻塞问题
+
+### 验证范围
+
+已基本测试以下页面或能力：
+
+- T2A 生成（同步）
+- T2A 生成（异步）
+- T2A 生成（WebSocket 流式）
+- 音色管理
+- 声音克隆
+- 声音设计
+- 绑定管理
+- 批量生成（长文本）
+- 批量生成（剧本多角色）
+- 管理面板入口
+
+### 验证结果
+
+- 页面可正常打开
+- 基本交互可用
+- 同步生成链路可用
+- 异步生成链路可用（短文本异步模式明显慢于同步模式，属于异步链路正常特性）
+- 流式生成链路可用
+- 批量生成链路可用
+- 暂未发现明显阻塞问题
+
+### 观察项
+
+- 当前前端仍是测试面板，不是最终产品主流程
+- 异步生成依赖前端轮询推进状态，短文本建议优先使用同步生成或流式生成
+- 批量长文本自动分段策略主要按双换行或超长文本拆分，单换行短文本可能仍被视为一段
+- 后续进入 Resource Guard 前，应保留当前 P6 baseline
+
+---
+
+## 8. .env.example 与 Settings 配置同步
+
+### 问题现象
+
+- `app/core/config.py` 中已有 WebSocket、批量、日志、重试等配置项
+- `.env.example` 未完整覆盖这些配置
+- 这可能导致换机器、交接、部署或让代码执行器运行时出现配置遗漏
+
+### 原因分析
+
+- 项目功能从 P3 推进到 P6 后，新增了 WebSocket、批量任务、日志、重试等能力
+- 但 `.env.example` 没有及时跟进 Settings 配置项变化
+- 配置文档和代码存在漂移
+
+### 修改方案
+
+- 对照 `app/core/config.py` 中 Settings 类同步 `.env.example`
+- 补充 WebSocket、Batch、Logging、Retry、Async Poll 等配置
+- 将 `BATCH_MAX_CONCURRENCY` 示例值设为 1，作为试用阶段保守默认值
+- 清理当前未使用的配置项（`ENABLE_MOCK_PROVIDER`、`CLONE_AUDIO_MIN_DURATION_SEC`、`CLONE_AUDIO_MAX_DURATION_SEC`、`PROMPT_AUDIO_MAX_DURATION_SEC`），移至注释区标注"未启用/保留说明"
+- 保留 `MOCK_FALLBACK_PROVIDER`，该字段被 `voice_profile_repo.py` 实际使用
+
+### 修改文件
+
+- `.env.example`
+- `docs/PROJECT_HEALTH_CHECK.md`
+
+### 同步的配置项（按 Settings 字段对照）
+
+| Settings 字段 | .env.example 配置 | 状态 |
+|---|---|---|
+| `async_poll_interval_seconds` | `ASYNC_POLL_INTERVAL_SECONDS=5` | 新增 |
+| `async_max_wait_seconds` | `ASYNC_MAX_WAIT_SECONDS=600` | 新增 |
+| `minimax_ws_url` | `MINIMAX_WS_URL=wss://api.minimaxi.com/ws/v1/t2a_v2` | 新增 |
+| `minimax_ws_model` | `MINIMAX_WS_MODEL=speech-2.8-hd` | 新增 |
+| `minimax_ws_timeout_seconds` | `MINIMAX_WS_TIMEOUT_SECONDS=120` | 新增 |
+| `batch_max_concurrency` | `BATCH_MAX_CONCURRENCY=1` | 新增（从5改为1） |
+| `log_level` | `LOG_LEVEL=INFO` | 新增 |
+| `log_format` | `LOG_FORMAT=json` | 新增 |
+| `log_dir` | `LOG_DIR=./logs` | 新增 |
+| `log_retention_days` | `LOG_RETENTION_DAYS=30` | 新增 |
+| `provider_retry_max_attempts` | `PROVIDER_RETRY_MAX_ATTEMPTS=3` | 新增 |
+| `provider_retry_backoff_base` | `PROVIDER_RETRY_BACKOFF_BASE=1.0` | 新增 |
+| `mock_fallback_provider` | `MOCK_FALLBACK_PROVIDER=minimax` | 新增 |
+| `clone_audio_max_size_mb` | `CLONE_AUDIO_MAX_SIZE_MB=20` | 已有 |
+| `minimax_file_upload_path` | `MINIMAX_FILE_UPLOAD_PATH=/v1/files/upload` | 已有 |
+| `minimax_voice_clone_path` | `MINIMAX_VOICE_CLONE_PATH=/v1/voice_clone` | 已有 |
+| `minimax_voice_design_path` | `MINIMAX_VOICE_DESIGN_PATH=/v1/voice_design` | 已有 |
+| `minimax_delete_voice_path` | `MINIMAX_DELETE_VOICE_PATH=/v1/delete_voice` | 已有 |
+
+### 清理的配置项
+
+| 配置 | 原因 |
+|---|---|
+| `ENABLE_MOCK_PROVIDER=false` | 字段不存在于 Settings，代码无引用 |
+| `CLONE_AUDIO_MIN_DURATION_SEC=10` | 字段不存在于 Settings，代码无引用 |
+| `CLONE_AUDIO_MAX_DURATION_SEC=300` | 字段不存在于 Settings，代码无引用 |
+| `PROMPT_AUDIO_MAX_DURATION_SEC=8` | 字段不存在于 Settings，代码无引用 |
+
+### 后续注意
+
+- 后续每次新增 Settings 配置项，都需要同步 `.env.example`
+- 后续接入 Resource Guard 时，也需要同步相关环境变量示例
+- 不应让 `.env.example` 长期落后于 `config.py`
+
+---
+
+## 9. 本次测试执行记录
 
 ### 全量测试
 
