@@ -1597,3 +1597,69 @@ P7-I 已完成真实能力验证与修复收口，P7-J0 已完成并发架构边
 ### 新增文档
 
 - `docs/P8_0_PRODUCTIZATION_SCOPE.md`
+
+---
+
+## P8-1 前端信息架构重组
+
+### 背景
+
+P8-0 已完成产品化范围定义，明确第一版为本地 Web App / 单用户音频创作工作台。P8-1 开始执行前端信息架构重组，将测试面板整理为音频创作工作台。
+
+### P8-1A 审查执行
+
+- 新增 `docs/P8_1_FRONTEND_INFORMATION_ARCHITECTURE.md`
+- 完整记录当前 DOM id、JS 函数、tab 结构和安全修改边界
+- 确认所有 DOM id 和 JS function behaviors 不改变
+
+### P8-1B 前端标签页重组
+
+已完成：
+
+- 页面标题从 "Voice Lab 测试面板" 改为 "AI 音频创作工作台"
+- header 副标题从 "MiniMax 语音接口测试与验证平台" 改为 "短视频旁白与音频剧本生成"
+- 标签页从 6 个重组为新 6 个：
+  - `workspace`（原 T2A 生成，去除历史记录）
+  - `longtext`（原批量生成中的长文本模式）
+  - `script`（原批量生成中的剧本模式）
+  - `voices`（音色管理，保留）
+  - `history`（原 T2A 内历史记录，独立成 tab）
+  - `advanced`（原声音克隆、声音设计、绑定管理，增加高成本警告）
+- 新增 `switchAdvancedSubtab()` 函数处理高级 tab 内子 tab 切换
+- 调整 tab-switching 回调，处理新 tab 名称
+
+### 修改文件
+
+- `app/static/index.html`
+- `docs/P8_1_FRONTEND_INFORMATION_ARCHITECTURE.md`（新增）
+- `docs/PROJECT_HEALTH_CHECK.md`
+
+### 验证结果
+
+```bash
+python -m pytest tests/ -x -q
+# 375 passed, 6 skipped
+```
+
+### P8-1B 验收清单
+
+| 检查项 | 状态 |
+|---|---|
+| 页面标题已更新 | ✅ |
+| header 副标题已更新 | ✅ |
+| tab 按钮已重组 | ✅ |
+| tab-workspace 存在且内容正确 | ✅ |
+| tab-history 独立，包含历史记录 | ✅ |
+| tab-longtext 独立，包含长文本配置 | ✅ |
+| tab-script 独立，包含剧本配置 | ✅ |
+| tab-voices 保留原始功能 | ✅ |
+| tab-advanced 包含克隆/设计/绑定，含高成本警告 | ✅ |
+| subtab 切换函数 `switchAdvancedSubtab` 正常工作 | ✅ |
+| 所有 DOM id 未改变 | ✅ |
+| 所有 JS function behaviors 未改变 | ✅ |
+| pytest 375 passed, 6 skipped | ✅ |
+
+### 后续计划
+
+- P8-1C：更新 PROJECT_HEALTH_CHECK.md（本次）
+- P8-1D：最终验证 + 提交所有 P8-1 更改
