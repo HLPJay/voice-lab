@@ -718,6 +718,17 @@
         历史记录 ▾
       </div>
       <div id="historyArea" style="display:none">
+        <div id="historyToolbar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;margin-bottom:8px">
+          <input id="historySearch" type="text" placeholder="搜索历史文本 / provider / job_id" style="flex:1;min-width:160px;padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" oninput="handleHistorySearchInput()">
+          <select id="historyStatusFilter" style="padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" onchange="handleHistoryStatusFilterChange()">
+            <option value="all">全部状态</option>
+            <option value="success">已完成</option>
+            <option value="processing">处理中</option>
+            <option value="failed">失败</option>
+          </select>
+          <button id="historyClearFilters" class="btn-sm" onclick="clearHistoryFilters()" style="display:none">清空筛选</button>
+        </div>
+        <div id="historyFilterHint" style="font-size:0.78rem;color:#718096;padding:4px 0"></div>
         <div id="historyList"></div>
         <button class="btn-sm" id="loadMoreHistory" onclick="loadMoreHistory()" style="display:none;margin-top:8px">加载更多</button>
       </div>
@@ -1778,6 +1789,9 @@ function handleStopAsyncPolling() {
   let _historyOffset = 0;
   let _historyTotal = 0;
   let _historyLoading = false;
+  let _historyJobs = [];
+  let _historySearch = '';
+  let _historyStatusFilter = 'all';
 
   function toggleHistory() {
     const area = document.getElementById('historyArea');
@@ -1797,6 +1811,7 @@ function handleStopAsyncPolling() {
     if (offset === 0) {
       _historyOffset = 0;
       _historyTotal = 0;
+      _historyJobs = [];
       listEl.innerHTML = '<div style="font-size:0.82rem;color:#718096">加载中…</div>';
     }
     _historyLoading = true;
@@ -1807,31 +1822,23 @@ function handleStopAsyncPolling() {
       _historyTotal = data.total || 0;
       const jobs = data.jobs || [];
 
-      if (offset === 0) listEl.innerHTML = '';
-      if (jobs.length === 0 && offset === 0) {
+      if (offset === 0 && jobs.length === 0) {
+        _historyJobs = [];
         listEl.innerHTML = historyEmptyStateHtml();
         moreBtn.style.display = 'none';
+        updateHistoryFilterHint();
         return;
       }
 
-      const fragment = document.createDocumentFragment();
-      jobs.forEach(job => {
-        const div = document.createElement('div');
-        div.innerHTML = historyJobCardHtml(job);
-        fragment.appendChild(div.firstElementChild);
-      });
-      listEl.appendChild(fragment);
-
+      _historyJobs.push(...jobs);
       _historyOffset = offset + jobs.length;
-      const hasMore = _historyOffset < _historyTotal;
-      moreBtn.style.display = hasMore ? '' : 'none';
-      if (!hasMore && _historyTotal > 0) {
-        const endHint = document.createElement('div');
-        endHint.innerHTML = historyEndStateHtml();
-        listEl.appendChild(endHint);
-      }
+      renderHistoryList();
     } catch (e) {
-      if (offset === 0) listEl.innerHTML = historyLoadErrorHtml(e.message || '');
+      if (offset === 0) {
+        _historyJobs = [];
+        listEl.innerHTML = historyLoadErrorHtml(e.message || '');
+        updateHistoryFilterHint();
+      }
     } finally {
       _historyLoading = false;
     }
@@ -2565,6 +2572,119 @@ function handleStopAsyncPolling() {
     return `<div style="margin-top:10px">
       <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">音频播放</div>
       <p style="font-size:0.82rem;color:#a0aec0">当前历史记录未返回可播放音频资产。</p>
+    </div>`;
+  }
+
+  // ============================================================
+  // P8-4E: History local filter/search helpers — no API calls except loadHistory
+  // ============================================================
+
+  // P8-4E: Filter jobs based on current search and status filter
+  function filterHistoryJobs(jobs) {
+    let filtered = jobs;
+    if (_historyStatusFilter !== 'all') {
+      filtered = filtered.filter(job => {
+        if (_historyStatusFilter === 'success') return isResultSuccessStatus(job.status);
+        if (_historyStatusFilter === 'processing') return isResultProcessingStatus(job.status);
+        if (_historyStatusFilter === 'failed') return isResultFailedStatus(job.status);
+        return true;
+      });
+    }
+    if (_historySearch.trim()) {
+      const q = _historySearch.toLowerCase();
+      filtered = filtered.filter(job => {
+        const text = [job.input_text, job.processed_text, job.provider, job.model, job.job_id, job.id, job.job_type, job.status].filter(Boolean).join(' ').toLowerCase();
+        return text.includes(q);
+      });
+    }
+    return filtered;
+  }
+
+  // P8-4E: Update filter hint text
+  function updateHistoryFilterHint() {
+    const hintEl = document.getElementById('historyFilterHint');
+    const clearBtn = document.getElementById('historyClearFilters');
+    if (!hintEl) return;
+    const hasFilter = _historySearch.trim() || _historyStatusFilter !== 'all';
+    clearBtn.style.display = hasFilter ? '' : 'none';
+    if (_historyJobs.length === 0) {
+      hintEl.textContent = '';
+      return;
+    }
+    const filtered = filterHistoryJobs(_historyJobs);
+    if (hasFilter) {
+      hintEl.textContent = `已加载 ${_historyJobs.length} 条，当前显示 ${filtered.length} 条。筛选仅作用于已加载历史记录。`;
+    } else {
+      hintEl.textContent = `已加载 ${_historyJobs.length} 条历史记录。`;
+    }
+  }
+
+  // P8-4E: Render the history list based on current filters
+  function renderHistoryList() {
+    const listEl = document.getElementById('historyList');
+    const moreBtn = document.getElementById('loadMoreHistory');
+    if (!listEl) return;
+    const filtered = filterHistoryJobs(_historyJobs);
+    if (_historyJobs.length === 0) {
+      listEl.innerHTML = historyEmptyStateHtml();
+      moreBtn.style.display = 'none';
+      updateHistoryFilterHint();
+      return;
+    }
+    if (filtered.length === 0) {
+      listEl.innerHTML = historyFilteredEmptyStateHtml();
+      moreBtn.style.display = _historyOffset < _historyTotal ? '' : 'none';
+      updateHistoryFilterHint();
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    filtered.forEach(job => {
+      const div = document.createElement('div');
+      div.innerHTML = historyJobCardHtml(job);
+      fragment.appendChild(div.firstElementChild);
+    });
+    listEl.innerHTML = '';
+    listEl.appendChild(fragment);
+    const hasMore = _historyOffset < _historyTotal;
+    moreBtn.style.display = hasMore ? '' : 'none';
+    if (!hasMore && _historyTotal > 0) {
+      const endHint = document.createElement('div');
+      endHint.innerHTML = historyEndStateHtml();
+      listEl.appendChild(endHint);
+    }
+    updateHistoryFilterHint();
+  }
+
+  // P8-4E: Handle search input change
+  function handleHistorySearchInput() {
+    const searchEl = document.getElementById('historySearch');
+    if (searchEl) _historySearch = searchEl.value;
+    renderHistoryList();
+  }
+
+  // P8-4E: Handle status filter change
+  function handleHistoryStatusFilterChange() {
+    const filterEl = document.getElementById('historyStatusFilter');
+    if (filterEl) _historyStatusFilter = filterEl.value;
+    renderHistoryList();
+  }
+
+  // P8-4E: Clear all filters
+  function clearHistoryFilters() {
+    const searchEl = document.getElementById('historySearch');
+    const filterEl = document.getElementById('historyStatusFilter');
+    if (searchEl) searchEl.value = '';
+    if (filterEl) filterEl.value = 'all';
+    _historySearch = '';
+    _historyStatusFilter = 'all';
+    renderHistoryList();
+  }
+
+  // P8-4E: Empty state when filters match nothing
+  function historyFilteredEmptyStateHtml() {
+    return `<div style="text-align:center;padding:32px 16px;color:#718096">
+      <div style="font-size:0.88rem;margin-bottom:8px">没有匹配的历史记录</div>
+      <div style="font-size:0.82rem">请调整搜索关键词或状态筛选。</div>
     </div>`;
   }
 

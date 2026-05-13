@@ -1677,4 +1677,458 @@ P8-4D 已完成历史任务下载入口产品化。`historyDownloadEntryHtml(job
 
     P8-BE1：历史任务返回音频资产字段
 
+---
+
+# P8-4E 历史筛选 / 搜索 / 空状态优化
+
+## 65. P8-4E 执行背景
+
+- P8-4A 已完成现状审查。
+- P8-4B 已完成历史记录信息架构整理。
+- P8-4C 已完成历史播放入口整理。
+- P8-4D 已完成历史下载入口产品化。
+- 当前历史记录已有 card、播放区、下载区。
+- 当前仍缺少搜索 / 筛选能力。
+- 本阶段只做前端本地搜索 / 筛选，不改服务端 API。
+
+---
+
+## 66. P8-4E 本阶段目标
+
+记录：
+
+- 增加历史搜索输入框。
+- 增加历史状态筛选。
+- 增加清空筛选。
+- 增加筛选说明。
+- 区分无历史记录 / 无匹配结果 / 没有更多。
+- 搜索和筛选只作用于已加载历史记录。
+- 保留 DOM id。
+- 保留 JS function 行为。
+- 不改 API。
+
+---
+
+## 67. P8-4E 问题与风险分析
+
+必须记录：
+
+1. 当前历史记录已有 card，但缺少定位历史任务的能力。
+2. 当前没有搜索 / 筛选。
+3. 如果直接改服务端 API，会超出 P8-4E 范围。
+4. 本地筛选只作用于已加载记录，不是全库搜索。
+5. 用户需要知道"已加载 N 条，当前显示 M 条"。
+6. 空状态需要区分无历史和无匹配。
+7. 加载更多后需要继续应用当前筛选。
+8. 本阶段不能改 `/api/voice/jobs` 查询参数。
+
+---
+
+## 68. P8-4E 方案判断
+
+必须记录：
+
+- 采用前端本地搜索 / 筛选方案。
+- 新增 `_historyJobs` 缓存已加载 jobs。
+- 新增 `_historySearch`。
+- 新增 `_historyStatusFilter`。
+- `loadHistory(offset)` 仍只请求 `limit=10&offset={offset}`。
+- `renderHistoryList()` 负责根据本地筛选条件渲染。
+- 状态筛选复用 P8-3C1 helper。
+- 不新增服务端参数。
+- 不改后端 API。
+
+---
+
+## 69. P8-4E 修改范围
+
+记录实际修改：
+
+- `app/static/index.html` — 新增工具栏、新增筛选 helper、重构 loadHistory
+- `docs/P8_4_HISTORY_DOWNLOAD_EXPERIENCE.md` — 追加 P8-4E 章节
+- `docs/PROJECT_HEALTH_CHECK.md` — 更新状态摘要
+
+---
+
+## 70. P8-4E 历史工具栏说明
+
+记录：
+
+- 新增 DOM id：
+  - `historyToolbar` — 工具栏容器
+  - `historySearch` — 搜索输入框
+  - `historyStatusFilter` — 状态筛选下拉框
+  - `historyFilterHint` — 筛选说明
+  - `historyClearFilters` — 清空筛选按钮
+- 搜索框位置：工具栏内，historyList 之前
+- 状态筛选选项：全部状态 / 已完成 / 处理中 / 失败
+- 清空筛选按钮：有筛选条件时显示，无时隐藏
+- 筛选说明文案：已加载 N 条，当前显示 M 条。筛选仅作用于已加载历史记录。
+- 是否影响历史展开 / 收起：否
+
+---
+
+## 71. P8-4E 本地搜索说明
+
+记录：
+
+- 搜索范围：
+  - input_text
+  - processed_text
+  - provider
+  - model
+  - job_id
+  - id
+  - job_type
+  - status
+- 搜索是否调用 API：否
+- 搜索是否全库搜索：否，只作用于已加载记录
+- 是否改 `/api/voice/jobs`：否
+
+---
+
+## 72. P8-4E 状态筛选说明
+
+记录：
+
+- 支持 all / success / processing / failed
+- success 复用 `isResultSuccessStatus(status)`
+- processing 复用 `isResultProcessingStatus(status)`
+- failed 复用 `isResultFailedStatus(status)`
+- 是否改变后端状态：否
+
+---
+
+## 73. P8-4E 空状态说明
+
+记录：
+
+- 无历史记录：使用 `historyEmptyStateHtml()`，显示"暂无历史记录"
+- 有历史但筛选无匹配：使用 `historyFilteredEmptyStateHtml()`，显示"没有匹配的历史记录"
+- 没有更多历史记录：使用 `historyEndStateHtml()`，显示"没有更多历史记录了"
+- 加载失败：使用 `historyLoadErrorHtml(message)`
+- 这些状态如何区分：
+  - `_historyJobs.length === 0` → 无历史记录
+  - `filtered.length === 0 && _historyJobs.length > 0` → 无匹配
+  - `_historyOffset >= _historyTotal && _historyTotal > 0` → 没有更多
+
+---
+
+## 74. P8-4E 分页与筛选关系说明
+
+必须记录：
+
+- 加载更多仍调用 `loadHistory(_historyOffset)`
+- 新加载记录 append 到 `_historyJobs`
+- 当前筛选条件继续作用于新加载记录
+- 筛选不会改变 `_historyOffset` / `_historyTotal`
+- 搜索 / 筛选只影响当前前端渲染结果
+
+---
+
+## 75. P8-4E DOM id 保留说明
+
+记录静态检查结果，确认关键 DOM id 仍存在。
+
+- `tab-history` — 存在
+- `historyCard` — 存在
+- `historyToggle` — 存在
+- `historyArea` — 存在
+- `historyList` — 存在
+- `loadMoreHistory` — 存在
+
+---
+
+## 76. P8-4E JS function 行为保留说明
+
+记录静态检查结果，确认关键函数仍存在。
+
+| 函数 | 用途 | API 调用 | 状态读写 | 业务行为改变 |
+|---|---|---|---|---|
+| `toggleHistory` | 展开/收起历史记录 | 无 | DOM 状态 | 无 |
+| `loadHistory(offset)` | 加载历史记录 | `/api/voice/jobs` | `_historyOffset/_historyTotal/_historyLoading/_historyJobs` | 改为使用 _historyJobs 缓存和 renderHistoryList |
+| `loadMoreHistory` | 加载更多 | 调用 loadHistory | 同上 | 无 |
+| `historyJobCardHtml(job)` | 渲染历史 job card | 无 | 无 | 无 |
+| `historyEmptyStateHtml()` | 空状态 HTML | 无 | 无 | 无 |
+| `historyLoadErrorHtml(message)` | 加载失败 HTML | 无 | 无 | 无 |
+| `historyEndStateHtml()` | 到底提示 HTML | 无 | 无 | 无 |
+| `getHistoryAudioAssetId(job)` | 提取 job 中的 asset ID | 无 | 无 | 无 |
+| `historyAudioPlaybackHtml(job)` | 渲染播放区 HTML | 无 | 无 | 无 |
+| `historyDownloadEntryHtml(job)` | 渲染下载区 HTML | 无 | 无 | 无 |
+| `statusLabel(s)` | 状态中文 label | 无 | 无 | 无 |
+| `statusClass(s)` | 状态 CSS class | 无 | 无 | 无 |
+| `isResultSuccessStatus(status)` | 判断成功状态 | 无 | 无 | 无 |
+| `isResultFailedStatus(status)` | 判断失败状态 | 无 | 无 | 无 |
+| `isResultProcessingStatus(status)` | 判断处理中状态 | 无 | 无 | 无 |
+| `esc(s)` | HTML 转义 | 无 | 无 | 无 |
+| `apiJson` | API JSON helper | 无 | 无 | 无 |
+
+新增 helper（P8-4E）：
+
+| 函数 | 用途 | API 调用 | 状态读写 | 业务行为改变 |
+|---|---|---|---|---|
+| `renderHistoryList()` | 根据筛选条件渲染列表 | 无 | 读取 `_historyJobs` 和筛选状态 | 仅返回 HTML 字符串 |
+| `filterHistoryJobs(jobs)` | 过滤 jobs | 无 | 读取 `_historySearch/_historyStatusFilter` | 仅返回过滤后数组 |
+| `handleHistorySearchInput()` | 处理搜索输入 | 无 | 写入 `_historySearch` | 调用 renderHistoryList |
+| `handleHistoryStatusFilterChange()` | 处理筛选变化 | 无 | 写入 `_historyStatusFilter` | 调用 renderHistoryList |
+| `clearHistoryFilters()` | 清空筛选 | 无 | 重置筛选状态 | 调用 renderHistoryList |
+| `historyFilteredEmptyStateHtml()` | 无匹配空状态 HTML | 无 | 无 | 仅返回 HTML 字符串 |
+| `updateHistoryFilterHint()` | 更新筛选提示 | 无 | 读取 `_historyJobs` | 仅更新 DOM |
+
+---
+
+## 77. P8-4E API endpoint 不变说明
+
+必须记录：
+
+- 历史记录列表 endpoint 未变：`/api/voice/jobs`
+- 分页参数未变：`limit=10&offset={offset}`
+- 未新增 search/status/filter/q 参数
+- asset 播放 / 下载 endpoint 未变
+- 未新增 API
+- 未删除 API
+
+---
+
+## 78. P8-4E 未处理事项
+
+必须写明：
+
+- 未新增服务端历史搜索
+- 未新增服务端历史筛选
+- 未新增历史字幕 / timeline 展示
+- 未新增历史详情页
+- 未新增历史删除
+- 未处理 URL 历史下载
+- 未处理 HEX 历史下载
+- 未处理 blob 历史恢复
+- 未改后端 API
+- 未改 `/api/voice/jobs`
+- 未改下载接口
+- 未处理 `/api/voice/jobs` 不返回音频资产字段的问题
+- 未处理 P8-BE1
+- 未处理桌面宽屏 P8-UX1
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-4F
+
+---
+
+## 79. P8-4E 执行命令记录
+
+### 基线检查
+
+```bash
+git fetch origin
+git checkout dev
+git pull --ff-only origin dev
+git status -sb
+git log --oneline -20
+```
+
+### 静态检查
+
+```bash
+grep -n "tab-history\|historyCard\|historyToggle\|historyArea\|historyList\|loadMoreHistory" app/static/index.html
+grep -n "function toggleHistory\|function loadHistory\|function loadMoreHistory" app/static/index.html
+grep -n "historySearch\|historyStatusFilter\|筛选\|搜索" app/static/index.html
+```
+
+---
+
+## 80. P8-4E 验证命令记录
+
+### DOM marker 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","historySearch","historyStatusFilter","historyFilterHint","historyClearFilters","搜索历史文本 / provider / job_id","筛选仅作用于已加载历史记录"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4E DOM/display marker check passed")
+PY
+```
+
+### JS function 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_functions = ["function toggleHistory","function loadHistory","function loadMoreHistory","function historyJobCardHtml","function historyEmptyStateHtml","function historyLoadErrorHtml","function historyEndStateHtml","function getHistoryAudioAssetId","function historyAudioPlaybackHtml","function historyDownloadEntryHtml","function statusLabel","function statusClass","function isResultSuccessStatus","function isResultFailedStatus","function isResultProcessingStatus","function esc","function apiJson"]
+missing = [x for x in required_functions if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4E JS function check passed")
+PY
+```
+
+### History filter helper 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["let _historyJobs","let _historySearch","let _historyStatusFilter","function renderHistoryList","function filterHistoryJobs","function handleHistorySearchInput","function handleHistoryStatusFilterChange","function clearHistoryFilters","function historyFilteredEmptyStateHtml","function updateHistoryFilterHint"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4E history filter helper check passed")
+PY
+```
+
+### API marker 检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required_api_markers = ["/api/voice/jobs","limit=10","offset=","apiJson","/api/voice/assets/"]
+missing = [x for x in required_api_markers if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4E API marker check passed")
+PY
+```
+
+### loadHistory 请求语义保留检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+start = html.find("function loadHistory")
+end = html.find("function loadMoreHistory", start)
+block = html[start:end]
+required = ["/api/voice/jobs","limit=10","offset=","_historyOffset","_historyTotal","_historyLoading","_historyJobs","renderHistoryList"]
+missing = [x for x in required if x not in block]
+if missing: raise SystemExit(f"Missing: {missing}")
+forbidden = ["search=","status=","filter=","q="]
+found = [x for x in forbidden if x in block]
+if found: raise SystemExit(f"Should not add: {found}")
+print("P8-4E loadHistory request semantic check passed")
+PY
+```
+
+### 本地筛选语义检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+start = html.find("function filterHistoryJobs")
+end = html.find("function renderHistoryList", start)
+block = html[start:end]
+required = ["_historySearch","_historyStatusFilter","isResultSuccessStatus","isResultProcessingStatus","isResultFailedStatus"]
+missing = [x for x in required if x not in block]
+if missing: raise SystemExit(f"Missing: {missing}")
+forbidden = ["apiJson(","fetch(","guardedJsonFetch("]
+found = [x for x in forbidden if x in block]
+if found: raise SystemExit(f"Should not call API: {found}")
+print("P8-4E local filter semantic check passed")
+PY
+```
+
+### 空状态检查
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["function historyFilteredEmptyStateHtml","没有匹配的历史记录","请调整搜索关键词或状态筛选","暂无历史记录","没有更多历史记录了"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("P8-4E empty state check passed")
+PY
+```
+
+### 全量测试
+
+```bash
+python -m pytest tests/ -x -q
+```
+
+---
+
+## 81. P8-4E 验证结果
+
+### git 检查
+
+```
+## dev...origin/dev
+ M app/static/index.html
+app/static/index.html | 156 ++++++++++++++++++++++++++++++++++++++++++++------
+1 file changed, 138 insertions(+), 18 deletions(-)
+```
+
+### DOM marker 检查
+
+```
+P8-4E DOM/display marker check passed
+```
+
+### JS function 检查
+
+```
+P8-4E JS function check passed
+```
+
+### History filter helper 检查
+
+```
+P8-4E history filter helper check passed
+```
+
+### API marker 检查
+
+```
+P8-4E API marker check passed
+```
+
+### loadHistory 请求语义保留检查
+
+```
+P8-4E loadHistory request semantic check passed
+```
+
+### 本地筛选语义检查
+
+```
+P8-4E local filter semantic check passed
+```
+
+### 空状态检查
+
+```
+P8-4E empty state check passed
+```
+
+### 测试结果
+
+```
+pytest: 375 passed, 6 skipped
+```
+
+---
+
+## 82. P8-4E 阶段结论
+
+P8-4E 已完成历史筛选 / 搜索 / 空状态优化。已新增本地搜索输入框、状态筛选、清空筛选、筛选说明。搜索和筛选只作用于已加载历史记录，不调用额外 API。空状态已区分无历史记录、无匹配结果、没有更多历史记录。`renderHistoryList()` 和 `filterHistoryJobs()` 已就位。下一阶段建议进入 P8-4F：P8-4 验收与健康检查收口。
+
+---
+
+## 83. P8-4E 下一阶段建议
+
+建议 P8-4F 聚焦：
+
+- P8-4 全阶段验收
+- 历史记录 card / 播放 / 下载 / 搜索 / 筛选 / 空状态路径验收
+- 文档状态对齐
+- PROJECT_HEALTH_CHECK.md 收口
+- 不再修改功能
+
+同时保留遗留：
+
+- P8-BE1：历史任务返回音频资产字段
+- P8-UX1：桌面宽屏布局与响应式适配
+
 

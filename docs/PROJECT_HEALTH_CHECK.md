@@ -81,13 +81,15 @@
 * P8-4B：历史记录信息架构整理已完成（历史任务 card 化、状态展示复用 P8-3 helper、空状态/错误/到底提示产品化）
 * P8-4C：历史任务卡片播放入口整理已完成（播放区已添加，`/api/voice/jobs` 不返回音频字段，安全降级展示"未返回可播放音频资产"）
 * P8-4D：历史任务下载入口产品化已完成（下载区已添加，安全降级展示"未返回可下载音频资产"）
+* P8-4E：历史筛选 / 搜索 / 空状态优化已完成（本地搜索/状态筛选/清空筛选/筛选说明/无匹配空状态已产品化）
 * 当前历史记录已从纯文本行整理为历史任务 card
 * 当前历史记录状态展示已复用 statusLabel/statusClass/resultStatusHintHtml/resultDiagnosticHtml
 * 当前历史记录已添加播放区和下载区（均为安全降级）
+* 当前历史记录已支持本地搜索和状态筛选（仅作用于已加载记录）
 * `/api/voice/jobs` 不返回音频资产字段是后端字段限制，播放/下载能力待后端支持
 * P8-UX1：桌面宽屏布局与响应式适配作为遗留项记录
 * P8-BE1：历史任务返回音频资产字段（后端遗留）
-* 下一步建议：P8-4E 历史筛选 / 搜索 / 空状态优化
+* 下一步建议：P8-4F P8-4 验收与健康检查收口
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2759,3 +2761,89 @@ PY
 ### 阶段结论
 
 P8-4D 已完成。下一阶段建议进入 P8-4E：历史筛选 / 搜索 / 空状态优化。
+
+---
+
+## P8-4E 历史筛选 / 搜索 / 空状态优化
+
+### 背景
+
+- P8-4A/B/C/D 已完成历史记录信息架构、播放/下载入口整理
+- P8-4E 目标：优化历史记录的本地筛选、搜索和空状态体验
+
+### 问题
+
+- 历史记录已有 card，但缺少定位历史任务的能力
+- 没有搜索 / 筛选能力
+- 空状态需要区分无历史和无匹配
+
+### 方案
+
+- 采用前端本地搜索 / 筛选方案
+- 新增 `_historyJobs` 缓存已加载 jobs
+- 新增搜索框 `historySearch` 和状态筛选 `historyStatusFilter`
+- `renderHistoryList()` 负责根据本地筛选条件渲染
+- 状态筛选复用 P8-3C1 helper
+- 不改 API，不新增服务端参数
+
+### 修改文件
+
+- `app/static/index.html`（新增工具栏、新增筛选 helper、重构 loadHistory）
+- `docs/P8_4_HISTORY_DOWNLOAD_EXPERIENCE.md`（追加 P8-4E 章节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新状态摘要）
+
+### 风险处理
+
+- 本地筛选只作用于已加载记录，不是全库搜索
+- 用户需要知道"已加载 N 条，当前显示 M 条"
+- 空状态已区分无历史和无匹配
+- 不修改后端 API
+
+### 验证命令
+
+```bash
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["tab-history","historyCard","historyToggle","historyArea","historyList","loadMoreHistory","historySearch","historyStatusFilter","historyFilterHint","historyClearFilters","搜索历史文本 / provider / job_id","筛选仅作用于已加载历史记录"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("DOM/display marker check passed")
+PY
+python - <<'PY'
+from pathlib import Path
+html = Path("app/static/index.html").read_text(encoding="utf-8")
+required = ["let _historyJobs","let _historySearch","let _historyStatusFilter","function renderHistoryList","function filterHistoryJobs","function handleHistorySearchInput","function handleHistoryStatusFilterChange","function clearHistoryFilters","function historyFilteredEmptyStateHtml","function updateHistoryFilterHint"]
+missing = [x for x in required if x not in html]
+if missing: raise SystemExit(f"Missing: {missing}")
+print("History filter helper check passed")
+PY
+```
+
+### 验证结果
+
+- DOM/display marker check: passed
+- JS function check: passed
+- History filter helper check: passed
+- API marker check: passed
+- loadHistory request semantic check: passed
+- local filter semantic check: passed
+- empty state check: passed
+- pytest: 375 passed, 6 skipped
+
+### 未做事项
+
+- 未新增服务端历史搜索/筛选
+- 未新增历史字幕/timeline 展示
+- 未新增历史详情页
+- 未新增历史删除
+- 未处理 URL/HEX/blob 历史下载
+- 未改后端 API
+- `/api/voice/jobs` 不返回音频资产字段的问题未解决（后端限制）
+- 未处理桌面宽屏 P8-UX1
+- 未拆分 `index.html`
+- 未执行真实 MiniMax smoke test
+
+### 阶段结论
+
+P8-4E 已完成。下一阶段建议进入 P8-4F：P8-4 验收与健康检查收口。
