@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-3E：
+截至 P8-3F：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -24,6 +24,8 @@
 * P8-3C1：结果状态口径自检与收口修复已完成（新增 isResultSuccessStatus/isResultFailedStatus/isResultProcessingStatus helper、完成态统一识别 success/completed，失败态统一识别 failed/error，resultStatusHintHtml 补全 completed/error/queued 文案，诊断信息优先使用 extractErrorMessage）
 * P8-3D：流式/多版本结果展示统一已完成（renderStreamResult 升级为 card 结构、section label 统一、本地缓存提示增加、variants 空状态处理、单版本无 audio 红色提示）
 * P8-3E：错误 / Resource Guard / 下载入口产品化已完成（renderApiError 升级为 card 结构、Resource Guard 明确标注、downloadBtnHtml 改为"下载音频"、流式下载标签描述优化）
+* P8-3F：P8-3 验收与健康检查收口已完成
+* P8-3：任务卡片和结果展示已完成并收口
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -71,7 +73,7 @@
 * P8-3C1：结果状态口径自检与收口修复已完成
 * P8-3D：流式/多版本结果展示统一已完成
 * P8-3E：错误 / Resource Guard / 下载入口产品化已完成
-* 下一阶段建议进入 P8-3F 或其他 P8 后续阶段
+* 下一阶段建议进入 P8-4：历史记录和下载体验
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2396,8 +2398,98 @@ git diff --check: 无 whitespace error
 - 未处理批量结果卡片化
 - 未拆分 `index.html`
 - 未执行真实 MiniMax smoke test
-- 未进入 P8-3F
+- 未进入 P8-4
 
 ### 阶段结论
 
-P8-3E 已完成错误提示、Resource Guard 和下载入口产品化。下一阶段建议进入 P8-3F 或其他 P8 后续阶段。
+P8-3E 已完成错误提示、Resource Guard 和下载入口产品化。下一阶段建议进入 P8-4：历史记录和下载体验。
+
+
+---
+
+## P8-3F 任务结果展示验收与健康检查收口
+
+### 背景
+
+P8-3F 是 P8-3 的最终验收与健康检查收口阶段。目标是复核 P8-3A 到 P8-3E 的工作成果，确认文档对齐和代码状态健康。
+
+### P8-3 阶段总结
+
+P8-3 已完成任务卡片和结果展示产品化：
+
+| 阶段 | 提交 | 说明 |
+|---|---|---|
+| P8-3A | b8e69b0 | 任务结果展示现状审查 |
+| P8-3B | d5d0655 | resultsArea 信息架构整理 |
+| P8-3C | 488eca3 | 同步 / 异步结果卡片化细化验收 |
+| P8-3C1 | 1d1fb2e | 结果状态口径自检与收口修复 |
+| P8-3D | 6e57590 | 流式 / 多版本结果展示统一 |
+| P8-3E | bcb1448 | 错误 / Resource Guard / 下载入口产品化 |
+
+### 修改文件
+
+- `docs/P8_3_RESULT_DISPLAY_WORKSTATION.md`（追加 P8-3F 节）
+- `docs/PROJECT_HEALTH_CHECK.md`（更新摘要 + 追加本节）
+
+### 验收范围
+
+本阶段只读复核，不改业务逻辑：
+
+- resultsArea DOM id 保留
+- 核心 JS function 保留
+- API endpoint 不变
+- 状态 helper 完整性
+- 流式 / 多版本展示结构
+- 错误 / Resource Guard 展示
+- 下载入口文案
+
+### 自动验证命令
+
+- DOM marker check: python 脚本
+- JS function check: python 脚本
+- API/WebSocket marker check: python 脚本
+- status helper check: python 脚本
+- stream result display check: python 脚本
+- variant result display check: python 脚本
+- error/Resource Guard display check: python 脚本
+- download marker check: python 脚本
+- documentation marker check: python 脚本
+- python -m pytest tests/ -x -q
+
+### 验证结果
+
+pytest: 375 passed, 6 skipped
+git diff --check: 无 whitespace error
+
+是否执行真实 MiniMax smoke test：**未执行**（P8-3F 是验收与文档收口阶段，不涉及后端 API 改造）
+
+### 手工验收清单
+
+- 页面能正常打开，顶部导航存在
+- 同步结果显示为任务结果 card
+- 异步结果有 job_id 显示和状态提示
+- 流式结果有 card 结构和浏览器缓存说明
+- 多版本结果有 variants-grid 和版本参数
+- 错误显示为 card 结构，Resource Guard 有橙色强调
+- 下载按钮文案为"下载音频"
+- 流式下载区分服务端和浏览器缓存
+
+### 未做事项
+
+- 未改后端 API
+- 未改 Provider
+- 未改 Resource Guard 后端逻辑
+- 未改 Cost Guard 后端逻辑
+- 未改数据库
+- 未改 MiniMax Provider Adapter
+- 未改同步 / 异步 / 流式 / 批量 API 调用语义
+- 未改 WebSocket 协议
+- 未改 variants API
+- 未拆分 `index.html`
+- 未引入 React / Vue / 构建工具
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-4
+
+### 阶段结论
+
+P8-3F 已完成。P8-3 任务卡片和结果展示已完成并收口。下一阶段建议进入 P8-4：历史记录和下载体验。

@@ -1969,3 +1969,460 @@ P8-3E 已完成错误提示、Resource Guard 和下载入口产品化：
 5. **流式下载** 标签从 "下载(服务端)/下载(本地缓存)" 改为 "下载音频（服务端）/下载音频（浏览器缓存）"，并添加说明文字
 
 下一阶段建议进入 P8-3F 或其他 P8 后续阶段。
+
+
+---
+
+# P8-3F 任务结果展示验收与健康检查收口
+
+## 106. P8-3F 执行背景
+
+- P8-3A 到 P8-3E 已完成。
+- P8-3 已完成任务结果展示产品化的核心工作。
+- 当前阶段只做验收、文档对齐和健康检查收口。
+- 本阶段不新增功能、不改后端、不执行真实 MiniMax smoke test。
+
+---
+
+## 107. P8-3 全阶段提交链
+
+| 阶段 | 提交 | 说明 |
+|---|---|---|
+| P8-3A | b8e69b0 | 任务结果展示现状审查 |
+| P8-3B | d5d0655 | resultsArea 信息架构整理 |
+| P8-3C | 488eca3 | 同步 / 异步结果卡片化细化验收 |
+| P8-3C1 | 1d1fb2e | 结果状态口径自检与收口修复 |
+| P8-3D | 6e57590 | 流式 / 多版本结果展示统一 |
+| P8-3E | bcb1448 | 错误 / Resource Guard / 下载入口产品化 |
+
+
+
+---
+
+# P8-3F 任务结果展示验收与健康检查收口
+
+## 106. P8-3F 执行背景
+
+- P8-3A 到 P8-3E 已完成。
+- P8-3 已完成任务结果展示产品化的核心工作。
+- 当前阶段只做验收、文档对齐和健康检查收口。
+- 本阶段不新增功能、不改后端、不执行真实 MiniMax smoke test。
+
+---
+
+## 107. P8-3 全阶段提交链
+
+| 阶段 | 提交 | 说明 |
+|---|---|---|
+| P8-3A | b8e69b0 | 任务结果展示现状审查 |
+| P8-3B | d5d0655 | resultsArea 信息架构整理 |
+| P8-3C | 488eca3 | 同步 / 异步结果卡片化细化验收 |
+| P8-3C1 | 1d1fb2e | 结果状态口径自检与收口修复 |
+| P8-3D | 6e57590 | 流式 / 多版本结果展示统一 |
+| P8-3E | bcb1448 | 错误 / Resource Guard / 下载入口产品化 |
+
+---
+
+## 108. P8-3 最终功能结构
+
+### 108.1 resultsArea 当前职责
+
+`resultsArea` 当前用于展示：
+- 同步生成结果
+- 异步生成结果
+- WebSocket 流式生成结果
+- 多版本试音结果
+- 生成错误提示
+- Resource Guard 限制提示
+- 音频播放入口
+- 下载入口
+- 字幕时间轴
+
+### 108.2 当前任务结果 card 结构
+
+当前标准结果结构：
+1. 任务结果标题（result-label）
+2. 结果类型说明（同步生成结果 / 异步生成任务 / 流式生成结果 / 多版本试音结果）
+3. 任务元信息（job_id / provider / model 等）
+4. 任务状态（status badge）
+5. 状态说明（resultStatusHintHtml）
+6. 音频结果（audioPlayerHtml）
+7. 下载音频（downloadBtnHtml）
+8. 字幕时间轴（timelineTable）
+9. 诊断信息 / 错误提示（resultDiagnosticHtml / renderApiError）
+
+### 108.3 当前下载入口类型
+
+| 类型 | 来源 | 说明 |
+|---|---|---|
+| 服务端 asset 下载 | `/api/voice/assets/{assetId}/download` | 可作为服务端资产下载 |
+| 流式浏览器缓存下载 | `blobUrl` | 仅当前浏览器会话有效，刷新后失效 |
+| 多版本下载 | `audio_asset_id` | 每个 version 单独下载 |
+
+---
+
+## 109. P8-3 当前用户路径验收
+
+### 109.1 同步生成路径
+
+验收清单：
+1. 输入文本 - textInput 存在
+2. 选择声音人设 / provider / 参数 - profileSelect / providerSelect / audioFormat / outputFormat 存在
+3. 选择同步生成模式 - handleGenerate 中的 isAsync / isVariant 判断
+4. 点击生成 - generateBtn 存在
+5. 结果显示为任务结果 card - renderResults(data, false)
+6. 状态说明清晰 - resultStatusHintHtml
+7. 有音频时显示播放器 - audioPlayerHtml
+8. 有 asset 时显示下载音频 - downloadBtnHtml
+9. 有字幕时显示字幕时间轴 - timelineTable
+10. 无音频 / 无字幕时显示合理空状态 - resultDiagnosticHtml / 空状态文案
+11. 失败时显示诊断信息 - resultDiagnosticHtml
+
+### 109.2 异步生成路径
+
+验收清单：
+1. 选择异步生成模式 - handleGenerate 中的 isAsync 判断
+2. 点击生成 - generateBtn
+3. 创建异步任务 - `/api/voice/render/async`
+4. 显示 job_id - startAsyncPolling 中的 job_id 显示
+5. queued / running 状态显示处理中说明 - resultStatusHintHtml
+6. completed / success 状态显示音频、下载、字幕 - renderAsyncResult
+7. failed / error 状态显示诊断信息 - renderAsyncResult 中的 resultDiagnosticHtml
+8. 不在未完成时提前显示空音频 / 空下载 / 空字幕区域 - renderAsyncResult 的三分支结构
+9. 轮询逻辑未改 - pollAsyncJob / startAsyncPolling
+
+### 109.3 WebSocket 流式生成路径
+
+验收清单：
+1. 选择流式生成模式 - isStream 判断
+2. 建立 WebSocket - `/api/voice/ws/render`
+3. 接收流式音频 chunks - startStreamGenerate
+4. 结果显示为任务结果 card - renderStreamResult 使用 card 结构
+5. 显示流式生成结果说明 - "流式生成结果"
+6. 显示音频播放器 - blobUrl 音频
+7. 显示下载音频区域 - 服务端 + 浏览器缓存两个按钮
+8. 区分服务端下载和浏览器缓存下载 - "下载音频（服务端）" / "下载音频（浏览器缓存）"
+9. 无服务端 asset 时给出说明 - "当前流式结果未返回服务端音频资产，仅提供浏览器缓存下载。"
+10. WebSocket 逻辑未改
+
+### 109.4 多版本试音路径
+
+验收清单：
+1. 选择多版本试音 - isVariant 判断
+2. 设置 variantCount - variantCountRow / variantCountInput 存在
+3. 点击生成 - generateBtn
+4. 显示多版本试音结果 - renderResults(data, true) 中的 isVariant 分支
+5. 显示版本数量 - "多版本试音结果 · 共 N 个版本"
+6. 每个 version 展示参数 - variant-meta 显示 speed / emotion
+7. 每个 version 有 audio 时显示播放器 - audioPlayerHtml
+8. 每个 version 有 audio_asset_id 时显示下载音频 - downloadBtnHtml
+9. 单个 version 无 audio 时显示提示 - "该版本未返回音频资产。"
+10. variants 为空时显示空状态 - "本次多版本试音未返回版本结果。"
+11. variants API 未改 - `/api/voice/variants/render`
+
+### 109.5 错误 / Resource Guard 路径
+
+验收清单：
+1. 普通错误显示错误提示 card - renderApiError 使用 card 结构
+2. 技术详情可展开 - `<details>` 结构
+3. Resource Guard 错误有橙色强调 - 左边框 #dd6b20
+4. Resource Guard 说明清楚 - "触发资源限制（Resource Guard）"
+5. Provider error 有友好说明 - "Provider 服务异常：请稍后重试..."
+6. network error 有友好说明 - "网络异常：请检查网络连接后重试。"
+7. cancellation 有友好说明 - "操作已取消：本次生成请求已被取消，未产生费用。"
+8. 不隐藏原始技术详情 - showDetail 可展开
+9. 不新增自动重试
+10. 不改 Resource Guard 后端逻辑
+
+### 109.6 下载入口路径
+
+验收清单：
+1. 服务端 asset 显示 "下载音频" - downloadBtnHtml
+2. 流式服务端 asset 显示 "下载音频（服务端）" - renderStreamResult
+3. 流式浏览器缓存显示 "下载音频（浏览器缓存）" - renderStreamResult
+4. 浏览器缓存下载有"刷新后失效"说明 - "浏览器缓存：仅限当前会话，刷新页面后失效"
+5. 多版本下载按每个 version 单独显示 - renderResults variant 分支
+6. 不伪造不存在的下载入口
+7. 下载 URL 未改 - `/api/voice/assets/{assetId}/download`
+
+---
+
+## 110. P8-3 风险清零说明
+
+| 风险 | 状态 |
+|---|---|
+| resultsArea 职责混杂 | 已通过任务结果 card 结构缓解 |
+| 同步 / 异步结果展示不一致 | 已在 P8-3B / P8-3C 整理 |
+| success / completed 状态口径不一致 | 已在 P8-3C1 收口 |
+| failed / error 状态口径不一致 | 已在 P8-3C1 收口 |
+| queued / pending / running / processing 状态提示不清 | 已在 P8-3C1 收口 |
+| 流式结果展示与任务结果结构不一致 | 已在 P8-3D 整理 |
+| 流式服务端下载与浏览器缓存下载混淆 | 已在 P8-3D / P8-3E 明确区分 |
+| 多版本 variants 为空可能导致展示问题 | 已在 P8-3D 加空状态 |
+| 单个 variant 无 audio 提示不清 | 已在 P8-3D 加强 |
+| 错误提示偏工程化 | 已在 P8-3E 卡片化 |
+| Resource Guard 提示不够清晰 | 已在 P8-3E 产品化 |
+| 下载按钮文案不够明确 | 已在 P8-3E 改为"下载音频" |
+
+---
+
+## 111. P8-3 DOM id 保留验收
+
+### 创作工作台输入
+
+- textInput 存在（行 620）
+- charCount 存在（行 621）
+- costHint 存在（行 622）
+- profileSelect 存在（行 631）
+- providerSelect 存在（行 637）
+- bindingStatus 存在（行 642）
+- audioFormat 存在（行 644）
+- outputFormat 存在（行 652）
+- needSubtitle 存在（行 703）
+- variantCount 存在（行 698）
+- variantCountRow 存在（行 696）
+- generateBtn 存在（行 710）
+
+### 结果展示
+
+- resultsArea 存在（行 711）
+
+### 其他 DOM id
+
+- streamProgress：当前 baseline 中不存在
+- streamStats：当前 baseline 中不存在
+- statusSection：当前 baseline 中不存在
+- batchResultsArea：当前 baseline 中不存在
+- batchScriptResultsArea：当前 baseline 中不存在
+
+说明：上述旧 DOM id 当前 baseline 中不存在，不是 P8-3F 删除造成，未新增无意义 DOM。
+
+---
+
+## 112. P8-3 JS function 保留验收
+
+### 生成入口
+
+- handleGenerate 存在
+
+### 结果展示
+
+- renderAsyncResult 存在（行 2239）
+- renderResults 存在（行 2291）
+- renderStreamResult 存在（行 2033）
+- renderApiError 存在（行 1684）
+
+### 播放 / 下载 / 字幕
+
+- audioPlayerHtml 存在（行 2376）
+- downloadBtnHtml 存在（行 2382）
+- timelineTable 存在（行 2386）
+- formatTime 存在
+
+### 结果展示 helper
+
+- resultSectionLabel 存在（行 2410）
+- resultStatusHintHtml 存在（行 2428）
+- resultDiagnosticHtml 存在（行 2444）
+- isResultSuccessStatus 存在（行 2415）
+- isResultFailedStatus 存在（行 2419）
+- isResultProcessingStatus 存在（行 2423）
+
+### 异步 / 流式
+
+- startAsyncPolling 存在
+- pollAsyncJob 存在
+- startStreamGenerate 存在
+
+### 错误处理
+
+- friendlyErrorMessage 存在（行 1564）
+- parseApiError 存在
+- formatApiError 存在（行 1644）
+- extractErrorMessage 存在
+
+### 通用
+
+- statusClass 存在
+- statusLabel 存在
+- apiJson 存在（行 1713）
+- guardedJsonFetch 存在（行 1538）
+
+### 批量结果相关
+
+- renderBatchResultPlayer 存在（行 4251）
+- renderBatchSubtitleList 存在（行 4315）
+- renderBatchStatus 存在（行 4374）
+
+---
+
+## 113. P8-3 API endpoint 不变验收
+
+确认以下 API marker 仍存在：
+
+- `/api/voice/render` 存在
+- `/api/voice/render/async` 存在
+- `/api/voice/render/` 存在
+- `/api/voice/variants/render` 存在
+- `/api/voice/ws/render` 存在
+- `/api/voice/batch/submit` 存在
+- `/api/voice/batch/` 存在
+- `/api/voice/assets/` 存在
+- `apiJson` 存在
+- `guardedJsonFetch` 存在
+- `WebSocket` 存在
+
+**P8-3 没有修改任何后端 API endpoint。**
+
+---
+
+## 114. P8-3 手工验收清单
+
+### 页面与导航
+
+- 页面能正常打开
+- 顶部导航存在：创作工作台 / 长文本 / 剧本 / 音色 / 历史 / 高级
+- 创作工作台能正常切换
+- 音色 tab 能正常切换
+- 高级 tab 能正常切换
+
+### 同步生成结果
+
+- 可输入文本（textInput）
+- 可选择人设 / provider（profileSelect / providerSelect）
+- 可点击生成（generateBtn）
+- 同步结果显示为任务结果 card（renderResults）
+- 有音频时显示播放器（audioPlayerHtml）
+- 有下载时显示"下载音频"（downloadBtnHtml）
+- 有字幕时显示字幕时间轴（timelineTable）
+- 无音频 / 无字幕有合理提示
+- 错误时显示诊断信息（resultDiagnosticHtml）
+
+### 异步生成结果
+
+- 可选择异步模式
+- 生成后显示 job_id（startAsyncPolling）
+- queued / running / processing 状态有清晰提示（resultStatusHintHtml）
+- completed / success 状态展示音频和下载（renderAsyncResult）
+- failed / error 状态展示诊断信息（renderAsyncResult）
+- 轮询体验不被破坏（pollAsyncJob）
+
+### 流式生成结果
+
+- 可选择流式模式
+- 流式连接成功后能接收音频（renderStreamResult）
+- 结果显示为任务结果 card
+- 有音频播放器（blobUrl）
+- 有浏览器缓存下载（"下载音频（浏览器缓存）"）
+- 有服务端 asset 时显示服务端下载（"下载音频（服务端）"）
+- 无服务端 asset 时不伪造服务端下载
+- 明确提示浏览器缓存下载刷新后可能失效（"浏览器缓存：仅限当前会话..."）
+
+### 多版本试音结果
+
+- 可选择多版本模式（isVariant）
+- 可设置版本数量（variantCount）
+- 生成后显示多版本结果（renderResults isVariant 分支）
+- 每个版本显示参数（speed / emotion）
+- 每个版本有音频时显示播放器（audioPlayerHtml）
+- 每个版本有 asset 时显示下载音频（downloadBtnHtml）
+- 单个版本无音频时显示提示（"该版本未返回音频资产。"）
+- variants 为空时显示空状态（"本次多版本试音未返回版本结果。"）
+
+### 错误与 Resource Guard
+
+- 普通错误显示错误提示 card（renderApiError card 结构）
+- 技术详情可展开（`<details>` 结构）
+- Resource Guard 错误说明清楚（"触发资源限制（Resource Guard）"）
+- Provider error 说明清楚（"Provider 服务异常..."）
+- network error 说明清楚（"网络异常..."）
+- cancellation 说明清楚（"操作已取消..."）
+- 不隐藏原始技术详情
+
+### 下载入口
+
+- 服务端 asset 下载文案为"下载音频"（downloadBtnHtml）
+- 流式服务端下载文案为"下载音频（服务端）"
+- 流式浏览器缓存下载文案为"下载音频（浏览器缓存）"
+- 多版本下载入口按版本展示
+- 下载 URL 未改（`/api/voice/assets/{assetId}/download`）
+
+---
+
+## 115. P8-3 自动验证命令记录
+
+- git status -sb
+- git log --oneline -20
+- DOM marker check: python 脚本（12.2 节）
+- JS function check: python 脚本（12.3 节）
+- API marker check: python 脚本（12.4 节）
+- status helper check: python 脚本（12.5 节）
+- stream result display check: python 脚本（12.6 节）
+- variant result display check: python 脚本（12.7 节）
+- error display check: python 脚本（12.8 节）
+- download marker check: python 脚本（12.9 节）
+- documentation marker check: python 脚本（12.10 节）
+- python -m pytest tests/ -x -q
+
+---
+
+## 116. P8-3 验证结果
+
+pytest: 375 passed, 6 skipped
+
+git diff --check: 无 whitespace error
+
+是否执行真实 MiniMax smoke test：**未执行**
+
+原因：P8-3F 是验收与文档收口阶段，不涉及后端 API 改造，不需要消耗真实 MiniMax 额度。
+
+---
+
+## 117. P8-3 未做事项
+
+- 未改后端 API
+- 未改 Provider
+- 未改 Resource Guard 后端逻辑
+- 未改 Cost Guard 后端逻辑
+- 未改数据库
+- 未改 MiniMax Provider Adapter
+- 未改同步生成 API 调用语义
+- 未改异步生成 API 调用语义
+- 未改异步轮询语义
+- 未改 WebSocket 协议
+- 未改 WebSocket message schema
+- 未改 variants API
+- 未改批量生成逻辑
+- 未改字幕播放同步
+- 未处理流式下载 404 时序
+- 未处理 WebSocket 服务端结果资产化
+- 未处理批量字幕缓存
+- 未处理 Resource Guard 排队预估后端实现
+- 未处理多版本费用防误点完整交互
+- 未处理批量结果卡片化
+- 未拆分 `index.html`
+- 未引入 React / Vue / 构建工具
+- 未执行真实 MiniMax smoke test
+- 未进入 P8-4
+
+---
+
+## 118. P8-3 阶段结论
+
+P8-3 已完成并收口。创作工作台中的同步、异步、流式、多版本、错误、Resource Guard 和下载入口展示已整理为更清晰的任务结果展示体验。下一阶段建议进入 P8-4：历史记录和下载体验。
+
+---
+
+## 119. P8-3 下一阶段建议
+
+建议 P8-4 聚焦：
+- 历史记录页面体验
+- 历史记录中的音频播放
+- 历史记录中的下载入口
+- 历史任务找回
+- 历史记录筛选 / 搜索
+- 历史记录空状态
+- 与当前任务结果展示的衔接
+- 不改后端 API
+
+同时记录：前端静态文件拆分应作为独立工程化阶段处理，不建议夹在 P8-4 中进行。
