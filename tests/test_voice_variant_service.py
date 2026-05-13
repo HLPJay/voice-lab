@@ -163,20 +163,29 @@ class TestVoiceVariantResourceGuard:
 
     @pytest.mark.asyncio
     async def test_variants_rejected_when_slot_full(self, session, seed_profile, seed_mock_binding):
-        """When voice_variants limit=1 is held, second request is rejected with 429."""
+        """When voice_variants limit=1 is held, second request is rejected with 429 and creates no group."""
         from unittest.mock import patch
         from app.services.voice_variant_service import VoiceVariantService
         from app.services.resource_guard_service import ResourceLimitExceeded
         from app.domain.schemas import VoiceVariantRenderRequest
+        from app.repositories import voice_variant_repo
 
-        adapter_called_count = 0
+        create_group_called = False
+        render_voice_called = False
+
+        original_create_group = voice_variant_repo.create_group
+
+        def tracked_create_group(sess, group):
+            nonlocal create_group_called
+            create_group_called = True
+            return original_create_group(sess, group)
 
         class CheckedRenderAdapter:
             provider_name = "minimax"
 
             async def render_sync(self, plan):
-                nonlocal adapter_called_count
-                adapter_called_count += 1
+                nonlocal render_voice_called
+                render_voice_called = True
                 from app.utils.audio import write_silent_wav
                 from app.utils.files import storage_path
                 from app.utils.id_generator import new_id
@@ -205,6 +214,104 @@ class TestVoiceVariantResourceGuard:
 
         # Second: try to call render_variants - should be rejected before any adapter is called
         with patch("app.services.voice_render_service.get_provider", return_value=CheckedRenderAdapter()):
+            with patch("app.repositories.voice_variant_repo.create_group", side_effect=tracked_create_group):
+                req = VoiceVariantRenderRequest(
+                    text="测试文本",
+                    profile_id="deep_night_programmer",
+                    provider="minimax",
+                    variant_count=3,
+                    confirm_cost=True,
+                )
+                with pytest.raises(ResourceLimitExceeded) as exc_info:
+                    await svc.render_variants(session, req)
+                assert exc_info.value.status_code == 429
+                assert exc_info.value.code == "RESOURCE_LIMIT_EXCEEDED"
+
+        assert create_group_called is False, "create_group should not be called when voice_variants guard rejects"
+        assert render_voice_called is False, "render_service.render_voice should not be called when voice_variants guard rejects"
+
+        # Cleanup: release the held slot
+        await guard._release(lease)
+
+    @pytest.mark.asyncio
+    async def test_variants_not_affected_by_t2a_sync_limit(self, session, seed_profile, seed_mock_binding):
+        """When t2a_sync is full, voice_variants should still succeed because it uses resource_guard_already_acquired=True."""
+        from unittest.mock import patch
+        from app.services.voice_variant_service import VoiceVariantService
+        from app.services.voice_render_service import VoiceRenderService
+        from app.services.resource_guard_service import ResourceLimitExceeded, get_resource_guard
+        from app.domain.schemas import VoiceVariantRenderRequest, VoiceRenderRequest, VoiceRenderResponse
+
+        # Track render_voice calls and their resource_guard_already_acquired parameter
+        render_voice_calls = []
+
+        async def tracked_render_voice(sess, req, voice_overrides=None, resource_guard_already_acquired=False):
+            render_voice_calls.append({
+                "resource_guard_already_acquired": resource_guard_already_acquired,
+                "voice_overrides": voice_overrides,
+            })
+            # Return a mock response
+            from app.domain.schemas import AudioAssetResponse
+            return VoiceRenderResponse(
+                job_id="mock_job",
+                status="success",
+                audio_asset=AudioAssetResponse(id="mock_audio", url="/mock.wav", duration_ms=1000, format="wav"),
+                provider="minimax",
+                model="speech-2.8-hd",
+            )
+
+        svc = VoiceVariantService()
+
+        # Hold all t2a_sync slots (limit=2)
+        guard = get_resource_guard()
+        lease1 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
+        lease2 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
+
+        # t2a_sync is now full, but voice_variants should not be affected
+        with patch.object(VoiceRenderService, "render_voice", side_effect=tracked_render_voice):
+            req = VoiceVariantRenderRequest(
+                text="测试文本",
+                profile_id="deep_night_programmer",
+                provider="minimax",
+                variant_count=2,
+                confirm_cost=True,
+            )
+            # Should NOT raise ResourceLimitExceeded for t2a_sync
+            result = await svc.render_variants(session, req)
+
+        # Verify render_voice was called with resource_guard_already_acquired=True
+        assert len(render_voice_calls) == 2, f"Expected 2 render_voice calls, got {len(render_voice_calls)}"
+        for call in render_voice_calls:
+            assert call["resource_guard_already_acquired"] is True, "render_voice should be called with resource_guard_already_acquired=True"
+
+        # Verify result
+        assert result.group_id is not None
+        assert len(result.variants) == 2
+
+        # Cleanup
+        await guard._release(lease1)
+        await guard._release(lease2)
+
+    @pytest.mark.asyncio
+    async def test_variants_success_path_works(self, session, seed_profile, seed_mock_binding):
+        """Normal variants rendering should work correctly with mocked render_voice."""
+        from unittest.mock import patch
+        from app.services.voice_variant_service import VoiceVariantService
+        from app.services.voice_render_service import VoiceRenderService
+        from app.domain.schemas import VoiceVariantRenderRequest, VoiceRenderRequest, VoiceRenderResponse, AudioAssetResponse
+
+        async def mock_render_voice(sess, req, voice_overrides=None, resource_guard_already_acquired=False):
+            return VoiceRenderResponse(
+                job_id="variant_job",
+                status="success",
+                audio_asset=AudioAssetResponse(id="variant_audio", url="/variant.wav", duration_ms=2000, format="wav"),
+                provider="minimax",
+                model="speech-2.8-hd",
+            )
+
+        svc = VoiceVariantService()
+
+        with patch.object(VoiceRenderService, "render_voice", side_effect=mock_render_voice):
             req = VoiceVariantRenderRequest(
                 text="测试文本",
                 profile_id="deep_night_programmer",
@@ -212,12 +319,10 @@ class TestVoiceVariantResourceGuard:
                 variant_count=3,
                 confirm_cost=True,
             )
-            with pytest.raises(ResourceLimitExceeded) as exc_info:
-                await svc.render_variants(session, req)
-            assert exc_info.value.status_code == 429
-            assert exc_info.value.code == "RESOURCE_LIMIT_EXCEEDED"
+            result = await svc.render_variants(session, req)
 
-        assert adapter_called_count == 0, "adapter.render_sync should not be called when voice_variants guard rejects"
-
-        # Cleanup: release the held slot
-        await guard._release(lease)
+        assert result.group_id is not None
+        assert len(result.variants) == 3
+        for v in result.variants:
+            assert v.job_id == "variant_job"
+            assert v.audio_asset_id == "variant_audio"

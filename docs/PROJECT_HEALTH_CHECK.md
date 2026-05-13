@@ -553,6 +553,7 @@ python -m pytest tests/ -x -q
 | 阶段 | 目标 |
 |---|---|
 | P7-C | 接入核心同步与高风险路径 |
+| P7-C1 | 修复 voice_variants 双重 guard 边界问题 |
 | P7-D | 接入流式与异步路径 |
 | P7-E | 接入批量路径 |
 
@@ -618,6 +619,50 @@ python -m pytest tests/ -x -q
 
 | 阶段 | 目标 |
 |---|---|
+| P7-C1 | 修复 voice_variants 双重 guard 边界问题 |
 | P7-D | 接入 AsyncRenderService 和 StreamRenderService |
 | P7-E | 接入 BatchOrchestrationService |
 | P7-F | 前端 RESOURCE_LIMIT_EXCEEDED 友好提示 |
+
+---
+
+## P7-C1 voice_variants 双重 guard 边界修复
+
+### 背景
+
+- P7-C 已完成 ResourceGuardService 基础模块和7个核心同步路径接入
+- voice_variants 使用外层 voice_variants guard，但内部 render_voice 调用会再次获取 t2a_sync，形成双重限流
+- VoiceVariantGroup 创建在 Resource Guard 之外，reject 时可能留下空 group 记录
+
+### 问题
+
+1. VoiceVariantService 外层 guard 使用 voice_variants，但 render_voice 内部又获取 t2a_sync（双重限流）
+2. VoiceVariantGroup 在 guard 之前创建，reject 时 group 已存在但无 variants（空壳记录）
+
+### 修改内容
+
+1. **voice_render_service.py**：新增 `resource_guard_already_acquired: bool = False` 参数，当为 True 时跳过 t2a_sync guard
+2. **voice_variant_service.py**：
+   - 将 VoiceVariantGroup 创建移入 guard 内部（先 admission 再建 group，避免空记录）
+   - render_voice 调用时传入 `resource_guard_already_acquired=True`（voice_variants guard 已保护，跳过 t2a_sync guard）
+3. **tests/test_voice_variant_service.py**：新增3个 Resource Guard 测试用例
+
+### 新增测试
+
+- `test_variants_rejected_when_slot_full`：验证 voice_variants slot 满时拒绝，create_group 未被调用
+- `test_variants_not_affected_by_t2a_sync_limit`：验证 t2a_sync 全满时 variants 不受影响（resource_guard_already_acquired=True 生效）
+- `test_variants_success_path_works`：验证正常 variants 流程正确
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_voice_variant_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 单元测试：15 passed
+- VoiceVariant Service 测试：7 passed
+- 全量测试：345 passed, 6 skipped

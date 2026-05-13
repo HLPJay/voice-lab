@@ -25,9 +25,6 @@ class VoiceVariantService:
             {"speed": 0.88, "emotion": "sad"},
             {"speed": 0.96, "emotion": "calm"},
         ][: request.variant_count]
-        now = utc_now_iso()
-        group = VoiceVariantGroup(id=new_id("variant_group"), scene=request.scene, input_text=request.text, created_at=now, updated_at=now)
-        group = voice_variant_repo.create_group(session, group)
 
         async with get_resource_guard().guard(
             provider=provider,
@@ -35,8 +32,14 @@ class VoiceVariantService:
             model=None,
             job_id=None,
         ):
+            # Create group only after Resource Guard admission to avoid empty groups on rejection
+            now = utc_now_iso()
+            group = VoiceVariantGroup(id=new_id("variant_group"), scene=request.scene, input_text=request.text, created_at=now, updated_at=now)
+            group = voice_variant_repo.create_group(session, group)
+
             responses: list[VoiceVariantResponse] = []
             for combo in combos:
+                # resource_guard_already_acquired=True: voice_variants guard already admitted, skip t2a_sync guard
                 render_response = await self.render_service.render_voice(
                     session,
                     VoiceRenderRequest(
@@ -46,6 +49,7 @@ class VoiceVariantService:
                         need_subtitle=request.need_subtitle,
                     ),
                     voice_overrides=combo,
+                    resource_guard_already_acquired=True,
                 )
                 variant = VoiceVariant(
                     id=new_id("variant"),

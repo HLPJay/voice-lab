@@ -37,6 +37,9 @@ class VoiceRenderService:
         session: Session,
         request: VoiceRenderRequest,
         voice_overrides: dict | None = None,
+        resource_guard_already_acquired: bool = False,
+        # resource_guard_already_acquired 仅用于已经由上层 Resource Guard 保护的内部编排调用，
+        # 避免重复限流；外部 API 不应暴露或使用该参数。
     ) -> VoiceRenderResponse:
         settings = get_settings()
         provider = request.provider or settings.voice_provider
@@ -101,13 +104,17 @@ class VoiceRenderService:
             session.add(job)
             session.commit()
 
-            async with get_resource_guard().guard(
-                provider=provider,
-                operation="t2a_sync",
-                model=plan.model,
-                job_id=job.id,
-            ):
+            if resource_guard_already_acquired:
+                # Already guarded by upper layer (e.g. VoiceVariantService), skip t2a_sync guard
                 result = await get_provider(provider).render_sync(plan)
+            else:
+                async with get_resource_guard().guard(
+                    provider=provider,
+                    operation="t2a_sync",
+                    model=plan.model,
+                    job_id=job.id,
+                ):
+                    result = await get_provider(provider).render_sync(plan)
             audio_asset, subtitle_asset = self.asset_service.save_assets(
                 session,
                 job_id=job.id,
