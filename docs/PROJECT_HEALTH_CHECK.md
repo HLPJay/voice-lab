@@ -953,6 +953,41 @@ python -m pytest tests/ -x -q
 - StreamRenderService 测试：9 passed
 - 全量测试：366 passed, 6 skipped
 
+---
+
+## P7-F 前端 RESOURCE_LIMIT_EXCEEDED 友好提示
+
+### 背景
+
+- P7 Resource Guard 后端准入控制已覆盖主要真实 provider 调用路径
+- 后端在资源超限时返回 RESOURCE_LIMIT_EXCEEDED / HTTP 429
+- 前端测试面板此前将该错误展示为普通失败或 alert 原始 JSON
+- 本阶段只做前端错误解析与友好展示，不修改后端 Resource Guard
+
+### 修改内容
+
+- 在 app/static/index.html 新增统一 API 错误解析 helper：parseApiError、formatApiError、renderApiError、extractDetailValue、operationLabel
+- 新增 RESOURCE_LIMIT_EXCEEDED 友好提示 CSS 样式（.resource-limit-msg）
+- 普通 JSON fetch 接口统一解析 VoiceLabError payload
+- T2A 同步 / 异步 / 流式 / 多版本试音 / 声音设计 / 声音克隆 / 批量提交等入口展示资源繁忙提示
+- Resource Guard 拒绝时不展示成功结果、不启动无效 polling、不污染任务状态
+
+### 修改文件
+
+- app/static/index.html
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- 全量测试：366 passed, 6 skipped
+
 ## P7-D1 异步与流式状态机边界修复
 
 ### 背景

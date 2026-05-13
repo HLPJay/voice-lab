@@ -354,6 +354,12 @@
     margin-top: 10px;
   }
 
+  .resource-limit-msg {
+    background: #fffaf0;
+    border-color: #f6ad55;
+    color: #9c4221;
+  }
+
   /* Success */
   .success-msg {
     background: #f0fff4;
@@ -1474,6 +1480,119 @@
     return text;
   }
 
+  // ============================================================
+  // Resource Guard error helpers
+  // ============================================================
+
+  async function parseApiError(resp) {
+    let payload = null;
+    try {
+      payload = await resp.json();
+    } catch (_) {
+      return {
+        code: 'HTTP_ERROR',
+        message: `请求失败（HTTP ${resp.status}）`,
+        detail: null,
+        job_id: null,
+        status: resp.status,
+        raw: null,
+      };
+    }
+    const err = payload && payload.error ? payload.error : null;
+    return {
+      code: err?.code || 'HTTP_ERROR',
+      message: err?.message || `请求失败（HTTP ${resp.status}）`,
+      detail: err?.detail || null,
+      job_id: err?.job_id || null,
+      status: resp.status,
+      raw: payload,
+    };
+  }
+
+  function extractDetailValue(detail, key) {
+    if (!detail || typeof detail !== 'string') return null;
+    const parts = detail.split(',').map(p => p.trim());
+    for (const part of parts) {
+      const prefix = key + '=';
+      if (part.startsWith(prefix)) return part.slice(prefix.length);
+    }
+    return null;
+  }
+
+  function operationLabel(operation) {
+    const map = {
+      't2a_sync': '同步生成',
+      'voice_design': '声音设计',
+      'voice_clone_upload': '声音克隆上传',
+      'voice_clone_create': '声音克隆创建',
+      'voice_preview': '音色试听',
+      'binding_voice_preview': '绑定试听',
+      'voice_variants': '多版本试音',
+      't2a_async_submit': '异步任务提交',
+      't2a_async_query_download': '异步任务查询/下载',
+      't2a_stream': '流式生成',
+      'batch_longtext': '长文本批量生成',
+      'batch_script': '剧本批量生成',
+      'batch_execute': '批量任务执行',
+    };
+    if (!operation) return '当前操作';
+    return map[operation] || '当前操作';
+  }
+
+  function formatApiError(err) {
+    if (!err) return '请求失败，请稍后重试。';
+
+    if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+      const operation = extractDetailValue(err.detail, 'operation');
+      const provider = extractDetailValue(err.detail, 'provider');
+      const opLabel = operationLabel(operation);
+      if (provider) {
+        return `${opLabel}当前任务较多，请稍后再试。`;
+      }
+      return `${opLabel}当前任务较多，请稍后再试。`;
+    }
+
+    if (err.message) {
+      return err.detail ? `${err.message}：${err.detail}` : err.message;
+    }
+    return '请求失败，请稍后重试。';
+  }
+
+  function renderApiError(err, options = {}) {
+    const message = formatApiError(err);
+    const detail = err?.detail || '';
+    const code = err?.code || '';
+    const showDetail = options.showDetail !== false && detail;
+
+    return `
+      <div class="error-msg ${code === 'RESOURCE_LIMIT_EXCEEDED' ? 'resource-limit-msg' : ''}">
+        <div><strong>${esc(message)}</strong></div>
+        ${
+          code === 'RESOURCE_LIMIT_EXCEEDED'
+            ? `<div style="margin-top:6px;color:#718096;font-size:0.8rem">这不是系统异常，也没有创建新的任务。请稍后再提交。</div>`
+            : ''
+        }
+        ${
+          showDetail
+            ? `<details style="margin-top:8px">
+                 <summary style="cursor:pointer;color:#718096">技术详情</summary>
+                 <pre style="white-space:pre-wrap;margin-top:6px;font-size:0.75rem;color:#718096">${esc(detail)}</pre>
+               </details>`
+            : ''
+        }
+      </div>
+    `;
+  }
+
+  async function apiJson(url, options = {}) {
+    const resp = await fetch(url, options);
+    if (!resp.ok) {
+      const err = await parseApiError(resp);
+      throw err;
+    }
+    return await resp.json();
+  }
+
   let pollTimer = null;
 
   // ============================================================
@@ -1604,15 +1723,15 @@
 
       const resp = await guardedJsonFetch(endpoint, payload, { provider, operation, highRisk: true });
 
-      const data = await resp.json();
-
       if (!resp.ok) {
-        const msg = data.detail || JSON.stringify(data);
-        resultsArea.innerHTML = `<div class="error-msg">请求失败：${esc(msg)}</div>`;
+        const err = await parseApiError(resp);
+        resultsArea.innerHTML = renderApiError(err);
         resultsArea.classList.add('visible');
         setLoading(false);
         return;
       }
+
+      const data = await resp.json();
 
       if (isAsync) {
         startAsyncPolling(data.job_id);
@@ -1625,8 +1744,11 @@
     } catch (e) {
       if (e.message === 'USER_CANCELLED') {
         resultsArea.innerHTML = '';
+      } else if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
+        resultsArea.innerHTML = renderApiError(e);
+        resultsArea.classList.add('visible');
       } else {
-        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e && e.message ? e.message : String(e))}</div>`;
         resultsArea.classList.add('visible');
       }
       setLoading(false);
@@ -1703,7 +1825,11 @@
                 ws.close();
                 break;
             case "error":
-                resultsArea.innerHTML = `<div class="error-msg">流式生成失败：[${esc(msg.code)}] ${esc(msg.message)}</div>`;
+                if (msg.code === 'RESOURCE_LIMIT_EXCEEDED') {
+                  resultsArea.innerHTML = renderApiError({ code: msg.code, message: msg.message, detail: msg.detail });
+                } else {
+                  resultsArea.innerHTML = `<div class="error-msg">流式生成失败：[${esc(msg.code)}] ${esc(msg.message)}</div>`;
+                }
                 resultsArea.classList.add('visible');
                 setLoading(false);
                 ws.close();
@@ -1784,14 +1910,20 @@
       pollCount++;
       try {
         const resp = await fetch(`/api/voice/render/async/${jobId}/status`);
-        const data = await resp.json();
 
         if (!resp.ok) {
+          const err = await parseApiError(resp);
           clearInterval(pollTimer); pollTimer = null;
-          resultsArea.innerHTML = `<div class="error-msg">查询失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+          if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+            resultsArea.innerHTML = renderApiError(err);
+          } else {
+            resultsArea.innerHTML = `<div class="error-msg">查询失败：${esc(err.message)}</div>`;
+          }
           setLoading(false);
           return;
         }
+
+        const data = await resp.json();
 
         if (data.status === 'success') {
           clearInterval(pollTimer); pollTimer = null;
@@ -1821,7 +1953,7 @@
         }
       } catch (e) {
         clearInterval(pollTimer); pollTimer = null;
-        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
+        resultsArea.innerHTML = `<div class="error-msg">网络错误：${esc(e && e.message ? e.message : String(e))}</div>`;
         setLoading(false);
       }
     }
@@ -2711,12 +2843,18 @@
         method: 'POST',
         body: formData
       });
-      const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">上传失败：${esc(data.detail || JSON.stringify(data))}</div>`;
+        const err = await parseApiError(resp);
+        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          resultsEl.innerHTML = renderApiError(err);
+        } else {
+          resultsEl.innerHTML = `<div class="error-msg">上传失败：${esc(err.message)}</div>`;
+        }
         return;
       }
+
+      const data = await resp.json();
 
       // Auto-fill file_id in step 2
       document.getElementById('cloneFileId').value = data.file_id;
@@ -2798,22 +2936,29 @@
         payload,
         { provider, operation: 'voice_clone', highRisk: true }
       );
-      const data = await resp.json();
 
       if (!resp.ok) {
-        const errMsg = extractErrorMessage(data);
-        const fullMsg = friendlyErrorMessage(errMsg);
+        const err = await parseApiError(resp);
+        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          resultsEl.innerHTML = renderApiError(err);
+          btn.disabled = false;
+          btn.innerHTML = '克隆';
+          return;
+        }
+        const errMsg = err.message || '';
         if (errMsg.toLowerCase().includes('duplicate')) {
           resultsEl.innerHTML = `<div class="error-msg">voice_id 已存在，请换一个新的 voice_id，或点击「自动生成」。注意：已删除的 voice_id 也不能复用。</div>`;
           btn.disabled = false;
           btn.innerHTML = '克隆';
           return;
         }
-        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(fullMsg)}</div>`;
+        resultsEl.innerHTML = `<div class="error-msg">克隆失败：${esc(friendlyErrorMessage(errMsg))}</div>`;
         btn.disabled = false;
         btn.innerHTML = '克隆';
         return;
       }
+
+      const data = await resp.json();
 
       let html = `<div class="success-msg">
         克隆成功：voice_id=<code>${esc(data.voice_id)}</code>，${data.message || ''}
@@ -3095,14 +3240,20 @@
         payload,
         { provider, operation: 'voice_design', highRisk: true }
       );
-      const data = await resp.json();
 
       if (!resp.ok) {
-        resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(friendlyErrorMessage(extractErrorMessage(data)))}</div>`;
+        const err = await parseApiError(resp);
+        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          resultsEl.innerHTML = renderApiError(err);
+        } else {
+          resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(friendlyErrorMessage(err.message))}</div>`;
+        }
         btn.disabled = false;
         btn.innerHTML = '生成设计';
         return;
       }
+
+      const data = await resp.json();
 
       let html = `<div class="success-msg">
         设计成功：voice_id=<code>${esc(data.voice_id)}</code>，${data.message || ''}
@@ -3487,19 +3638,32 @@
         need_subtitle: needSubtitle,
         confirm_cost: false,
       }, { provider, operation: 'batch_longtext', highRisk: true });
-      const data = await resp.json();
+
       if (!resp.ok) {
-        alert('提交失败：' + (data.detail || JSON.stringify(data)));
+        const err = await parseApiError(resp);
+        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          const resultsEl = document.getElementById('batchResult') || resultsArea;
+          resultsEl.innerHTML = renderApiError(err);
+        } else {
+          alert('提交失败：' + err.message);
+        }
         btn.disabled = false;
         btn.textContent = '提交批量任务';
         return;
       }
+
+      const data = await resp.json();
       _currentBatchId = data.batch_id;
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
-        alert('提交失败：' + e.message);
+        if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          const resultsEl = document.getElementById('batchResult') || resultsArea;
+          resultsEl.innerHTML = renderApiError(e);
+        } else {
+          alert('提交失败：' + (e && e.message ? e.message : String(e)));
+        }
       }
     } finally {
       if (btn.disabled) {
@@ -3547,19 +3711,32 @@
         need_subtitle: needSubtitle,
         confirm_cost: false,
       }, { provider, operation: 'batch_script', highRisk: true });
-      const data = await resp.json();
+
       if (!resp.ok) {
-        alert('提交失败：' + (data.detail || JSON.stringify(data)));
+        const err = await parseApiError(resp);
+        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          const resultsEl = document.getElementById('batchScriptResult') || resultsArea;
+          resultsEl.innerHTML = renderApiError(err);
+        } else {
+          alert('提交失败：' + err.message);
+        }
         btn.disabled = false;
         btn.textContent = '提交批量任务';
         return;
       }
+
+      const data = await resp.json();
       _currentBatchId = data.batch_id;
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
-        alert('提交失败：' + e.message);
+        if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
+          const resultsEl = document.getElementById('batchScriptResult') || resultsArea;
+          resultsEl.innerHTML = renderApiError(e);
+        } else {
+          alert('提交失败：' + (e && e.message ? e.message : String(e)));
+        }
       }
     } finally {
       if (btn.disabled) {
