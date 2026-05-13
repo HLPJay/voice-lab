@@ -82,6 +82,7 @@
 * P8-4C：历史任务卡片播放入口整理已完成（播放区已添加，`/api/voice/jobs` 不返回音频字段，安全降级展示"未返回可播放音频资产"）
 * P8-4D：历史任务下载入口产品化已完成（下载区已添加，安全降级展示"未返回可下载音频资产"）
 * P8-4E：历史筛选 / 搜索 / 空状态优化已完成（本地搜索/状态筛选/清空筛选/筛选说明/无匹配空状态已产品化）
+* P8-4F：P8-4 验收与健康检查收口已完成
 * 当前历史记录已从纯文本行整理为历史任务 card
 * 当前历史记录状态展示已复用 statusLabel/statusClass/resultStatusHintHtml/resultDiagnosticHtml
 * 当前历史记录已添加播放区和下载区（均为安全降级）
@@ -89,7 +90,7 @@
 * `/api/voice/jobs` 不返回音频资产字段是后端字段限制，播放/下载能力待后端支持
 * P8-UX1：桌面宽屏布局与响应式适配作为遗留项记录
 * P8-BE1：历史任务返回音频资产字段（后端遗留）
-* 下一步建议：P8-4F P8-4 验收与健康检查收口
+* P8-4 全阶段已正式收口
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -2847,3 +2848,38 @@ PY
 ### 阶段结论
 
 P8-4E 已完成。下一阶段建议进入 P8-4F：P8-4 验收与健康检查收口。
+
+---
+
+## P8-4F P8-4 验收与健康检查收口
+
+### 背景
+
+- P8-4A/B/C/D/E 已完成历史记录信息架构、播放/下载/搜索/筛选全阶段
+- P8-4F 目标：P8-4 全阶段验收与文档收口
+
+### 验证结果
+
+- P8-4 commit chain: 6a8b6d4(p8-4a) → 2e57ff2(p8-4b) → 6e7c9af(p8-4c) → 15f064c(p8-4d) → c3de80b(p8-4e)
+- DOM marker check: passed (11 markers)
+- Core function check: passed (8 functions)
+- Card helper check: passed (8 helpers)
+- Status helper reuse: passed
+- Playback/download safety: passed
+- Search/filter: passed
+- API semantic: passed (no server-side params)
+- loadHistory refactor: passed (_historyJobs cache + renderHistoryList)
+- pytest: 375 passed, 6 skipped
+
+### 未做事项
+
+- 未修改 app/static/index.html 功能
+- 未修改后端 API
+- 未执行真实 MiniMax smoke test
+- 未处理 P8-BE1（历史任务返回音频资产字段）
+- 未处理 P8-UX1（桌面宽屏布局）
+- 未拆分 index.html
+
+### 阶段结论
+
+P8-4F 已完成。P8-4 全阶段正式收口。
