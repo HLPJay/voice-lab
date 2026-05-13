@@ -548,11 +548,12 @@ class TestBatchResourceGuard:
 
     @pytest.mark.asyncio
     async def test_submit_longtext_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
-        """When batch_longtext limit=1 is held, submit_longtext raises ResourceLimitExceeded
-        and does NOT create any BatchJob or BatchSegment records."""
+        """When batch_longtext limit=1 is held, submit_longtext raises ResourceLimitExceeded,
+        does NOT create any BatchJob/BatchSegment records, and does NOT call _execute_with_session."""
         from app.services.resource_guard_service import get_resource_guard, ResourceLimitExceeded
         from app.domain.schemas import LongtextBatchRequest
         from app.models.batch_job import BatchJob, BatchSegment
+        from unittest.mock import patch
 
         # Count existing records before the call.
         batch_job_count_before = len(list(session.exec(select(BatchJob)).all()))
@@ -572,8 +573,10 @@ class TestBatchResourceGuard:
                 confirm_cost=True,
             )
 
-            with pytest.raises(ResourceLimitExceeded):
-                await service.submit_longtext(session, request)
+            with patch.object(service, "_execute_with_session", return_value=None) as mock_execute:
+                with pytest.raises(ResourceLimitExceeded):
+                    await service.submit_longtext(session, request)
+                mock_execute.assert_not_called()
         finally:
             await guard._release(lease)
 
@@ -585,11 +588,12 @@ class TestBatchResourceGuard:
 
     @pytest.mark.asyncio
     async def test_submit_script_rejected_when_guard_full(self, session, seed_profile, seed_mock_binding):
-        """When batch_script limit=1 is held, submit_script raises ResourceLimitExceeded
-        and does NOT create any BatchJob or BatchSegment records."""
+        """When batch_script limit=1 is held, submit_script raises ResourceLimitExceeded,
+        does NOT create any BatchJob/BatchSegment records, and does NOT call _execute_with_session."""
         from app.services.resource_guard_service import get_resource_guard, ResourceLimitExceeded
         from app.domain.schemas import ScriptBatchRequest, ScriptLine
         from app.models.batch_job import BatchJob, BatchSegment
+        from unittest.mock import patch
 
         batch_job_count_before = len(list(session.exec(select(BatchJob)).all()))
         batch_segment_count_before = len(list(session.exec(select(BatchSegment)).all()))
@@ -607,8 +611,10 @@ class TestBatchResourceGuard:
                 confirm_cost=True,
             )
 
-            with pytest.raises(ResourceLimitExceeded):
-                await service.submit_script(session, request)
+            with patch.object(service, "_execute_with_session", return_value=None) as mock_execute:
+                with pytest.raises(ResourceLimitExceeded):
+                    await service.submit_script(session, request)
+                mock_execute.assert_not_called()
         finally:
             await guard._release(lease)
 
@@ -673,6 +679,9 @@ class TestBatchResourceGuard:
         assert batch_job.status == BatchStatus.failed
         # All segments should be counted as failed.
         assert batch_job.failed_segments == batch_job.total_segments
+        # Error message should be set.
+        assert batch_job.error_message is not None and batch_job.error_message != ""
+        assert "batch_execute" in batch_job.error_message or "RESOURCE_LIMIT" in batch_job.error_message
         # Segment should NOT have voice_job_id or audio_asset_id set.
         session.refresh(seg)
         assert seg.voice_job_id is None, "Segment should not have voice_job_id when guard rejects"
@@ -974,3 +983,71 @@ class TestBatchResourceGuard:
         assert batch_job.completed_segments == 2
         assert batch_job.failed_segments == 0
         assert batch_job.merged_audio_asset_id is not None
+
+    @pytest.mark.asyncio
+    async def test_execute_merge_failure_marks_batch_failed(self, session, seed_profile, seed_mock_binding):
+        """When segments succeed but merge fails, BatchJob.status is failed with error_message,
+        completed_segments reflects success count, and segments remain success."""
+        from app.models.batch_job import BatchJob, BatchSegment
+        from app.core.time import utc_now_iso
+        from unittest.mock import patch
+
+        now = utc_now_iso()
+        batch_id = "batch_merge_fail_test"
+        batch_job = BatchJob(
+            id=batch_id,
+            mode="longtext",
+            status=BatchStatus.pending,
+            provider="mock",
+            output_format="mp3",
+            total_segments=1,
+            silence_between_ms=0,
+            config_json=json.dumps({
+                "text": "测试。",
+                "profile_id": "deep_night_programmer",
+                "need_subtitle": False,
+            }),
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(batch_job)
+
+        seg = BatchSegment(
+            id="seg_merge_fail",
+            batch_job_id=batch_id,
+            index=0,
+            text="测试。",
+            profile_id="deep_night_programmer",
+            params_json="{}",
+            status=BatchStatus.pending,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(seg)
+        session.commit()
+
+        service = BatchOrchestrationService()
+
+        with patch.object(service.audio_merger, "merge", side_effect=RuntimeError("merge failed")):
+            await service.execute(session, batch_id)
+
+        session.refresh(batch_job)
+
+        # BatchJob should be failed due to merge error.
+        assert batch_job.status == BatchStatus.failed, \
+            f"Expected batch status=failed due to merge error, got {batch_job.status}"
+        # Error message should mention merge failure.
+        assert batch_job.error_message is not None
+        assert "merge failed" in batch_job.error_message.lower()
+        # completed_segments reflects successful segments.
+        assert batch_job.completed_segments == 1
+        # failed_segments is 0 since no segment failed, only merge.
+        assert batch_job.failed_segments == 0
+        # merged_audio_asset_id should NOT be set.
+        assert batch_job.merged_audio_asset_id is None
+
+        # Segment should still be success.
+        session.refresh(seg)
+        assert seg.status == BatchStatus.success, f"Expected segment status=success, got {seg.status}"
+        assert seg.audio_asset_id is not None, "Segment should have audio_asset_id"
+        assert seg.voice_job_id is not None, "Segment should have voice_job_id"

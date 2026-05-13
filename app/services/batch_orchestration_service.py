@@ -380,6 +380,7 @@ class BatchOrchestrationService:
 
                 merged_audio_path = None
                 total_duration_ms = None
+                merge_error = None
 
                 if success_audio_paths:
                     try:
@@ -436,15 +437,20 @@ class BatchOrchestrationService:
                             if len(success_durations) > 1 else 0
                         )
                     except Exception as exc:
+                        merge_error = str(exc)[:500]
+                        batch_job.error_message = f"Merge failed: {merge_error}"
                         self.logger.error("merge_failed batch_id=%s error=%s", batch_job_id, str(exc))
 
                 failed_count = sum(1 for s in segments if s.status == BatchStatus.failed)
-                if failed_count == len(segments):
+                if merge_error:
+                    batch_job.status = BatchStatus.failed
+                elif failed_count == len(segments):
                     batch_job.status = BatchStatus.failed
                 elif failed_count > 0:
                     batch_job.status = BatchStatus.partial
                 else:
                     batch_job.status = BatchStatus.success
+                    batch_job.error_message = None
 
                 batch_job.updated_at = utc_now_iso()
                 session.add(batch_job)
@@ -458,10 +464,11 @@ class BatchOrchestrationService:
                     total_duration_ms,
                 )
 
-        except ResourceLimitExceeded:
+        except ResourceLimitExceeded as exc:
             # Resource Guard rejected batch execution; mark batch as failed.
             batch_job.status = BatchStatus.failed
             batch_job.failed_segments = batch_job.total_segments
+            batch_job.error_message = f"{exc.message}: {exc.detail}" if exc.detail else exc.message
             batch_job.updated_at = utc_now_iso()
             session.add(batch_job)
             session.commit()

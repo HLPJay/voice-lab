@@ -911,6 +911,48 @@ python -m pytest tests/ -x -q
 - StreamRenderService 测试：9 passed
 - 全量测试：365 passed, 6 skipped
 
+---
+
+## P7-E3 Batch 状态机最终收口
+
+### 背景
+
+- P7-E2 后继续基于完整现态代码审查 BatchOrchestrationService
+- 发现 execute Resource Guard 拒绝时 BatchJob.error_message 缺失
+- submit rejected 测试未断言 _execute_with_session 未调用
+- merge 失败时可能导致 BatchJob 被误标 success
+
+### 修复内容
+
+- execute Resource Guard 拒绝时补充 BatchJob.error_message（使用 exc.message + exc.detail）
+- submit_longtext / submit_script rejected 测试补充 _execute_with_session.assert_not_called()
+- merge 失败时 BatchJob 不再误标 success（merge_error 优先判断）
+- merge 失败只影响 BatchJob 最终状态，不回滚成功 segment
+
+### 修改文件
+
+- app/services/batch_orchestration_service.py
+- tests/test_batch_orchestration.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_batch_orchestration.py -q
+python -m pytest tests/test_async_render.py -q
+python -m pytest tests/test_stream_render_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 测试：38 passed
+- BatchOrchestrationService 测试：19 passed
+- AsyncRenderService 测试：14 passed
+- StreamRenderService 测试：9 passed
+- 全量测试：366 passed, 6 skipped
+
 ## P7-D1 异步与流式状态机边界修复
 
 ### 背景
