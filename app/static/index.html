@@ -2418,14 +2418,29 @@ function handleStopAsyncPolling() {
   function renderAuditionWorkstation() {
     return `<div id="voiceAuditionPanel" class="card" style="margin-bottom:12px">
       <div class="card-title">🎧 试听工作台</div>
+
+      <!-- Selected voice highlight strip -->
+      <div id="auditionSelectedBanner" style="display:none;background:linear-gradient(135deg,#ebf4ff,#f0fff4);border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:0.75rem;color:#5a67d8;font-weight:600">当前选中音色</span>
+          <span id="auditionSelected" style="font-size:0.9rem;color:#2f855a;font-weight:700">（无）</span>
+          <span id="auditionSelectedHint" style="font-size:0.72rem;color:#a0aec0;margin-left:auto">点击下方音色的「试听」按钮选择</span>
+        </div>
+        <div id="auditionProfileSelectWrap" style="display:none;margin-top:8px">
+          <select id="auditionProfileSelect" style="padding:5px 8px;border:1px solid #c7d2fe;border-radius:6px;font-size:0.82rem;width:100%"></select>
+        </div>
+      </div>
+
       <div style="margin-bottom:10px">
-        <div style="font-size:0.82rem;color:#718096;margin-bottom:4px">试听文本</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:0.82rem;color:#718096">试听文本</div>
+          <div id="auditionCostHint" style="font-size:0.72rem;color:#a0aec0">约 0 字</div>
+        </div>
         <textarea id="auditionText" rows="2"
           placeholder="输入试听文本…"
           style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem;resize:vertical;box-sizing:border-box">你好，这是一段测试语音。欢迎使用语音合成服务。</textarea>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-        <div id="auditionSelected" style="font-size:0.82rem;color:#a0aec0;white-space:nowrap">当前选中：（无）</div>
         <div style="font-size:0.82rem">模型：</div>
         <select id="auditionModel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px">
           <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
@@ -2433,9 +2448,6 @@ function handleStopAsyncPolling() {
           <option value="speech-2.6-hd">speech-2.6-hd</option>
           <option value="speech-2.6-turbo">speech-2.6-turbo</option>
         </select>
-        <div id="auditionProfileSelectWrap" style="display:none;flex:1;min-width:160px">
-          <select id="auditionProfileSelect" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;width:100%"></select>
-        </div>
         <button class="btn-primary" id="auditionGenBtn" style="margin:0;white-space:nowrap">▶ 生成试听</button>
       </div>
       <div id="auditionResult" style="margin-bottom:10px;min-height:24px"></div>
@@ -2451,25 +2463,32 @@ function handleStopAsyncPolling() {
 
   function updateAuditionSelected(voiceId, voiceName) {
     const el = document.getElementById('auditionSelected');
+    const banner = document.getElementById('auditionSelectedBanner');
+    const hint = document.getElementById('auditionSelectedHint');
     const wrap = document.getElementById('auditionProfileSelectWrap');
     const profileSelect = document.getElementById('auditionProfileSelect');
     if (!el) return;
     if (!voiceId) {
-      el.style.cssText = 'font-size:0.82rem;color:#a0aec0;white-space:nowrap';
-      el.textContent = '当前选中：（无）';
+      if (banner) banner.style.display = 'none';
+      if (hint) hint.style.display = '';
+      el.textContent = '（无）';
       if (wrap) wrap.style.display = 'none';
       return;
     }
 
-    el.style.cssText = 'font-size:0.82rem;color:#2f855a;font-weight:600;background:#f0fff4;padding:2px 8px;border-radius:4px;white-space:nowrap';
-    el.textContent = `当前选中：${voiceId} ${voiceName ? `(${voiceName})` : ''}`;
+    if (banner) {
+      banner.style.display = '';
+      banner.style.display = 'block';
+    }
+    if (hint) hint.style.display = 'none';
+    el.textContent = `${voiceId}${voiceName ? ` (${voiceName})` : ''}`;
 
     const provider = document.getElementById('voiceProvider')?.value || 'minimax';
     const bindings = (window._voiceBindMap && window._voiceBindMap[voiceId] || [])
       .filter(b => !provider || b.provider === provider);
 
     if (bindings.length > 0 && wrap && profileSelect) {
-      wrap.style.display = 'flex';
+      wrap.style.display = '';
       profileSelect.innerHTML = bindings.map(b =>
         `<option value="${esc(b.profile_id)}">${esc(b.profile_name || b.profile_id)} / ${esc(b.model || '')}</option>`
       ).join('');
@@ -2570,23 +2589,23 @@ function handleStopAsyncPolling() {
         const record = window._auditionRecords[idx];
         if (!record) return;
         const stars = resultsEl.querySelectorAll(`.star[data-index="${idx}"]`);
-      stars.forEach(s => {
-        const sn = parseInt(s.dataset.star);
-        s.style.color = sn <= hoveredStar ? '#f6ad55' : '#e2e8f0';
+        stars.forEach(s => {
+          const sn = parseInt(s.dataset.star);
+          s.style.color = sn <= hoveredStar ? '#f6ad55' : '#e2e8f0';
+        });
       });
-    });
 
-    resultsEl.addEventListener('mouseleave', e => {
-      const cell = e.target.closest('.star-cell');
-      if (!cell) return;
-      const idx = cell.dataset.index;
-      const record = window._auditionRecords[idx];
-      const stars = cell.querySelectorAll('.star');
-      stars.forEach(s => {
-        const sn = parseInt(s.dataset.star);
-        s.style.color = record && record.rating && sn <= record.rating ? '#f6ad55' : '#e2e8f0';
+      resultsEl.addEventListener('mouseleave', e => {
+        const star = e.target.closest('.star');
+        if (!star) return;
+        const idx = parseInt(star.dataset.index);
+        const record = window._auditionRecords[idx];
+        const stars = resultsEl.querySelectorAll(`.star[data-index="${idx}"]`);
+        stars.forEach(s => {
+          const sn = parseInt(s.dataset.star);
+          s.style.color = record && record.rating && sn <= record.rating ? '#f6ad55' : '#e2e8f0';
+        });
       });
-    });
 
     // Note input (delegated, save on input)
     resultsEl.addEventListener('input', e => {
@@ -2595,6 +2614,11 @@ function handleStopAsyncPolling() {
         const idx = parseInt(input.dataset.index);
         const record = window._auditionRecords[idx];
         if (record) record.note = input.value;
+      }
+      // Audition text character count hint
+      if (e.target.id === 'auditionText') {
+        const hint = document.getElementById('auditionCostHint');
+        if (hint) hint.textContent = `约 ${e.target.value.length} 字`;
       }
     });
     } // end of !_auditionDelegated guard
@@ -2605,6 +2629,12 @@ function handleStopAsyncPolling() {
     if (window._auditionSelectedVoiceId) {
       updateAuditionSelected(window._auditionSelectedVoiceId, window._auditionSelectedVoiceName);
     }
+    // Initial character count hint
+    const auditionTextEl = document.getElementById('auditionText');
+    const costHint = document.getElementById('auditionCostHint');
+    if (auditionTextEl && costHint) {
+      costHint.textContent = `约 ${auditionTextEl.value.length} 字`;
+    }
   }
 
   function renderAuditionRecords() {
@@ -2614,32 +2644,60 @@ function handleStopAsyncPolling() {
     const records = window._auditionRecords || [];
     if (countEl) countEl.textContent = records.length > 0 ? `（共 ${records.length} 条）` : '';
     if (records.length === 0) {
-      container.innerHTML = '<div style="font-size:0.78rem;color:#a0aec0;text-align:center;padding:8px">暂无试听记录</div>';
+      container.innerHTML = '<div style="font-size:0.78rem;color:#a0aec0;text-align:center;padding:10px 8px;border:1px dashed #e2e8f0;border-radius:8px">暂无试听记录</div>';
       return;
     }
-    let html = `<table class="voice-table" style="font-size:0.78rem">
-      <thead><tr><th>voice_id</th><th>文本摘要</th><th>音频</th><th>评分</th><th>备注</th><th>操作</th></tr></thead><tbody>`;
     records.forEach((r, i) => {
-      const textPreview = r.text.length > 15 ? r.text.substring(0, 15) + '…' : r.text;
+      const textPreview = r.text.length > 20 ? r.text.substring(0, 20) + '…' : r.text;
       const stars = [1,2,3,4,5].map(n =>
-        `<span class="star" data-index="${i}" data-star="${n}" style="cursor:pointer;color:${r.rating && n <= r.rating ? '#f6ad55' : '#e2e8f0'};font-size:1.1rem;margin:0 1px">★</span>`
+        `<span class="star" data-index="${i}" data-star="${n}" style="cursor:pointer;color:${r.rating && n <= r.rating ? '#f6ad55' : '#e2e8f0'};font-size:1rem;margin:0 1px">★</span>`
       ).join('');
       const audioHtml = r.audioUrl
-        ? `<audio controls style="height:24px"><source src="${esc(r.audioUrl)}" type="audio/mpeg"></audio>`
-        : '-';
-      html += `<tr>
-        <td><code>${esc(r.voiceId)}</code></td>
-        <td title="${esc(r.text)}">${esc(textPreview)}</td>
-        <td>${audioHtml}</td>
-        <td class="star-cell" data-index="${i}">${stars}</td>
-        <td><input type="text" value="${esc(r.note || '')}" placeholder="添加备注…"
-          style="border:none;border-bottom:1px dashed #cbd5e0;background:transparent;font-size:0.78rem;width:80px;padding:2px 0"
-          data-index="${i}" data-field="note"></td>
-        <td><button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e">删除</button></td>
-      </tr>`;
+        ? `<audio controls style="height:28px;width:160px"><source src="${esc(r.audioUrl)}" type="audio/mpeg"></audio>`
+        : '<span style="color:#a0aec0;font-size:0.72rem">无音频</span>';
+      const cardId = `audition-card-${i}`;
+      const existingCard = document.getElementById(cardId);
+      if (existingCard) {
+        // Update existing card
+        existingCard.querySelector('.arc-audio').innerHTML = audioHtml;
+        existingCard.querySelector('.arc-stars').innerHTML = stars;
+        const noteInput = existingCard.querySelector('.arc-note');
+        if (noteInput) noteInput.value = r.note || '';
+      } else {
+        const card = document.createElement('div');
+        card.id = cardId;
+        card.style = 'background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,0.04)';
+        card.innerHTML = `
+          <div style="flex:1;min-width:160px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <code style="font-size:0.75rem;background:#f7fafc;color:#4a5568;padding:1px 5px;border-radius:3px">${esc(r.voiceId)}</code>
+              ${r.voiceName ? `<span style="font-size:0.72rem;color:#718096">${esc(r.voiceName)}</span>` : ''}
+            </div>
+            <div class="arc-audio">${audioHtml}</div>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:3px">文本预览</div>
+            <div style="font-size:0.78rem;color:#4a5568" title="${esc(r.text)}">${esc(textPreview)}</div>
+          </div>
+          <div class="arc-stars" style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="font-size:0.72rem;color:#a0aec0">评分</div>
+            <div>${stars}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <input type="text" value="${esc(r.note || '')}" placeholder="添加备注…"
+              class="arc-note"
+              style="border:none;border-bottom:1px dashed #cbd5e0;background:transparent;font-size:0.72rem;width:90px;padding:2px 0;text-align:right"
+              data-index="${i}" data-field="note">
+            <button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e;font-size:0.7rem;padding:2px 6px">删除</button>
+          </div>`;
+        container.appendChild(card);
+      }
     });
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    // Remove cards that are no longer in records
+    container.querySelectorAll('[id^="audition-card-"]').forEach(card => {
+      const idx = parseInt(card.id.replace('audition-card-', ''));
+      if (idx >= records.length) card.remove();
+    });
   }
 
   async function handleGenerateAudition() {
@@ -2677,19 +2735,30 @@ function handleStopAsyncPolling() {
       );
       const data = await resp.json();
       if (!resp.ok) {
-        resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">音色试听失败: ${esc(friendlyErrorMessage(extractErrorMessage(data)))}</span>`;
+        resultDiv.innerHTML = `<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:8px">
+          <span style="background:#e53e3e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">✕</span>
+          <span style="color:#c53030;font-size:0.82rem">音色试听失败: ${esc(friendlyErrorMessage(extractErrorMessage(data)))}</span>
+        </div>`;
         return;
       }
       if (data.audio_asset && data.audio_asset.url) {
         const mediaType = data.audio_asset.format === 'wav' ? 'audio/wav'
           : data.audio_asset.format === 'flac' ? 'audio/flac'
           : 'audio/mpeg';
-        resultDiv.innerHTML = `<audio class="audio-player" controls autoplay style="width:100%">
-          <source src="${esc(data.audio_asset.url)}" type="${mediaType}">
-        </audio>
-        <div style="font-size:0.75rem;color:#718096;margin-top:4px">
-          voice_id: ${esc(voiceId)} | model: ${esc(model)}
-          | 时长: ${data.audio_asset.duration_ms ? (data.audio_asset.duration_ms/1000).toFixed(1) + 's' : '-'}
+        const duration = data.audio_asset.duration_ms ? (data.audio_asset.duration_ms/1000).toFixed(1) + 's' : '-';
+        resultDiv.innerHTML = `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="background:#48bb78;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">✓</span>
+            <span style="font-size:0.82rem;color:#2f855a;font-weight:600">试听生成成功</span>
+          </div>
+          <audio class="audio-player" controls autoplay style="width:100%;height:36px">
+            <source src="${esc(data.audio_asset.url)}" type="${mediaType}">
+          </audio>
+          <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
+            <div style="font-size:0.72rem;color:#718096"><span style="color:#4a5568;font-weight:500">音色</span> ${esc(voiceId)}</div>
+            <div style="font-size:0.72rem;color:#718096"><span style="color:#4a5568;font-weight:500">模型</span> ${esc(model)}</div>
+            <div style="font-size:0.72rem;color:#718096"><span style="color:#4a5568;font-weight:500">时长</span> ${duration}</div>
+          </div>
         </div>`;
         window._auditionRecords.push({
           voiceId, voiceName: voiceName || '',
@@ -2699,14 +2768,20 @@ function handleStopAsyncPolling() {
         });
         renderAuditionRecords();
       } else {
-        resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';
+        resultDiv.innerHTML = `<div style="background:#fffff0;border:1px solid #faf089;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+          <span style="background:#d69e2e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">!</span>
+          <span style="color:#975a16;font-size:0.82rem">未返回音频数据</span>
+        </div>`;
       }
     } catch (e) {
       if (e.message === 'USER_CANCELLED') {
         resultDiv.innerHTML = '';
         return;
       }
-      resultDiv.innerHTML = `<span style="color:#e53e3e;font-size:0.82rem">网络错误: ${esc(e.message)}</span>`;
+      resultDiv.innerHTML = `<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+        <span style="background:#e53e3e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">✕</span>
+        <span style="color:#c53030;font-size:0.82rem">网络错误: ${esc(e.message)}</span>
+      </div>`;
     }
   }
 
