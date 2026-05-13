@@ -2647,7 +2647,7 @@ function handleStopAsyncPolling() {
       container.innerHTML = '<div style="font-size:0.78rem;color:#a0aec0;text-align:center;padding:10px 8px;border:1px dashed #e2e8f0;border-radius:8px">暂无试听记录</div>';
       return;
     }
-    records.forEach((r, i) => {
+    const cardsHtml = records.map((r, i) => {
       const textPreview = r.text.length > 20 ? r.text.substring(0, 20) + '…' : r.text;
       const stars = [1,2,3,4,5].map(n =>
         `<span class="star" data-index="${i}" data-star="${n}" style="cursor:pointer;color:${r.rating && n <= r.rating ? '#f6ad55' : '#e2e8f0'};font-size:1rem;margin:0 1px">★</span>`
@@ -2655,49 +2655,31 @@ function handleStopAsyncPolling() {
       const audioHtml = r.audioUrl
         ? `<audio controls style="height:28px;width:160px"><source src="${esc(r.audioUrl)}" type="audio/mpeg"></audio>`
         : '<span style="color:#a0aec0;font-size:0.72rem">无音频</span>';
-      const cardId = `audition-card-${i}`;
-      const existingCard = document.getElementById(cardId);
-      if (existingCard) {
-        // Update existing card
-        existingCard.querySelector('.arc-audio').innerHTML = audioHtml;
-        existingCard.querySelector('.arc-stars').innerHTML = stars;
-        const noteInput = existingCard.querySelector('.arc-note');
-        if (noteInput) noteInput.value = r.note || '';
-      } else {
-        const card = document.createElement('div');
-        card.id = cardId;
-        card.style = 'background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,0.04)';
-        card.innerHTML = `
-          <div style="flex:1;min-width:160px">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-              <code style="font-size:0.75rem;background:#f7fafc;color:#4a5568;padding:1px 5px;border-radius:3px">${esc(r.voiceId)}</code>
-              ${r.voiceName ? `<span style="font-size:0.72rem;color:#718096">${esc(r.voiceName)}</span>` : ''}
-            </div>
-            <div class="arc-audio">${audioHtml}</div>
+      return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+        <div style="flex:1;min-width:160px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <code style="font-size:0.75rem;background:#f7fafc;color:#4a5568;padding:1px 5px;border-radius:3px">${esc(r.voiceId)}</code>
+            ${r.voiceName ? `<span style="font-size:0.72rem;color:#718096">${esc(r.voiceName)}</span>` : ''}
           </div>
-          <div style="flex:1;min-width:120px">
-            <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:3px">文本预览</div>
-            <div style="font-size:0.78rem;color:#4a5568" title="${esc(r.text)}">${esc(textPreview)}</div>
-          </div>
-          <div class="arc-stars" style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="font-size:0.72rem;color:#a0aec0">评分</div>
-            <div>${stars}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-            <input type="text" value="${esc(r.note || '')}" placeholder="添加备注…"
-              class="arc-note"
-              style="border:none;border-bottom:1px dashed #cbd5e0;background:transparent;font-size:0.72rem;width:90px;padding:2px 0;text-align:right"
-              data-index="${i}" data-field="note">
-            <button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e;font-size:0.7rem;padding:2px 6px">删除</button>
-          </div>`;
-        container.appendChild(card);
-      }
-    });
-    // Remove cards that are no longer in records
-    container.querySelectorAll('[id^="audition-card-"]').forEach(card => {
-      const idx = parseInt(card.id.replace('audition-card-', ''));
-      if (idx >= records.length) card.remove();
-    });
+          <div>${audioHtml}</div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:3px">文本预览</div>
+          <div style="font-size:0.78rem;color:#4a5568" title="${esc(r.text)}">${esc(textPreview)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="font-size:0.72rem;color:#a0aec0">评分</div>
+          <div>${stars}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <input type="text" value="${esc(r.note || '')}" placeholder="添加备注…"
+            style="border:none;border-bottom:1px dashed #cbd5e0;background:transparent;font-size:0.72rem;width:90px;padding:2px 0;text-align:right"
+            data-index="${i}" data-field="note">
+          <button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e;font-size:0.7rem;padding:2px 6px">删除</button>
+        </div>
+      </div>`;
+    }).join('');
+    container.innerHTML = cardsHtml;
   }
 
   async function handleGenerateAudition() {

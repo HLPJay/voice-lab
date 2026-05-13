@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-2A：
+截至 P8-2C1：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -11,6 +11,11 @@
 * P8-0：前端产品化范围定义已完成
 * P8-1：前端信息架构重组已完成并收口
 * P8-2A：音色选择 / 试听工作台现状审查已完成
+* P8-2B：音色 tab 信息架构整理已完成
+* P8-2C：试听工作台产品化已完成（选中音色 banner、字符数提示、结果卡片、记录卡片化）
+* P8-2C1：试听工作台收口修复已完成（renderAuditionRecords 改为稳定全量重绘，P8-2C 文档补齐）
+* 试听记录卡片渲染已改为稳定全量重绘
+* P8-2C 可视为已完成并收口
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -45,8 +50,10 @@
 * P8-2 目标：将音色 tab 整理为音色选择 / 试听工作台
 * P8-2A：现状审查已完成
 * P8-2B：音色 tab 信息架构整理已完成
+* P8-2C：试听工作台产品化已完成
+* P8-2C1：试听工作台收口修复已完成
 * 删除音色已从音色主流程迁移到高级危险操作区
-* 下一阶段建议进入 P8-2C：试听工作台产品化
+* 下一阶段建议进入 P8-2D：轻量绑定入口整理
 
 说明：
 本文档包含历史阶段记录，早期段落中的"前端仍是测试面板""缺少 Resource Guard"等内容仅代表当时阶段状态；当前最新状态以本摘要为准。
@@ -1828,3 +1835,86 @@ python -m pytest tests/ -x -q
 ### 阶段结论
 
 P8-2B 已完成音色 tab 信息架构整理。下一阶段建议进入 P8-2C：试听工作台产品化。
+
+## P8-2C 试听工作台产品化
+
+### 背景
+
+P8-2C 于 commit `2483245` 完成试听工作台 UI 产品化。
+
+### 主要变更
+
+1. 新增 `auditionSelectedBanner` 高亮 banner（渐变背景，仅选中音色后显示）
+2. 新增 `auditionCostHint` 字符数提示（实时显示"约 N 字"）
+3. 重构 `auditionResult` 结果卡片（成功 / 失败 / 无音频三种状态）
+4. 将 `auditionRecords` 从表格改为卡片布局
+5. 适配星级 hover 事件委托（从 `.star-cell` 改为 `.star[data-index]`）
+
+### 仅 UI 展示声明
+
+P8-2C 所有变更均为前端 UI 展示调整，未修改任何 API endpoint、请求逻辑或后端代码。
+
+### 阶段结论
+
+P8-2C 已完成试听工作台 UI 产品化。下一阶段进入 P8-2C1：收口修复。
+
+## P8-2C1 试听工作台收口修复
+
+### 背景
+
+P8-2C 提交 `2483245` 遗留两个收口问题：
+1. P8-2C 文档未同步更新（仅修改了 index.html）
+2. `renderAuditionRecords` 初始实现采用局部更新 / append 模式，存在卡片状态错位风险
+
+### 问题
+
+| 问题 | 风险 |
+|------|------|
+| P8-2C 文档缺失 | 后续无法追溯 P8-2C 变更内容 |
+| `records.forEach` + `existingCard` 局部更新 | 删除中间记录后 card id 与 index 错位 |
+| `container.appendChild(card)` | 0→1 条时"暂无"占位可能残留 |
+| 局部更新不完整 | voice_id / voiceName / textPreview 在已有卡片上不更新 |
+
+### 方案
+
+采用 `renderAuditionRecords` 全量重绘方案：
+- `records.length === 0` → `container.innerHTML = 空状态占位`，return
+- `records.length > 0` → `records.map` 生成所有 card HTML，`container.innerHTML = cardsHtml.join('')`
+- 不再使用 `existingCard`、`appendChild`、过期 card 清理逻辑
+
+### 修改文件
+
+- `app/static/index.html` — `renderAuditionRecords` 改为全量重绘
+- `docs/P8_2_VOICE_SELECTION_WORKSTATION.md` — 补齐 P8-2C + P8-2C1 文档
+- `docs/PROJECT_HEALTH_CHECK.md` — 补充 P8-2C / P8-2C1 状态
+
+### 验证结果
+
+- pytest：375 passed, 6 skipped
+- P8-2C1 DOM marker check：passed
+- P8-2C1 JS function check：passed
+- P8-2C1 renderAuditionRecords stability check：passed
+- P8-2C1 API marker check：passed
+- P8-2C1 documentation marker check：passed
+
+### 未做事项
+
+- ❌ 未改后端 API
+- ❌ 未改 Provider
+- ❌ 未改 Resource Guard / Cost Guard
+- ❌ 未改数据库
+- ❌ 未执行真实 MiniMax smoke test
+- ❌ 未进入 P8-2D
+
+### 风险清零
+
+| 风险 | 状态 |
+|------|------|
+| P8-2C 文档缺失 | ✅ 已补齐 |
+| renderAuditionRecords 局部更新错位 | ✅ 已改为全量重绘 |
+| "暂无"占位残留 | ✅ records.length===0 时立即 innerHTML |
+| 卡片内容与 record 不一致 | ✅ 每次全量重绘 |
+
+### 阶段结论
+
+P8-2C1 已完成试听工作台收口修复。P8-2C 可视为已完成并收口。下一阶段建议进入 P8-2D：轻量绑定入口整理。

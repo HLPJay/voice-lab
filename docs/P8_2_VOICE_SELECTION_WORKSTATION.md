@@ -573,3 +573,316 @@ P8-2C 聚焦：
 - 试听记录体验优化
 - 成本提示强化
 - 不改后端 API
+
+---
+
+# P8-2C 试听工作台产品化
+
+## 27. P8-2C 执行背景
+
+P8-2C 于 commit `2483245` 完成试听工作台 UI 产品化。
+
+P8-2C 提交只修改了 `app/static/index.html`，包含以下变更：
+
+1. 新增 `auditionSelectedBanner` 高亮 banner（渐变背景，仅选中音色后显示）
+2. 新增 `auditionCostHint` 字符数提示（实时显示"约 N 字"）
+3. 重构 `auditionResult` 结果卡片（成功 / 失败 / 无音频三种状态）
+4. 将 `auditionRecords` 从表格改为卡片布局
+5. 适配星级 hover 事件委托（从 `.star-cell` 改为 `.star[data-index]`）
+
+## 28. P8-2C 功能变更记录
+
+### 28.1 当前选中音色 Banner
+
+新增 `auditionSelectedBanner`：渐变背景横幅，仅选中音色后显示，展示 voice_id、voiceName，并集成 profile 选择下拉框。未选中时隐藏。
+
+### 28.2 字符数提示
+
+新增 `auditionCostHint`：随用户输入实时更新，显示"约 N 字"。
+
+### 28.3 试听结果卡片
+
+`auditionResult` 区域三种状态：
+- **成功**：绿色渐变卡片，含 ✓ 图标、音频播放器、voice_id / model / duration 元数据
+- **失败**：红色卡片，含 ✕ 图标和错误信息
+- **无音频**：黄色卡片，含 ! 图标
+
+### 28.4 试听记录卡片化
+
+`renderAuditionRecords` 将记录从 `<table>` 改为独立 `<div>` 卡片，每张卡片包含：voice_id badge、voiceName、160px 宽音频播放器、文本预览、星级评分、备注输入框、删除按钮。
+
+### 28.5 星级 Hover 事件适配
+
+`mouseleave` 处理从 `.star-cell[data-index]` 改为 `.star[data-index]` 直接查询，解决卡片化后 DOM 结构变化。
+
+## 29. P8-2C 仅 UI 展示声明
+
+P8-2C 所有变更均为前端 UI 展示调整，未修改：
+
+- 任何 API endpoint
+- `handleGenerateAudition` 请求逻辑
+- `guardedJsonFetch` 调用语义
+- `highRisk` 语义
+- `window._auditionRecords` 数据结构
+- 任何后端代码
+
+## 30. P8-2C DOM id 保留说明
+
+静态检查确认以下 DOM id 在 P8-2C 实施后仍然存在：
+
+- `voiceAuditionPanel`
+- `auditionSelectedBanner`（新增）
+- `auditionSelected`
+- `auditionSelectedHint`（新增）
+- `auditionCostHint`（新增）
+- `auditionText`
+- `auditionModel`
+- `auditionProfileSelectWrap`
+- `auditionProfileSelect`
+- `auditionGenBtn`
+- `auditionResult`
+- `auditionRecordsPanel`
+- `auditionCount`
+- `auditionClearBtn`
+- `auditionRecordsTable`
+- `voiceListResults`
+
+## 31. P8-2C JS function 行为保留说明
+
+静态检查确认以下函数在 P8-2C 实施后仍然存在且行为未变：
+
+- `renderAuditionWorkstation` — 仅 HTML 模板调整
+- `updateAuditionSelected` — 适配新 banner 结构
+- `setupAuditionWorkstation` — 事件委托逻辑保留，新增字符数初始化
+- `renderAuditionRecords` — 卡片化改造，事件委托 data 属性保留
+- `handleGenerateAudition` — API 请求语义完全不变，仅结果 HTML 调整
+- `handleListVoices` — 未变更
+- `filterVoiceList` — 未变更
+- `quickBindVoice` — 未变更
+- `bindVoiceToProfile` — 未变更
+
+## 32. P8-2C 未做事项
+
+- ❌ 未改后端 API
+- ❌ 未改 Provider
+- ❌ 未改 Resource Guard
+- ❌ 未改 Cost Guard
+- ❌ 未改数据库
+- ❌ 未改音色列表查询逻辑
+- ❌ 未改音色试听 API 调用语义
+- ❌ 未改绑定逻辑
+- ❌ 未改删除音色逻辑
+- ❌ 未改声音克隆 / 声音设计
+- ❌ 未执行真实 MiniMax smoke test
+
+## 33. P8-2C 阶段结论
+
+P8-2C 已完成试听工作台 UI 产品化。下一阶段建议进入 P8-2C1：收口修复。
+
+---
+
+# P8-2C1 试听工作台收口修复
+
+## 34. P8-2C1 执行背景
+
+P8-2C 提交 `2483245` 遗留两个收口问题：
+
+1. **文档缺失**：P8-2C 提交只修改了 `app/static/index.html`，未同步更新 `docs/P8_2_VOICE_SELECTION_WORKSTATION.md`。
+2. **渲染稳定性风险**：`renderAuditionRecords` 初始实现采用局部更新 / append 模式，存在以下风险：
+   - 从 0 条变为 1 条时，"暂无试听记录"占位可能被 append 残留
+   - 删除中间记录后，`card id` 与数组 index 变化导致卡片内容与 record 错位
+   - 已有卡片只更新 audio / stars / note，未完整更新 voice_id / voiceName / textPreview
+   - 前端显示可能和 `window._auditionRecords` 状态不一致
+
+## 35. P8-2C1 问题与风险分析
+
+| 问题 | 风险 |
+|------|------|
+| P8-2C 文档未同步更新 | 后续无法追溯 P8-2C 变更内容 |
+| `records.forEach` + `existingCard` 局部更新 | 删除第 N 条后，index N+1 的卡 id 仍为 N+1，但 DOM 中仍是旧内容 |
+| `container.appendChild(card)` | 0→1 条记录时"暂无"占位未被 innerHTML 覆盖，可能残留 |
+| 局部更新不完整 | voice_id / voiceName / textPreview 在已有卡片上不会更新 |
+
+## 36. P8-2C1 方案判断
+
+**采用 `renderAuditionRecords` 全量重绘方案**：
+
+- 每次读取 `window._auditionRecords`
+- `records.length === 0` → `container.innerHTML = 空状态占位`，return
+- `records.length > 0` → `records.map` 生成所有 card HTML，`container.innerHTML = cardsHtml.join('')`
+- 不再使用 `getElementById(cardId)`、`existingCard` 局部更新、`appendChild`、`querySelectorAll('[id^="audition-card-"]')` 删除逻辑
+
+**为什么**：
+- 试听记录数量通常很小（个位数），全量重绘无性能问题
+- 全量重绘更简单、稳定、可验证
+- 避免占位残留
+- 避免删除中间记录后 index 错位
+- 保证 UI 永远完全反映 `window._auditionRecords` 当前状态
+
+## 37. P8-2C1 修改范围
+
+实际修改：
+- `app/static/index.html` — `renderAuditionRecords` 改为全量重绘
+- `docs/P8_2_VOICE_SELECTION_WORKSTATION.md` — 补齐 P8-2C 文档 + P8-2C1 文档
+- `docs/PROJECT_HEALTH_CHECK.md` — 补充 P8-2C / P8-2C1 状态
+
+## 38. P8-2C1 renderAuditionRecords 修复说明
+
+修复前（P8-2C 初始版本）：
+
+```javascript
+records.forEach((r, i) => {
+  const existingCard = document.getElementById(`audition-card-${i}`);
+  if (existingCard) {
+    // 局部更新 — 不完整，voice_id/voiceName/textPreview 不更新
+    existingCard.querySelector('.arc-audio').innerHTML = audioHtml;
+    ...
+  } else {
+    container.appendChild(card); // 可能残留"暂无"占位
+  }
+});
+container.querySelectorAll('[id^="audition-card-"]').forEach(...) // 额外清理逻辑
+```
+
+修复后（P8-2C1）：
+
+```javascript
+if (records.length === 0) {
+  container.innerHTML = '暂无试听记录占位';
+  return;
+}
+const cardsHtml = records.map((r, i) => { ... }).join('');
+container.innerHTML = cardsHtml; // 全量重绘，无残留，无错位
+```
+
+## 39. P8-2C1 DOM id 保留说明
+
+静态检查确认以下 DOM id 在 P8-2C1 修复后仍然存在：
+
+- `voiceAuditionPanel`
+- `auditionSelectedBanner`
+- `auditionSelected`
+- `auditionSelectedHint`
+- `auditionCostHint`
+- `auditionText`
+- `auditionModel`
+- `auditionProfileSelectWrap`
+- `auditionProfileSelect`
+- `auditionGenBtn`
+- `auditionResult`
+- `auditionRecordsPanel`
+- `auditionCount`
+- `auditionClearBtn`
+- `auditionRecordsTable`
+- `voiceListResults`
+
+## 40. P8-2C1 JS function 行为保留说明
+
+静态检查确认以下函数在 P8-2C1 修复后仍然存在：
+
+- `renderAuditionWorkstation` — 未变更
+- `updateAuditionSelected` — 未变更
+- `setupAuditionWorkstation` — 未变更
+- `renderAuditionRecords` — **已改为全量重绘**，但保留了所有 data 属性（`data-index`、`data-star`、`data-delete`、`data-field="note"`），事件委托语义不变
+- `handleGenerateAudition` — **未变更**，仅 UI 展示调整
+- `renderVoiceTable` — 未变更
+- `handleListVoices` — 未变更
+- `filterVoiceList` — 未变更
+- `quickBindVoice` — 未变更
+- `bindVoiceToProfile` — 未变更
+
+**本阶段仅修复试听记录渲染稳定性，未改变音色试听 API 调用语义。**
+
+## 41. P8-2C1 API endpoint 不变说明
+
+静态检查确认以下 API marker 在 P8-2C1 修复后仍然存在：
+
+- `/api/voice/provider-voices/preview` — 未变更
+- `guardedJsonFetch` — 未变更
+- `highRisk: true` — 未变更
+- `confirm_cost: false` — 未变更
+
+## 42. P8-2C1 执行命令记录
+
+```bash
+# 基线检查
+git fetch origin
+git checkout dev
+git pull --ff-only origin dev
+git status -sb
+git log --oneline -10
+
+# 静态审查
+grep -n "function renderAuditionRecords" -A90 app/static/index.html
+grep -n "auditionRecords\|data-delete\|data-field=\"note\"\|data-star\|mouseleave\|mouseover" app/static/index.html
+grep -n "function handleGenerateAudition" -A120 app/static/index.html
+grep -n "P8-2C\|试听工作台产品化" docs/P8_2_VOICE_SELECTION_WORKSTATION.md
+grep -n "P8-2C\|试听工作台产品化" docs/PROJECT_HEALTH_CHECK.md
+
+# 代码修复
+# 修改 app/static/index.html 中的 renderAuditionRecords 为全量重绘
+
+# 验证命令
+python -m pytest tests/ -x -q
+python - <<'PY' ... (DOM marker check)
+python - <<'PY' ... (JS function check)
+python - <<'PY' ... (renderAuditionRecords stability check)
+python - <<'PY' ... (API marker check)
+python - <<'PY' ... (doc marker check)
+```
+
+## 43. P8-2C1 验证命令记录
+
+所有静态检查均已通过：
+
+```
+P8-2C1 DOM marker check passed
+P8-2C1 JS function check passed
+P8-2C1 renderAuditionRecords stability check passed
+P8-2C1 API marker check passed
+P8-2C1 documentation marker check passed
+```
+
+pytest: 375 passed, 6 skipped
+
+## 44. P8-2C1 验证结果
+
+所有测试通过。renderAuditionRecords 已改为全量重绘，无残留占位，无 index 错位风险。
+
+## 45. P8-2C1 未做事项
+
+- ❌ 未改后端 API
+- ❌ 未改 Provider
+- ❌ 未改 Resource Guard
+- ❌ 未改 Cost Guard
+- ❌ 未改数据库
+- ❌ 未改音色列表查询逻辑
+- ❌ 未改音色试听 API 调用语义
+- ❌ 未改绑定逻辑
+- ❌ 未改删除音色逻辑
+- ❌ 未改声音克隆 / 声音设计
+- ❌ 未执行真实 MiniMax smoke test
+- ❌ 未进入 P8-2D
+
+## 46. P8-2C1 阶段结论
+
+P8-2C1 已完成试听工作台收口修复。P8-2C 可视为已完成并收口。
+
+## 47. P8-2C1 风险清零说明
+
+| 风险 | 状态 |
+|------|------|
+| P8-2C 文档缺失 | ✅ 已补齐 P8-2C 文档（P8_2_VOICE_SELECTION_WORKSTATION.md sections 27-33） |
+| renderAuditionRecords 局部更新错位风险 | ✅ 已改为全量重绘 |
+| "暂无试听记录"占位残留 | ✅ records.length === 0 时立即 innerHTML 设置空状态，无残留 |
+| 卡片内容与 record 状态不一致 | ✅ 每次全量重绘，UI 完全反映 window._auditionRecords |
+| pytest 不捕获前端 DOM 状态问题 | ⚠️ 静态检查已覆盖，pytest 无法验证前端动态 DOM，但人工 review 通过 |
+
+## 48. P8-2C1 下一阶段建议
+
+建议 P8-2D 聚焦：
+- 快速绑定入口体验优化
+- 当前音色与人设关系展示
+- 绑定成功 / 失败反馈优化
+- 与高级绑定管理的边界说明
+- 不改后端 API
