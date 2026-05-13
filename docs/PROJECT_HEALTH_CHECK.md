@@ -673,5 +673,44 @@ python -m pytest tests/ -x -q
 
 - `request.provider=None` 时，外层 guard 按 "mock" 处理，但内部 `render_voice` 收到 `None` 后会解析为真实 provider，导致外层/内层 provider 不一致
 - 修复：`VoiceRenderRequest(provider=provider)` 使用已解析 provider，而非 `request.provider`
-- `resource_guard_already_acquired=(provider == "mock")`：仅当 provider 为 "mock" 时跳过 t2a_sync guard（mock 无真实 t2a_sync 限流），真实 provider 仍需 t2a_sync guard
-- 新增测试：`test_variants_provider_none_passes_mock_to_render_voice`、`test_variants_real_provider_skips_resource_guard_flag`
+- `resource_guard_already_acquired=(provider == "mock")`：此设计仍有误，真实 provider 下仍然双重限流，需要进一步修复（见 P7-C1-fix）
+- 新增测试：`test_variants_provider_none_passes_mock_to_render_voice`
+
+---
+
+## P7-C1-fix VoiceVariantService 真实 Provider 双重限流修复
+
+### 背景
+
+- P7-C1 初步修复后，VoiceVariantGroup 已移入 voice_variants guard 内部，provider 也已改为透传解析后的 provider
+- 但 cae269f 中 `resource_guard_already_acquired=(provider == "mock")` 导致真实 provider 下仍然会进入内部 t2a_sync guard
+- 这会让 voice_variants 和 t2a_sync 双重限流问题在 minimax 等真实 provider 下继续存在
+
+### 修复内容
+
+- `resource_guard_already_acquired=True` 始终传给 render_voice，不再区分 mock/real
+- 修正错误注释：voice_variants guard 保护整个多版本请求，mock 和真实 provider 都适用
+- 保留 `VoiceRenderRequest(provider=provider)` 正确透传
+- 保留 VoiceVariantGroup 在 voice_variants guard 通过后创建
+- 新增测试：`test_variants_real_provider_skips_t2a_sync_guard`（provider=minimax 时也传 True）
+- 新增测试：`test_variants_not_affected_by_t2a_sync_limit`（t2a_sync 满载不影响 variants）
+
+### 修改文件
+
+- app/services/voice_variant_service.py
+- tests/test_voice_variant_service.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 验证命令
+
+```bash
+python -m pytest tests/test_resource_guard.py -q
+python -m pytest tests/test_voice_variant_service.py -q
+python -m pytest tests/ -x -q
+```
+
+### 验证结果
+
+- Resource Guard 单元测试：15 passed
+- VoiceVariantService 测试：9 passed
+- 全量测试：347 passed, 6 skipped

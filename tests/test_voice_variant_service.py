@@ -313,8 +313,12 @@ class TestVoiceVariantResourceGuard:
             assert call["resource_guard_already_acquired"] is True, "resource_guard_already_acquired must be True when provider=mock"
 
     @pytest.mark.asyncio
-    async def test_variants_real_provider_skips_resource_guard_flag(self, session, seed_profile, seed_mock_binding):
-        """When provider='minimax', resource_guard_already_acquired must be False so render_voice acquires t2a_sync."""
+    async def test_variants_real_provider_skips_t2a_sync_guard(self, session, seed_profile, seed_mock_binding):
+        """When provider='minimax', resource_guard_already_acquired must be True so render_voice skips t2a_sync guard.
+
+        This proves that voice_variants guard already protects the whole multi-version request,
+        and child render_voice calls do not need to re-acquire t2a_sync guard.
+        """
         from unittest.mock import patch
         from app.services.voice_variant_service import VoiceVariantService
         from app.services.voice_render_service import VoiceRenderService
@@ -350,4 +354,64 @@ class TestVoiceVariantResourceGuard:
         assert len(captured_calls) == 2
         for call in captured_calls:
             assert call["request_provider"] == "minimax"
-            assert call["resource_guard_already_acquired"] is False, "resource_guard_already_acquired must be False for real provider"
+            assert call["resource_guard_already_acquired"] is True, "resource_guard_already_acquired must be True for real provider too"
+
+    @pytest.mark.asyncio
+    async def test_variants_not_affected_by_t2a_sync_limit(self, session, seed_profile, seed_mock_binding):
+        """When t2a_sync is full, voice_variants should still succeed because voice_variants guard already admitted.
+
+        voice_variants outer guard protects the whole multi-version request; child render_voice calls
+        skip t2a_sync guard via resource_guard_already_acquired=True.
+        """
+        from unittest.mock import patch
+        from app.services.voice_variant_service import VoiceVariantService
+        from app.services.voice_render_service import VoiceRenderService
+        from app.services.resource_guard_service import get_resource_guard
+        from app.domain.schemas import VoiceVariantRenderRequest, VoiceRenderResponse, AudioAssetResponse
+
+        render_voice_calls = []
+
+        async def tracked_render_voice(sess, req, voice_overrides=None, resource_guard_already_acquired=False):
+            render_voice_calls.append({
+                "resource_guard_already_acquired": resource_guard_already_acquired,
+                "voice_overrides": voice_overrides,
+            })
+            return VoiceRenderResponse(
+                job_id="mock_job",
+                status="success",
+                audio_asset=AudioAssetResponse(id="mock_audio", url="/mock.wav", duration_ms=1000, format="wav"),
+                provider="minimax",
+                model="speech-2.8-hd",
+            )
+
+        svc = VoiceVariantService()
+
+        # Hold all t2a_sync slots (limit=2) to simulate saturation
+        guard = get_resource_guard()
+        lease1 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
+        lease2 = await guard._acquire(provider="minimax", operation="t2a_sync", job_id=None)
+
+        # t2a_sync is now full, but voice_variants should not be affected
+        with patch.object(VoiceRenderService, "render_voice", side_effect=tracked_render_voice):
+            req = VoiceVariantRenderRequest(
+                text="测试文本",
+                profile_id="deep_night_programmer",
+                provider="minimax",
+                variant_count=2,
+                confirm_cost=True,
+            )
+            # Should NOT raise ResourceLimitExceeded because voice_variants guard is independent of t2a_sync
+            result = await svc.render_variants(session, req)
+
+        # Verify render_voice was called with resource_guard_already_acquired=True
+        assert len(render_voice_calls) == 2, f"Expected 2 render_voice calls, got {len(render_voice_calls)}"
+        for call in render_voice_calls:
+            assert call["resource_guard_already_acquired"] is True, "render_voice should be called with resource_guard_already_acquired=True"
+
+        # Verify result
+        assert result.group_id is not None
+        assert len(result.variants) == 2
+
+        # Cleanup
+        await guard._release(lease1)
+        await guard._release(lease2)
