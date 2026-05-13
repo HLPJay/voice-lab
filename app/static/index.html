@@ -2219,18 +2219,23 @@ function handleStopAsyncPolling() {
     const sub = data.subtitle_asset;
     let html = `
       <div class="card">
-        <div class="result-label">异步生成结果</div>
-        <span class="${statusClass(data.status)}">${statusLabel(data.status)}</span>
-        <p style="font-size:0.82rem;color:#718096;margin-top:6px">
+        <div class="result-label">任务结果</div>
+        <p style="font-size:0.82rem;color:#718096;margin-top:4px">
           任务ID：<code>${esc(data.job_id)}</code>
           ${data.provider ? ` · Provider: ${esc(data.provider)}` : ''}
           ${data.model ? ` · Model: ${esc(data.model)}` : ''}
         </p>
-        ${audio ? audioPlayerHtml(audio.id) : ''}
-        <div class="action-row">${audio ? downloadBtnHtml(audio.id) : ''}</div>
-        ${sub && sub.timeline && sub.timeline.length > 0
-          ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(sub.timeline)}`
+        <div style="margin-top:8px">
+          <span class="${statusClass(data.status)}">${statusLabel(data.status)}</span>
+        </div>
+        ${audio
+          ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
           : ''}
+        ${audio
+          ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
+          : ''}
+        ${resultSectionLabel('字幕时间轴')}
+        ${sub ? timelineTable(sub.timeline) : timelineTable(null)}
       </div>`;
     resultsArea.innerHTML = html;
     resultsArea.classList.add('visible');
@@ -2238,8 +2243,13 @@ function handleStopAsyncPolling() {
 
   function renderResults(data, isVariant) {
     if (isVariant) {
-      let html = '<div class="result-section"><div class="result-label">版本列表</div>';
-      html += `<div class="variants-grid">`;
+      let html = `
+      <div class="card">
+        <div class="result-label">任务结果</div>
+        <p style="font-size:0.82rem;color:#718096;margin-top:4px">
+          多版本试音结果 · 共 ${data.variants ? data.variants.length : 0} 个版本
+        </p>
+        <div class="variants-grid" style="margin-top:16px">`;
       data.variants.forEach((v, i) => {
         html += `
           <div class="variant-card">
@@ -2248,8 +2258,12 @@ function handleStopAsyncPolling() {
               ${v.speed != null ? `<span>语速 ${v.speed}</span>` : ''}
               ${v.emotion ? `<span>情绪 ${v.emotion}</span>` : ''}
             </div>
-            ${v.audio_asset_id ? audioPlayerHtml(v.audio_asset_id) : '<p style="font-size:0.82rem;color:#a0aec0">无音频</p>'}
-            <div class="action-row">${v.audio_asset_id ? downloadBtnHtml(v.audio_asset_id) : ''}</div>
+            ${v.audio_asset_id
+              ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(v.audio_asset_id)}`
+              : '<p style="font-size:0.82rem;color:#a0aec0">无音频</p>'}
+            ${v.audio_asset_id
+              ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(v.audio_asset_id)}</div>`
+              : ''}
           </div>`;
       });
       html += '</div></div>';
@@ -2259,15 +2273,26 @@ function handleStopAsyncPolling() {
       const audio = job.audio_asset;
       const subtitle = job.subtitle_asset;
       let html = `
-        <div class="result-section">
-          <div class="result-label">生成结果</div>
+      <div class="card">
+        <div class="result-label">任务结果</div>
+        <p style="font-size:0.82rem;color:#718096;margin-top:4px">
+          同步生成结果
+          ${job.job_id ? ` · 任务ID: <code>${esc(job.job_id)}</code>` : ''}
+          ${job.provider ? ` · Provider: ${esc(job.provider)}` : ''}
+          ${job.model ? ` · Model: ${esc(job.model)}` : ''}
+        </p>
+        <div style="margin-top:8px">
           <span class="${statusClass(job.status)}">${statusLabel(job.status)}</span>
-          ${audio ? audioPlayerHtml(audio.id) : ''}
-          <div class="action-row">${audio ? downloadBtnHtml(audio.id) : ''}</div>
-          ${subtitle && subtitle.timeline && subtitle.timeline.length > 0
-            ? `<div class="result-label" style="margin-top:16px">字幕时间轴</div>${timelineTable(subtitle.timeline)}`
-            : ''}
-        </div>`;
+        </div>
+        ${audio
+          ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
+          : ''}
+        ${audio
+          ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
+          : ''}
+        ${resultSectionLabel('字幕时间轴')}
+        ${subtitle ? timelineTable(subtitle.timeline) : timelineTable(null)}
+      </div>`;
       resultsArea.innerHTML = html;
     }
   }
@@ -2283,7 +2308,9 @@ function handleStopAsyncPolling() {
   }
 
   function timelineTable(timeline) {
-    if (!timeline || timeline.length === 0) return '';
+    if (!timeline || timeline.length === 0) {
+      return `<p style="font-size:0.82rem;color:#a0aec0;margin-top:6px">暂无字幕时间轴。</p>`;
+    }
     let html = `<table class="timeline-table"><thead><tr><th>时间</th><th>文本</th></tr></thead><tbody>`;
     timeline.forEach(item => {
       const start = formatTime(item.start);
@@ -2301,6 +2328,11 @@ function handleStopAsyncPolling() {
     const sec = s % 60;
     const ms = Math.round((seconds - s) * 1000);
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+  }
+
+  // P8-3B: small display helpers — only return HTML strings, no API calls, no state mutation
+  function resultSectionLabel(text) {
+    return `<div class="result-label" style="margin-top:16px">${text}</div>`;
   }
 
   // ============================================================
