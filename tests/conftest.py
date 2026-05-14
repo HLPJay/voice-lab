@@ -60,7 +60,9 @@ def pytest_collection_modifyitems(config, items):
         return
     skip_e2e = pytest.mark.skip(reason="run with -m e2e to execute E2E tests")
     for item in items:
-        if "e2e" in item.keywords:
+        # Only skip tests with the explicit @pytest.mark.e2e marker,
+        # not all tests in a directory containing "e2e" in the path.
+        if any(m.name == "e2e" for m in item.iter_markers()):
             item.add_marker(skip_e2e)
 
 
