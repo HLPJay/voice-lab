@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-CHECK1：
+截至 P9-FE1-C：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3654,3 +3654,52 @@ grep -n "batchScriptProfile" app/static/index.html       # 无输出
 - 保留 window 全局入口，兼容现有 inline script 调用和 E2E。
 - 本阶段只做检查和文档收口，未改功能代码。
 - 未改后端 API、Capability Registry、CapabilityValidator、Provider Adapter、生成链路、数据库、资产清理链路。
+
+### P9-FE1-C：前端 History JS 模块化
+
+**阶段目标：** 把 `app/static/index.html` 中历史记录相关 JS 逻辑抽离到独立文件，降低 index.html 体积和维护风险。
+
+**新增文件：**
+
+- `app/static/js/history.js` — History 前端模块
+
+**修改文件：**
+
+- `app/static/index.html` — 新增 `<script src="/static/js/history.js">` 引入模块（位于 runtime_status.js 之后）；移除已迁移的历史记录函数定义和状态变量（约 870 行）；保留 `downloadBtnHtml`（非 history 专用）、`audioPlayerHtml`、`statusLabel`、`statusClass` 等通用 helper。
+
+**实现：**
+
+1. **history.js**：
+   - IIFE 包装，不使用 ES module
+   - window 状态变量：`_historyJobs`、`_historyOffset`、`_historyTotal`、`_historyLoading`、`_historySearch`、`_historyStatusFilter`、`_activeHistoryAudioRow`（E2E 测试依赖）
+   - 本地 helper 避免 index.html 加载顺序依赖：`hEsc`、`hCopyJobId`、`hFormatLocalDateTime`、`hUtcTitle`、`hStatusClass`、`hStatusLabel`、`hAudioPlayerHtml`、`hDownloadBtnHtml`、`hIsSuccessStatus`、`hIsFailedStatus`、`hIsProcessingStatus`
+   - 函数列表：`loadHistory`、`loadMoreHistory`、`refreshHistory`、`renderHistoryList`、`filterHistoryJobs`、`handleHistorySearchInput`、`handleHistoryStatusFilterChange`、`clearHistoryFilters`、`updateHistoryFilterHint`、`toggleHistoryAudio`、`deleteHistoryJob`、`copyJobId`、`historyJobCardHtml`、`historyEmptyStateHtml`、`historyLoadErrorHtml`、`historyEndStateHtml`、`historyFilteredEmptyStateHtml`、`historyAudioPlayerHtml`、`attachHistoryAudioEvents`、`getHistoryAudioAssetId`、`historyDownloadEntryHtml`
+   - 所有函数通过 `window.*` 暴露到全局
+   - `window.loadHistory(0)` 在 IIFE 执行时自动调用，完成页初始化加载
+   - `showToast` 调用通过 `typeof window.showToast === 'function'` 存在性判断
+
+2. **index.html 修改**：
+   - 添加 `<script src="/static/js/history.js">` 在 provider_capabilities.js 和 runtime_status.js 之后
+   - 移除 `_historyOffset` 等 7 个状态变量
+   - 移除 `loadHistory`、`loadMoreHistory`、`refreshHistory`、`renderHistoryList`、`filterHistoryJobs` 等函数定义
+   - 移除 `toggleHistoryAudio`、`deleteHistoryJob` 函数定义
+   - 移除 `historyJobCardHtml`、`historyEmptyStateHtml`、`historyLoadErrorHtml` 等 HTML 生成函数
+   - 保留 `downloadBtnHtml`（供 renderResults/renderAsyncResult 使用）
+   - 保留 `statusLabel`、`statusClass`、`formatLocalDateTime`、`utcTitle`、`esc` 等通用 helper
+   - 事件委托中对 `toggleHistoryAudio`/`deleteHistoryJob` 的引用通过 window 全局函数生效
+
+3. **E2E 兼容**：
+   - `window._historyJobs` 等状态变量在 history.js 中设置，E2E 可访问
+   - `window.loadHistory`、`window.refreshHistory` 等函数 E2E 可调用
+
+**验收检查：**
+
+```bash
+grep -n "function loadHistory" app/static/index.html   # 无输出
+grep -n "function loadHistory" app/static/js/history.js  # 1 处
+grep -n "_historyOffset" app/static/index.html           # 无输出（已移除）
+```
+
+**测试结果：** 580 passed, 6 skipped（本阶段未新增 E2E 测试）。
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、Provider Adapter、生成链路、数据库、资产清理链路。
