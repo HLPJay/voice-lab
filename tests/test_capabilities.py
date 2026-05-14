@@ -2,7 +2,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.errors import UnsupportedProvider
-from app.domain.capabilities import ProviderCapability
+from app.domain.capabilities import (
+    BatchCapability,
+    NumericRange,
+    ProviderCapability,
+    TTSCapability,
+    VoiceIdConstraint,
+)
 from app.providers.capability_registry import (
     get_capability,
     list_capabilities,
@@ -127,3 +133,150 @@ class TestCapabilitiesAPI:
         text = resp.text
         assert "sk-" not in text
         assert "minimax_api_key" not in text
+
+
+class TestCapabilityModelValidation:
+    def test_numeric_range_valid(self):
+        nr = NumericRange(min=0.5, max=2.0)
+        assert nr.min == 0.5
+        assert nr.max == 2.0
+
+    def test_numeric_range_invalid_min_gt_max(self):
+        with pytest.raises(ValueError) as exc_info:
+            NumericRange(min=3.0, max=1.0)
+        assert "min must be <= max" in str(exc_info.value)
+
+    def test_numeric_range_equal_min_max_is_valid(self):
+        nr = NumericRange(min=1.0, max=1.0)
+        assert nr.min == nr.max
+
+    def test_voice_id_constraint_valid(self):
+        vic = VoiceIdConstraint(min_length=8, max_length=256, pattern=r"^[a-z]+$")
+        assert vic.min_length == 8
+        assert vic.max_length == 256
+
+    def test_voice_id_constraint_invalid_min_length_zero(self):
+        with pytest.raises(ValueError) as exc_info:
+            VoiceIdConstraint(min_length=0, max_length=256, pattern=r"^[a-z]+$")
+        assert "min_length must be > 0" in str(exc_info.value)
+
+    def test_voice_id_constraint_invalid_min_length_negative(self):
+        with pytest.raises(ValueError) as exc_info:
+            VoiceIdConstraint(min_length=-1, max_length=256, pattern=r"^[a-z]+$")
+        assert "min_length must be > 0" in str(exc_info.value)
+
+    def test_voice_id_constraint_invalid_max_length_less_than_min(self):
+        with pytest.raises(ValueError) as exc_info:
+            VoiceIdConstraint(min_length=10, max_length=5, pattern=r"^[a-z]+$")
+        assert "max_length must be >= min_length" in str(exc_info.value)
+
+    def test_voice_id_constraint_invalid_pattern_not_regex(self):
+        with pytest.raises(ValueError) as exc_info:
+            VoiceIdConstraint(min_length=8, max_length=256, pattern=r"**[invalid")
+        assert "pattern is invalid regex" in str(exc_info.value)
+
+    def test_tts_capability_valid(self):
+        tts = TTSCapability(
+            supported=True,
+            models=["mock-tts"],
+            default_model="mock-tts",
+            max_text_chars=10000,
+            audio_formats=["mp3"],
+        )
+        assert tts.supported is True
+
+    def test_tts_capability_invalid_empty_models_when_supported(self):
+        with pytest.raises(ValueError) as exc_info:
+            TTSCapability(supported=True, models=[], audio_formats=["mp3"])
+        assert "models must not be empty" in str(exc_info.value)
+
+    def test_tts_capability_invalid_empty_audio_formats_when_supported(self):
+        with pytest.raises(ValueError) as exc_info:
+            TTSCapability(supported=True, models=["mock-tts"], audio_formats=[])
+        assert "audio_formats must not be empty" in str(exc_info.value)
+
+    def test_tts_capability_invalid_max_text_chars_zero(self):
+        with pytest.raises(ValueError) as exc_info:
+            TTSCapability(supported=True, models=["mock-tts"], audio_formats=["mp3"], max_text_chars=0)
+        assert "max_text_chars must be > 0" in str(exc_info.value)
+
+    def test_tts_capability_invalid_default_model_not_in_models(self):
+        with pytest.raises(ValueError) as exc_info:
+            TTSCapability(supported=True, models=["model-a"], default_model="model-b", audio_formats=["mp3"])
+        assert "default_model must be included in models" in str(exc_info.value)
+
+    def test_tts_capability_supported_false_allows_empty_models(self):
+        tts = TTSCapability(supported=False, models=[], audio_formats=[])
+        assert tts.supported is False
+
+    def test_batch_capability_valid(self):
+        batch = BatchCapability(
+            supported=True,
+            max_text_chars=50000,
+            max_segments=200,
+            segment_strategies=["auto", "line"],
+        )
+        assert batch.supported is True
+
+    def test_batch_capability_invalid_max_text_chars_zero(self):
+        with pytest.raises(ValueError) as exc_info:
+            BatchCapability(supported=True, max_text_chars=0, segment_strategies=["auto"])
+        assert "max_text_chars must be > 0" in str(exc_info.value)
+
+    def test_batch_capability_invalid_max_segments_zero(self):
+        with pytest.raises(ValueError) as exc_info:
+            BatchCapability(supported=True, max_text_chars=50000, max_segments=0, segment_strategies=["auto"])
+        assert "max_segments must be > 0" in str(exc_info.value)
+
+    def test_batch_capability_invalid_empty_segment_strategies(self):
+        with pytest.raises(ValueError) as exc_info:
+            BatchCapability(supported=True, max_text_chars=50000, segment_strategies=[])
+        assert "segment_strategies must not be empty" in str(exc_info.value)
+
+    def test_batch_capability_supported_false_allows_empty_strategies(self):
+        batch = BatchCapability(supported=False, max_text_chars=0, segment_strategies=[])
+        assert batch.supported is False
+
+    def test_provider_capability_valid(self):
+        cap = ProviderCapability(
+            provider="test",
+            display_name="Test",
+            tts=TTSCapability(supported=True, models=["t1"], audio_formats=["mp3"]),
+            metadata={"api_key_configured": False},
+        )
+        assert cap.provider == "test"
+
+    def test_provider_capability_invalid_empty_provider(self):
+        with pytest.raises(ValueError) as exc_info:
+            ProviderCapability(provider="", display_name="Test")
+        assert "provider must not be empty" in str(exc_info.value)
+
+    def test_provider_capability_invalid_empty_display_name(self):
+        with pytest.raises(ValueError) as exc_info:
+            ProviderCapability(provider="test", display_name="")
+        assert "display_name must not be empty" in str(exc_info.value)
+
+    def test_provider_capability_invalid_default_model_not_in_tts_models(self):
+        with pytest.raises(ValueError) as exc_info:
+            ProviderCapability(
+                provider="test",
+                display_name="Test",
+                default_model="model-x",
+                tts=TTSCapability(supported=True, models=["model-a"], audio_formats=["mp3"]),
+            )
+        assert "default_model must be included in tts.models" in str(exc_info.value)
+
+    def test_provider_capability_metadata_blocks_exact_sensitive_key(self):
+        with pytest.raises(ValueError) as exc_info:
+            ProviderCapability(provider="test", display_name="Test", metadata={"minimax_api_key": "sk-xxx"})
+        assert "must not contain sensitive key" in str(exc_info.value)
+        assert "minimax_api_key" in str(exc_info.value)
+
+    def test_provider_capability_metadata_allows_api_key_configured(self):
+        cap = ProviderCapability(provider="test", display_name="Test", metadata={"api_key_configured": True})
+        assert cap.metadata["api_key_configured"] is True
+
+    def test_provider_capability_metadata_blocks_sk_value(self):
+        with pytest.raises(ValueError) as exc_info:
+            ProviderCapability(provider="test", display_name="Test", metadata={"custom_key": "sk-xxxxx"})
+        assert "must not contain secret patterns" in str(exc_info.value)
