@@ -1602,7 +1602,7 @@
         if (ps.state === 'error') {
           chipStatus.classList.add('error', 'clickable');
           const parts = [ps.label || '', ps.detail || '', ps.action_hint || ''].filter(Boolean);
-          if (parts.length) chipStatus.title = parts.join('。');
+          if (parts.length) chipStatus.title = '最近一次 Provider 调用记录：' + parts.join('。');
           chipStatus.style.cursor = 'pointer';
           chipStatus.onclick = () => {
             const provider = (typeof providerSelect !== 'undefined' && providerSelect.value) ? providerSelect.value : '';
@@ -1613,7 +1613,7 @@
         } else if (ps.state === 'warning') {
           chipStatus.classList.add('warning', 'clickable');
           const parts = [ps.label || '', ps.detail || '', ps.action_hint || ''].filter(Boolean);
-          if (parts.length) chipStatus.title = parts.join('。');
+          if (parts.length) chipStatus.title = '最近一次 Provider 调用记录：' + parts.join('。');
           chipStatus.style.cursor = 'pointer';
           chipStatus.onclick = () => {
             const provider = (typeof providerSelect !== 'undefined' && providerSelect.value) ? providerSelect.value : '';
@@ -1623,11 +1623,14 @@
           };
         } else if (ps.state === 'available') {
           chipStatus.classList.add('available');
-          if (ps.detail) chipStatus.title = ps.detail;
+          const parts = [ps.detail || ''].filter(Boolean);
+          if (parts.length) chipStatus.title = '最近一次 Provider 调用记录：正常。' + parts.join('。');
+          else chipStatus.title = '最近一次 Provider 调用记录：正常。';
           chipStatus.onclick = null;
           chipStatus.style.cursor = '';
         } else {
           chipStatus.classList.add('muted');
+          chipStatus.title = '最近一次 Provider 调用记录：无调用记录。';
           chipStatus.onclick = null;
           chipStatus.style.cursor = '';
         }
@@ -3907,6 +3910,7 @@ function handleStopAsyncPolling() {
           timestamp: Date.now(),
         });
         renderAuditionRecords();
+        loadRuntimeStatus();
       } else {
         resultDiv.innerHTML = `<div style="background:#fffff0;border:1px solid #faf089;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
           <span style="background:#d69e2e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">!</span>
@@ -5187,6 +5191,7 @@ function handleStopAsyncPolling() {
       _currentBatchId = data.batch_id;
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
+      loadRuntimeStatus();
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
         if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
@@ -5550,6 +5555,7 @@ function handleStopAsyncPolling() {
     if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
       stopBatchPoll();
       if (data.status !== 'failed') renderBatchResultPlayer(data);
+      loadRuntimeStatus();
     }
   }
 
