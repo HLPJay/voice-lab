@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-3F：
+截至 P8-FIX3C：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -26,6 +26,10 @@
 * P8-3E：错误 / Resource Guard / 下载入口产品化已完成（renderApiError 升级为 card 结构、Resource Guard 明确标注、downloadBtnHtml 改为"下载音频"、流式下载标签描述优化）
 * P8-3F：P8-3 验收与健康检查收口已完成
 * P8-3：任务卡片和结果展示已完成并收口
+* P8-FIX1：前端回归缺陷排查与修复已完成（historyRefreshBtn + refreshHistory()、tab-nav 滚动条隐藏）
+* P8-FIX2：创作工作台首页轻量 UX 修复已完成（移除主流程大卡片，欢迎提示轻量化）
+* P8-FIX3：长文本 / 剧本 tab 内容区审查已完成（内容本来完整存在，无需修复）
+* P8-FIX3C：Tab DOM 结构修复已完成（tab-script 嵌套修复、subtab-danger 位置修复、Tab 顺序重排、tab 切换逻辑优化）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台

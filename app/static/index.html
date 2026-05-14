@@ -582,7 +582,7 @@
     <button class="tab-btn" data-tab="advanced">高级</button>
   </nav>
 
-  <!-- ======================== TAB: WORKSPACE ======================== -->
+
   <div class="tab-content active" id="tab-workspace">
     <!-- Lightweight workspace hint -->
     <div class="card" style="padding:16px 20px">
@@ -689,32 +689,155 @@
     <div class="results-area" id="resultsArea"></div>
   </div>
 
-  <!-- ======================== TAB: HISTORY ======================== -->
-  <div class="tab-content" id="tab-history">
-    <div class="card" style="margin-top:0" id="historyCard">
-      <div class="card-title" style="cursor:pointer" onclick="toggleHistory()" id="historyToggle">
-        历史记录 ▾
+  <div class="tab-content" id="tab-longtext">
+    <div class="card">
+      <div class="card-title">长文本配置</div>
+      <div class="form-group full-width">
+        <label for="batchText">待分段文本</label>
+        <textarea id="batchText" placeholder="输入长篇文章或段落文本，系统将自动分段后逐段生成音频并合并" style="min-height:120px" maxlength="50000"></textarea>
       </div>
-      <div id="historyArea" style="display:none">
-        <div id="historyToolbar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;margin-bottom:8px">
-          <input id="historySearch" type="text" placeholder="搜索历史文本 / provider / job_id" style="flex:1;min-width:160px;padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" oninput="handleHistorySearchInput()">
-          <select id="historyStatusFilter" style="padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" onchange="handleHistoryStatusFilterChange()">
-            <option value="all">全部状态</option>
-            <option value="success">已完成</option>
-            <option value="processing">处理中</option>
-            <option value="failed">失败</option>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="batchProfile">声音人设</label>
+          <select id="batchProfile">
+            <option value="">加载中…</option>
           </select>
-          <button id="historyClearFilters" class="btn-sm" onclick="clearHistoryFilters()" style="display:none">清空筛选</button>
-          <button id="historyRefreshBtn" class="btn-sm" onclick="refreshHistory()">刷新历史</button>
         </div>
-        <div id="historyFilterHint" style="font-size:0.78rem;color:#718096;padding:4px 0"></div>
-        <div id="historyList"></div>
-        <button class="btn-sm" id="loadMoreHistory" onclick="loadMoreHistory()" style="display:none;margin-top:8px">加载更多</button>
+        <div class="form-group">
+          <label for="batchProvider">Provider</label>
+          <select id="batchProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="batchStrategy">分段策略</label>
+          <select id="batchStrategy">
+            <option value="auto">自动（推荐）</option>
+            <option value="paragraph">按段落</option>
+            <option value="sentence">按句子</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="batchMaxChars">每段上限（字）</label>
+          <input type="number" id="batchMaxChars" value="2000" min="100" max="5000" step="100">
+        </div>
+        <div class="form-group">
+          <label for="batchSilence">段间静音（ms）</label>
+          <input type="number" id="batchSilence" value="300" min="0" max="3000" step="100">
+        </div>
+        <div class="form-group">
+          <label for="batchOutputFormat">音频格式</label>
+          <select id="batchOutputFormat">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
+            <option value="flac">FLAC</option>
+          </select>
+        </div>
       </div>
+      <div class="form-group full-width">
+        <label>语音参数（可选）</label>
+        <div class="param-row">
+          <div class="param-item">
+            <label for="batchSpeed">语速</label>
+            <input type="number" id="batchSpeed" step="0.05" min="0.5" max="2.0" placeholder="0.5-2.0">
+          </div>
+          <div class="param-item">
+            <label for="batchVol">音量</label>
+            <input type="number" id="batchVol" step="0.1" min="0.1" max="10.0" placeholder="0.1-10.0">
+          </div>
+          <div class="param-item">
+            <label for="batchPitch">音调</label>
+            <input type="number" id="batchPitch" step="1" min="-12" max="12" placeholder="-12~12">
+          </div>
+          <div class="param-item">
+            <label for="batchEmotion">情绪</label>
+            <select id="batchEmotion">
+              <option value="">默认</option>
+              <option value="happy">happy</option>
+              <option value="sad">sad</option>
+              <option value="angry">angry</option>
+              <option value="fearful">fearful</option>
+              <option value="disgusted">disgusted</option>
+              <option value="surprised">surprised</option>
+              <option value="neutral">neutral</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group full-width">
+        <div class="checkbox-row">
+          <input type="checkbox" id="batchNeedSubtitle" checked>
+          <label for="batchNeedSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
+        </div>
+      </div>
+      <button class="btn-primary" id="batchLongtextSubmit" onclick="handleBatchLongtextSubmit()">提交批量任务</button>
+    </div>
+    <!-- Progress Panel (shared, shown when job is running) -->
+    <div id="batchProgressPanel" style="display:none">
+      <div class="card">
+        <div class="card-title">批量进度 <span id="batchProgressTitle"></span></div>
+        <div id="batchProgressBar" style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:12px">
+          <div id="batchProgressFill" style="height:100%;background:#4c51bf;border-radius:4px;width:0%;transition:width 0.3s"></div>
+        </div>
+        <div id="batchProgressStats" style="font-size:0.85rem;color:#718096;margin-bottom:12px"></div>
+        <div id="batchSegmentTable" style="font-size:0.82rem"></div>
+        <div id="batchResultPlayer" style="display:none;margin-top:16px">
+          <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">批量结果</div>
+          <audio id="batchMergedAudio" controls style="width:100%;margin-bottom:8px"></audio>
+          <div id="batchCurrentSubtitle" style="padding:8px 12px;background:#f7fafc;border-radius:6px;min-height:40px;font-size:0.88rem;color:#2d3748;margin-bottom:8px"></div>
+          <div id="batchSubtitleList" style="max-height:160px;overflow-y:auto;font-size:0.80rem;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a id="batchDownloadAudio" class="btn-sm" href="#" style="display:none">下载合并音频</a>
+            <a id="batchDownloadSubtitle" class="btn-sm" href="#" style="display:none">下载字幕</a>
+            <button class="btn-danger" id="batchRetryBtn" onclick="handleBatchRetry()" style="display:none">重试失败段</button>
+          </div>
+        </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab-content" id="tab-script">
+    <div class="card">
+      <div class="card-title">剧本配置</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="batchScriptProvider">Provider</label>
+          <select id="batchScriptProvider">
+            <option value="mock">mock</option>
+            <option value="minimax">minimax</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="batchScriptSilence">段间静音（ms）</label>
+          <input type="number" id="batchScriptSilence" value="500" min="0" max="3000" step="100">
+        </div>
+        <div class="form-group">
+          <label for="batchScriptOutputFormat">音频格式</label>
+          <select id="batchScriptOutputFormat">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
+            <option value="flac">FLAC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="batchScriptNeedSubtitle">生成字幕</label>
+          <div style="margin-top:4px">
+            <input type="checkbox" id="batchScriptNeedSubtitle" checked>
+          </div>
+        </div>
+      </div>
+      <div class="form-group full-width">
+        <label>台词列表</label>
+        <div id="scriptLines">
+          <!-- Dynamic script lines -->
+        </div>
+        <button class="btn-sm" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
+      </div>
+      <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
   </div>
 
-  <!-- ======================== TAB: VOICES ======================== -->
   <div class="tab-content" id="tab-voices">
     <!-- Description area -->
     <div class="card">
@@ -764,7 +887,30 @@
     </div>
   </div>
 
-  <!-- ======================== TAB: ADVANCED ======================== -->
+  <div class="tab-content" id="tab-history">
+    <div class="card" style="margin-top:0" id="historyCard">
+      <div class="card-title" style="cursor:pointer" onclick="toggleHistory()" id="historyToggle">
+        历史记录 ▾
+      </div>
+      <div id="historyArea" style="display:none">
+        <div id="historyToolbar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;margin-bottom:8px">
+          <input id="historySearch" type="text" placeholder="搜索历史文本 / provider / job_id" style="flex:1;min-width:160px;padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" oninput="handleHistorySearchInput()">
+          <select id="historyStatusFilter" style="padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" onchange="handleHistoryStatusFilterChange()">
+            <option value="all">全部状态</option>
+            <option value="success">已完成</option>
+            <option value="processing">处理中</option>
+            <option value="failed">失败</option>
+          </select>
+          <button id="historyClearFilters" class="btn-sm" onclick="clearHistoryFilters()" style="display:none">清空筛选</button>
+          <button id="historyRefreshBtn" class="btn-sm" onclick="refreshHistory()">刷新历史</button>
+        </div>
+        <div id="historyFilterHint" style="font-size:0.78rem;color:#718096;padding:4px 0"></div>
+        <div id="historyList"></div>
+        <button class="btn-sm" id="loadMoreHistory" onclick="loadMoreHistory()" style="display:none;margin-top:8px">加载更多</button>
+      </div>
+    </div>
+  </div>
+
   <div class="tab-content" id="tab-advanced">
     <!-- High-cost / engineering validation notice -->
     <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
@@ -1069,215 +1215,39 @@
         <div id="createBindingResult"></div>
       </div>
     </div>
-  </div>
-
-  <!-- Danger sub-tab content -->
-  <div id="subtab-danger" style="display:none">
-    <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
-      <div style="padding:12px 16px">
-        <div style="font-size:0.85rem;font-weight:600;color:#c53030;margin-bottom:4px">⚠ 删除音色</div>
-        <div style="font-size:0.78rem;color:#c53030">删除音色属于高风险操作。真实 provider 下可能会影响远端音色资产和本地绑定状态。请确认 voice_id、音色类型和 provider 后再操作。</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">删除音色</div>
-      <div class="delete-form-row">
-        <div class="form-group">
-          <label for="deleteProvider">Provider</label>
-          <select id="deleteProvider">
-            <option value="mock">mock</option>
-            <option value="minimax">minimax</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="deleteVoiceId">voice_id</label>
-          <input type="text" id="deleteVoiceId" placeholder="输入 voice_id">
-        </div>
-        <div class="form-group">
-          <label for="deleteVoiceType">音色类型</label>
-          <select id="deleteVoiceType">
-            <option value="voice_cloning">voice_cloning</option>
-            <option value="voice_generation">voice_generation</option>
-          </select>
-        </div>
-        <button class="btn-primary btn-danger" style="margin-top:0" onclick="handleDeleteVoice()">删除</button>
-      </div>
-      <div id="deleteResults"></div>
-    </div>
-  </div>
-
-  <script>
-    // Switch advanced sub-tab
-    function switchAdvancedSubtab(subtab) {
-      // Update sub-tab button states
-      document.querySelectorAll('[data-subtab]').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.subtab === subtab) btn.classList.add('active');
-      });
-      // Show/hide sub-tab content
-      document.getElementById('subtab-clone').style.display = subtab === 'clone' ? 'block' : 'none';
-      document.getElementById('subtab-design').style.display = subtab === 'design' ? 'block' : 'none';
-      document.getElementById('subtab-bindings').style.display = subtab === 'bindings' ? 'block' : 'none';
-      document.getElementById('subtab-danger').style.display = subtab === 'danger' ? 'block' : 'none';
-      // Load profiles when bindings tab is shown
-      if (subtab === 'bindings') {
-        loadProfiles(true).then(() => {
-          populateProfileSelect(document.getElementById('bindingProfileSelect'));
-          populateProfileSelect(document.getElementById('newBindingProfile'));
-        });
-        const provider = document.getElementById('newBindingProvider').value;
-        if (provider) refreshBindingVoiceSelect(provider);
-      }
-    }
-  </script>
-
-  <!-- ======================== TAB: LONGTEXT ======================== -->
-  <div class="tab-content" id="tab-longtext">
-    <div class="card">
-      <div class="card-title">长文本配置</div>
-      <div class="form-group full-width">
-        <label for="batchText">待分段文本</label>
-        <textarea id="batchText" placeholder="输入长篇文章或段落文本，系统将自动分段后逐段生成音频并合并" style="min-height:120px" maxlength="50000"></textarea>
-      </div>
-      <div class="config-grid">
-        <div class="form-group">
-          <label for="batchProfile">声音人设</label>
-          <select id="batchProfile">
-            <option value="">加载中…</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="batchProvider">Provider</label>
-          <select id="batchProvider">
-            <option value="mock">mock</option>
-            <option value="minimax">minimax</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="batchStrategy">分段策略</label>
-          <select id="batchStrategy">
-            <option value="auto">自动（推荐）</option>
-            <option value="paragraph">按段落</option>
-            <option value="sentence">按句子</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="batchMaxChars">每段上限（字）</label>
-          <input type="number" id="batchMaxChars" value="2000" min="100" max="5000" step="100">
-        </div>
-        <div class="form-group">
-          <label for="batchSilence">段间静音（ms）</label>
-          <input type="number" id="batchSilence" value="300" min="0" max="3000" step="100">
-        </div>
-        <div class="form-group">
-          <label for="batchOutputFormat">音频格式</label>
-          <select id="batchOutputFormat">
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-            <option value="flac">FLAC</option>
-          </select>
+    <!-- Danger sub-tab content -->
+    <div id="subtab-danger" style="display:none">
+      <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
+        <div style="padding:12px 16px">
+          <div style="font-size:0.85rem;font-weight:600;color:#c53030;margin-bottom:4px">⚠ 删除音色</div>
+          <div style="font-size:0.78rem;color:#c53030">删除音色属于高风险操作。真实 provider 下可能会影响远端音色资产和本地绑定状态。请确认 voice_id、音色类型和 provider 后再操作。</div>
         </div>
       </div>
-      <div class="form-group full-width">
-        <label>语音参数（可选）</label>
-        <div class="param-row">
-          <div class="param-item">
-            <label for="batchSpeed">语速</label>
-            <input type="number" id="batchSpeed" step="0.05" min="0.5" max="2.0" placeholder="0.5-2.0">
-          </div>
-          <div class="param-item">
-            <label for="batchVol">音量</label>
-            <input type="number" id="batchVol" step="0.1" min="0.1" max="10.0" placeholder="0.1-10.0">
-          </div>
-          <div class="param-item">
-            <label for="batchPitch">音调</label>
-            <input type="number" id="batchPitch" step="1" min="-12" max="12" placeholder="-12~12">
-          </div>
-          <div class="param-item">
-            <label for="batchEmotion">情绪</label>
-            <select id="batchEmotion">
-              <option value="">默认</option>
-              <option value="happy">happy</option>
-              <option value="sad">sad</option>
-              <option value="angry">angry</option>
-              <option value="fearful">fearful</option>
-              <option value="disgusted">disgusted</option>
-              <option value="surprised">surprised</option>
-              <option value="neutral">neutral</option>
+      <div class="card">
+        <div class="card-title">删除音色</div>
+        <div class="delete-form-row">
+          <div class="form-group">
+            <label for="deleteProvider">Provider</label>
+            <select id="deleteProvider">
+              <option value="mock">mock</option>
+              <option value="minimax">minimax</option>
             </select>
           </div>
-        </div>
-      </div>
-      <div class="form-group full-width">
-        <div class="checkbox-row">
-          <input type="checkbox" id="batchNeedSubtitle" checked>
-          <label for="batchNeedSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
-        </div>
-      </div>
-      <button class="btn-primary" id="batchLongtextSubmit" onclick="handleBatchLongtextSubmit()">提交批量任务</button>
-    </div>
-    <!-- Progress Panel (shared, shown when job is running) -->
-    <div id="batchProgressPanel" style="display:none">
-      <div class="card">
-        <div class="card-title">批量进度 <span id="batchProgressTitle"></span></div>
-        <div id="batchProgressBar" style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:12px">
-          <div id="batchProgressFill" style="height:100%;background:#4c51bf;border-radius:4px;width:0%;transition:width 0.3s"></div>
-        </div>
-        <div id="batchProgressStats" style="font-size:0.85rem;color:#718096;margin-bottom:12px"></div>
-        <div id="batchSegmentTable" style="font-size:0.82rem"></div>
-        <div id="batchResultPlayer" style="display:none;margin-top:16px">
-          <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">批量结果</div>
-          <audio id="batchMergedAudio" controls style="width:100%;margin-bottom:8px"></audio>
-          <div id="batchCurrentSubtitle" style="padding:8px 12px;background:#f7fafc;border-radius:6px;min-height:40px;font-size:0.88rem;color:#2d3748;margin-bottom:8px"></div>
-          <div id="batchSubtitleList" style="max-height:160px;overflow-y:auto;font-size:0.80rem;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <a id="batchDownloadAudio" class="btn-sm" href="#" style="display:none">下载合并音频</a>
-            <a id="batchDownloadSubtitle" class="btn-sm" href="#" style="display:none">下载字幕</a>
-            <button class="btn-danger" id="batchRetryBtn" onclick="handleBatchRetry()" style="display:none">重试失败段</button>
+          <div class="form-group">
+            <label for="deleteVoiceId">voice_id</label>
+            <input type="text" id="deleteVoiceId" placeholder="输入 voice_id">
           </div>
-        </div>
-    </div>
-  </div>
-
-  <!-- ======================== TAB: SCRIPT ======================== -->
-  <div class="tab-content" id="tab-script">
-    <div class="card">
-      <div class="card-title">剧本配置</div>
-      <div class="config-grid">
-        <div class="form-group">
-          <label for="batchScriptProvider">Provider</label>
-          <select id="batchScriptProvider">
-            <option value="mock">mock</option>
-            <option value="minimax">minimax</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="batchScriptSilence">段间静音（ms）</label>
-          <input type="number" id="batchScriptSilence" value="500" min="0" max="3000" step="100">
-        </div>
-        <div class="form-group">
-          <label for="batchScriptOutputFormat">音频格式</label>
-          <select id="batchScriptOutputFormat">
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-            <option value="flac">FLAC</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="batchScriptNeedSubtitle">生成字幕</label>
-          <div style="margin-top:4px">
-            <input type="checkbox" id="batchScriptNeedSubtitle" checked>
+          <div class="form-group">
+            <label for="deleteVoiceType">音色类型</label>
+            <select id="deleteVoiceType">
+              <option value="voice_cloning">voice_cloning</option>
+              <option value="voice_generation">voice_generation</option>
+            </select>
           </div>
+          <button class="btn-primary btn-danger" style="margin-top:0" onclick="handleDeleteVoice()">删除</button>
         </div>
+        <div id="deleteResults"></div>
       </div>
-      <div class="form-group full-width">
-        <label>台词列表</label>
-        <div id="scriptLines">
-          <!-- Dynamic script lines -->
-        </div>
-        <button class="btn-sm" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
-      </div>
-      <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
   </div>
 
@@ -1285,23 +1255,25 @@
   // ============================================================
   // Tab switching
   // ============================================================
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
       // Skip if clicking the same tab
       if (btn.classList.contains('active')) return;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
+      // Verify content exists before switching
       const content = document.getElementById('tab-' + tab);
-      if (content) {
-        content.classList.add('active');
-      } else {
+      if (!content) {
         console.warn('Missing tab content: tab-' + tab);
+        return;
       }
+      // Remove active classes from all tabs
+      document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      // Activate selected tab
+      btn.classList.add('active');
+      content.classList.add('active');
       // Tab switch callbacks for data refresh
       if (tab === 'advanced') {
-        // Show first subtab (clone) when entering advanced
         switchAdvancedSubtab('clone');
       }
       if (tab === 'workspace') {
@@ -1312,6 +1284,9 @@
       }
       if (tab === 'longtext') {
         loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
+      }
+      if (tab === 'script') {
+        loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchScriptProfile')));
       }
     });
   });
