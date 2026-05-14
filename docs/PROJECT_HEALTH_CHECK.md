@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-A-FIX：
+截至 P9-FE1-CHECK1：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3628,3 +3628,29 @@ grep -n "batchScriptProfile" app/static/index.html       # 无输出
 **测试结果：** 580 passed, 6 skipped（新增 1 个 E2E 测试）。
 
 **未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、Provider Adapter、生成链路、数据库、资产清理链路。**
+
+### P9-FE1-CHECK1：前端模块化阶段收口
+
+**收口检查项：**
+
+1. **脚本加载顺序**：index.html 中 provider_capabilities.js（line 1587）在 inline script 前；runtime_status.js（line 1588）在 provider_capabilities.js 后；inline script 中仍可直接调用 `loadProviderCapabilities()`、`bindProviderCapabilityEvents()`、`loadRuntimeStatus()`、`scheduleRuntimeStatusRefresh()`。
+
+2. **重复函数清理**：`loadProviderCapabilities` 只在 provider_capabilities.js 中定义；`loadRuntimeStatus` 和 `scheduleRuntimeStatusRefresh` 只在 runtime_status.js 中定义；index.html 无重复函数定义，只有说明注释指向外部模块。
+
+3. **全局兼容函数**：provider_capabilities.js 暴露 `window.loadProviderCapabilities`、`window.getProviderCapability`、`window.applyAllProviderCapabilities`、`window.bindProviderCapabilityEvents`、`window.updateProviderSelectOptions`、`window.setControlDisabled`；runtime_status.js 暴露 `window.loadRuntimeStatus`、`window.scheduleRuntimeStatusRefresh`；index.html 原有调用点无需改动。
+
+4. **剧本 Tab 回归修复**：`populateProfileSelect` 开头有 `if (!selectEl) return;`；剧本 Tab call site 已从 `batchScriptProfile` 修正为 `batchProfile`；E2E 测试 `test_script_tab_opens_without_profile_select_error` 存在且通过。
+
+5. **E2E 覆盖范围**：主页面加载、/api/voice/capabilities 200、capability 动态控件生效、provider 切换不报错、capabilities 失败降级、Admin 页面加载、Admin 能力矩阵渲染、Admin capabilities 失败隔离、剧本 Tab 打开不报 populateProfileSelect 错误，共 8 个 E2E 测试。
+
+6. **测试基线**：580 passed, 6 skipped。
+
+**本阶段说明：**
+
+- P9-FE1-A 已完成：Provider Capability 前端逻辑抽离到 `app/static/js/provider_capabilities.js`。
+- P9-FE1-B 已完成：Runtime Status 前端逻辑抽离到 `app/static/js/runtime_status.js`。
+- P9-FE1-A-FIX 已完成：修复点击剧本 Tab 时 `populateProfileSelect` 访问 `null.value` 的报错。
+- 当前 index.html 通过 `<script>` 标签加载两个独立 JS 模块。
+- 保留 window 全局入口，兼容现有 inline script 调用和 E2E。
+- 本阶段只做检查和文档收口，未改功能代码。
+- 未改后端 API、Capability Registry、CapabilityValidator、Provider Adapter、生成链路、数据库、资产清理链路。
