@@ -49,7 +49,9 @@
 * P8-BE3D：资产 quarantine 和 restore 工具已完成（新增 --quarantine 和 --restore 模式，quarantine 使用 shutil.move 隔离文件到 storage/quarantine/<timestamp>/，生成 manifest.json，restore 支持恢复 status=moved 文件且不覆盖已有文件，ModeAction 实现三种模式互斥，tests/test_cleanup_assets_quarantine.py 24 个测试覆盖所有安全边界）
 * P8-BE3D-FIX：quarantine 语义修正已完成（将 shutil.copy2 改为 shutil.move，修正 q_full 路径使用 q_subdir 而非 q_dir，quarantine 后原始路径不存在、quarantine 路径存在，restore 后原始路径存在、quarantine 路径不存在，tests/test_cleanup_assets_quarantine.py 新增 test_restore_moves_file_back 测试）
 * P8-UX2：顶部模型与用量状态条已完成（新增 GET /api/voice/runtime/status 只读接口，前端顶部展示当前 Provider、默认模型、今日/月度字符用量和最近调用状态；不展示本次输入字符数，不影响生成链路，不触发资产清理，不调用外部 Provider，tests/test_runtime_status.py 27 个测试覆盖所有场景）
-* P8-UX2-FIX：顶部 Provider 状态语义优化已完成（将“最近调用异常”细分为额度受限/限流中/鉴权失败/网络超时/服务异常/参数错误/PROVIDER_ERROR 等可行动状态；前端 chip 按 state 着色（available/warning/error/unknown），可点击跳转管理面板，detail 和 action_hint 在 title 属性展示；不影响生成链路，不调用外部 Provider）
+* P8-UX2-FIX：顶部 Provider 状态语义优化已完成（将”最近调用异常”细分为额度受限/限流中/鉴权失败/网络超时/服务异常/参数错误/PROVIDER_ERROR 等可行动状态；前端 chip 按 state 着色（available/warning/error/unknown），可点击跳转管理面板，detail 和 action_hint 在 title 属性展示；不影响生成链路，不调用外部 Provider）
+* P8-UX3：状态条语义、chip 导航、retry 按钮已完成（Provider chip 跟随页面选择并显示 title 说明；today/month chip 增加”本地估算用量，不代表官方剩余额度”tooltip；warning/error chip onclick 跳转 admin.html?focus=call-logs；Advanced 危险区从红色改为浅橙/米色；profile 加载失败增加重试按钮；runtime status chip 失败后可点击重试；docs/generated/ 加入 .gitignore；README 配置表与 config.py 核对无误）
+* P8-UX4-FIX：历史记录播放与删除操作修复已完成（历史按钮改为基于完整 job_id 的稳定事件绑定，播放支持 audio_asset.download URL 展开播放器，删除调用 DELETE /api/voice/jobs/{job_id} 执行软删除并从列表移除；不删除音频文件，不影响生成链路，不影响资产清理链路，tests/test_voice_jobs_delete.py 和 tests/test_voice_jobs_assets.py 已有 9 个测试覆盖后端接口）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
