@@ -99,6 +99,114 @@
     border-bottom-color: #5a67d8;
   }
 
+  .advanced-subtab-nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .advanced-subtab-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .advanced-subtab-btn {
+    padding: 10px 18px;
+    border: none;
+    background: transparent;
+    color: #718096;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .advanced-subtab-btn:hover {
+    color: #5a67d8;
+    background: #f7fafc;
+  }
+
+  .advanced-subtab-btn.active {
+    color: #5a67d8;
+    border-bottom-color: #5a67d8;
+  }
+
+  .advanced-subtab-panel {
+    display: none;
+  }
+
+  .advanced-subtab-panel.active {
+    display: block;
+  }
+
+  .history-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    flex-wrap: wrap;
+  }
+
+  .history-row:last-child {
+    border-bottom: none;
+  }
+
+  .history-type {
+    font-weight: 600;
+    color: #2d3748;
+    white-space: nowrap;
+    min-width: 40px;
+  }
+
+  .history-time {
+    color: #a0aec0;
+    white-space: nowrap;
+    min-width: 140px;
+  }
+
+  .history-text {
+    flex: 1;
+    min-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #4a5568;
+  }
+
+  .history-job-id {
+    color: #718096;
+    font-size: 0.72rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+
+  .history-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .history-audio-row {
+    display: none;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .history-audio-row.visible {
+    display: block;
+  }
+
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
@@ -921,15 +1029,15 @@
     </div>
 
     <!-- Sub-tab navigation for advanced features -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="tab-btn active" data-subtab="clone" onclick="switchAdvancedSubtab('clone')">声音克隆</button>
-      <button class="tab-btn" data-subtab="design" onclick="switchAdvancedSubtab('design')">声音设计</button>
-      <button class="tab-btn" data-subtab="bindings" onclick="switchAdvancedSubtab('bindings')">绑定管理</button>
-      <button class="tab-btn" data-subtab="danger" onclick="switchAdvancedSubtab('danger')">危险操作</button>
+    <div class="advanced-subtab-nav">
+      <button class="advanced-subtab-btn active" data-advanced-subtab="clone">声音克隆</button>
+      <button class="advanced-subtab-btn" data-advanced-subtab="design">声音设计</button>
+      <button class="advanced-subtab-btn" data-advanced-subtab="bindings">绑定管理</button>
+      <button class="advanced-subtab-btn" data-advanced-subtab="danger">危险操作</button>
     </div>
 
     <!-- Clone sub-tab content -->
-    <div id="subtab-clone">
+    <div class="advanced-subtab-panel active" id="subtab-clone">
       <div class="card">
         <div class="card-title">步骤 1：上传克隆音频</div>
         <div class="config-grid">
@@ -1045,7 +1153,7 @@
     </div>
 
     <!-- Design sub-tab content -->
-    <div id="subtab-design" style="display:none">
+    <div class="advanced-subtab-panel" id="subtab-design">
       <div class="card">
         <div class="card-title">声音设计</div>
         <div class="config-grid">
@@ -1117,7 +1225,7 @@
     </div>
 
     <!-- Bindings sub-tab content -->
-    <div id="subtab-bindings" style="display:none">
+    <div class="advanced-subtab-panel" id="subtab-bindings">
       <div class="card">
         <div class="card-title">创建人设</div>
         <div class="config-grid">
@@ -1216,7 +1324,7 @@
       </div>
     </div>
     <!-- Danger sub-tab content -->
-    <div id="subtab-danger" style="display:none">
+    <div class="advanced-subtab-panel" id="subtab-danger">
       <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
         <div style="padding:12px 16px">
           <div style="font-size:0.85rem;font-weight:600;color:#c53030;margin-bottom:4px">⚠ 删除音色</div>
@@ -1295,6 +1403,30 @@
           loadHistory(0);
         }
       }
+    });
+  });
+
+  // ============================================================
+  // Advanced sub-tab switching
+  // ============================================================
+  function switchAdvancedSubtab(name) {
+    const target = document.getElementById('subtab-' + name);
+    if (!target) {
+      console.error('Missing advanced subtab:', name);
+      return;
+    }
+    document.querySelectorAll('.advanced-subtab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.advancedSubtab === name);
+    });
+    document.querySelectorAll('.advanced-subtab-panel').forEach(panel => {
+      panel.classList.remove('active');
+    });
+    target.classList.add('active');
+  }
+
+  document.querySelectorAll('.advanced-subtab-btn[data-advanced-subtab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchAdvancedSubtab(btn.dataset.advancedSubtab);
     });
   });
 
@@ -1510,6 +1642,19 @@
   // P8-FIX4: Show unsupported history delete message
   function showHistoryDeleteUnsupported() {
     alert('当前后端暂未支持历史任务删除。P8-FE5 阶段将接入前端删除按钮。');
+  }
+
+  // P8-FIX5: Toggle history audio player expand/collapse
+  function toggleHistoryAudio(assetId, jobId) {
+    const row = document.getElementById('history-audio-' + jobId);
+    if (!row) return;
+    if (row.classList.contains('visible')) {
+      row.classList.remove('visible');
+      row.innerHTML = '';
+    } else {
+      row.innerHTML = '<div style="padding:8px 0">' + audioPlayerHtml(assetId) + '</div>';
+      row.classList.add('visible');
+    }
   }
 
   function hexToBlobUrl(hex, mime = 'audio/mpeg') {
@@ -2476,23 +2621,33 @@ function handleStopAsyncPolling() {
     const statusBadge = `<span class="job-status ${statusClass(job.status)}">${statusLabel(job.status)}</span>`;
 
     const assetId = getHistoryAudioAssetId(job);
-    let actionCell = '';
+    let playBtn = '';
+    let downloadBtn = '';
     if (assetId) {
-      actionCell = `<span>${audioPlayerHtml(assetId)}</span><span style="margin-left:6px">${downloadBtnHtml(assetId)}</span>`;
+      playBtn = `<button class="btn-sm" onclick="toggleHistoryAudio('${escJs(assetId)}', '${escJs(rawJobId)}')">播放</button>`;
+      downloadBtn = `<a class="btn-sm" href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank">下载</a>`;
     } else {
-      actionCell = `<button class="btn-sm" disabled title="当前历史记录未返回可播放音频资产">播放</button><button class="btn-sm" disabled title="当前历史记录未返回可下载音频资产">下载</button>`;
+      playBtn = `<button class="btn-sm" disabled title="当前历史记录未返回可播放音频资产">播放</button>`;
+      downloadBtn = `<button class="btn-sm" disabled title="当前历史记录未返回可下载音频资产">下载</button>`;
     }
 
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0f0f0;font-size:0.82rem;line-height:1.4">
-      <span class="tag" style="white-space:nowrap">${esc(typeLabel)}</span>
+    const copyBtn = `<button class="btn-sm" title="复制 job_id" onclick="copyJobId('${escJs(rawJobId)}', this)">复制 ID</button>`;
+    const deleteBtn = `<button class="btn-sm" disabled title="后端暂未支持历史任务删除">删除</button>`;
+
+    return `<div class="history-row">
+      <span class="history-type">${esc(typeLabel)}</span>
       ${statusBadge}
-      <span style="color:#a0aec0;white-space:nowrap">${esc(time)}</span>
-      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4a5568">${textSnippet}</span>
-      <span style="color:#718096;font-size:0.72rem;white-space:nowrap;font-family:monospace" title="${esc(rawJobId)}">${esc(jobIdShort)}</span>
-      <span>${actionCell}</span>
-      <button onclick="copyJobId('${escJs(rawJobId)}', this)" title="复制 job_id" style="padding:2px 8px;font-size:0.72rem;background:#edf2f7;border:1px solid #cbd5e0;border-radius:4px;cursor:pointer;white-space:nowrap">复制 ID</button>
-      <button onclick="showHistoryDeleteUnsupported()" style="padding:2px 8px;font-size:0.72rem;background:#fff;border:1px solid #fed7d7;border-radius:4px;color:#c53030;cursor:not-allowed" disabled>删除</button>
-    </div>`;
+      <span class="history-time">${esc(time)}</span>
+      <span class="history-text" title="${esc(rawText)}">${textSnippet}</span>
+      <span class="history-job-id" title="${esc(rawJobId)}">${esc(jobIdShort)}</span>
+      <span class="history-actions">
+        ${playBtn}
+        ${downloadBtn}
+        ${copyBtn}
+        ${deleteBtn}
+      </span>
+    </div>
+    <div class="history-audio-row" id="history-audio-${escJs(rawJobId)}"></div>`;
   }
 
   // P8-4B: Empty state for history list
