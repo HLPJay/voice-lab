@@ -1278,7 +1278,7 @@
           </div>
           <div class="form-group">
             <label for="clonePromptFileId">prompt_file_id（可选）</label>
-            <input type="number" id="clonePromptFileId" placeholder="prompt音频file_id" min="1" step="1">
+            <input type="number" id="clonePromptFileId" placeholder="prompt音频file_id" min="1" step="1" oninput="updateCloneBtnState()">
           </div>
           <div class="form-group">
             <label for="clonePromptText">prompt_text（可选）</label>
@@ -4419,9 +4419,23 @@ function handleStopAsyncPolling() {
       resultsEl.innerHTML = `<div class="error-msg">请先上传音频获取 file_id，或手动输入</div>`;
       return;
     }
+    const fileIdNum = Number(fileId);
+    if (!Number.isInteger(fileIdNum) || fileIdNum <= 0) {
+      resultsEl.innerHTML = `<div class="error-msg">file_id 必须是大于 0 的整数。</div>`;
+      updateCloneBtnState();
+      return;
+    }
     if (previewText && !model) {
       resultsEl.innerHTML = `<div class="error-msg">preview_text 有值时 model 必填。建议使用 speech-2.8-hd。</div>`;
       return;
+    }
+    if (promptFileId) {
+      const promptFileIdNum = Number(promptFileId);
+      if (!Number.isInteger(promptFileIdNum) || promptFileIdNum <= 0) {
+        resultsEl.innerHTML = `<div class="error-msg">prompt_file_id 必须是大于 0 的整数。</div>`;
+        updateCloneBtnState();
+        return;
+      }
     }
     if ((promptFileId && !promptText) || (!promptFileId && promptText)) {
       resultsEl.innerHTML = `<div class="error-msg">prompt_file_id 和 prompt_text 必须同时填写，或同时留空。</div>`;
