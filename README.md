@@ -210,7 +210,17 @@ curl -X POST http://127.0.0.1:8000/api/voice/clone/create?provider=minimax \
 python -m pytest tests/ -x -q
 ```
 
-当前：466 passed, 6 skipped, 0 failed
+当前测试基线：
+
+tests/: 496 passed, 6 skipped
+
+**新增能力里程碑：**
+
+- P8-SEG1 已新增"每行一段"长文本分段策略（line segment strategy）
+- P8-VALIDATION2-A 已完成后端 Schema 收紧与 TextSegmentService 硬切兜底
+- P8-VALIDATION2-B 已完成前端高风险输入约束补齐（maxlength、正整数校验、200 行剧本限制）
+- P8-VALIDATION2-C 已完成 422 字段级错误提示中文化
+- 当前仍不是多人 SaaS，不是开放 API 平台，不适合直接公网暴露
 
 ### 资产清理专项测试
 
@@ -359,9 +369,20 @@ storage/
 - 自动 purge
 - 多设备同步
 
+## 输入约束与错误提示
+
+Voice Lab 当前已建立三层输入约束机制：
+
+1. **后端 Schema 兜底**：限制文本长度、枚举值、正整数 ID、分段策略等，非法参数在进入核心链路前被拒绝。
+2. **前端输入防护**：根据后端约束补齐 maxlength、min、pattern、按钮 disabled 和行级提示，减少用户提交非法请求。
+3. **422 字段级错误提示**：当 FastAPI/Pydantic 返回参数校验错误时，前端会将字段路径和错误类型翻译为中文提示，例如"file_id：必须大于 0。"、"第 1 行台词：不能为空。"。
+
+这套机制是后续 Provider Capability Registry 的前置基础，未来会进一步演进为按 Provider / Model 能力动态约束前端和后端请求。
+
 ## 后续路线
 
-1. **Project / 作品概念**：将每次创作归档为独立 Project
+1. **P9-CAPABILITY1：Provider Capability Registry**：定义 Product Contract / Capability Contract / Provider Capability / Adapter Protocol Contract；为 mock / minimax 声明能力；增加 `/api/voice/capabilities` 查询接口；前端未来可根据 provider/model 能力动态限制输入；后端未来可通过 CapabilityValidator 在进入 Provider Adapter 前拒绝不支持的参数。
+2. **Project / 作品概念**：将每次创作归档为独立 Project
 2. **创作模板入口**：情绪独白、长文本朗读、多角色剧本
 3. **历史记录升级为资产库**：重命名、收藏、标签、搜索
 4. **手机端 H5 快速创作**：轻量入口

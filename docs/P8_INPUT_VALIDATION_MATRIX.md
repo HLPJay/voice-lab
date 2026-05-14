@@ -202,6 +202,57 @@
 
 风险：中（涉及错误处理重构，需充分测试）
 
+## 7. P8-VALIDATION2 修复状态
+
+### P8-VALIDATION2-A 已完成
+
+已修复：
+
+- LongtextBatchRequest.text 增加 `max_length=50000`
+- VoiceRenderRequest.text / VoiceVariantRenderRequest.text 增加 `max_length=10000`
+- AsyncRenderRequest.text 增加 `max_length=50000`
+- segment_strategy 改为 `Literal["auto", "paragraph", "sentence", "line"]`
+- VoiceCloneRequest.file_id / prompt_file_id 改为 `Field(gt=0)`
+- TextSegmentService 增加无标点超长文本硬切兜底（`_hard_split` / `_append_with_hard_limit`）
+
+### P8-VALIDATION2-B 已完成
+
+已修复：
+
+- auditionText / clonePreviewText / importClonePreviewText / designPrompt / scriptText 等前端 `maxlength`
+- cloneVoiceId / designVoiceId 前端 `minlength` / `maxlength` / `pattern` 及 JS 格式校验
+- cloneFileId / clonePromptFileId 前端 `min=1` / `step=1` 和 JS 正整数校验
+- 剧本最多 200 行限制（`MAX_SCRIPT_LINES`、`updateScriptLineLimitState`）
+- 剧本空台词提交前行级拦截（红框 + title）
+- 已有高成本确认动作通过 `guardedJsonFetch` 确认后传 `confirm_cost=true`
+
+### P8-VALIDATION2-C 已完成
+
+已修复：
+
+- 新增 `FIELD_LABELS` / `formatFieldPath` / `translateValidationIssue`
+- `parseApiError` 支持 FastAPI/Pydantic 422 detail 数组，设置 `code='VALIDATION_ERROR'`
+- `formatApiError` 支持 `VALIDATION_ERROR`
+- `script.N.text` 可显示为"第 N 行台词"
+- 常见 Pydantic 错误类型翻译为中文字段级提示
+
+### P8-VALIDATION2-C-FIX 已完成
+
+已修复：
+
+- `greater_than_equal` / `less_than_equal` 判断顺序修正，避免被 `greater_than` / `less_than` 提前匹配导致 undefined
+- 新增 `renderValidationError()` helper，对 message 做 `esc()` 转义并将中文分号替换为换行
+- clone / design / import 的 VALIDATION_ERROR 统一使用 `renderValidationError(err.message)`
+- audition / longtext / script 的 VALIDATION_ERROR 至少使用 `esc(err.message)`
+- 修复 `handleImportRemoteVoice` 成功路径残留的提前 return，恢复成功结果展示
+
+### 仍保留到后续阶段
+
+- ProviderVoiceImportRequest.provider_voice_id 不强制套用 MiniMax voice_id 规则，留给 P9-CAPABILITY 的 Provider Capability 约束处理
+- Provider / Model 差异化能力约束暂未实现，后续由 Capability Registry 处理
+- Admin 系统配置入口暂不实现，后续在 P9/P10 配置中心阶段考虑
+- 前端 JS 模块化和 E2E 测试暂未实现，留给 P9-FE / P9-E2E
+
 ## 6. 附录：关键文件索引
 
 | 模块 | 后端 Schema | API 文件 | 服务层 | 前端控件 |
