@@ -11,6 +11,8 @@ Tests cover:
 7. Admin capabilities failure does not crash other regions.
 """
 
+import json
+
 import pytest
 
 
@@ -383,3 +385,62 @@ def test_audition_records_module_and_voices_tab_open(page, e2e_base_url, console
 
     # No critical JS errors occurred
     # console_errors fixture will fail on real JS errors
+
+
+# ── Test 12: Audition records render and delete ──────────────────────────────────
+
+def test_audition_records_render_and_delete(page, e2e_base_url, console_errors):
+    """Inject a test record, render it, delete it, verify empty state."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # Inject the auditionRecordsTable container directly into the static #voiceListResults div.
+    # (The real #voiceAuditionPanel + #auditionRecordsTable are only created by
+    # renderVoiceTable() after a successful loadVoices() call, which requires a
+    # real/mock provider API. Injecting the minimal HTML avoids that dependency.)
+    page.evaluate("""
+        () => {
+            const resultsEl = document.getElementById('voiceListResults');
+            resultsEl.innerHTML = '<div id="voiceAuditionPanel"><div id="auditionRecordsPanel"><div id="auditionCount"></div><div id="auditionRecordsTable"></div></div></div>';
+        }
+    """)
+
+    # Wait for the injected container to be present
+    page.wait_for_selector("#auditionRecordsTable", state="attached", timeout=5000)
+
+    # Inject a test record and render
+    page.evaluate("""
+        () => {
+            window._auditionRecords = [
+                {
+                    voiceId: 'test_voice_001',
+                    voiceName: '测试音色',
+                    text: '这是一段用于试听记录渲染测试的文本',
+                    audioUrl: null
+                }
+            ];
+            window.renderAuditionRecords();
+        }
+    """)
+
+    # Assert record content is visible
+    body = page.locator("#auditionRecordsTable").text_content()
+    assert "test_voice_001" in body, f"Expected voiceId in table, got: {body}"
+    assert "测试音色" in body, f"Expected voiceName in table, got: {body}"
+    assert "试听记录渲染测试" in body, f"Expected text preview in table, got: {body}"
+
+    # Delete button exists
+    delete_btn = page.locator('#auditionRecordsTable [data-delete="0"]')
+    assert delete_btn.count() == 1, "Delete button not found"
+
+    # Click delete button via JS (the delegated event listener from
+    # setupAuditionWorkstation is not attached since we bypassed renderVoiceTable,
+    # so we call window.deleteAuditionRecord directly)
+    page.evaluate("window.deleteAuditionRecord(0)")
+    page.wait_for_timeout(300)
+
+    # Assert record was deleted and empty state shown
+    assert page.evaluate("window._auditionRecords.length") == 0, "Record should be deleted"
+    empty_state = page.locator("#auditionRecordsTable").text_content()
+    assert "暂无试听记录" in empty_state, f"Expected empty state, got: {empty_state}"

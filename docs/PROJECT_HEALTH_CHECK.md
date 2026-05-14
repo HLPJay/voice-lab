@@ -3838,3 +3838,30 @@ git diff --check  # 无 whitespace 错误
 - Resource Guard 提示未变
 
 **未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、history.js、audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
+
+### P9-FE1-D-FIX：补强 audition_records.js 渲染 / 删除最小 E2E
+
+**问题：** P9-FE1-D 已验证 audition_records.js 模块加载，但未验证渲染 / 删除行为。
+
+**修复：** 新增 `test_audition_records_render_and_delete` E2E 测试。
+
+**实现：**
+- 直接注入 `#voiceAuditionPanel` + `#auditionRecordsTable` HTML 到 `#voiceListResults`（绕过真实的 `renderVoiceTable` 调用，无需 mock provider-voices API）
+- 向 `window._auditionRecords` 注入一条测试记录
+- 调用 `window.renderAuditionRecords()`
+- 断言 `test_voice_001`、`测试音色`、`文本预览` 均出现
+- 调用 `window.deleteAuditionRecord(0)`（因 `setupAuditionWorkstation` 未执行，事件委托未绑定，直接调用函数）
+- 断言 `window._auditionRecords.length === 0`
+- 断言页面出现"暂无试听记录"
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "audition"  # 2 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 12 passed
+git diff --check  # 无错误
+```
+
+**测试结果：** 12 passed in 36s。full tests 未运行，原因：仅补前端 E2E，未改业务逻辑、后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
+
+**未改 app/static/index.html、app/static/js/audition_records.js、app/api、app/services、app/providers、app/domain、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。
