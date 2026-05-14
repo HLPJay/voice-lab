@@ -130,6 +130,28 @@
 
 ---
 
+### AUDIT-008
+- **等级**：P1
+- **模块**：前端 / 批量进度
+- **问题描述**：`renderBatchStatus` 的 table header 硬编码包含 `<th>角色</th>`，但长文本批量任务的 segments 没有 role 字段，导致长文本批量进度表多出一列无意义的"角色"。
+- **影响范围**：长文本批量提交后在剧本 Tab 的进度表出现无内容的"角色"列。
+- **证据位置**：`app/static/index.html:5419` — `<th style="padding:4px 8px">角色</th>`
+- **建议修复方式**：在 `renderBatchStatus` 中增加 `const isScriptPanel = targetPanelId === 'batchScriptProgressPanel'` 然后按 `isScriptPanel` 分支渲染 table header 和 rows。
+- **是否已修复**：是（P8-UX7）
+
+---
+
+### AUDIT-009
+- **等级**：P2
+- **模块**：前端 / 剧本 Tab
+- **问题描述**：剧本 Tab 的台词列表每行右侧声音人设 select 不稳定：用户选择后因 `populateProfileSelect` 重新设置 `innerHTML` 导致选择丢失；删除行后其他行状态不受影响（正确），但新增行时旧行选择可能受影响。
+- **影响范围**：用户选择人设后立即消失，或添加新行时旧行选择被重置。
+- **证据位置**：`app/static/index.html:1748-1762` — `populateProfileSelect`；`app/static/index.html:4989-5014` — `addScriptLine`
+- **建议修复方式**：`populateProfileSelect` 保留已有选择；建立 `scriptRows` 状态数组管理台词行数据；`addScriptLine`/`removeScriptLine` 更新状态；`handleBatchScriptSubmit` 从状态数组读取而非 DOM 查询。
+- **是否已修复**：是（P8-UX7）
+
+---
+
 ## 6. 测试覆盖缺口
 
 ### 已有充分覆盖的领域
@@ -193,25 +215,25 @@
 
 ## 10. 问题优先级清单
 
-### 立即修（P1 + 高价值 P2）
-1. **AUDIT-001**（P1）：长文本批量错误回退到 `resultsArea` — 添加 `batchLongtextResult` 容器
-
-### 近期修（体验问题 / 轻微健壮性）
-2. **AUDIT-003**（P2）：`_currentBatchPanelId` 未声明变量 — 添加 `let` 声明
-3. **AUDIT-004**（P2）：runtime status 失败静默 — 增加 `showToast` 提示
-4. **AUDIT-002**（P2）：profile retry 按钮 DOM 残留 — 成功后移除
+### 已修复
+- **AUDIT-001**（P1）：长文本批量错误回退到 `resultsArea` — ✅ P8-UX6 已修复
+- **AUDIT-002**（P2）：profile retry 按钮 DOM 残留 — ✅ P8-UX6 已修复
+- **AUDIT-003**（P2）：`_currentBatchPanelId` 未声明变量 — ✅ P8-UX6 已修复
+- **AUDIT-004**（P2）：runtime status 失败静默 — ✅ P8-UX6 已修复
+- **AUDIT-005**（P3）：README 测试数量过时 — ✅ P8-UX6 已修复
+- **AUDIT-008**（P1）：长文本进度表误显"角色"列 — ✅ P8-UX7 已修复
+- **AUDIT-009**（P2）：剧本 profile select 不稳定 — ✅ P8-UX7 已修复
 
 ### 暂缓（文档 / 低优先级）
-5. **AUDIT-005**（P3）：README 测试数量过时 — 下次文档更新时修正
-6. **AUDIT-007**（P3）：`docs/prompts/` 未跟踪 — 加入 .gitignore 或删除
-7. **AUDIT-006**（P3）：ARCHITECTURE.md 旧描述 — 无需处理（已标注仅供参考）
+6. **AUDIT-006**（P3）：ARCHITECTURE.md 旧描述 — 无需处理（已标注仅供参考）
+7. **AUDIT-007**（P3）：`docs/prompts/` 未跟踪 — 加入 .gitignore 或删除
 
 ## 11. 推荐下一步修复阶段命名
 
-建议下一个阶段命名为 **P8-UX6** 或 **P8-MISC**（杂项修复），处理上述 P1-P2 问题：
-- `P8-UX6-FIX1`：长文本批量错误容器修复（AUDIT-001）
-- `P8-UX6-FIX2`：批量轮询变量声明 + runtime status 失败提示（AUDIT-003, AUDIT-004）
-- `P8-UX6-FIX3`：profile retry DOM 清理（AUDIT-002）
+所有 P1-P2 问题已修复。剩余 P3 问题为文档/低优先级，建议下次有相关改动时一并处理，无需单独阶段。
+
+AUDIT-006：无需处理（历史文档已标注仅供参考）。
+AUDIT-007：建议运行 `git rm -r docs/prompts/` 或将其加入 .gitignore。
 
 ## 12. 代码质量备注
 

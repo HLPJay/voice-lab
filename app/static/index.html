@@ -1746,17 +1746,20 @@
   }
 
   function populateProfileSelect(selectEl, selectedId = '') {
+    // Preserve existing user selection when repopulating
+    const currentValue = selectEl.value;
     selectEl.innerHTML = '';
     const profiles = _cachedProfiles;
     if (!profiles || profiles.length === 0) {
       selectEl.innerHTML = '<option value="">无可用人设</option>';
       return;
     }
+    const targetId = selectedId || currentValue;
     profiles.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
       opt.textContent = p.name;
-      if (p.id === selectedId) opt.selected = true;
+      if (p.id === targetId) opt.selected = true;
       selectEl.appendChild(opt);
     });
   }
@@ -4984,21 +4987,25 @@ function handleStopAsyncPolling() {
 
   // Script lines management
   let _scriptLineCount = 0;
-  const _scriptProfiles = {};
+  const _scriptRows = [];  // stable state: {id, role, text, profileId}
 
   function addScriptLine(role = '', text = '', profileId = '') {
     const container = document.getElementById('scriptLines');
     const id = _scriptLineCount++;
+    const state = { id, role, text, profileId };
+    _scriptRows.push(state);
+
     const row = document.createElement('div');
     row.id = `scriptLine_${id}`;
+    row.dataset.lineId = id;
     row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
     row.innerHTML = `
-      <input type="text" id="scriptRole_${id}" placeholder="角色名" value="${esc(role)}" style="width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
-      <input type="text" id="scriptText_${id}" placeholder="台词内容" value="${esc(text)}" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
-      <select id="scriptProfile_${id}" style="width:120px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">
+      <input type="text" id="scriptRole_${id}" placeholder="角色名" value="${esc(role)}" style="width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="role">
+      <input type="text" id="scriptText_${id}" placeholder="台词内容" value="${esc(text)}" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="text">
+      <select id="scriptProfile_${id}" style="width:120px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="profile">
         <option value="">选择人设</option>
       </select>
-      <button class="btn-sm" onclick="removeScriptLine(${id})" style="padding:6px 10px;color:#e53e3e">删除</button>
+      <button class="btn-sm script-remove-btn" data-line-id="${id}" style="padding:6px 10px;color:#e53e3e">删除</button>
     `;
     container.appendChild(row);
 
@@ -5014,7 +5021,38 @@ function handleStopAsyncPolling() {
   function removeScriptLine(id) {
     const row = document.getElementById(`scriptLine_${id}`);
     if (row) row.remove();
+    const idx = _scriptRows.findIndex(r => r.id === id);
+    if (idx >= 0) _scriptRows.splice(idx, 1);
   }
+
+  // Event delegation for script line inputs (keeps state in sync)
+  document.getElementById('scriptLines').addEventListener('input', e => {
+    const row = e.target.closest('[data-line-id]');
+    if (!row) return;
+    const id = parseInt(row.dataset.lineId);
+    const field = e.target.dataset.field;
+    if (!field) return;
+    const state = _scriptRows.find(r => r.id === id);
+    if (state) {
+      if (field === 'role') state.role = e.target.value;
+      else if (field === 'text') state.text = e.target.value;
+    }
+  });
+  document.getElementById('scriptLines').addEventListener('change', e => {
+    const row = e.target.closest('[data-line-id]');
+    if (!row) return;
+    const id = parseInt(row.dataset.lineId);
+    const field = e.target.dataset.field;
+    if (field === 'profile') {
+      const state = _scriptRows.find(r => r.id === id);
+      if (state) state.profileId = e.target.value;
+    }
+  });
+  // Event delegation for script remove buttons
+  document.getElementById('scriptLines').addEventListener('click', e => {
+    const btn = e.target.closest('.script-remove-btn');
+    if (btn) removeScriptLine(parseInt(btn.dataset.lineId));
+  });
 
   // Initialize with 3 empty script lines
   addScriptLine();
@@ -5111,14 +5149,23 @@ function handleStopAsyncPolling() {
   }
 
   async function handleBatchScriptSubmit() {
-    const lines = [];
+    // Sync DOM values into _scriptRows state before collecting
     document.querySelectorAll('[id^="scriptLine_"]').forEach(row => {
-      const id = row.id.split('_')[1];
-      const role = document.getElementById(`scriptRole_${id}`)?.value.trim() || '';
-      const text = document.getElementById(`scriptText_${id}`)?.value.trim() || '';
-      const profileId = document.getElementById(`scriptProfile_${id}`)?.value || '';
-      if (text) {
-        lines.push({ role, text, profile_id: profileId, params: {} });
+      const id = parseInt(row.id.split('_')[1]);
+      const state = _scriptRows.find(r => r.id === id);
+      if (!state) return;
+      const roleEl = document.getElementById(`scriptRole_${id}`);
+      const textEl = document.getElementById(`scriptText_${id}`);
+      const profileEl = document.getElementById(`scriptProfile_${id}`);
+      if (roleEl) state.role = roleEl.value;
+      if (textEl) state.text = textEl.value;
+      if (profileEl) state.profileId = profileEl.value;
+    });
+
+    const lines = [];
+    _scriptRows.forEach(state => {
+      if (state.text && state.text.trim()) {
+        lines.push({ role: state.role || '', text: state.text.trim(), profile_id: state.profileId || '', params: {} });
       }
     });
 
@@ -5411,13 +5458,16 @@ function handleStopAsyncPolling() {
       async_render: '异步',
       stream_render: '流式',
     };
+    const isScriptPanel = targetPanelId === 'batchScriptProgressPanel';
 
     let html = `<table style="width:100%;border-collapse:collapse">
       <thead>
         <tr style="text-align:left;color:#718096;font-size:0.80rem">
-          <th style="padding:4px 8px">#</th>
-          <th style="padding:4px 8px">角色</th>
-          <th style="padding:4px 8px">文本摘要</th>
+          <th style="padding:4px 8px">#</th>`;
+    if (isScriptPanel) {
+      html += `<th style="padding:4px 8px">角色</th>`;
+    }
+    html += `<th style="padding:4px 8px">文本摘要</th>
           <th style="padding:4px 8px">状态</th>
           <th style="padding:4px 8px">时长</th>
           <th style="padding:4px 8px">错误信息</th>
@@ -5428,9 +5478,11 @@ function handleStopAsyncPolling() {
       const statusClass = seg.status === 'success' ? 'color:#2f855a' : seg.status === 'failed' ? 'color:#c53030' : 'color:#718096';
       const errMsg = seg.status === 'failed' && seg.error_message ? esc(seg.error_message) : '';
       html += `<tr style="border-bottom:1px solid #f0f0f0">
-        <td style="padding:6px 8px;color:#718096">${seg.index + 1}</td>
-        <td style="padding:6px 8px">${esc(seg.role || '—')}</td>
-        <td style="padding:6px 8px;color:#4a5568" title="${esc(seg.text_preview)}">${esc(seg.text_preview || '—')}</td>
+        <td style="padding:6px 8px;color:#718096">${seg.index + 1}</td>`;
+      if (isScriptPanel) {
+        html += `<td style="padding:6px 8px">${esc(seg.role || '—')}</td>`;
+      }
+      html += `<td style="padding:6px 8px;color:#4a5568" title="${esc(seg.text_preview)}">${esc(seg.text_preview || '—')}</td>
         <td style="padding:6px 8px;${statusClass}">${esc(statusMap[seg.status] || seg.status)}</td>
         <td style="padding:6px 8px;color:#718096">${seg.duration_ms ? (seg.duration_ms / 1000).toFixed(1) + 's' : '—'}</td>
         <td style="padding:6px 8px;color:#c53030;font-size:0.80rem">${errMsg}</td>
