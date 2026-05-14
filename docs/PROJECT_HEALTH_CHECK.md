@@ -3781,3 +3781,60 @@ python -m pytest tests/ -x -q  # 582 passed, 6 skipped
 **测试结果：** 582 passed, 6 skipped（新增 1 个 E2E 测试）。
 
 **未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、history.js、Provider Adapter、生成链路、数据库、资产清理链路。
+
+### P9-FE-ERROR1：前端 API 错误展示统一优化
+
+**问题：** 声音克隆（clone/create）返回 `{ "error": { "code": "PROVIDER_ERROR", "message": "MiniMax voice clone failed", "detail": "insufficient balance", "job_id": null } }` 时，前端只显示 `err.message`（"MiniMax voice clone failed"），丢弃了 `err.detail`（"insufficient balance"），导致用户看不到真正原因。
+
+**原因：** `parseApiError` 正确提取了 `error.detail` → `err.detail`，`formatApiError` 也能正确组合 `message + detail`，但各业务 handler 的 catch-all 分支直接用 `err.message` 构造错误文本，绕过了 `formatApiError`。
+
+**修复：** 将以下 catch-all 分支的错误文本从 `friendlyErrorMessage(err.message)` 改为 `friendlyErrorMessage(formatApiError(err))`，使 `err.detail` 能被正确展示：
+
+| 位置 | 场景 |
+|---|---|
+| `handleCloneVoice` (line 4106) | 声音克隆失败 |
+| `handleDesignVoice` (line 4411) | 声音设计失败 |
+| `handleImportRemoteVoice` (line 4283) | 远端音色导入失败 |
+| `handleVoiceAudition` (line 3488) | 音色试听失败 |
+| async polling query failure (line 2833) | 异步任务查询失败 |
+| clone upload (line 3948) | 克隆文件上传失败 |
+| batch longtext submit (line 4873) | 长文本批量提交失败 |
+| batch script submit (line 4988) | 剧本批量提交失败 |
+
+**错误展示规则（formatApiError）：**
+1. `error.detail` 存在时：`${error.message}：${error.detail}`
+2. 只有 `error.message` 时：直接显示
+3. 只有 `detail`（FastAPI detail 字段）时：直接显示
+4. 只有 `message` 时：直接显示
+5. 兜底：`请求失败，请稍后重试`
+
+**验证方式（手动）：**
+1. 启动服务 `python -m app.main`
+2. 打开 /static/index.html
+3. 切换到"高级功能 → 声音克隆" tab
+4. 填写必要字段，Provider 选 minimax
+5. 拦截 `**/api/voice/clone/create?provider=minimax` 返回 400：
+   ```json
+   { "error": { "code": "PROVIDER_ERROR", "message": "MiniMax voice clone failed", "detail": "insufficient balance", "job_id": null } }
+   ```
+6. 点击克隆，页面应显示"余额不足"相关提示（或 "MiniMax voice clone failed：insufficient balance"）
+
+**E2E 验证：** 未新增 E2E（表单操作 E2E 成本较高，手动验证覆盖）。
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 11 passed
+git diff --check  # 无 whitespace 错误
+```
+
+**测试结果：** 11 passed in 37s。full tests 未运行，原因：本次仅修改前端错误展示逻辑，未改后端 API、Provider Adapter、生成链路、数据库、资产清理链路；完整回归留到阶段收口执行。
+
+**保持不变：**
+- API 请求路径未变
+- 上传逻辑未变
+- 声音克隆请求逻辑未变
+- 422 中文校验提示未变
+- Resource Guard 提示未变
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、history.js、audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
