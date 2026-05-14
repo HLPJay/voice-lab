@@ -294,6 +294,57 @@
     gap: 16px;
   }
 
+  .field-label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    min-width: 0;
+  }
+
+  .field-label-row label {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+
+  .binding-status-inline {
+    font-size: 0.78rem;
+    line-height: 1.2;
+    color: #718096;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 420px;
+  }
+
+  .binding-status-inline.bound {
+    color: #2f855a;
+  }
+
+  .binding-status-inline.unbound {
+    color: #dd6b20;
+  }
+
+  .binding-status-inline.error {
+    color: #e53e3e;
+  }
+
+  .binding-status-inline.loading {
+    color: #718096;
+  }
+
+  @media (max-width: 760px) {
+    .field-label-row {
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+
+    .binding-status-inline {
+      max-width: 100%;
+    }
+  }
+
   .form-group {
     display: flex;
     flex-direction: column;
@@ -758,7 +809,10 @@
       <div class="card-title">配置</div>
       <div class="config-grid">
         <div class="form-group">
-          <label for="profileSelect">声音人设</label>
+          <div class="field-label-row">
+            <label for="profileSelect">声音人设</label>
+            <span id="bindingStatus" class="binding-status-inline"></span>
+          </div>
           <select id="profileSelect">
             <option value="">加载中…</option>
           </select>
@@ -770,7 +824,6 @@
             <option value="minimax">minimax（正式）</option>
           </select>
         </div>
-        <div id="bindingStatus" style="margin-top:4px;min-height:20px"></div>
         <div class="form-group">
           <label for="audioFormat">编码格式</label>
           <select id="audioFormat">
@@ -3048,7 +3101,8 @@ function handleStopAsyncPolling() {
     const statusEl = document.getElementById('bindingStatus');
     if (!statusEl) return;
     if (!profileId || !provider) {
-      statusEl.innerHTML = '';
+      statusEl.className = 'binding-status-inline';
+      statusEl.textContent = '';
       return;
     }
     try {
@@ -3057,12 +3111,15 @@ function handleStopAsyncPolling() {
       const matched = (bindings || []).filter(b => b.provider === provider && b.status === 'available');
       if (matched.length > 0) {
         const b = matched[0];
-        statusEl.innerHTML = `<span style="font-size:0.78rem;color:#2f855a">✓ 已绑定: ${esc(b.provider_voice_id)} (${esc(b.model)})</span>`;
+        statusEl.className = 'binding-status-inline bound';
+        statusEl.textContent = `✓ 已绑定: ${b.provider_voice_id} (${b.model})`;
       } else {
-        statusEl.innerHTML = `<span style="font-size:0.78rem;color:#e53e3e">✗ ${esc(provider)} 下无可用绑定，请到「绑定管理」创建</span>`;
+        statusEl.className = 'binding-status-inline unbound';
+        statusEl.textContent = `✗ ${provider} 下无可用绑定，请到「绑定管理」创建`;
       }
     } catch (e) {
-      statusEl.innerHTML = '';
+      statusEl.className = 'binding-status-inline error';
+      statusEl.textContent = '绑定状态检查失败';
     }
   }
 

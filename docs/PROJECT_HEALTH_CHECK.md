@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-5：
+截至 P8-FIX6：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -37,6 +37,7 @@
 * P8-FIX5B：历史记录严格单行表格化修复已完成（.history-row 从 flex-wrap 改为 grid 单行布局、操作按钮固定在最后一列、文本和 job_id 使用省略号、窄屏降级为单列布局、播放器仍然懒展开）
 * P8-UX1：桌面宽屏布局与响应式适配已完成（主体容器 max-width 从 800px 扩大到 1180px-1240px、引入 CSS 变量 --page-max-width 和 --page-padding-x、增加 1440px/1024px/760px 响应式断点、页面保持居中、平板和手机端保留适配）
 * P8-5：localStorage 最近任务恢复已完成（saveRecentJob/loadRecentJob/clearRecentJob/restoreRecentJob/renderRecoveredJob 实现、刷新页面后显示恢复入口、点击恢复调用 GET /api/voice/jobs/{job_id}、不保存音频 blob/base64/hex、不保存完整文本、未改后端 API）
+* P8-FIX6：工作台配置区绑定状态行内化修复已完成（bindingStatus 从独立 div 改为 span 放入 field-label-row、checkBindingStatus 改用 className+textContent、绑定状态显示在声音人设标签后、绿色已绑定/橙色未绑定/红色错误/灰色加载中、配置区空白减少）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
