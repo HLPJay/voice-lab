@@ -349,3 +349,37 @@ def test_history_tab_opens_and_refreshes_without_error(page, e2e_base_url, conso
 
     # No critical JS errors occurred
     # console_errors fixture will fail on real JS errors
+
+
+# ── Test 11: Audition records module and voices tab open ──────────────────────────
+
+def test_audition_records_module_and_voices_tab_open(page, e2e_base_url, console_errors):
+    """audition_records.js is loaded and voices tab opens without JS errors."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)  # allow scripts to initialize
+
+    # audition_records.js script tag exists
+    assert page.evaluate("!!document.querySelector('script[src=\"/static/js/audition_records.js\"]')")
+
+    # window global functions are exposed
+    assert page.evaluate("typeof window.renderAuditionRecords === 'function'")
+    assert page.evaluate("typeof window.deleteAuditionRecord === 'function'")
+    assert page.evaluate("typeof window.clearAuditionRecords === 'function'")
+
+    # state variable is initialized
+    assert page.evaluate("typeof window._auditionRecords !== 'undefined'")
+
+    # Click the Voices tab
+    voices_tab = page.locator('button.tab-btn[data-tab="voices"]')
+    assert voices_tab.count() == 1, "Voices tab button not found"
+    voices_tab.click()
+
+    page.wait_for_selector("#tab-voices", state="attached", timeout=10000)
+    page.wait_for_timeout(2000)  # allow tab switch to settle
+
+    # voiceListResults container exists (defined directly in HTML, always present)
+    assert page.locator("#voiceListResults").count() == 1
+
+    # No critical JS errors occurred
+    # console_errors fixture will fail on real JS errors

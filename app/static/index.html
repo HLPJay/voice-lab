@@ -1587,6 +1587,7 @@
 <script src="/static/js/provider_capabilities.js"></script>
 <script src="/static/js/runtime_status.js"></script>
 <script src="/static/js/history.js"></script>
+<script src="/static/js/audition_records.js"></script>
 <script>
   // ============================================================
   // Provider Capability Registry (P9-CAPABILITY3)
@@ -1684,7 +1685,6 @@
   // ============================================================
   let _cachedProfiles = null;
   let _cachedVoices = {};
-  window._auditionRecords = [];
   window._voicePagination = { currentPage: 1, pageSize: 20, totalItems: 0 };
 
   async function loadProfiles(forceRefresh = false) {
@@ -3382,8 +3382,7 @@ function handleStopAsyncPolling() {
         // Clear all records (delegated — survives innerHTML replacement)
         if (e.target.closest('#auditionClearBtn')) {
           if (!confirm('确定清空全部试听记录？')) return;
-          window._auditionRecords = [];
-          renderAuditionRecords();
+          window.clearAuditionRecords();
         }
 
         // Auto-fill delete form when clicking on a voice row (not on a button)
@@ -3413,8 +3412,7 @@ function handleStopAsyncPolling() {
         const delBtn = e.target.closest('[data-delete]');
         if (delBtn) {
           const idx = parseInt(delBtn.dataset.delete);
-          window._auditionRecords.splice(idx, 1);
-          renderAuditionRecords();
+          window.deleteAuditionRecord(idx);
         }
       });
 
@@ -3442,40 +3440,7 @@ function handleStopAsyncPolling() {
     }
   }
 
-  function renderAuditionRecords() {
-    const container = document.getElementById('auditionRecordsTable');
-    const countEl = document.getElementById('auditionCount');
-    if (!container) return;
-    const records = window._auditionRecords || [];
-    if (countEl) countEl.textContent = records.length > 0 ? `（共 ${records.length} 条）` : '';
-    if (records.length === 0) {
-      container.innerHTML = '<div style="font-size:0.78rem;color:#a0aec0;text-align:center;padding:10px 8px;border:1px dashed #e2e8f0;border-radius:8px">暂无试听记录</div>';
-      return;
-    }
-    const cardsHtml = records.map((r, i) => {
-      const textPreview = r.text.length > 20 ? r.text.substring(0, 20) + '…' : r.text;
-      const audioHtml = r.audioUrl
-        ? `<audio controls style="height:28px;width:160px"><source src="${esc(r.audioUrl)}" type="audio/mpeg"></audio>`
-        : '<span style="color:#a0aec0;font-size:0.72rem">无音频</span>';
-      return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
-        <div style="flex:1;min-width:160px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-            <code style="font-size:0.75rem;background:#f7fafc;color:#4a5568;padding:1px 5px;border-radius:3px">${esc(r.voiceId)}</code>
-            ${r.voiceName ? `<span style="font-size:0.72rem;color:#718096">${esc(r.voiceName)}</span>` : ''}
-          </div>
-          <div>${audioHtml}</div>
-        </div>
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:3px">文本预览</div>
-          <div style="font-size:0.78rem;color:#4a5568" title="${esc(r.text)}">${esc(textPreview)}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e;font-size:0.7rem;padding:2px 6px">删除</button>
-        </div>
-      </div>`;
-    }).join('');
-    container.innerHTML = cardsHtml;
-  }
+  // renderAuditionRecords / deleteAuditionRecord / clearAuditionRecords — moved to /static/js/audition_records.js
 
   async function handleGenerateAudition() {
     const voiceId = window._auditionSelectedVoiceId;

@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-C-FIX：
+截至 P9-FE1-D：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3740,3 +3740,44 @@ python -m pytest tests/ -x -q  # 582 passed, 6 skipped
 **测试结果：** 582 passed, 6 skipped（新增 2 个 E2E 测试）。
 
 **未改 app/api、app/services、app/providers、app/domain、index.html、admin.html、provider_capabilities.js、runtime_status.js、history.js 业务逻辑、Provider Adapter、生成链路、数据库、资产清理链路。
+
+### P9-FE1-D：抽取 audition_records.js 前端模块
+
+**阶段目标：** 将 index.html 中的试听记录逻辑（`_auditionRecords` 状态、`renderAuditionRecords`、`deleteAuditionRecord`、`clearAuditionRecords`）抽离为独立 IIFE 模块 `app/static/js/audition_records.js`，E2E 验证模块加载与 Voices Tab 打开无 JS 报错。
+
+**修改文件：**
+
+- `app/static/js/audition_records.js` — 新建，承接 `_auditionRecords` 状态与渲染函数
+- `app/static/index.html` — 移除内联 audition record 函数定义，改为调用 window 全局函数
+- `tests/e2e/test_frontend_capabilities.py` — 新增 1 个 E2E 测试
+
+**实现：**
+
+1. **audition_records.js**（新建 IIFE）：
+   - `window._auditionRecords = []` 状态初始化
+   - `window.renderAuditionRecords()` — 渲染到 `#auditionRecordsTable`
+   - `window.deleteAuditionRecord(idx)` — 删除指定记录并重绘
+   - `window.clearAuditionRecords()` — 清空所有记录并重绘
+   - `arEsc()` — HTML 转义辅助
+
+2. **index.html 改动**：
+   - 新增 `<script src="/static/js/audition_records.js">`（history.js 之后）
+   - `setupAuditionWorkstation()` 中 `window._auditionRecords = []; renderAuditionRecords()` → `window.clearAuditionRecords()`
+   - `setupAuditionWorkstation()` 中 `window._auditionRecords.splice(...)` → `window.deleteAuditionRecord(idx)`
+   - 移除 `renderAuditionRecords()` 函数定义，改为注释引用外部模块
+
+3. **test_audition_records_module_and_voices_tab_open**：
+   - 断言 `script[src="/static/js/audition_records.js"]` 存在
+   - 断言 `window.renderAuditionRecords`、`window.deleteAuditionRecord`、`window.clearAuditionRecords` 为 function
+   - 点击 Voices tab，断言 `#tab-voices` 和 `#voiceListResults` 存在
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e -q  # 11 passed
+python -m pytest tests/ -x -q  # 582 passed, 6 skipped
+```
+
+**测试结果：** 582 passed, 6 skipped（新增 1 个 E2E 测试）。
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、history.js、Provider Adapter、生成链路、数据库、资产清理链路。
