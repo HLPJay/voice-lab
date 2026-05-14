@@ -3,7 +3,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.errors import JobNotFound
-from app.domain.schemas import AudioAssetResponse, SubtitleAssetResponse, VoiceJobRead
+from app.domain.schemas import AudioAssetResponse, SubtitleAssetResponse, VoiceJobDeleteResponse, VoiceJobRead
 from app.repositories import voice_asset_repo, voice_job_repo
 
 router = APIRouter()
@@ -82,6 +82,32 @@ async def get_job(
     session: Session = Depends(get_session),
 ):
     job = voice_job_repo.get_job(session, job_id)
-    if not job:
+    if not job or job.status == "deleted":
         raise JobNotFound("Voice job not found", job_id=job_id)
     return _job_read_with_assets(session, job)
+
+
+@router.delete("/jobs/{job_id}", response_model=VoiceJobDeleteResponse)
+async def delete_job(
+    job_id: str,
+    session: Session = Depends(get_session),
+):
+    job = voice_job_repo.get_job(session, job_id)
+    if not job:
+        raise JobNotFound("Voice job not found", job_id=job_id)
+
+    if job.status == "deleted":
+        return VoiceJobDeleteResponse(
+            job_id=job.id,
+            deleted=True,
+            status="deleted",
+            message="历史任务已删除",
+        )
+
+    job = voice_job_repo.soft_delete_job(session, job)
+    return VoiceJobDeleteResponse(
+        job_id=job.id,
+        deleted=True,
+        status=job.status,
+        message="历史任务已删除",
+    )

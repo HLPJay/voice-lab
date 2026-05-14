@@ -1,5 +1,6 @@
 from sqlmodel import Session, select, func
 
+from app.core.time import utc_now_iso
 from app.models.voice_job import VoiceJob
 
 
@@ -21,6 +22,15 @@ def update_job(session: Session, job: VoiceJob) -> VoiceJob:
     return job
 
 
+def soft_delete_job(session: Session, job: VoiceJob) -> VoiceJob:
+    job.status = "deleted"
+    job.updated_at = utc_now_iso()
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
+
+
 def list_jobs(
     session: Session,
     *,
@@ -32,10 +42,14 @@ def list_jobs(
 ) -> tuple[list[VoiceJob], int]:
     """Return (jobs, total_count)."""
     conditions = []
-    if job_type is not None:
-        conditions.append(VoiceJob.job_type == job_type)
+
     if status is not None:
         conditions.append(VoiceJob.status == status)
+    else:
+        conditions.append(VoiceJob.status != "deleted")
+
+    if job_type is not None:
+        conditions.append(VoiceJob.job_type == job_type)
     if profile_id is not None:
         conditions.append(VoiceJob.profile_id == profile_id)
 

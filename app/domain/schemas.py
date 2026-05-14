@@ -153,6 +153,13 @@ class VoiceJobRead(BaseModel):
     updated_at: str
 
 
+class VoiceJobDeleteResponse(BaseModel):
+    job_id: str
+    deleted: bool = True
+    status: str = "deleted"
+    message: str = "历史任务已删除"
+
+
 class AudioAssetRead(BaseModel):
     asset_id: str
     type: str = "audio"
