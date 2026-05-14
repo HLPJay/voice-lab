@@ -147,6 +147,8 @@ class VoiceJobRead(BaseModel):
     processed_text: str | None = None
     provider_trace_id: str | None = None
     error_message: str | None = None
+    audio_asset: AudioAssetResponse | None = None
+    subtitle_asset: SubtitleAssetResponse | None = None
     created_at: str
     updated_at: str
 
