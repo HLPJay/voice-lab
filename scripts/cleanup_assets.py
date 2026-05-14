@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """
-P8-BE3C: Asset cleanup dry-run planner.
+P8-BE3D: Asset quarantine and restore tool.
 
-This script generates a read-only cleanup plan.
-It does not delete files.
-It does not move files.
-It does not modify database records.
-It does not implement quarantine.
+Supports three modes:
+  --dry-run   : Read-only plan generation (BE3C)
+  --quarantine: Move plan candidates to storage/quarantine/<timestamp>/
+  --restore   : Restore quarantined files to original locations
+
+No permanent deletion. No database modification.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
 from collections import Counter
 from datetime import datetime
@@ -29,6 +32,7 @@ from app.models.voice_asset import AudioAsset, SubtitleAsset
 from app.models.voice_job import VoiceJob
 
 REPORT_VERSION = "p8-be3c-dry-run"
+MANIFEST_VERSION = "p8-be3d-quarantine"
 MAX_DEFAULT_FILES = 1000
 DEFAULT_KIND = "orphan"
 DEFAULT_MIN_AGE_DAYS = 7
@@ -160,6 +164,41 @@ def build_subtitle_pairs(subtitle_files: list[dict]) -> tuple[list[dict], list[d
     return paired_groups, unpaired_files
 
 
+# ---------------------------------------------------------------------------
+# Shared DB helpers
+# ---------------------------------------------------------------------------
+
+def build_db_reference_sets() -> tuple[set[str], set[str], set[str]]:
+    """Return (audio_paths, subtitle_paths, srt_paths) from current DB state."""
+    with Session(engine) as session:
+        audio_assets = list(session.exec(select(AudioAsset)).all())
+        subtitle_assets = list(session.exec(select(SubtitleAsset)).all())
+
+    audio_paths: set[str] = set()
+    subtitle_paths: set[str] = set()
+    srt_paths: set[str] = set()
+
+    for a in audio_assets:
+        if a.file_path:
+            audio_paths.add(str(Path(a.file_path).resolve()))
+    for s in subtitle_assets:
+        if s.file_path:
+            subtitle_paths.add(str(Path(s.file_path).resolve()))
+        if s.srt_path:
+            srt_paths.add(str(Path(s.srt_path).resolve()))
+
+    return audio_paths, subtitle_paths, srt_paths
+
+
+def is_db_referenced(path: str, audio_paths: set[str], subtitle_paths: set[str], srt_paths: set[str]) -> bool:
+    """Return True if path is referenced by any DB asset."""
+    return path in audio_paths or path in subtitle_paths or path in srt_paths
+
+
+# ---------------------------------------------------------------------------
+# Dry-run (BE3C logic — unchanged)
+# ---------------------------------------------------------------------------
+
 def run_dry_run(
     kind: str,
     min_age_days: int,
@@ -173,26 +212,10 @@ def run_dry_run(
 
     # --- DB scan (read-only) ---
     with Session(engine) as session:
-        audio_assets = list(session.exec(select(AudioAsset)).all())
-        subtitle_assets = list(session.exec(select(SubtitleAsset)).all())
         voice_jobs = list(session.exec(select(VoiceJob)).all())
 
-    # Build DB reference sets
-    audio_file_paths_db: set[str] = set()
-    subtitle_file_paths_db: set[str] = set()
-    subtitle_srt_paths_db: set[str] = set()
+    audio_file_paths_db, subtitle_file_paths_db, subtitle_srt_paths_db = build_db_reference_sets()
 
-    for a in audio_assets:
-        if a.file_path:
-            audio_file_paths_db.add(str(Path(a.file_path).resolve()))
-
-    for s in subtitle_assets:
-        if s.file_path:
-            subtitle_file_paths_db.add(str(Path(s.file_path).resolve()))
-        if s.srt_path:
-            subtitle_srt_paths_db.add(str(Path(s.srt_path).resolve()))
-
-    # Running-like jobs
     running_like_jobs = [j for j in voice_jobs if j.status in STANDARD_RUNNING_JOB_STATUSES]
     running_like_status_dist = dict(Counter(j.status for j in running_like_jobs))
 
@@ -201,31 +224,17 @@ def run_dry_run(
     subtitle_files = scan_storage_directory(root, "subtitles")
     temp_files = scan_storage_directory(root, "temp")
 
-    # Build disk path sets (full resolved paths)
-    audio_file_disk: set[str] = set()
-    subtitle_file_disk: set[str] = set()
-
-    for f in audio_files:
-        full = root / f["relative_path"]
-        audio_file_disk.add(str(full.resolve()))
-
-    for f in subtitle_files:
-        full = root / f["relative_path"]
-        subtitle_file_disk.add(str(full.resolve()))
-
     # Running protection threshold: 72 hours = 3 days
     protection_age_days = max(1, RUNNING_PROTECTION_WINDOW_HOURS // 24)
 
     # --- Classify every audio file on disk into exactly one bucket ---
-    # Categories: db_referenced | recent | running_guard | eligible_orphan_audio
     db_referenced_audio = []
     recent_audio = []
     running_guard_audio = []
     eligible_orphan_audio = []
 
     for f in audio_files:
-        full = root / f["relative_path"]
-        full_str = str(full.resolve())
+        full_str = str((root / f["relative_path"]).resolve())
         age = f["modified_age_days"]
 
         if full_str in audio_file_paths_db:
@@ -238,15 +247,13 @@ def run_dry_run(
             eligible_orphan_audio.append(f)
 
     # --- Classify every subtitle file on disk into exactly one bucket ---
-    # Categories: db_referenced | recent | running_guard | eligible_orphan_subtitle
     db_referenced_subtitle = []
     recent_subtitle = []
     running_guard_subtitle = []
     eligible_orphan_subtitle = []
 
     for f in subtitle_files:
-        full = root / f["relative_path"]
-        full_str = str(full.resolve())
+        full_str = str((root / f["relative_path"]).resolve())
         age = f["modified_age_days"]
 
         if full_str in subtitle_file_paths_db or full_str in subtitle_srt_paths_db:
@@ -276,7 +283,6 @@ def run_dry_run(
     subtitle_pairs, unpaired_subtitles = build_subtitle_pairs(eligible_orphan_subtitle)
 
     # --- Compute truncated ---
-    # Truncated = total eligible items (in file-count terms) exceeds max_files
     total_eligible_file_count = (
         len(eligible_orphan_audio) +
         (len(subtitle_pairs) * 2) +
@@ -382,20 +388,12 @@ def run_dry_run(
     candidate_total_bytes = sum(c["total_size_bytes"] for c in candidates)
 
     excluded_recent_count = (
-        len(recent_audio) +
-        len(recent_subtitle) +
-        len(recent_temp)
+        len(recent_audio) + len(recent_subtitle) + len(recent_temp)
     )
     excluded_running_count = (
-        len(running_guard_audio) +
-        len(running_guard_subtitle) +
-        len(running_guard_temp)
+        len(running_guard_audio) + len(running_guard_subtitle) + len(running_guard_temp)
     )
-    # Direct count: files on disk not in DB references
-    excluded_db_count = (
-        len(db_referenced_audio) +
-        len(db_referenced_subtitle)
-    )
+    excluded_db_count = len(db_referenced_audio) + len(db_referenced_subtitle)
     excluded_unpaired_count = len(unpaired_subtitles)
 
     report = {
@@ -459,11 +457,9 @@ def run_dry_run(
         ],
     }
 
-    # --- Write output ---
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # --- Console summary ---
     print("Asset cleanup dry-run completed.")
     print(f"  Mode: dry-run")
     print(f"  Kind: {kind}")
@@ -481,77 +477,485 @@ def run_dry_run(
     return report
 
 
+# ---------------------------------------------------------------------------
+# Quarantine (BE3D)
+# ---------------------------------------------------------------------------
+
+def run_quarantine(
+    plan_path: str,
+    storage_dir: str | None,
+) -> dict[str, Any]:
+    """Execute quarantine based on a dry-run plan."""
+    root = Path(storage_dir) if storage_dir else Path(get_settings().storage_dir)
+
+    # --- Load and validate plan ---
+    plan = json.loads(Path(plan_path).read_text(encoding="utf-8"))
+
+    if plan.get("report_version") != REPORT_VERSION:
+        raise SystemExit(f"Unsupported plan version: {plan.get('report_version')}. Expected {REPORT_VERSION}.")
+    if plan.get("mode") != "dry-run":
+        raise SystemExit(f"Plan mode must be 'dry-run', got: {plan.get('mode')}")
+    if "candidates" not in plan:
+        raise SystemExit("Plan has no candidates field.")
+
+    candidates = plan["candidates"]
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    q_dir = root / "quarantine" / timestamp
+
+    # Build DB reference sets for re-validation
+    audio_db, subtitle_db, srt_db = build_db_reference_sets()
+
+    manifest_files: list[dict] = []
+    moved_count = 0
+    skipped_count = 0
+    failed_count = 0
+    moved_bytes = 0
+
+    # --- Create quarantine subdirectories ---
+    (q_dir / "audio").mkdir(parents=True, exist_ok=True)
+    (q_dir / "subtitles").mkdir(parents=True, exist_ok=True)
+    (q_dir / "temp").mkdir(parents=True, exist_ok=True)
+
+    for cand in candidates:
+        kind = cand.get("kind")
+        cand_id = cand.get("candidate_id", "?")
+        files = cand.get("files", [])
+
+        for file_entry in files:
+            rel_path = file_entry.get("relative_path", "")
+            size_bytes = file_entry.get("size_bytes", 0)
+            modified_time = file_entry.get("modified_time", "")
+
+            # --- Path safety checks ---
+            if Path(rel_path).is_absolute():
+                manifest_files.append({
+                    "candidate_id": cand_id,
+                    "kind": kind,
+                    "reason": cand.get("reason"),
+                    "original_relative_path": rel_path,
+                    "quarantine_relative_path": None,
+                    "size_bytes": size_bytes,
+                    "modified_time": modified_time,
+                    "status": "failed",
+                    "skip_reason": "absolute_path_not_allowed",
+                    "error": "Absolute paths are not allowed",
+                })
+                failed_count += 1
+                continue
+
+            if ".." in rel_path or Path(rel_path).name != rel_path.split("/")[-1] and ".." in str(Path(rel_path).parts):
+                manifest_files.append({
+                    "candidate_id": cand_id,
+                    "kind": kind,
+                    "reason": cand.get("reason"),
+                    "original_relative_path": rel_path,
+                    "quarantine_relative_path": None,
+                    "size_bytes": size_bytes,
+                    "modified_time": modified_time,
+                    "status": "failed",
+                    "skip_reason": "path_traversal_not_allowed",
+                    "error": "Path traversal (..) is not allowed",
+                })
+                failed_count += 1
+                continue
+
+            # --- Determine quarantine subdirectory ---
+            first_part = rel_path.split("/")[0] if "/" in rel_path else ""
+            if first_part == "audio":
+                q_subdir = q_dir / "audio"
+            elif first_part == "subtitles":
+                q_subdir = q_dir / "subtitles"
+            elif first_part == "temp":
+                q_subdir = q_dir / "temp"
+            else:
+                q_subdir = q_dir / "audio"
+
+            q_rel = str(q_subdir.relative_to(root)) + "/" + Path(rel_path).name
+            q_full = q_dir / Path(rel_path).name
+
+            # --- Avoid name collision ---
+            if q_full.exists():
+                base = Path(rel_path).stem
+                ext = Path(rel_path).suffix
+                q_full = q_subdir / f"{base}_{timestamp}{ext}"
+                q_rel = str(q_full.relative_to(root))
+
+            src_full = root / rel_path
+
+            # --- File existence re-check ---
+            if not src_full.exists():
+                manifest_files.append({
+                    "candidate_id": cand_id,
+                    "kind": kind,
+                    "reason": cand.get("reason"),
+                    "original_relative_path": rel_path,
+                    "quarantine_relative_path": q_rel,
+                    "size_bytes": size_bytes,
+                    "modified_time": modified_time,
+                    "status": "skipped",
+                    "skip_reason": "file_not_found",
+                    "error": None,
+                })
+                skipped_count += 1
+                continue
+
+            # --- DB reference re-check ---
+            src_str = str(src_full.resolve())
+            if is_db_referenced(src_str, audio_db, subtitle_db, srt_db):
+                manifest_files.append({
+                    "candidate_id": cand_id,
+                    "kind": kind,
+                    "reason": cand.get("reason"),
+                    "original_relative_path": rel_path,
+                    "quarantine_relative_path": q_rel,
+                    "size_bytes": size_bytes,
+                    "modified_time": modified_time,
+                    "status": "skipped",
+                    "skip_reason": "db_referenced",
+                    "error": "File became DB-referenced since plan was generated",
+                })
+                skipped_count += 1
+                continue
+
+            # --- Move file (copy, don't delete) ---
+            try:
+                shutil.copy2(src_full, q_full)
+                manifest_files.append({
+                    "candidate_id": cand_id,
+                    "kind": kind,
+                    "reason": cand.get("reason"),
+                    "original_relative_path": rel_path,
+                    "quarantine_relative_path": q_rel,
+                    "size_bytes": size_bytes,
+                    "modified_time": modified_time,
+                    "status": "moved",
+                    "skip_reason": None,
+                    "error": None,
+                })
+                moved_count += 1
+                moved_bytes += size_bytes
+            except Exception as ex:
+                manifest_files.append({
+                    "candidate_id": cand_id,
+                    "kind": kind,
+                    "reason": cand.get("reason"),
+                    "original_relative_path": rel_path,
+                    "quarantine_relative_path": q_rel,
+                    "size_bytes": size_bytes,
+                    "modified_time": modified_time,
+                    "status": "failed",
+                    "skip_reason": None,
+                    "error": str(ex),
+                })
+                failed_count += 1
+
+    # --- Write manifest ---
+    manifest = {
+        "manifest_version": MANIFEST_VERSION,
+        "created_at": datetime.now().isoformat(),
+        "mode": "quarantine",
+        "source_plan": str(Path(plan_path).resolve()),
+        "storage_root": "<REDACTED>",
+        "quarantine_timestamp": timestamp,
+        "summary": {
+            "requested_file_count": sum(len(c.get("files", [])) for c in candidates),
+            "moved_file_count": moved_count,
+            "skipped_file_count": skipped_count,
+            "failed_file_count": failed_count,
+            "moved_total_bytes": moved_bytes,
+        },
+        "files": manifest_files,
+        "notices": [
+            "Quarantine only. No files were permanently deleted.",
+            "No database records were modified.",
+            "Restore is available via --restore --manifest storage/quarantine/<timestamp>/manifest.json --confirm RESTORE.",
+        ],
+    }
+
+    manifest_path = q_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # --- Console summary ---
+    print("Asset quarantine completed.")
+    print(f"  Quarantine dir: {q_dir}")
+    print(f"  Moved: {moved_count} files ({moved_bytes} bytes)")
+    print(f"  Skipped: {skipped_count}")
+    print(f"  Failed: {failed_count}")
+    print(f"  Manifest: {manifest_path}")
+    print("No files were permanently deleted.")
+
+    return manifest
+
+
+# ---------------------------------------------------------------------------
+# Restore (BE3D)
+# ---------------------------------------------------------------------------
+
+def run_restore(
+    manifest_path: str,
+    storage_dir: str | None,
+) -> dict[str, Any]:
+    """Restore quarantined files to their original locations."""
+    root = Path(storage_dir) if storage_dir else Path(get_settings().storage_dir)
+
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+
+    if manifest.get("manifest_version") != MANIFEST_VERSION:
+        raise SystemExit(f"Unsupported manifest version: {manifest.get('manifest_version')}. Expected {MANIFEST_VERSION}.")
+    if manifest.get("mode") != "quarantine":
+        raise SystemExit(f"Manifest mode must be 'quarantine', got: {manifest.get('mode')}")
+
+    files = manifest.get("files", [])
+    restore_timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+
+    restored_count = 0
+    skipped_count = 0
+    conflict_count = 0
+    failed_count = 0
+    restore_files: list[dict] = []
+
+    for entry in files:
+        if entry.get("status") != "moved":
+            restore_files.append({
+                **entry,
+                "restore_status": "skipped_not_moved",
+                "note": "Only status=moved files are restored",
+            })
+            skipped_count += 1
+            continue
+
+        q_rel = entry.get("quarantine_relative_path")
+        orig_rel = entry.get("original_relative_path")
+        if not q_rel or not orig_rel:
+            restore_files.append({
+                **entry,
+                "restore_status": "failed",
+                "note": "Missing quarantine or original path",
+            })
+            failed_count += 1
+            continue
+
+        q_full = root / q_rel
+        orig_full = root / orig_rel
+
+        # Check quarantine file exists
+        if not q_full.exists():
+            restore_files.append({
+                **entry,
+                "restore_status": "skipped",
+                "note": "Quarantined file not found",
+            })
+            skipped_count += 1
+            continue
+
+        # Check original path already exists (no overwrite)
+        if orig_full.exists():
+            restore_files.append({
+                **entry,
+                "restore_status": "conflict",
+                "note": "Original path already exists, skipping",
+            })
+            conflict_count += 1
+            skipped_count += 1
+            continue
+
+        # Restore: copy back to original location
+        try:
+            orig_full.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(q_full, orig_full)
+            restore_files.append({
+                **entry,
+                "restore_status": "restored",
+                "note": None,
+            })
+            restored_count += 1
+        except Exception as ex:
+            restore_files.append({
+                **entry,
+                "restore_status": "failed",
+                "note": str(ex),
+            })
+            failed_count += 1
+
+    # --- Console summary ---
+    print("Asset restore completed.")
+    print(f"  Restored: {restored_count}")
+    print(f"  Skipped (not moved): {skipped_count - conflict_count}")
+    print(f"  Conflicts (already exists): {conflict_count}")
+    print(f"  Failed: {failed_count}")
+    print("No files were permanently deleted.")
+
+    return {
+        "restored_count": restored_count,
+        "skipped_count": skipped_count,
+        "conflict_count": conflict_count,
+        "failed_count": failed_count,
+        "restore_files": restore_files,
+    }
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+class ModeAction(argparse.Action):
+    """Ensure only one of --dry-run / --quarantine / --restore is given."""
+    def __call__(self, parser, namespace, values, option_string=None):
+        if getattr(namespace, self.dest) is not None:
+            raise argparse.ArgumentError(self, f"Cannot specify both {option_string} and existing mode")
+        setattr(namespace, self.dest, values)
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="P8-BE3C Asset cleanup dry-run planner (read-only)",
+        description="P8-BE3D Asset quarantine/restore tool (BE3C dry-run also supported)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-This script generates a read-only cleanup plan.
-It does NOT delete, move, or modify any files or database records.
+Modes (mutually exclusive):
+  --dry-run     Generate read-only cleanup plan (BE3C)
+  --quarantine  Move plan candidates to storage/quarantine/<timestamp>/
+  --restore     Restore quarantined files to original locations
+
 Examples:
-  python scripts/cleanup_assets.py --dry-run --kind orphan
-  python scripts/cleanup_assets.py --dry-run --kind orphan --min-age-days 7 --max-files 1000
-  python scripts/cleanup_assets.py --dry-run --kind orphan-audio --min-age-days 30
-  python scripts/cleanup_assets.py --dry-run --kind temp --min-age-days 1
+  # Generate dry-run plan
+  python scripts/cleanup_assets.py --dry-run --kind orphan --min-age-days 7
+
+  # Execute quarantine (requires --plan and --confirm QUARANTINE)
+  python scripts/cleanup_assets.py --quarantine --plan docs/generated/asset_cleanup_dry_run.json --confirm QUARANTINE
+
+  # Restore files (requires --manifest and --confirm RESTORE)
+  python scripts/cleanup_assets.py --restore --manifest storage/quarantine/<timestamp>/manifest.json --confirm RESTORE
+
+Security:
+  No permanent deletion. No database modification. Restore available for all quarantined files.
         """,
     )
+
+    # Mutually exclusive mode flags
     parser.add_argument(
         "--dry-run",
-        action="store_true",
-        required=True,
-        help="Generate dry-run plan (required)",
+        nargs="?",
+        const="dry-run",
+        default=None,
+        dest="mode",
+        action=ModeAction,
+        metavar="MODE",
+        help="Generate dry-run plan (MODE value is ignored, kept for compatibility)",
     )
+    parser.add_argument(
+        "--quarantine",
+        nargs="?",
+        const="quarantine",
+        default=None,
+        dest="mode",
+        action=ModeAction,
+        metavar="MODE",
+        help="Execute quarantine move (requires --plan and --confirm QUARANTINE)",
+    )
+    parser.add_argument(
+        "--restore",
+        nargs="?",
+        const="restore",
+        default=None,
+        dest="mode",
+        action=ModeAction,
+        metavar="MODE",
+        help="Restore quarantined files (requires --manifest and --confirm RESTORE)",
+    )
+
+    # Dry-run parameters
     parser.add_argument(
         "--kind",
         default=DEFAULT_KIND,
         choices=list(VALID_KINDS),
-        help=f"Cleanup kind (default: {DEFAULT_KIND})",
+        help=f"Cleanup kind for dry-run (default: {DEFAULT_KIND})",
     )
     parser.add_argument(
         "--min-age-days",
         type=int,
         default=DEFAULT_MIN_AGE_DAYS,
-        help=f"Minimum file age in days (default: {DEFAULT_MIN_AGE_DAYS})",
+        help=f"Minimum file age in days for dry-run (default: {DEFAULT_MIN_AGE_DAYS})",
     )
     parser.add_argument(
         "--max-files",
         type=int,
         default=MAX_DEFAULT_FILES,
-        help=f"Maximum candidate files to include (default: {MAX_DEFAULT_FILES})",
+        help=f"Maximum candidate files for dry-run (default: {MAX_DEFAULT_FILES})",
     )
     parser.add_argument(
         "--output",
         default="docs/generated/asset_cleanup_dry_run.json",
-        help="Output JSON path (default: docs/generated/asset_cleanup_dry_run.json)",
+        help="Output JSON path for dry-run (default: docs/generated/asset_cleanup_dry_run.json)",
     )
+
+    # Quarantine parameters
+    parser.add_argument(
+        "--plan",
+        help="Path to dry-run JSON plan for quarantine execution",
+    )
+    parser.add_argument(
+        "--confirm",
+        help="Confirmation token (must be QUARANTINE for quarantine, RESTORE for restore)",
+    )
+
+    # Restore parameters
+    parser.add_argument(
+        "--manifest",
+        help="Path to quarantine manifest.json for restore",
+    )
+
+    # Common
     parser.add_argument(
         "--storage-dir",
         default=None,
         help="Storage root directory (default: from app config)",
     )
 
-    # Refuse any execute/mode/confirm arguments
-    forbidden_args = [
-        "--execute", "--mode", "--quarantine", "--restore",
-        "--purge-quarantine", "--confirm",
-    ]
+    # Refuse purge arguments at all times
     for arg in sys.argv[1:]:
-        if arg in forbidden_args:
-            parser.error(f"{arg} is not supported in dry-run mode")
+        if arg in ("--purge", "--purge-quarantine"):
+            parser.error(f"{arg} is not supported in this version")
 
     args = parser.parse_args()
+
+    # --- Validate mode ---
+    if args.mode is None:
+        parser.error("One of --dry-run, --quarantine, or --restore is required")
+    if args.mode == "dry-run":
+        if args.plan is not None or args.manifest is not None:
+            parser.error("--plan and --manifest are only for --quarantine and --restore")
+    if args.mode == "quarantine":
+        if args.plan is None:
+            parser.error("--quarantine requires --plan")
+        if args.confirm != "QUARANTINE":
+            parser.error("--quarantine requires --confirm QUARANTINE")
+    if args.mode == "restore":
+        if args.manifest is None:
+            parser.error("--restore requires --manifest")
+        if args.confirm != "RESTORE":
+            parser.error("--restore requires --confirm RESTORE")
 
     # Suppress noisy logs
     import logging
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
-    run_dry_run(
-        kind=args.kind,
-        min_age_days=args.min_age_days,
-        max_files=args.max_files,
-        output_path=args.output,
-        storage_dir=args.storage_dir,
-    )
+    if args.mode == "dry-run":
+        run_dry_run(
+            kind=args.kind,
+            min_age_days=args.min_age_days,
+            max_files=args.max_files,
+            output_path=args.output,
+            storage_dir=args.storage_dir,
+        )
+    elif args.mode == "quarantine":
+        run_quarantine(
+            plan_path=args.plan,
+            storage_dir=args.storage_dir,
+        )
+    elif args.mode == "restore":
+        run_restore(
+            manifest_path=args.manifest,
+            storage_dir=args.storage_dir,
+        )
 
 
 if __name__ == "__main__":

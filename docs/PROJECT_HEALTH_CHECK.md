@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-BE3C-FIX：
+截至 P8-BE3D：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -46,6 +46,7 @@
 * P8-BE3B：资产清理策略确认已完成（确认 DB 引用资产永久保留，orphan audio/subtitle 只进入 dry-run，subtitle 必须 json/srt 成对处理，running-like jobs 保护窗口 72 小时，quarantine 作为真实执行前置，永久删除另设阶段，BE3C 只实现 dry-run 不实现 execute）
 * P8-BE3C：资产清理 dry-run 工具已完成（新增 scripts/cleanup_assets.py，工具只支持 --dry-run，不支持 --execute/--quarantine/--restore/--purge，排 DB 引用文件、quarantine、running-like 保护窗口内文件，orphan subtitle json/srt 成对候选，generated dry-run report 不提交）
 * P8-BE3C-FIX：资产清理 dry-run 修正已完成（修复 excluded_recent 误含 candidates、excluded_db 改用直接统计非残差公式、running guard 口径明确、truncated 改为基于 eligible 总数判断，新增 tests/test_cleanup_assets_dry_run.py 覆盖参数解析/禁止参数/DB 引用排除/subtitle pair/max-files 截断/输出结构）
+* P8-BE3D：资产 quarantine 和 restore 工具已完成（新增 --quarantine 和 --restore 模式，quarantine 使用 shutil.copy2 隔离文件到 storage/quarantine/<timestamp>/，生成 manifest.json，restore 支持恢复 status=moved 文件且不覆盖已有文件，ModeAction 实现三种模式互斥，tests/test_cleanup_assets_quarantine.py 23 个测试覆盖所有安全边界）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -280,11 +281,11 @@ python -m pytest tests/ -x -q
 测试结果：
 
 ```text
-322 passed, 6 skipped in 171.42s (0:02:51)
+438 passed, 6 skipped in 159.47s (0:02:39)
 ```
 
-- 总测试数量：328（322 passed + 6 skipped）
-- 通过数量：322
+- 总测试数量：444（438 passed + 6 skipped）
+- 通过数量：438
 - 跳过数量：6（均为 E2E 测试，需要真实 API Key）
 - 失败数量：0
 
