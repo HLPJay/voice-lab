@@ -432,5 +432,13 @@ class CapabilityValidator:
                     detail="PREVIEW_TEXT_TOO_LONG",
                 )
 
+        if verify:
+            if not cap.tts or not cap.tts.supported:
+                self._fail(
+                    "当前 Provider 不支持远端音色导入验证。",
+                    detail="IMPORT_VERIFY_NOT_SUPPORTED",
+                )
+            self._validate_model(model, cap.tts.models if cap.tts else [])
+
 
 capability_validator = CapabilityValidator()

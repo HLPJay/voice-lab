@@ -480,12 +480,18 @@ class TestValidateProviderVoiceImport:
                 supports_import_remote_voice=True,
                 preview_text_max=1000,
             ),
+            tts=TTSCapability(
+                supported=True,
+                models=["model-a"],
+                audio_formats=["mp3"],
+            ),
         )
         v = self._make_validator(cap)
         v.validate_provider_voice_import(
             provider="test",
             preview_text="hello",
             verify=True,
+            model="model-a",
         )
 
     def test_validate_provider_voice_import_not_supported(self):
@@ -508,3 +514,61 @@ class TestValidateProviderVoiceImport:
         with pytest.raises(ValidationError) as exc_info:
             v.validate_provider_voice_import(provider="test", preview_text="hello")
         assert "IMPORT_NOT_SUPPORTED" in exc_info.value.detail
+
+    def test_validate_provider_voice_import_verify_requires_tts(self):
+        cap = make_provider_cap(
+            provider_voices=ProviderVoiceCapability(
+                supported=True,
+                supports_import_remote_voice=True,
+                preview_text_max=1000,
+            ),
+            tts=None,
+        )
+        v = self._make_validator(cap)
+        with pytest.raises(ValidationError) as exc_info:
+            v.validate_provider_voice_import(provider="test", preview_text="hello", verify=True)
+        assert "IMPORT_VERIFY_NOT_SUPPORTED" in exc_info.value.detail
+
+    def test_validate_provider_voice_import_verify_tts_not_supported(self):
+        cap = make_provider_cap(
+            provider_voices=ProviderVoiceCapability(
+                supported=True,
+                supports_import_remote_voice=True,
+                preview_text_max=1000,
+            ),
+            tts=TTSCapability(supported=False),
+        )
+        v = self._make_validator(cap)
+        with pytest.raises(ValidationError) as exc_info:
+            v.validate_provider_voice_import(provider="test", preview_text="hello", verify=True)
+        assert "IMPORT_VERIFY_NOT_SUPPORTED" in exc_info.value.detail
+
+    def test_validate_provider_voice_import_verify_invalid_model(self):
+        cap = make_provider_cap(
+            provider_voices=ProviderVoiceCapability(
+                supported=True,
+                supports_import_remote_voice=True,
+                preview_text_max=1000,
+            ),
+            tts=TTSCapability(
+                supported=True,
+                models=["model-a"],
+                audio_formats=["mp3"],
+            ),
+        )
+        v = self._make_validator(cap)
+        with pytest.raises(ValidationError) as exc_info:
+            v.validate_provider_voice_import(provider="test", preview_text="hello", verify=True, model="model-b")
+        assert "UNSUPPORTED_MODEL" in exc_info.value.detail
+
+    def test_validate_provider_voice_import_verify_false_allows_no_tts(self):
+        cap = make_provider_cap(
+            provider_voices=ProviderVoiceCapability(
+                supported=True,
+                supports_import_remote_voice=True,
+                preview_text_max=1000,
+            ),
+            tts=None,
+        )
+        v = self._make_validator(cap)
+        v.validate_provider_voice_import(provider="test", preview_text="hello", verify=False)
