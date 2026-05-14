@@ -1137,8 +1137,8 @@
       <p style="font-size:0.88rem;color:#718096;line-height:1.7;margin-bottom:8px">
         在这里查询、筛选和试听可用音色。试听满意后，可以通过轻量绑定入口绑定到声音人设，再回到创作工作台使用。
       </p>
-      <p style="font-size:0.82rem;color:#c53030;background:#fff5f5;border:1px solid #feb2b2;padding:8px 12px;border-radius:6px">
-        试听提示：真实 MiniMax provider 下试听会产生 API 调用成本，建议使用 20-100 字短文本进行验证。
+      <p style="font-size:0.82rem;background:#fffaf0;border:1px solid #fbd38d;color:#9c4221;padding:8px 12px;border-radius:6px">
+        真实 Provider 试听会产生 API 调用成本，建议先使用短文本验证。
       </p>
     </div>
 
@@ -1163,7 +1163,7 @@
           </select>
         </div>
       </div>
-      <button class="btn-primary" id="listVoicesBtn" onclick="handleListVoices()">查询音色</button>
+      <button class="btn-primary" id="listVoicesBtn" onclick="handleListVoices()" title="从 Provider 查询可用音色">查询音色</button>
       <div class="form-group" style="margin-top:12px">
         <input type="text" id="voiceSearch" placeholder="输入关键词过滤音色（名称 / voice_id / 描述）…" oninput="filterVoiceList()" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem">
       </div>
@@ -3638,7 +3638,7 @@ function handleStopAsyncPolling() {
           <option value="speech-2.6-hd">speech-2.6-hd</option>
           <option value="speech-2.6-turbo">speech-2.6-turbo</option>
         </select>
-        <button class="btn-primary" id="auditionGenBtn" style="margin:0;white-space:nowrap">▶ 生成试听</button>
+        <button class="btn-primary" id="auditionGenBtn" style="margin:0;white-space:nowrap" title="调用当前 Provider 生成试听音频">▶ 生成试听</button>
       </div>
       <div id="auditionResult" style="margin-bottom:10px;min-height:24px"></div>
       <div id="auditionRecordsPanel">
@@ -3753,64 +3753,14 @@ function handleStopAsyncPolling() {
         }
       });
 
-      // Star rating (delegated)
-      resultsEl.addEventListener('click', e => {
-        const star = e.target.closest('.star');
-        if (star) {
-          const idx = parseInt(star.dataset.index);
-          const s = parseInt(star.dataset.star);
-          const record = window._auditionRecords[idx];
-          if (!record) return;
-          if (record.rating === s) {
-            record.rating = null; // toggle off
-          } else {
-            record.rating = s;
-          }
-          renderAuditionRecords();
+      // Note: star rating and note input handlers removed (no save API)
+      resultsEl.addEventListener('input', e => {
+        // Audition text character count hint
+        if (e.target.id === 'auditionText') {
+          const hint = document.getElementById('auditionCostHint');
+          if (hint) hint.textContent = `约 ${e.target.value.length} 字`;
         }
       });
-
-      // Star hover preview (delegated)
-      resultsEl.addEventListener('mouseover', e => {
-        const star = e.target.closest('.star');
-        if (!star) return;
-        const idx = parseInt(star.dataset.index);
-        const hoveredStar = parseInt(star.dataset.star);
-        const record = window._auditionRecords[idx];
-        if (!record) return;
-        const stars = resultsEl.querySelectorAll(`.star[data-index="${idx}"]`);
-        stars.forEach(s => {
-          const sn = parseInt(s.dataset.star);
-          s.style.color = sn <= hoveredStar ? '#f6ad55' : '#e2e8f0';
-        });
-      });
-
-      resultsEl.addEventListener('mouseleave', e => {
-        const star = e.target.closest('.star');
-        if (!star) return;
-        const idx = parseInt(star.dataset.index);
-        const record = window._auditionRecords[idx];
-        const stars = resultsEl.querySelectorAll(`.star[data-index="${idx}"]`);
-        stars.forEach(s => {
-          const sn = parseInt(s.dataset.star);
-          s.style.color = record && record.rating && sn <= record.rating ? '#f6ad55' : '#e2e8f0';
-        });
-      });
-
-    // Note input (delegated, save on input)
-    resultsEl.addEventListener('input', e => {
-      const input = e.target.closest('[data-index][data-field="note"]');
-      if (input) {
-        const idx = parseInt(input.dataset.index);
-        const record = window._auditionRecords[idx];
-        if (record) record.note = input.value;
-      }
-      // Audition text character count hint
-      if (e.target.id === 'auditionText') {
-        const hint = document.getElementById('auditionCostHint');
-        if (hint) hint.textContent = `约 ${e.target.value.length} 字`;
-      }
-    });
     } // end of !_auditionDelegated guard
 
     // These run on every call (after innerHTML replacement recreates elements)
@@ -3839,9 +3789,6 @@ function handleStopAsyncPolling() {
     }
     const cardsHtml = records.map((r, i) => {
       const textPreview = r.text.length > 20 ? r.text.substring(0, 20) + '…' : r.text;
-      const stars = [1,2,3,4,5].map(n =>
-        `<span class="star" data-index="${i}" data-star="${n}" style="cursor:pointer;color:${r.rating && n <= r.rating ? '#f6ad55' : '#e2e8f0'};font-size:1rem;margin:0 1px">★</span>`
-      ).join('');
       const audioHtml = r.audioUrl
         ? `<audio controls style="height:28px;width:160px"><source src="${esc(r.audioUrl)}" type="audio/mpeg"></audio>`
         : '<span style="color:#a0aec0;font-size:0.72rem">无音频</span>';
@@ -3857,14 +3804,7 @@ function handleStopAsyncPolling() {
           <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:3px">文本预览</div>
           <div style="font-size:0.78rem;color:#4a5568" title="${esc(r.text)}">${esc(textPreview)}</div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div style="font-size:0.72rem;color:#a0aec0">评分</div>
-          <div>${stars}</div>
-        </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <input type="text" value="${esc(r.note || '')}" placeholder="添加备注…"
-            style="border:none;border-bottom:1px dashed #cbd5e0;background:transparent;font-size:0.72rem;width:90px;padding:2px 0;text-align:right"
-            data-index="${i}" data-field="note">
           <button class="btn-sm" data-delete="${i}" style="margin:0;color:#e53e3e;font-size:0.7rem;padding:2px 6px">删除</button>
         </div>
       </div>`;
@@ -3935,7 +3875,6 @@ function handleStopAsyncPolling() {
         window._auditionRecords.push({
           voiceId, voiceName: voiceName || '',
           text, audioUrl: data.audio_asset.url,
-          rating: null, note: '',
           timestamp: Date.now(),
         });
         renderAuditionRecords();
@@ -4058,7 +3997,8 @@ function handleStopAsyncPolling() {
     }
     pageVoices.forEach(v => {
       const boundProfiles = voiceBindMap[v.provider_voice_id] || [];
-      const bindStatusHtml = boundProfiles.length > 0
+      const isBound = boundProfiles.length > 0;
+      const bindStatusHtml = isBound
         ? (() => {
             const shown = boundProfiles.slice(0, 2);
             const rest = boundProfiles.length - shown.length;
@@ -4070,6 +4010,10 @@ function handleStopAsyncPolling() {
             </span>`;
           })()
         : `<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;padding:1px 6px;border-radius:10px">未绑定</span>`;
+      const bindBtnText = isBound ? '更换绑定' : '绑定到人设';
+      const bindBtnTitle = isBound
+        ? `当前已绑定到：${(boundProfiles.slice(0,1).map(b => b.profile_name || b.profile_id)[0] || '')}。点击可更换绑定。`
+        : '绑定该音色到声音人设';
       tableHtml += `<tr data-voice-id="${esc(v.provider_voice_id)}">
         <td><code style="font-size:0.78rem">${esc(v.provider_voice_id)}</code></td>
         <td>${esc(v.name || '-')}</td>
@@ -4077,8 +4021,8 @@ function handleStopAsyncPolling() {
         <td>${esc(v.language || '-')}</td>
         <td class="bind-status-cell">${bindStatusHtml}</td>
         <td>
-          <button class="btn-sm audition-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">试听</button>
-          <button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px">绑定到人设</button>
+          <button class="btn-sm audition-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px" title="生成一段短文本试听音色">试听</button>
+          <button class="btn-sm bind-voice-btn" data-voice-id="${esc(v.provider_voice_id)}" data-name="${esc(v.name || '')}" data-provider="${esc(provider)}" style="margin-right:4px" title="${bindBtnTitle}">${bindBtnText}</button>
         </td>
       </tr>`;
     });
