@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-CHECK1：
+截至 P8-BE3A：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -40,6 +40,7 @@
 * P8-FIX6：工作台配置区绑定状态行内化修复已完成（bindingStatus 从独立 div 改为 span 放入 field-label-row、checkBindingStatus 改用 className+textContent、绑定状态显示在声音人设标签后、绿色已绑定/橙色未绑定/红色错误/灰色加载中、配置区空白减少）
 * P8-FIX7：高消费动作二次确认提示已完成（confirmHighCostVoiceAction helper、克隆/生成设计 handler 开头增加高消费确认、取消时不调用后端、按钮旁增加行内费用提示、guardedJsonFetch 原有 minimax 确认保留）
 * P8-CHECK1：阶段性全局验收与风险清单收口已完成（已复核主 tab / 高级子 tab / 历史播放下载删除复制 / localStorage 最近任务恢复 / 宽屏布局 / 绑定状态行内化 / 高消费确认 / API endpoint / 文档一致性，pytest 384 passed，已输出遗留风险清单，下一阶段建议 P8-BE3A 资产清理策略审查）
+* P8-BE3A：资产清理策略审查与只读统计已完成（新增 scripts/audit_assets.py 只读审查脚本，统计 AudioAsset 436 / SubtitleAsset 169 / VoiceJob 532 / storage 文件 33,803，识别孤立音频文件 19,505 / 孤立字幕文件 14,298，缺失文件 DB 记录 0，已删除任务资产 0，本阶段未删除任何文件）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
