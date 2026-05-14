@@ -191,7 +191,7 @@
 
   .history-row {
     display: grid;
-    grid-template-columns: 52px 78px 150px minmax(120px, 1fr) 150px 300px;
+    grid-template-columns: 52px 78px 150px minmax(220px, 1fr) 130px 190px;
     align-items: center;
     column-gap: 10px;
     padding: 9px 0;
@@ -239,14 +239,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 4px;
     white-space: nowrap;
     min-width: 0;
   }
 
   .history-actions .btn-sm {
-    padding: 4px 8px;
-    font-size: 0.76rem;
+    padding: 3px 6px;
+    font-size: 0.72rem;
     line-height: 1.2;
     border-radius: 6px;
     white-space: nowrap;
@@ -3204,12 +3204,12 @@ function handleStopAsyncPolling() {
 
     const assetId = getHistoryAudioAssetId(job);
     const playDisabled = !assetId ? ' disabled title="该历史记录暂无可播放音频"' : ` data-asset-id="${esc(assetId)}"`;
-    const playBtn = `<button class="btn-sm" data-action="play-history"${playDisabled}>播放</button>`;
+    const playBtn = `<button class="btn-sm" data-action="play-history"${playDisabled} title="播放音频">播放</button>`;
     const downloadBtn = assetId
-      ? `<a class="btn-sm" href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank">下载</a>`
+      ? `<a class="btn-sm" href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank" title="下载音频">下载</a>`
       : `<button class="btn-sm" disabled title="该历史记录暂无可下载音频">下载</button>`;
-    const copyBtn = `<button class="btn-sm" title="复制 job_id" data-action="copy-job-id" data-job-id="${esc(rawJobId)}">复制 ID</button>`;
-    const deleteBtn = `<button class="btn-sm" data-action="delete-history" data-job-id="${esc(rawJobId)}">删除</button>`;
+    const copyBtn = `<button class="btn-sm" title="复制 job_id" data-action="copy-job-id" data-job-id="${esc(rawJobId)}">复制</button>`;
+    const deleteBtn = `<button class="btn-sm" data-action="delete-history" data-job-id="${esc(rawJobId)}" title="删除历史记录，不删除音频文件">删</button>`;
 
     return `<div class="history-row" data-job-id="${esc(rawJobId)}">
       <span class="history-type">${esc(typeLabel)}</span>
