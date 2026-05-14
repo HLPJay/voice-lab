@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-BE3C：
+截至 P8-BE3C-FIX：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -45,6 +45,7 @@
 * P8-BE3A2：资产审查硬化与策略就绪自检已完成（pending 纳入 running-like 标准保护状态，标准/扩展状态拆分，storage 统计口径明确为 content 和 all_scanned，新增 storage_dirs、temp/metadata 年龄和大小分布、largest_storage_files、safe_path_str 脱敏为 <OUTSIDE_STORAGE_ROOT>、orphan_subtitle_pair_analysis、report_privacy_check、policy_readiness_check、not_deletion_recommendation，report_version: p8-be3a2）
 * P8-BE3B：资产清理策略确认已完成（确认 DB 引用资产永久保留，orphan audio/subtitle 只进入 dry-run，subtitle 必须 json/srt 成对处理，running-like jobs 保护窗口 72 小时，quarantine 作为真实执行前置，永久删除另设阶段，BE3C 只实现 dry-run 不实现 execute）
 * P8-BE3C：资产清理 dry-run 工具已完成（新增 scripts/cleanup_assets.py，工具只支持 --dry-run，不支持 --execute/--quarantine/--restore/--purge，排 DB 引用文件、quarantine、running-like 保护窗口内文件，orphan subtitle json/srt 成对候选，generated dry-run report 不提交）
+* P8-BE3C-FIX：资产清理 dry-run 修正已完成（修复 excluded_recent 误含 candidates、excluded_db 改用直接统计非残差公式、running guard 口径明确、truncated 改为基于 eligible 总数判断，新增 tests/test_cleanup_assets_dry_run.py 覆盖参数解析/禁止参数/DB 引用排除/subtitle pair/max-files 截断/输出结构）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台

@@ -123,9 +123,9 @@ def size_bucket(size_bytes: int) -> str:
 def build_subtitle_pairs(subtitle_files: list[dict]) -> tuple[list[dict], list[dict]]:
     """Group subtitle files into paired (json+srt) and unpaired lists.
 
-    Returns (paired_groups, unpaired_files) where paired_groups is a list of
-    dicts with 'base', 'json_path', 'srt_path', and unpaired_files is a list
-    of file dicts that have no pair.
+    Returns (paired_groups, unpaired_files).
+    paired_groups: list of dicts with 'base', 'json_file', 'srt_file'
+    unpaired_files: list of file dicts that have no pair
     """
     by_key: dict[str, dict[str, dict]] = {}
     for f in subtitle_files:
@@ -181,7 +181,6 @@ def run_dry_run(
     audio_file_paths_db: set[str] = set()
     subtitle_file_paths_db: set[str] = set()
     subtitle_srt_paths_db: set[str] = set()
-    job_by_id = {j.id: j for j in voice_jobs}
 
     for a in audio_assets:
         if a.file_path:
@@ -193,8 +192,6 @@ def run_dry_run(
         if s.srt_path:
             subtitle_srt_paths_db.add(str(Path(s.srt_path).resolve()))
 
-    all_db_referenced_paths = audio_file_paths_db | subtitle_file_paths_db | subtitle_srt_paths_db
-
     # Running-like jobs
     running_like_jobs = [j for j in voice_jobs if j.status in STANDARD_RUNNING_JOB_STATUSES]
     running_like_status_dist = dict(Counter(j.status for j in running_like_jobs))
@@ -204,7 +201,7 @@ def run_dry_run(
     subtitle_files = scan_storage_directory(root, "subtitles")
     temp_files = scan_storage_directory(root, "temp")
 
-    # Build disk path sets
+    # Build disk path sets (full resolved paths)
     audio_file_disk: set[str] = set()
     subtitle_file_disk: set[str] = set()
 
@@ -216,15 +213,15 @@ def run_dry_run(
         full = root / f["relative_path"]
         subtitle_file_disk.add(str(full.resolve()))
 
-    # Running protection threshold: files modified within protection window are excluded
-    # 72 hours in days = 3
+    # Running protection threshold: 72 hours = 3 days
     protection_age_days = max(1, RUNNING_PROTECTION_WINDOW_HOURS // 24)
 
-    # --- Identify orphan files ---
-    orphan_audio = []
-    orphan_audio_excl_recent = []
-    orphan_audio_excl_db = []
-    orphan_audio_excl_running = []
+    # --- Classify every audio file on disk into exactly one bucket ---
+    # Categories: db_referenced | recent | running_guard | eligible_orphan_audio
+    db_referenced_audio = []
+    recent_audio = []
+    running_guard_audio = []
+    eligible_orphan_audio = []
 
     for f in audio_files:
         full = root / f["relative_path"]
@@ -232,19 +229,20 @@ def run_dry_run(
         age = f["modified_age_days"]
 
         if full_str in audio_file_paths_db:
-            continue  # DB referenced, excluded silently
-        if age < min_age_days:
-            orphan_audio_excl_recent.append(f)
-            continue
-        if age < protection_age_days:
-            orphan_audio_excl_running.append(f)
-            continue
-        orphan_audio_excl_recent.append(f)  # not recent enough for candidate
-        orphan_audio.append(f)
+            db_referenced_audio.append(f)
+        elif age < min_age_days:
+            recent_audio.append(f)
+        elif age < protection_age_days:
+            running_guard_audio.append(f)
+        else:
+            eligible_orphan_audio.append(f)
 
-    orphan_subtitle = []
-    orphan_subtitle_excl_recent = []
-    orphan_subtitle_excl_running = []
+    # --- Classify every subtitle file on disk into exactly one bucket ---
+    # Categories: db_referenced | recent | running_guard | eligible_orphan_subtitle
+    db_referenced_subtitle = []
+    recent_subtitle = []
+    running_guard_subtitle = []
+    eligible_orphan_subtitle = []
 
     for f in subtitle_files:
         full = root / f["relative_path"]
@@ -252,49 +250,41 @@ def run_dry_run(
         age = f["modified_age_days"]
 
         if full_str in subtitle_file_paths_db or full_str in subtitle_srt_paths_db:
-            continue  # DB referenced
-        if age < min_age_days:
-            orphan_subtitle_excl_recent.append(f)
-            continue
-        if age < protection_age_days:
-            orphan_subtitle_excl_running.append(f)
-            continue
-        orphan_subtitle_excl_recent.append(f)
-        orphan_subtitle.append(f)
+            db_referenced_subtitle.append(f)
+        elif age < min_age_days:
+            recent_subtitle.append(f)
+        elif age < protection_age_days:
+            running_guard_subtitle.append(f)
+        else:
+            eligible_orphan_subtitle.append(f)
 
-    # --- Build subtitle pairs from orphan subtitles ---
-    subtitle_pairs, unpaired_subtitles = build_subtitle_pairs(orphan_subtitle)
-
-    # Pairs that pass min_age check
-    paired_candidates = []
-    for group in subtitle_pairs:
-        json_f = group["json_file"]
-        srt_f = group["srt_file"]
-        age = max(json_f["modified_age_days"], srt_f["modified_age_days"])
-        if age < min_age_days:
-            orphan_subtitle_excl_recent.extend([json_f, srt_f])
-            continue
-        if age < protection_age_days:
-            orphan_subtitle_excl_running.extend([json_f, srt_f])
-            continue
-        paired_candidates.append(group)
-
-    # temp candidates
-    temp_candidates = []
-    temp_excl_recent = []
-    temp_excl_running = []
+    # --- Classify every temp file into exactly one bucket ---
+    recent_temp = []
+    running_guard_temp = []
+    eligible_temp = []
 
     for f in temp_files:
         age = f["modified_age_days"]
         if age < min_age_days:
-            temp_excl_recent.append(f)
-            continue
-        if age < protection_age_days:
-            temp_excl_running.append(f)
-            continue
-        temp_candidates.append(f)
+            recent_temp.append(f)
+        elif age < protection_age_days:
+            running_guard_temp.append(f)
+        else:
+            eligible_temp.append(f)
 
-    # --- Build candidate groups ---
+    # --- Build subtitle pairs from eligible orphan subtitles ---
+    subtitle_pairs, unpaired_subtitles = build_subtitle_pairs(eligible_orphan_subtitle)
+
+    # --- Compute truncated ---
+    # Truncated = total eligible items (in file-count terms) exceeds max_files
+    total_eligible_file_count = (
+        len(eligible_orphan_audio) +
+        (len(subtitle_pairs) * 2) +
+        len(eligible_temp)
+    )
+    truncated = total_eligible_file_count > max_files
+
+    # --- Build candidate groups (respecting max_files) ---
     candidates = []
     candidate_id = 0
     total_file_count = 0
@@ -306,7 +296,7 @@ def run_dry_run(
 
     # orphan-audio candidates
     if kind in ("orphan", "orphan-audio"):
-        for f in orphan_audio:
+        for f in eligible_orphan_audio:
             if total_file_count >= max_files:
                 break
             age = f["modified_age_days"]
@@ -330,7 +320,7 @@ def run_dry_run(
 
     # orphan-subtitle pair candidates
     if kind in ("orphan", "orphan-subtitle"):
-        for group in paired_candidates:
+        for group in subtitle_pairs:
             json_f = group["json_file"]
             srt_f = group["srt_file"]
             if total_file_count + 2 > max_files:
@@ -365,7 +355,7 @@ def run_dry_run(
 
     # temp candidates
     if kind == "temp":
-        for f in temp_candidates:
+        for f in eligible_temp:
             if total_file_count >= max_files:
                 break
             age = f["modified_age_days"]
@@ -388,28 +378,24 @@ def run_dry_run(
             total_file_count += 1
 
     # --- Summary ---
-    truncated = (
-        (kind in ("orphan", "orphan-audio") and len(orphan_audio) > candidate_id - 1) or
-        (kind in ("orphan", "orphan-subtitle") and len(paired_candidates) > candidate_id - 1) or
-        (kind == "temp" and len(temp_candidates) > candidate_id - 1)
-    )
-
     candidate_file_count = sum(c["file_count"] for c in candidates)
     candidate_total_bytes = sum(c["total_size_bytes"] for c in candidates)
 
     excluded_recent_count = (
-        len(orphan_audio_excl_recent) +
-        len(orphan_subtitle_excl_recent) +
-        len(temp_excl_recent)
+        len(recent_audio) +
+        len(recent_subtitle) +
+        len(recent_temp)
     )
     excluded_running_count = (
-        len(orphan_audio_excl_running) +
-        len(orphan_subtitle_excl_running) +
-        len(temp_excl_running)
+        len(running_guard_audio) +
+        len(running_guard_subtitle) +
+        len(running_guard_temp)
     )
-    excluded_db_count = len(audio_file_disk - audio_file_paths_db) - len(orphan_audio) - len(orphan_audio_excl_recent) - len(orphan_audio_excl_running)
-
-    # Count unpaired orphan subtitles as excluded
+    # Direct count: files on disk not in DB references
+    excluded_db_count = (
+        len(db_referenced_audio) +
+        len(db_referenced_subtitle)
+    )
     excluded_unpaired_count = len(unpaired_subtitles)
 
     report = {
@@ -426,6 +412,7 @@ def run_dry_run(
             "running_like_job_count": len(running_like_jobs),
             "running_like_status_distribution": running_like_status_dist,
             "protection_window_hours": RUNNING_PROTECTION_WINDOW_HOURS,
+            "protection_age_days": protection_age_days,
             "db_referenced_files_excluded": True,
             "quarantine_excluded": True,
             "subtitle_pair_required": True,
@@ -440,6 +427,7 @@ def run_dry_run(
             "excluded_unpaired_subtitle_count": excluded_unpaired_count,
             "truncated": truncated,
             "truncated_reason": "max_files reached" if truncated else None,
+            "total_eligible_file_count": total_eligible_file_count,
         },
         "candidates": candidates,
         "excluded": {
@@ -453,7 +441,7 @@ def run_dry_run(
             },
             "running_guard_files": {
                 "count": excluded_running_count,
-                "note": f"Files within {RUNNING_PROTECTION_WINDOW_HOURS}h of a running-like job",
+                "note": f"Files within {protection_age_days} days (72h window) of a running-like job",
             },
             "unpaired_subtitle_files": {
                 "count": excluded_unpaired_count,

@@ -132,6 +132,16 @@ Truncated: false
 
 只有在人工审查 dry-run 结果后才能进入。BE3D 将实现 quarantine 移动，保留 manifest，支持 restore。
 
-## 10. 阶段结论
+## 10. Bug 修复记录（P8-BE3C-FIX）
+
+| Bug | 问题 | 修复 |
+|---|---|---|
+| 1 | `orphan_audio_excl_recent` 错误包含 eligible 文件 | 改为 mutually exclusive 分类：db_referenced / recent / running_guard / eligible |
+| 2 | `excluded_db_count` 用残差公式 | 改为直接统计 `db_referenced_audio + db_referenced_subtitle` |
+| 3 | `truncated` 用 `candidate_id` 混算 | 改为基于 `total_eligible_file_count > max_files` |
+| 4 | `running_guard` 保护窗口口径不透明 | 新增 `protection_age_days` 字段到报告 |
+| 5 | 缺少单元测试 | 新增 `tests/test_cleanup_assets_dry_run.py`，31 个测试 |
+
+## 11. 阶段结论
 
 **P8-BE3C 已完成。** 当前阶段新增资产清理 dry-run 工具，只生成候选清理计划，不删除文件、不移动文件、不修改数据库；工具会排除 DB 引用文件、quarantine、running-like 保护窗口内文件，并对 orphan subtitle 执行 json/srt 成对候选。下一阶段应先人工审查 dry-run 结果，再决定是否进入 P8-BE3D quarantine 隔离执行。
