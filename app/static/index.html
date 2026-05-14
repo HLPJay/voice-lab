@@ -70,6 +70,32 @@
 
   .header-link:hover { background: #dbeafe; }
 
+  /* Runtime status bar */
+  .runtime-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .runtime-chip {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #edf2f7;
+    color: #4a5568;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .runtime-chip.error {
+    background: #fff5f5;
+    color: #c53030;
+  }
+  .runtime-chip.muted {
+    color: #a0aec0;
+  }
+
   /* Tab navigation */
   .tab-nav {
     display: flex;
@@ -780,6 +806,13 @@
       <h1>Voice Lab｜AI 音频创作工作台</h1>
       <p>把文本、长文和多角色剧本转成可试听、可下载、可管理的音频资产</p>
     </div>
+    <div class="runtime-status-bar" id="runtimeStatusBar">
+      <span class="runtime-chip muted" id="chipProvider">-</span>
+      <span class="runtime-chip muted" id="chipModel">-</span>
+      <span class="runtime-chip muted" id="chipToday">今日 - 字</span>
+      <span class="runtime-chip muted" id="chipMonth">本月 - 字</span>
+      <span class="runtime-chip muted" id="chipProviderStatus">-</span>
+    </div>
     <a href="/static/admin.html" class="header-link">管理面板 →</a>
   </header>
 
@@ -1469,6 +1502,68 @@
 
 <script>
   // ============================================================
+  // Runtime status bar
+  // ============================================================
+  let _runtimeStatusTimer = null;
+
+  async function loadRuntimeStatus() {
+    const bar = document.getElementById('runtimeStatusBar');
+    if (!bar) return;
+    try {
+      const resp = await fetch('/api/voice/runtime/status');
+      if (!resp.ok) throw new Error('non-200');
+      const data = await resp.json();
+
+      const chipProvider = document.getElementById('chipProvider');
+      const chipModel = document.getElementById('chipModel');
+      const chipToday = document.getElementById('chipToday');
+      const chipMonth = document.getElementById('chipMonth');
+      const chipStatus = document.getElementById('chipProviderStatus');
+
+      if (chipProvider) {
+        chipProvider.textContent = data.current.default_provider || '-';
+        chipProvider.classList.remove('muted');
+      }
+      if (chipModel) {
+        chipModel.textContent = data.current.default_model || '-';
+        chipModel.classList.remove('muted');
+      }
+      if (chipToday) {
+        chipToday.textContent = '今日 ' + (data.today.usage_characters || 0) + ' 字';
+        chipToday.classList.remove('muted');
+      }
+      if (chipMonth) {
+        chipMonth.textContent = '本月 ' + (data.month.usage_characters || 0) + ' 字';
+        chipMonth.classList.remove('muted');
+      }
+      if (chipStatus) {
+        chipStatus.textContent = data.provider_status.label || '-';
+        chipStatus.classList.remove('muted', 'error');
+        if (data.provider_status.state === 'error') {
+          chipStatus.classList.add('error');
+        } else if (data.provider_status.state === 'unknown') {
+          chipStatus.classList.add('muted');
+        }
+      }
+    } catch (_) {
+      const chipToday = document.getElementById('chipToday');
+      const chipMonth = document.getElementById('chipMonth');
+      const chipStatus = document.getElementById('chipProviderStatus');
+      if (chipToday) chipToday.textContent = '用量统计不可用';
+      if (chipMonth) chipMonth.textContent = '';
+      if (chipStatus) chipStatus.textContent = '';
+    }
+  }
+
+  function scheduleRuntimeStatusRefresh() {
+    if (_runtimeStatusTimer) clearTimeout(_runtimeStatusTimer);
+    _runtimeStatusTimer = setTimeout(() => {
+      loadRuntimeStatus();
+      scheduleRuntimeStatusRefresh();
+    }, 60000);
+  }
+
+  // ============================================================
   // Tab switching
   // ============================================================
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
@@ -1513,6 +1608,10 @@
       }
     });
   });
+
+  // Load runtime status on page load and schedule periodic refresh
+  loadRuntimeStatus();
+  scheduleRuntimeStatusRefresh();
 
   // ============================================================
   // Advanced sub-tab switching
@@ -2358,6 +2457,8 @@ function handleStopAsyncPolling() {
         resultsArea.classList.add('visible');
       }
       setLoading(false);
+    } finally {
+      loadRuntimeStatus();
     }
   }
 
@@ -2448,6 +2549,7 @@ function handleStopAsyncPolling() {
         resultsArea.innerHTML = `<div class="error-msg">WebSocket 连接失败</div>`;
         resultsArea.classList.add('visible');
         setLoading(false);
+        loadRuntimeStatus();
     };
 
     ws.onclose = (event) => {
@@ -2456,6 +2558,7 @@ function handleStopAsyncPolling() {
             resultsArea.classList.add('visible');
             setLoading(false);
         }
+        loadRuntimeStatus();
     };
   }
 

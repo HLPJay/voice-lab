@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-BE3D：
+截至 P8-UX2：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -48,6 +48,7 @@
 * P8-BE3C-FIX：资产清理 dry-run 修正已完成（修复 excluded_recent 误含 candidates、excluded_db 改用直接统计非残差公式、running guard 口径明确、truncated 改为基于 eligible 总数判断，新增 tests/test_cleanup_assets_dry_run.py 覆盖参数解析/禁止参数/DB 引用排除/subtitle pair/max-files 截断/输出结构）
 * P8-BE3D：资产 quarantine 和 restore 工具已完成（新增 --quarantine 和 --restore 模式，quarantine 使用 shutil.move 隔离文件到 storage/quarantine/<timestamp>/，生成 manifest.json，restore 支持恢复 status=moved 文件且不覆盖已有文件，ModeAction 实现三种模式互斥，tests/test_cleanup_assets_quarantine.py 24 个测试覆盖所有安全边界）
 * P8-BE3D-FIX：quarantine 语义修正已完成（将 shutil.copy2 改为 shutil.move，修正 q_full 路径使用 q_subdir 而非 q_dir，quarantine 后原始路径不存在、quarantine 路径存在，restore 后原始路径存在、quarantine 路径不存在，tests/test_cleanup_assets_quarantine.py 新增 test_restore_moves_file_back 测试）
+* P8-UX2：顶部模型与用量状态条已完成（新增 GET /api/voice/runtime/status 只读接口，前端顶部展示当前 Provider、默认模型、今日/月度字符用量和最近调用状态；不展示本次输入字符数，不影响生成链路，不触发资产清理，不调用外部 Provider，tests/test_runtime_status.py 13 个测试覆盖所有场景）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
@@ -282,11 +283,11 @@ python -m pytest tests/ -x -q
 测试结果：
 
 ```text
-439 passed, 6 skipped in 161.74s (0:02:41)
+452 passed, 6 skipped in 151.28s (0:02:31)
 ```
 
-- 总测试数量：445（439 passed + 6 skipped）
-- 通过数量：439
+- 总测试数量：458（452 passed + 6 skipped）
+- 通过数量：452
 - 跳过数量：6（均为 E2E 测试，需要真实 API Key）
 - 失败数量：0
 
