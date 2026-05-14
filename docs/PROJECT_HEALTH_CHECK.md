@@ -3902,3 +3902,41 @@ git diff --check  # 无错误
 **测试结果：** 2 passed。full tests 未运行，原因：本次仅清理未使用 import 并更新文档，未改业务逻辑、前端运行代码、后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
 
 **未改 app/static/index.html、app/static/js/*、app/api、app/services、app/providers、app/domain、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。
+
+### P9-FE1-E1：提取长文本批量结果 helper 为 window 全局函数
+
+**阶段目标：** 将 `showBatchLongtextResult` / `clearBatchLongtextResult` 从 `handleBatchLongtextSubmit` 内部闭包提取为 `window.*` 全局函数，为后续 `batch_longtext.js` 抽离解除闭包依赖。
+
+**修改文件：**
+- `app/static/index.html` — 提取 `window.showBatchLongtextResult` 和 `window.clearBatchLongtextResult`，更新 `handleBatchLongtextSubmit` 内所有调用处
+- `tests/e2e/test_frontend_capabilities.py` — 新增 `test_batch_longtext_result_helpers_are_exposed`
+
+**实现：**
+- `window.showBatchLongtextResult = function(html)` — 显示 HTML 到 `#batchLongtextResult`（`style.display = ''` 当有内容）
+- `window.clearBatchLongtextResult = function()` — 清空并隐藏（`style.display = 'none'`）
+- `handleBatchLongtextSubmit` 内部所有 `showBatchLongtextResult(...)` 调用改为 `window.showBatchLongtextResult(...)`
+- 所有 `clearBatchLongtextResult()` 调用改为 `window.clearBatchLongtextResult()`
+- 原有 UI、DOM、错误展示、批量提交行为完全不变
+
+**保持不变：**
+- `handleBatchLongtextSubmit` 尚未迁移
+- `batch_longtext.js` 尚未创建
+- 共享轮询 / 渲染函数（`showBatchProgress` 等）未改
+- 共享状态变量未改
+- 剧本批量逻辑未改
+- API 请求体 / endpoint 未改
+
+**E2E 验证：**
+- `test_batch_longtext_result_helpers_are_exposed`：点击长文本 Tab，断言 `window.showBatchLongtextResult` / `window.clearBatchLongtextResult` 为 function，调用并验证 DOM 行为正确
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "batch_longtext_result"  # 1 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 13 passed
+git diff --check  # 无错误
+```
+
+**测试结果：** 13 passed in 39s。full tests 未运行，原因：本次仅提取前端 helper 为 window 全局函数，未迁移业务逻辑，未改后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。

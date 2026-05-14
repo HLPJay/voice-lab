@@ -442,3 +442,36 @@ def test_audition_records_render_and_delete(page, e2e_base_url, console_errors):
     assert page.evaluate("window._auditionRecords.length") == 0, "Record should be deleted"
     empty_state = page.locator("#auditionRecordsTable").text_content()
     assert "暂无试听记录" in empty_state, f"Expected empty state, got: {empty_state}"
+
+
+# ── Test 13: Longtext batch result helpers are exposed ──────────────────────────
+
+def test_batch_longtext_result_helpers_are_exposed(page, e2e_base_url, console_errors):
+    """showBatchLongtextResult / clearBatchLongtextResult are window functions and work."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # Click the Longtext tab
+    longtext_tab = page.locator('button.tab-btn[data-tab="longtext"]')
+    assert longtext_tab.count() == 1, "Longtext tab button not found"
+    longtext_tab.click()
+    page.wait_for_selector("#tab-longtext", state="attached", timeout=10000)
+    page.wait_for_timeout(500)
+
+    # Helper functions are on window
+    assert page.evaluate("typeof window.showBatchLongtextResult === 'function'"), \
+        "window.showBatchLongtextResult should be a function"
+    assert page.evaluate("typeof window.clearBatchLongtextResult === 'function'"), \
+        "window.clearBatchLongtextResult should be a function"
+
+    # Calling showBatchLongtextResult with test HTML renders it
+    page.evaluate("window.showBatchLongtextResult('<div id=\"testBatchLongtextResultMarker\">测试结果</div>')")
+    marker = page.locator("#testBatchLongtextResultMarker")
+    assert marker.count() == 1, "Test marker should appear after showBatchLongtextResult"
+    assert "测试结果" in marker.text_content()
+
+    # Calling clearBatchLongtextResult clears it
+    page.evaluate("window.clearBatchLongtextResult()")
+    assert page.locator("#testBatchLongtextResultMarker").count() == 0, \
+        "Test marker should be gone after clearBatchLongtextResult"

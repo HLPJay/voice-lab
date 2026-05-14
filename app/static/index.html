@@ -4812,19 +4812,26 @@ function handleStopAsyncPolling() {
   let _currentBatchPanelId = 'batchProgressPanel';
   let _batchTimeline = [];
 
-  async function handleBatchLongtextSubmit() {
-    const batchLongtextResult = document.getElementById('batchLongtextResult');
-    const showBatchLongtextResult = (html) => {
-      if (batchLongtextResult) { batchLongtextResult.style.display = ''; batchLongtextResult.innerHTML = html; }
-    };
-    const clearBatchLongtextResult = () => {
-      if (batchLongtextResult) { batchLongtextResult.style.display = 'none'; batchLongtextResult.innerHTML = ''; }
-    };
+  // Longtext batch result helpers — extracted to window for module compatibility
+  window.showBatchLongtextResult = function(html) {
+    const el = document.getElementById('batchLongtextResult');
+    if (!el) return;
+    el.innerHTML = html || '';
+    el.style.display = html ? '' : 'none';
+  };
 
+  window.clearBatchLongtextResult = function() {
+    const el = document.getElementById('batchLongtextResult');
+    if (!el) return;
+    el.innerHTML = '';
+    el.style.display = 'none';
+  };
+
+  async function handleBatchLongtextSubmit() {
     const text = document.getElementById('batchText').value.trim();
-    if (!text) { showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请输入待分段文本</div>'); return; }
+    if (!text) { window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请输入待分段文本</div>'); return; }
     const profileId = document.getElementById('batchProfile').value;
-    if (!profileId) { showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请选择声音人设</div>'); return; }
+    if (!profileId) { window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请选择声音人设</div>'); return; }
     const provider = document.getElementById('batchProvider').value;
     const strategy = document.getElementById('batchStrategy').value;
     const maxChars = parseInt(document.getElementById('batchMaxChars').value) || 2000;
@@ -4845,7 +4852,7 @@ function handleStopAsyncPolling() {
     const btn = document.getElementById('batchLongtextSubmit');
     btn.disabled = true;
     btn.textContent = '提交中…';
-    clearBatchLongtextResult();
+    window.clearBatchLongtextResult();
 
     try {
       const resp = await guardedJsonFetch('/api/voice/batch/submit', {
@@ -4866,11 +4873,11 @@ function handleStopAsyncPolling() {
       if (!resp.ok) {
         const err = await parseApiError(resp);
         if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          showBatchLongtextResult(renderApiError(err));
+          window.showBatchLongtextResult(renderApiError(err));
         } else if (err.code === 'VALIDATION_ERROR') {
-          showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">' + esc(err.message) + '</div>');
+          window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">' + esc(err.message) + '</div>');
         } else {
-          showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(formatApiError(err)) + '</div>');
+          window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(formatApiError(err)) + '</div>');
         }
         btn.disabled = false;
         btn.textContent = '提交批量任务';
@@ -4885,9 +4892,9 @@ function handleStopAsyncPolling() {
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
         if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          showBatchLongtextResult(renderApiError(e));
+          window.showBatchLongtextResult(renderApiError(e));
         } else {
-          showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(e && e.message ? e.message : String(e)) + '</div>');
+          window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(e && e.message ? e.message : String(e)) + '</div>');
         }
       }
     } finally {
