@@ -1112,7 +1112,7 @@
         <div id="scriptLines">
           <!-- Dynamic script lines -->
         </div>
-        <button class="btn-sm" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
+        <button class="btn-sm" id="scriptAddLineBtn" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
       </div>
       <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
@@ -1264,28 +1264,29 @@
         <div class="config-grid">
           <div class="form-group">
             <label for="cloneVoiceId">voice_id</label>
-            <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:4px">voice_id 是你为克隆音色指定的自定义标识。</div>
+            <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:4px">voice_id 至少 8 位，必须以字母开头，只能包含字母、数字、下划线和短横线，且不能以短横线或下划线结尾。</div>
             <div style="display:flex;gap:6px;align-items:center">
-              <input type="text" id="cloneVoiceId" placeholder="如 my_voice_01" value="" style="flex:1" oninput="updateCloneBtnState()">
+              <input type="text" id="cloneVoiceId" placeholder="如 my_voice_01" value="" style="flex:1" oninput="updateCloneBtnState()" minlength="8" maxlength="256" pattern="^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$">
               <button class="btn-sm" id="cloneAutoIdBtn" type="button" onclick="handleCloneAutoId()" title="生成一个本地可识别的 voice_id">生成 voice_id</button>
             </div>
+            <div id="cloneVoiceIdHint" style="font-size:0.72rem;color:#e53e3e;margin-top:2px;display:none"></div>
           </div>
           <div class="form-group">
             <label for="cloneFileId">file_id</label>
             <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:4px">上传成功后会自动填入，也可以手动粘贴已有 file_id。</div>
-            <input type="number" id="cloneFileId" placeholder="上传成功后自动填入" value="" oninput="updateCloneBtnState()">
+            <input type="number" id="cloneFileId" placeholder="上传成功后自动填入" value="" oninput="updateCloneBtnState()" min="1" step="1">
           </div>
           <div class="form-group">
             <label for="clonePromptFileId">prompt_file_id（可选）</label>
-            <input type="number" id="clonePromptFileId" placeholder="prompt音频file_id">
+            <input type="number" id="clonePromptFileId" placeholder="prompt音频file_id" min="1" step="1">
           </div>
           <div class="form-group">
             <label for="clonePromptText">prompt_text（可选）</label>
             <input type="text" id="clonePromptText" placeholder="提示文本">
           </div>
           <div class="form-group">
-            <label for="clonePreviewText">preview_text（试听文本）</label>
-            <input type="text" id="clonePreviewText" value="你好，这是一段声音克隆的试听文本，用于验证克隆效果。" placeholder="试听用短文本" oninput="updateCloneBtnState()">
+            <label for="clonePreviewText">preview_text（试听文本，最多 1000 字）</label>
+            <input type="text" id="clonePreviewText" value="你好，这是一段声音克隆的试听文本，用于验证克隆效果。" placeholder="试听用短文本" oninput="updateCloneBtnState()" maxlength="1000">
           </div>
           <div class="form-group">
             <label for="cloneModel">model（preview_text 有值时必填）</label>
@@ -1338,8 +1339,8 @@
             </select>
           </div>
           <div class="form-group full-width">
-            <label for="importClonePreviewText">试听文本</label>
-            <input type="text" id="importClonePreviewText" value="你好，这是导入音色试听。" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
+            <label for="importClonePreviewText">试听文本（最多 1000 字）</label>
+            <input type="text" id="importClonePreviewText" value="你好，这是导入音色试听。" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box" maxlength="1000">
           </div>
           <div class="form-group full-width">
             <div class="checkbox-row">
@@ -1367,11 +1368,11 @@
           </div>
           <div class="form-group">
             <label for="designVoiceId">voice_id（可选，自定义标识）</label>
-            <input type="text" id="designVoiceId" placeholder="不填则自动生成">
+            <input type="text" id="designVoiceId" placeholder="不填则自动生成" minlength="8" maxlength="256" pattern="^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$">
           </div>
           <div class="form-group full-width">
-            <label for="designPrompt">prompt（音色描述）</label>
-            <textarea id="designPrompt" placeholder="如：成熟女性，温柔知性，声音清晰，语速适中" style="min-height:80px"></textarea>
+            <label for="designPrompt">prompt（音色描述，建议控制在 2000 字以内）</label>
+            <textarea id="designPrompt" placeholder="如：成熟女性，温柔知性，声音清晰，语速适中" style="min-height:80px" maxlength="2000"></textarea>
           </div>
           <div class="form-group full-width">
             <label for="designPreviewText">preview_text（试听文本，500字以内）</label>
@@ -3643,10 +3644,11 @@ function handleStopAsyncPolling() {
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div style="font-size:0.82rem;color:#718096">试听文本</div>
-          <div id="auditionCostHint" style="font-size:0.72rem;color:#a0aec0">约 0 字</div>
+          <div id="auditionCostHint" style="font-size:0.72rem;color:#a0aec0">约 0 字，最多 1000 字</div>
         </div>
         <textarea id="auditionText" rows="2"
           placeholder="输入试听文本…"
+          maxlength="1000"
           style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem;resize:vertical;box-sizing:border-box">你好，这是一段测试语音。欢迎使用语音合成服务。</textarea>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
@@ -4363,6 +4365,10 @@ function handleStopAsyncPolling() {
     updateCloneBtnState();
   }
 
+  function isValidVoiceId(value) {
+    return /^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(value) && value.length >= 8 && value.length <= 256;
+  }
+
   function updateCloneBtnState() {
     const btn = document.getElementById('cloneBtn');
     if (!btn) return;
@@ -4370,16 +4376,29 @@ function handleStopAsyncPolling() {
     const voiceId = document.getElementById('cloneVoiceId').value.trim();
     const previewText = document.getElementById('clonePreviewText').value.trim();
     const model = document.getElementById('cloneModel').value.trim();
-    const disabled = !fileId || !voiceId || (previewText && !model);
+    const promptFileId = document.getElementById('clonePromptFileId').value.trim();
+    const fileIdNum = Number(fileId);
+    const promptFileIdNum = Number(promptFileId);
+    const voiceIdValid = isValidVoiceId(voiceId);
+    const fileIdValid = fileId !== '' && Number.isInteger(fileIdNum) && fileIdNum > 0;
+    const promptFileIdValid = promptFileId === '' || (Number.isInteger(promptFileIdNum) && promptFileIdNum > 0);
+    const disabled = !voiceIdValid || !fileIdValid || (previewText && !model) || !promptFileIdValid;
     btn.disabled = disabled;
     const hint = document.getElementById('cloneBtnHint');
+    const voiceIdHint = document.getElementById('cloneVoiceIdHint');
     if (hint) hint.style.display = disabled ? '' : 'none';
+    if (voiceIdHint) {
+      if (voiceId && !voiceIdValid) {
+        voiceIdHint.textContent = 'voice_id 格式不正确：至少 8 位，必须以字母开头，只能包含字母、数字、下划线和短横线，且不能以短横线或下划线结尾。';
+        voiceIdHint.style.display = '';
+      } else {
+        voiceIdHint.textContent = '';
+        voiceIdHint.style.display = 'none';
+      }
+    }
   }
 
   async function handleCloneVoice() {
-    if (!confirmHighCostVoiceAction('声音克隆')) {
-      return;
-    }
     const provider = document.getElementById('cloneProvider').value;
     const voiceId = document.getElementById('cloneVoiceId').value.trim();
     const fileId = document.getElementById('cloneFileId').value.trim();
@@ -4706,16 +4725,18 @@ function handleStopAsyncPolling() {
   // Design Tab
   // ============================================================
   async function handleDesignVoice() {
-    if (!confirmHighCostVoiceAction('声音设计 / 创建音色')) {
-      return;
-    }
     const provider = document.getElementById('designProvider').value;
-    const voiceId = document.getElementById('designVoiceId').value.trim() || null;
+    const voiceIdInput = document.getElementById('designVoiceId').value.trim();
+    const voiceId = voiceIdInput || null;
     const prompt = document.getElementById('designPrompt').value.trim();
     const previewText = document.getElementById('designPreviewText').value.trim();
     const resultsEl = document.getElementById('designResult');
     const btn = document.getElementById('designBtn');
 
+    if (voiceIdInput && !isValidVoiceId(voiceIdInput)) {
+      resultsEl.innerHTML = `<div class="error-msg">voice_id 格式不正确：至少 8 位，必须以字母开头，只能包含字母、数字、下划线和短横线，且不能以短横线或下划线结尾。</div>`;
+      return;
+    }
     if (!prompt) {
       resultsEl.innerHTML = `<div class="error-msg">请输入音色描述（prompt）</div>`;
       return;
@@ -5054,8 +5075,23 @@ function handleStopAsyncPolling() {
   // Script lines management
   let _scriptLineCount = 0;
   const _scriptRows = [];  // stable state: {id, role, text, profileId}
+  const MAX_SCRIPT_LINES = 200;
+
+  function updateScriptLineLimitState() {
+    const btn = document.getElementById('scriptAddLineBtn');
+    if (btn) {
+      const atLimit = _scriptRows.length >= MAX_SCRIPT_LINES;
+      btn.disabled = atLimit;
+      btn.title = atLimit ? '最多支持 200 行台词' : '添加一行台词';
+    }
+  }
 
   function addScriptLine(role = '', text = '', profileId = '') {
+    if (_scriptRows.length >= MAX_SCRIPT_LINES) {
+      const resultsEl = document.getElementById('batchScriptResult');
+      if (resultsEl) { resultsEl.style.display = ''; resultsEl.innerHTML = '<div style="color:#c53030;font-size:0.85rem;padding:8px 0">最多支持 200 行台词</div>'; }
+      return;
+    }
     const container = document.getElementById('scriptLines');
     const id = _scriptLineCount++;
     const state = { id, role, text, profileId };
@@ -5067,13 +5103,14 @@ function handleStopAsyncPolling() {
     row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
     row.innerHTML = `
       <input type="text" id="scriptRole_${id}" placeholder="例如：旁白、男声" value="${esc(role)}" style="width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="role">
-      <input type="text" id="scriptText_${id}" placeholder="台词内容" value="${esc(text)}" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="text">
+      <input type="text" id="scriptText_${id}" placeholder="台词内容" value="${esc(text)}" maxlength="5000" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="text">
       <select id="scriptProfile_${id}" style="width:120px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="profile">
         <option value="">选择人设</option>
       </select>
       <button class="btn-sm script-remove-btn" data-line-id="${id}" style="padding:6px 10px;color:#e53e3e">删除</button>
     `;
     container.appendChild(row);
+    updateScriptLineLimitState();
 
     // Populate profile select using cache (no per-line fetch)
     const sel = document.getElementById(`scriptProfile_${id}`);
@@ -5089,6 +5126,7 @@ function handleStopAsyncPolling() {
     if (row) row.remove();
     const idx = _scriptRows.findIndex(r => r.id === id);
     if (idx >= 0) _scriptRows.splice(idx, 1);
+    updateScriptLineLimitState();
   }
 
   // Event delegation for script line inputs (keeps state in sync)
@@ -5247,9 +5285,24 @@ function handleStopAsyncPolling() {
       showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请至少填写一行台词</div>');
       return;
     }
-    const missingText = lines.filter(l => !l.text);
-    if (missingText.length > 0) {
-      showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">第 ' + (lines.indexOf(missingText[0]) + 1) + ' 行缺少台词文本</div>');
+    // Per-row empty text validation with visual feedback
+    let firstEmptyRowIdx = -1;
+    _scriptRows.forEach((state, idx) => {
+      const textEl = document.getElementById(`scriptText_${state.id}`);
+      if (textEl) {
+        textEl.style.borderColor = '';
+        textEl.title = '';
+      }
+      if (!state.text || !state.text.trim()) {
+        if (firstEmptyRowIdx === -1) firstEmptyRowIdx = idx;
+        if (textEl) {
+          textEl.style.borderColor = '#e53e3e';
+          textEl.title = `第 ${idx + 1} 行缺少台词文本`;
+        }
+      }
+    });
+    if (firstEmptyRowIdx !== -1) {
+      showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">第 ' + (firstEmptyRowIdx + 1) + ' 行缺少台词文本</div>');
       return;
     }
     const missingProfile = lines.filter(l => !l.profile_id);
