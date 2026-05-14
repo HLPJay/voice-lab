@@ -42,6 +42,22 @@ class TextSegmentService:
             sentences.append(current.strip())
         return [s for s in sentences if s]
 
+    def _hard_split(self, text: str, max_chars: int) -> list[str]:
+        """Pure length-based split as last resort when no punctuation available."""
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars) if text[i : i + max_chars]]
+
+    def _append_with_hard_limit(
+        self, result: list[str], segment: str, max_chars: int
+    ) -> None:
+        """Append segment, hard-splitting if it exceeds max_chars."""
+        segment = segment.strip()
+        if not segment:
+            return
+        if len(segment) <= max_chars:
+            result.append(segment)
+        else:
+            result.extend(self._hard_split(segment, max_chars))
+
     def _split_by_comma(self, text: str, max_chars: int) -> list[str]:
         """Split by comma/semicolon when even sentences are too long."""
         parts = re.split(r'([，,；;]+)', text)
@@ -52,12 +68,12 @@ class TextSegmentService:
                 current += part
             else:
                 if len(current) + len(part) > max_chars and current:
-                    segments.append(current.strip())
+                    self._append_with_hard_limit(segments, current, max_chars)
                     current = part
                 else:
                     current += part
         if current.strip():
-            segments.append(current.strip())
+            self._append_with_hard_limit(segments, current, max_chars)
         return [s for s in segments if s]
 
     def _segment_paragraph(self, text: str, max_chars: int) -> list[str]:

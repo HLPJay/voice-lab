@@ -23,7 +23,7 @@ class VoiceProfileRead(VoiceProfileCreate):
 
 
 class VoiceRenderRequest(BaseModel):
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=10000)
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
     need_subtitle: bool = True
@@ -59,7 +59,7 @@ class VoiceRenderResponse(BaseModel):
 
 
 class VoiceVariantRenderRequest(BaseModel):
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=10000)
     scene: str = "deep_night_monologue"
     profile_id: str = "deep_night_programmer"
     variant_count: int = Field(default=3, ge=1, le=5)
@@ -184,7 +184,7 @@ class SubtitleAssetRead(BaseModel):
 
 
 class AsyncRenderRequest(BaseModel):
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=50000)
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
     need_subtitle: bool = True
@@ -223,8 +223,8 @@ class VoiceCloneUploadResponse(BaseModel):
 
 class VoiceCloneRequest(BaseModel):
     voice_id: str = Field(min_length=8, max_length=256, pattern=r"^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$")
-    file_id: int
-    prompt_file_id: int | None = None
+    file_id: int = Field(gt=0)
+    prompt_file_id: int | None = Field(default=None, gt=0)
     prompt_text: str | None = None
     preview_text: str | None = Field(default=None, max_length=1000)
     model: str | None = None
@@ -351,12 +351,12 @@ class StreamRenderRequest(BaseModel):
 
 class LongtextBatchRequest(BaseModel):
     mode: Literal["longtext"] = "longtext"
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=50000)
     profile_id: str = "deep_night_programmer"
     provider: str | None = None
     output_format: Literal["hex", "url"] = "hex"
     audio_format: Literal["mp3", "wav", "flac"] = "mp3"
-    segment_strategy: str = "auto"  # auto/paragraph/sentence/line
+    segment_strategy: Literal["auto", "paragraph", "sentence", "line"] = "auto"
     max_segment_chars: int = Field(default=2000, ge=100, le=5000)
     silence_between_ms: int = Field(default=300, ge=0, le=3000)
     params: dict = Field(default_factory=dict)

@@ -121,3 +121,35 @@ def test_segment_line_unknown_strategy_raises(service):
     """Unknown strategy raises ValueError."""
     with pytest.raises(ValueError, match="Unknown strategy: nonexistent"):
         service.segment("some text", strategy="nonexistent")
+
+
+def test_segment_line_long_text_without_punctuation_is_hard_split(service):
+    """Line strategy: unpunctuated long text is hard-split to respect max_chars."""
+    text = "a" * 251
+    result = service.segment(text, strategy="line", max_chars=100)
+    assert len(result) == 3
+    assert all(len(seg) <= 100 for seg in result)
+
+
+def test_segment_sentence_long_text_without_punctuation_is_hard_split(service):
+    """Sentence strategy: unpunctuated long text is hard-split to respect max_chars."""
+    text = "a" * 251
+    result = service.segment(text, strategy="sentence", max_chars=100)
+    assert len(result) == 3
+    assert all(len(seg) <= 100 for seg in result)
+
+
+def test_segment_paragraph_long_text_without_punctuation_is_hard_split(service):
+    """Paragraph strategy: unpunctuated long text is hard-split to respect max_chars."""
+    text = "a" * 251
+    result = service.segment(text, strategy="paragraph", max_chars=100)
+    assert len(result) == 3
+    assert all(len(seg) <= 100 for seg in result)
+
+
+def test_segment_auto_long_text_without_punctuation_is_hard_split(service):
+    """Auto strategy: unpunctuated long text is hard-split to respect max_chars."""
+    text = "a" * 251
+    result = service.segment(text, strategy="auto", max_chars=100)
+    assert len(result) == 3
+    assert all(len(seg) <= 100 for seg in result)
