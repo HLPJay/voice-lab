@@ -3,6 +3,7 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.domain.schemas import VoiceCloneRequest, VoiceCloneResponse, VoiceCloneUploadResponse
+from app.services.capability_validator import capability_validator
 from app.services.voice_clone_service import VoiceCloneService
 
 router = APIRouter()
@@ -33,4 +34,11 @@ async def create_clone(
     provider: str = Query(default="mock"),
     session: Session = Depends(get_session),
 ):
+    capability_validator.validate_voice_clone(
+        provider=provider,
+        voice_id=request.voice_id,
+        preview_text=request.preview_text,
+        need_noise_reduction=request.need_noise_reduction,
+        need_volume_normalization=request.need_volume_normalization,
+    )
     return await service.clone_voice(session, provider, request)

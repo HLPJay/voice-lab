@@ -4,6 +4,7 @@ from app.core.database import get_session
 from app.core.errors import VoiceLabError
 from app.core.logging import get_logger
 from app.domain.schemas import StreamRenderRequest
+from app.services.capability_validator import capability_validator
 from app.services.stream_render_service import StreamRenderService
 from app.utils.id_generator import new_id
 from sqlmodel import Session
@@ -74,7 +75,20 @@ async def ws_render(
             confirm_cost=start_msg.get("confirm_cost", False),
         )
 
-        # 5. Call Service streaming render
+        # 5. Capability validation
+        capability_validator.validate_tts(
+            provider=request.provider,
+            text=request.text,
+            audio_format=request.audio_format,
+            need_subtitle=request.need_subtitle,
+            speed=request.speed,
+            vol=request.vol,
+            pitch=request.pitch,
+            emotion=request.emotion,
+            require_streaming=True,
+        )
+
+        # 6. Call Service streaming render
         service = StreamRenderService()
         async for msg in service.render_stream(session, request):
             await websocket.send_json(msg)

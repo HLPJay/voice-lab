@@ -15,6 +15,7 @@ from app.domain.schemas import (
 )
 from app.repositories import voice_asset_repo
 from app.services.batch_orchestration_service import BatchOrchestrationService
+from app.services.capability_validator import capability_validator
 
 router = APIRouter()
 service = BatchOrchestrationService()
@@ -28,8 +29,24 @@ async def submit_batch(
     """提交批量任务。根据 mode 字段分发。"""
     try:
         if isinstance(request, LongtextBatchRequest):
+            capability_validator.validate_batch(
+                provider=request.provider,
+                text=request.text,
+                audio_format=request.audio_format,
+                need_subtitle=request.need_subtitle,
+                segment_strategy=request.segment_strategy,
+                max_segment_chars=request.max_segment_chars,
+                silence_between_ms=request.silence_between_ms,
+            )
             return await service.submit_longtext(session, request)
         else:
+            capability_validator.validate_script(
+                provider=request.provider,
+                script_count=len(request.script),
+                audio_format=request.audio_format,
+                need_subtitle=request.need_subtitle,
+                silence_between_ms=request.silence_between_ms,
+            )
             return await service.submit_script(session, request)
     except VoiceLabError:
         raise

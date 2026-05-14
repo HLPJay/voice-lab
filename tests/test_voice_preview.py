@@ -48,7 +48,7 @@ class TestProviderVoicePreviewAPI:
             json={
                 "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
-                "model": "speech-2.8-hd",
+                "model": "mock-tts",
                 "text": "你好，这是一段试听测试。",
                 "audio_format": "mp3",
                 "output_format": "hex",
@@ -57,7 +57,7 @@ class TestProviderVoicePreviewAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert data["provider"] == "mock"
-        assert data["model"] == "speech-2.8-hd"
+        assert data["model"] == "mock-tts"
         assert data["provider_voice_id"] == "mock_voice_system"
         assert "job_id" in data
         assert "status" in data
@@ -71,7 +71,7 @@ class TestProviderVoicePreviewAPI:
             json={
                 "provider": "mock",
                 "provider_voice_id": "mock_voice_system",
-                "model": "speech-2.8-hd",
+                "model": "mock-tts",
                 "text": "参数试听测试。",
                 "audio_format": "mp3",
                 "output_format": "hex",

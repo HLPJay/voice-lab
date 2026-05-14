@@ -8,6 +8,7 @@ from app.domain.schemas import (
     AsyncRenderResponse,
 )
 from app.services.async_render_service import AsyncRenderService
+from app.services.capability_validator import capability_validator
 
 router = APIRouter()
 service = AsyncRenderService()
@@ -18,6 +19,12 @@ async def submit_async_render(
     request: AsyncRenderRequest,
     session: Session = Depends(get_session),
 ):
+    capability_validator.validate_tts(
+        provider=request.provider,
+        text=request.text,
+        audio_format=request.audio_format,
+        need_subtitle=request.need_subtitle,
+    )
     return await service.submit_task(session, request)
 
 

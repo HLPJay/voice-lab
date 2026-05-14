@@ -170,15 +170,17 @@ def _make_app_with_session(engine):
 
 
 def test_render_unsupported_provider(test_app):
-    """Unsupported provider returns UNSUPPORTED_PROVIDER, not BINDING_NOT_FOUND."""
+    """Unsupported provider returns VALIDATION_ERROR (422), not 500."""
     client = TestClient(test_app)
     resp = client.post("/api/voice/render", json={
         "text": "测试",
         "profile_id": "deep_night_programmer",
         "provider": "openai",
     })
-    assert resp.status_code == 400
-    assert resp.json()["error"]["code"] == "UNSUPPORTED_PROVIDER"
+    assert resp.status_code == 422
+    body = resp.json()["error"]
+    assert body["code"] == "VALIDATION_ERROR"
+    assert body["detail"] == "UNSUPPORTED_PROVIDER"
 
 
 def test_render_all_bindings_deprecated(temp_db):
