@@ -379,6 +379,30 @@ Voice Lab 当前已建立三层输入约束机制：
 
 这套机制是后续 Provider Capability Registry 的前置基础，未来会进一步演进为按 Provider / Model 能力动态约束前端和后端请求。
 
+## Provider Capability Registry
+
+Voice Lab 通过只读能力注册表声明各 Provider 支持的能力，不走数据库，不调用 Provider 真实接口，不作为健康探测。
+
+### 接口
+
+```
+GET /api/voice/capabilities                    # 返回所有 provider 能力列表
+GET /api/voice/capabilities?provider=minimax  # 返回指定 provider 能力
+```
+
+### 能力维度
+
+| 维度 | 说明 |
+|------|------|
+| `tts` | 同步/异步/流式 TTS 支持的模型、文本长度、音频格式、字幕、流式、情绪参数范围 |
+| `batch` | 长文本批量支持的策略、每段最大字数、段间静音范围 |
+| `script` | 剧本批量支持的策略（当前固定为 line） |
+| `voice_clone` | 克隆支持的状态、voice_id 约束、降噪/音量标准化、文件大小限制 |
+| `voice_design` | 声音设计支持的状态、prompt 最大长度、voice_id 约束 |
+| `provider_voices` | 音色列表、删除、导入的支持状态 |
+
+第一版能力声明来自代码配置（`app/providers/mock_capabilities.py` / `app/providers/minimax_capabilities.py`）。后续 P9-CAPABILITY2 会基于能力声明实现 CapabilityValidator，在进入 Provider Adapter 前拒绝不支持的参数；P9-CAPABILITY3 会让前端根据能力动态限制输入。
+
 ## 后续路线
 
 1. **P9-CAPABILITY1：Provider Capability Registry**：定义 Product Contract / Capability Contract / Provider Capability / Adapter Protocol Contract；为 mock / minimax 声明能力；增加 `/api/voice/capabilities` 查询接口；前端未来可根据 provider/model 能力动态限制输入；后端未来可通过 CapabilityValidator 在进入 Provider Adapter 前拒绝不支持的参数。

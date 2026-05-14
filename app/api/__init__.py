@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 
-from app.api import (admin, async_render, batch, health, provider_voices,
-                     runtime_status, voice_assets, voice_bindings, voice_clone,
-                     voice_cost, voice_delete, voice_design, voice_jobs,
-                     voice_profiles, voice_render, voice_variants, ws_render)
+from app.api import (admin, async_render, batch, capabilities, health,
+                     provider_voices, runtime_status, voice_assets,
+                     voice_bindings, voice_clone, voice_cost, voice_delete,
+                     voice_design, voice_jobs, voice_profiles, voice_render,
+                     voice_variants, ws_render)
 
 api_router = APIRouter()
 
@@ -24,3 +25,4 @@ api_router.include_router(runtime_status.router, prefix="/api/voice", tags=["run
 api_router.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 api_router.include_router(ws_render.router, prefix="/api/voice", tags=["ws_render"])
 api_router.include_router(batch.router, prefix="/api/voice", tags=["batch"])
+api_router.include_router(capabilities.router, prefix="/api/voice", tags=["voice-capabilities"])
