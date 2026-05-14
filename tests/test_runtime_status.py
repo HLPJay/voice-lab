@@ -274,7 +274,126 @@ class TestLastCall:
         assert data["last_call"]["status"] == "error"
         assert data["last_call"]["error_type"] == "MiniMaxError"
         assert data["provider_status"]["state"] == "error"
-        assert data["provider_status"]["label"] == "最近调用异常"
+        assert data["provider_status"]["label"] == "服务异常"
+
+
+class TestProviderStatusClassification:
+    """Provider status is classified into actionable categories."""
+
+    def _call(self, test_app, session, **log_kwargs):
+        import uuid
+        defaults = dict(id="log_" + str(uuid.uuid4())[:8],
+                        provider="minimax", api_path="/v1/t2a_v2", method="POST",
+                        status_code=200, created_at=utc_now_iso())
+        defaults.update(log_kwargs)
+        log = ProviderCallLog(**defaults)
+        session.add(log)
+        session.commit()
+        from fastapi.testclient import TestClient
+        client = TestClient(test_app)
+        resp = client.get("/api/voice/runtime/status")
+        assert resp.status_code == 200
+        return resp.json()["provider_status"]
+
+    def test_quota(self, test_app, session):
+        ps = self._call(test_app, session, status_code=400,
+                        error_message="usage limit exceeded")
+        assert ps["state"] == "warning"
+        assert ps["category"] == "quota"
+        assert ps["label"] == "额度受限"
+        assert "action_hint" in ps
+
+    def test_rate_limit(self, test_app, session):
+        ps = self._call(test_app, session, status_code=429)
+        assert ps["state"] == "warning"
+        assert ps["category"] == "rate_limit"
+        assert ps["label"] == "限流中"
+
+    def test_auth_failure(self, test_app, session):
+        ps = self._call(test_app, session, status_code=401)
+        assert ps["state"] == "error"
+        assert ps["category"] == "auth"
+        assert ps["label"] == "鉴权失败"
+
+    def test_timeout(self, test_app, session):
+        ps = self._call(test_app, session, error_message="connection timeout")
+        assert ps["state"] == "error"
+        assert ps["category"] == "timeout"
+        assert ps["label"] == "网络超时"
+
+    def test_network_error(self, test_app, session):
+        ps = self._call(test_app, session, error_message="connection refused")
+        assert ps["state"] == "error"
+        assert ps["category"] == "network"
+        assert ps["label"] == "网络异常"
+
+    def test_server_error(self, test_app, session):
+        ps = self._call(test_app, session, status_code=502)
+        assert ps["state"] == "error"
+        assert ps["category"] == "server"
+        assert ps["label"] == "服务异常"
+
+    def test_validation_error(self, test_app, session):
+        ps = self._call(test_app, session, status_code=422,
+                        error_message="invalid parameter")
+        assert ps["state"] == "error"
+        assert ps["category"] == "validation"
+        assert ps["label"] == "参数错误"
+
+    def test_provider_error(self, test_app, session):
+        ps = self._call(test_app, session, status_code=500,
+                        error_type="PROVIDER_ERROR",
+                        error_message="provider error")
+        assert ps["state"] == "error"
+        assert ps["category"] == "provider"
+        assert ps["label"] == "Provider 异常"
+
+    def test_unknown_error(self, test_app, session):
+        ps = self._call(test_app, session, status_code=200,
+                        error_type="SomeUnknownError",
+                        error_message="something went wrong")
+        assert ps["state"] == "error"
+        assert ps["category"] == "unknown_error"
+        assert ps["label"] == "调用异常"
+
+    def test_success(self, test_app, session):
+        ps = self._call(test_app, session, status_code=200)
+        assert ps["state"] == "available"
+        assert ps["category"] == "ok"
+        assert ps["label"] == "正常"
+
+    def test_none_state(self, test_app, session):
+        from fastapi.testclient import TestClient
+        client = TestClient(test_app)
+        resp = client.get("/api/voice/runtime/status")
+        assert resp.status_code == 200
+        ps = resp.json()["provider_status"]
+        assert ps["state"] == "unknown"
+        assert ps["category"] == "none"
+        assert ps["label"] == "无调用记录"
+
+    def test_detail_max_length(self, test_app, session):
+        long_msg = "x" * 300
+        ps = self._call(test_app, session, status_code=500,
+                        error_message=long_msg)
+        assert ps["detail"] is not None
+        assert len(ps["detail"]) <= 120
+
+    def test_action_hint_present(self, test_app, session):
+        ps = self._call(test_app, session, status_code=429)
+        assert ps["action_hint"] is not None
+        assert len(ps["action_hint"]) > 0
+
+    def test_new_fields_in_response(self, test_app, session):
+        ps = self._call(test_app, session, status_code=401,
+                        error_message="invalid api key",
+                        duration_ms=1234)
+        assert "category" in ps
+        assert "detail" in ps
+        assert "action_hint" in ps
+        assert "last_seen_at" in ps
+        assert "duration_ms" in ps
+        assert ps["duration_ms"] == 1234
 
 
 class TestReadOnly:

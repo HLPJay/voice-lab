@@ -14,6 +14,24 @@ from app.models.voice_job import VoiceJob
 
 router = APIRouter()
 
+# Max length for detail field
+_MAX_DETAIL_CHARS = 120
+
+# Action hints for each category
+_ACTION_HINTS: dict[str, str] = {
+    "quota": "检查套餐额度或等待重置",
+    "rate_limit": "稍后重试或降低并发",
+    "auth": "检查 MINIMAX_API_KEY",
+    "timeout": "检查网络或稍后重试",
+    "network": "检查网络连接",
+    "server": "稍后重试",
+    "validation": "检查请求参数",
+    "provider": "查看调用日志",
+    "unknown_error": "查看调用日志",
+    "ok": "最近调用成功",
+    "none": "尚无调用记录",
+}
+
 
 def _today_range() -> tuple[str, str]:
     now = datetime.now(timezone.utc)
@@ -71,6 +89,138 @@ def _period_stats(session: Session, start: str, end: str) -> dict[str, int]:
     }
 
 
+def _classify_call(entry: ProviderCallLog) -> dict[str, Any]:
+    """Classify a ProviderCallLog entry into state/category/label/detail/action_hint."""
+    error_type = (entry.error_type or "").lower()
+    error_msg = (entry.error_message or "").lower()
+    status_code = entry.status_code
+
+    # 1. Quota issues
+    if any(kw in error_msg for kw in ["usage limit", "quota", "exceeded", "plan limit", "limit reached"]):
+        detail = _truncate(entry.error_message or "额度受限", _MAX_DETAIL_CHARS)
+        return {
+            "state": "warning",
+            "category": "quota",
+            "label": "额度受限",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["quota"],
+        }
+
+    # 2. Rate limit
+    if status_code == 429 or any(kw in error_msg for kw in ["rate limit", "too many requests"]):
+        detail = _truncate(entry.error_message or "请求过于频繁", _MAX_DETAIL_CHARS)
+        return {
+            "state": "warning",
+            "category": "rate_limit",
+            "label": "限流中",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["rate_limit"],
+        }
+
+    # 3. Auth issues
+    if status_code in (401, 403) or any(kw in error_msg for kw in ["unauthorized", "forbidden", "invalid key", "api key", "auth"]):
+        detail = _truncate(entry.error_message or "鉴权失败", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "auth",
+            "label": "鉴权失败",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["auth"],
+        }
+
+    # 4. Timeout
+    if any(kw in error_msg for kw in ["timeout", "timed out"]):
+        detail = _truncate(entry.error_message or "请求超时", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "timeout",
+            "label": "网络超时",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["timeout"],
+        }
+
+    # 5. Network issues
+    if any(kw in error_msg for kw in ["connection", "connect", "dns", "network"]):
+        detail = _truncate(entry.error_message or "网络异常", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "network",
+            "label": "网络异常",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["network"],
+        }
+
+    # 6. Validation errors
+    if status_code in (400, 422) or any(kw in error_msg for kw in ["invalid", "validation", "parameter"]):
+        detail = _truncate(entry.error_message or "参数错误", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "validation",
+            "label": "参数错误",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["validation"],
+        }
+
+    # 7. Provider-specific errors
+    if "provider_error" in error_type or "provider error" in error_msg:
+        detail = _truncate(entry.error_message or "Provider 调用异常", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "provider",
+            "label": "Provider 异常",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["provider"],
+        }
+
+    # 8. Server errors (checked after more specific error types)
+    if status_code is not None and status_code >= 500:
+        detail = _truncate(entry.error_message or f"HTTP {status_code}", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "server",
+            "label": "服务异常",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["server"],
+        }
+
+    # 9. Generic error with error_type set but not matching above
+    if entry.error_type:
+        detail = _truncate(entry.error_message or entry.error_type, _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "unknown_error",
+            "label": "调用异常",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["unknown_error"],
+        }
+
+    # 10. No error_type but non-2xx status
+    if status_code is not None and status_code >= 400:
+        detail = _truncate(entry.error_message or f"HTTP {status_code}", _MAX_DETAIL_CHARS)
+        return {
+            "state": "error",
+            "category": "unknown_error",
+            "label": "调用异常",
+            "detail": detail,
+            "action_hint": _ACTION_HINTS["unknown_error"],
+        }
+
+    # 11. Success — no error
+    return {
+        "state": "available",
+        "category": "ok",
+        "label": "正常",
+        "detail": None,
+        "action_hint": _ACTION_HINTS["ok"],
+    }
+
+
+def _truncate(s: str, max_len: int) -> str:
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1] + "…"
+
+
 def _last_call(session: Session) -> dict[str, Any]:
     entry = session.exec(
         select(ProviderCallLog)
@@ -101,6 +251,31 @@ def _last_call(session: Session) -> dict[str, Any]:
     }
 
 
+def _provider_status_from_entry(entry: ProviderCallLog | None) -> dict[str, Any]:
+    """Build provider_status from a ProviderCallLog entry."""
+    if entry is None:
+        return {
+            "state": "unknown",
+            "category": "none",
+            "label": "无调用记录",
+            "detail": None,
+            "action_hint": _ACTION_HINTS["none"],
+            "last_seen_at": None,
+            "duration_ms": None,
+        }
+
+    classification = _classify_call(entry)
+    return {
+        "state": classification["state"],
+        "category": classification["category"],
+        "label": classification["label"],
+        "detail": classification["detail"],
+        "action_hint": classification["action_hint"],
+        "last_seen_at": entry.created_at,
+        "duration_ms": entry.duration_ms,
+    }
+
+
 @router.get("/runtime/status")
 def get_runtime_status(
     session: Session = Depends(get_session),
@@ -112,17 +287,13 @@ def get_runtime_status(
 
     today = _period_stats(session, today_start, today_end)
     month = _period_stats(session, month_start, month_end)
+    last_call_entry = session.exec(
+        select(ProviderCallLog)
+        .order_by(ProviderCallLog.created_at.desc())
+        .limit(1)
+    ).first()
     last_call = _last_call(session)
-
-    if last_call["status"] == "none":
-        provider_state = "unknown"
-        provider_label = "无调用记录"
-    elif last_call["status"] == "error":
-        provider_state = "error"
-        provider_label = "最近调用异常"
-    else:
-        provider_state = "available"
-        provider_label = "正常"
+    provider_status = _provider_status_from_entry(last_call_entry)
 
     return {
         "current": {
@@ -134,8 +305,5 @@ def get_runtime_status(
         "today": today,
         "month": month,
         "last_call": last_call,
-        "provider_status": {
-            "state": provider_state,
-            "label": provider_label,
-        },
+        "provider_status": provider_status,
     }
