@@ -2033,7 +2033,7 @@
       el.innerHTML = '';
       return;
     }
-    const savedAt = recent.saved_at ? new Date(recent.saved_at).toLocaleString() : '';
+    const savedAt = recent.saved_at ? formatLocalDateTime(recent.saved_at) : '';
     const assetHint = recent.audio_asset_id ? '有音频资产' : '未记录音频资产';
     el.innerHTML = `
       <div class="card" style="padding:12px 14px;margin-bottom:12px;border-left:4px solid #667eea">
@@ -2125,6 +2125,33 @@
 
   function statusClass(s) {
     return 'job-status status-' + s;
+  }
+
+  function parseBackendTime(value) {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    const raw = String(value);
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(raw)) {
+      return new Date(raw + 'Z');
+    }
+    return new Date(raw);
+  }
+
+  function formatLocalDateTime(value) {
+    const d = parseBackendTime(value);
+    if (!d || Number.isNaN(d.getTime())) return '—';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+  }
+
+  function utcTitle(value) {
+    if (!value) return '';
+    return `原始 UTC：${String(value)}`;
   }
 
   function esc(s) {
@@ -3255,7 +3282,7 @@ function handleStopAsyncPolling() {
   function historyJobCardHtml(job) {
     const typeMap = { sync_render: '单条', async_render: '异步', stream_render: '流式' };
     const typeLabel = typeMap[job.job_type] || job.job_type || '-';
-    const time = job.created_at ? job.created_at.replace('T', ' ').slice(0, 19) : '-';
+    const time = job.created_at ? formatLocalDateTime(job.created_at) : '-';
     const rawText = job.input_text || '';
     const textSnippet = rawText ? (rawText.slice(0, 50) + (rawText.length > 50 ? '…' : '')) : '<span style="color:#a0aec0">-</span>';
     const rawJobId = job.id || job.job_id || '';
@@ -3274,7 +3301,7 @@ function handleStopAsyncPolling() {
     return `<div class="history-row" data-job-id="${esc(rawJobId)}">
       <span class="history-type">${esc(typeLabel)}</span>
       ${statusBadge}
-      <span class="history-time">${esc(time)}</span>
+      <span class="history-time" title="${utcTitle(job.created_at)}">${esc(time)}</span>
       <span class="history-text" title="${esc(rawText)}">${textSnippet}</span>
       <span class="history-job-id" title="${esc(rawJobId)}">${esc(jobIdShort)}</span>
       <span class="history-actions">

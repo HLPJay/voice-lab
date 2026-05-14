@@ -298,7 +298,7 @@
       <button class="btn-sm" onclick="loadAll()">刷新</button>
     </div>
     <div id="dateRangeError" style="color:#c53030;font-size:0.80rem;display:none;margin-top:4px">开始日期不能晚于结束日期</div>
-    <div style="font-size:0.72rem;color:#a0aec0;margin-top:4px">统计按 UTC 日期范围过滤</div>
+    <div style="font-size:0.72rem;color:#a0aec0;margin-top:4px">日期按本地时间选择，查询时会转换为 UTC 范围。</div>
   </div>
 
   <!-- Region 1: Overview Cards -->
@@ -384,7 +384,7 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>时间（UTC）</th>
+          <th>时间（本地）</th>
           <th>Provider</th>
           <th>API</th>
           <th>耗时</th>
@@ -406,7 +406,7 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>时间（UTC）</th>
+          <th>时间（本地）</th>
           <th>Provider</th>
           <th>API</th>
           <th>错误类型</th>
@@ -742,12 +742,12 @@
     // Expected: YYYY-MM-DDTHH:mm:ssZ
     const d = new Date(isoStr);
     if (isNaN(d)) return esc(isoStr);
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const hh = String(d.getUTCHours()).padStart(2, '0');
-    const mm = String(d.getUTCMinutes()).padStart(2, '0');
-    const ss = String(d.getUTCSeconds()).padStart(2, '0');
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
     return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
   }
 
