@@ -381,7 +381,15 @@ Voice Lab 当前已建立三层输入约束机制：
 
 ## Provider Capability Registry
 
-Voice Lab 通过只读能力注册表声明各 Provider 支持的能力，不走数据库，不调用 Provider 真实接口，不作为健康探测。
+Voice Lab 已完成 P9 Provider Capability 架构闭环：
+
+- Capability Registry（`app/providers/capability_registry.py`）声明 mock / minimax 支持什么能力，暴露 `GET /api/voice/capabilities`。
+- Capability 声明通过 Pydantic `model_validator` 校验和测试保护，避免配置写错或密钥泄露。
+- CapabilityValidator（`app/services/capability_validator.py`）在后端进入 Provider Adapter 前执行能力校验，不支持时返回 422 VALIDATION_ERROR。
+- 前端启动时读取 `/api/voice/capabilities`，根据当前 Provider 能力动态调整输入限制和控件可用性。
+- 当前不走数据库，不作为 Provider 健康探测，不做 Admin 可编辑配置。
+
+详细说明见：[docs/P9_CAPABILITY_ARCHITECTURE.md](docs/P9_CAPABILITY_ARCHITECTURE.md)
 
 ### 接口
 
@@ -401,22 +409,28 @@ GET /api/voice/capabilities?provider=minimax  # 返回指定 provider 能力
 | `voice_design` | 声音设计支持的状态、prompt 最大长度、voice_id 约束 |
 | `provider_voices` | 音色列表、删除、导入的支持状态 |
 
-第一版能力声明来自代码配置（`app/providers/mock_capabilities.py` / `app/providers/minimax_capabilities.py`）。后续 P9-CAPABILITY2 会基于能力声明实现 CapabilityValidator，在进入 Provider Adapter 前拒绝不支持的参数；P9-CAPABILITY3 会让前端根据能力动态限制输入。
+能力声明来自代码配置（`app/providers/mock_capabilities.py` / `app/providers/minimax_capabilities.py`）。
 
 ## 后续路线
 
-1. **P9-CAPABILITY1：Provider Capability Registry**：定义 Product Contract / Capability Contract / Provider Capability / Adapter Protocol Contract；为 mock / minimax 声明能力；增加 `/api/voice/capabilities` 查询接口；前端未来可根据 provider/model 能力动态限制输入；后端未来可通过 CapabilityValidator 在进入 Provider Adapter 前拒绝不支持的参数。
-2. **Project / 作品概念**：将每次创作归档为独立 Project
-2. **创作模板入口**：情绪独白、长文本朗读、多角色剧本
-3. **历史记录升级为资产库**：重命名、收藏、标签、搜索
-4. **手机端 H5 快速创作**：轻量入口
-5. **Audio Capability Gateway 抽象**：统一音频能力接口，支持更多 Provider
-6. **资产清理后续接入**：Admin dry-run 报告 → 人工确认 quarantine → 30 天后 purge
-7. **更多 Provider**：OpenAI TTS、Azure Speech、ElevenLabs、本地 CosyVoice / GPT-SoVITS
+1. ~~P9-CAPABILITY1~~ ✅：Provider Capability Registry 最小实现已完成
+2. ~~P9-CAPABILITY2~~ ✅：CapabilityValidator 后端能力校验已完成
+3. ~~P9-CAPABILITY3~~ ✅：前端根据能力动态限制输入已完成
+4. **P9-CAPABILITY4**：Admin 能力矩阵只读展示（后续可选）
+5. **P9-FE1**：前端 JS 模块化（后续可选）
+6. **P9-E2E1**：关键路径浏览器测试（后续可选）
+7. **Project / 作品概念**：将每次创作归档为独立 Project
+8. **创作模板入口**：情绪独白、长文本朗读、多角色剧本
+9. **历史记录升级为资产库**：重命名、收藏、标签、搜索
+10. **手机端 H5 快速创作**：轻量入口
+11. **P10-CONFIG**：Admin 系统配置中心（后期可选）
+12. **资产清理后续接入**：Admin dry-run 报告 → 人工确认 quarantine → 30 天后 purge
+13. **更多 Provider**：OpenAI TTS、Azure Speech、ElevenLabs、本地 CosyVoice / GPT-SoVITS
 
 ## 文档索引
 
 - [PROJECT_HEALTH_CHECK.md](docs/PROJECT_HEALTH_CHECK.md) — 项目健康检查与当前状态
+- [P9_CAPABILITY_ARCHITECTURE.md](docs/P9_CAPABILITY_ARCHITECTURE.md) — Provider Capability 架构说明
 - [P8_BE3D_ASSET_QUARANTINE.md](docs/P8_BE3D_ASSET_QUARANTINE.md) — 资产 quarantine/restore 工具说明
 - [CONTROL_AND_SAFETY.md](docs/CONTROL_AND_SAFETY.md) — 测试策略与安全控制
 - [MINIMAX_OFFICIAL_REFERENCES.md](docs/MINIMAX_OFFICIAL_REFERENCES.md) — MiniMax 官方 API 参考
