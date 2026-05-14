@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-B：
+截至 P9-FE1-A-FIX：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3599,3 +3599,32 @@ grep -n "function loadRuntimeStatus" app/static/js/runtime_status.js  # 1 处
 **测试结果：** 579 passed, 6 skipped（未改测试数量）。
 
 **未改 app/api、app/services、app/providers、app/domain、index.html、admin.html、provider_capabilities.js、Provider Adapter、生成链路、数据库、资产清理链路。**
+
+### P9-FE1-A-FIX：修复剧本 Tab populateProfileSelect 空 DOM 报错
+
+**问题现象：** 点击"剧本"Tab 后，浏览器控制台报错：`Uncaught (in promise) TypeError: Cannot read properties of null (reading 'value') at populateProfileSelect (index.html:1821:35)`。
+
+**根因：** 剧本 Tab 切换回调在 line 1634 调用 `populateProfileSelect(document.getElementById('batchScriptProfile'))`，但 DOM 中不存在 `batchScriptProfile` 元素（该元素从未定义），`getElementById` 返回 `null`，`populateProfileSelect` 内部直接访问 `selectEl.value` 导致报错。
+
+**修改文件：**
+
+- `app/static/index.html` — 两处修改
+
+**实现：**
+
+1. **null guard**：在 `populateProfileSelect` 开头添加 `if (!selectEl) return;`，防止 `selectEl` 为 null 时崩溃。
+
+2. **修正 call site**：将 `tab === 'script'` 分支中的 `document.getElementById('batchScriptProfile')` 改为 `document.getElementById('batchProfile')`（与长文本 Tab 共用同一个 profile select 元素）。
+
+3. **E2E 测试**：新增 `test_script_tab_opens_without_profile_select_error`，验证点击剧本 Tab 后无 JS 错误且 Tab 内容正常显示。
+
+**验收检查：**
+
+```bash
+grep -n "if (!selectEl) return" app/static/index.html   # 1 处
+grep -n "batchScriptProfile" app/static/index.html       # 无输出
+```
+
+**测试结果：** 580 passed, 6 skipped（新增 1 个 E2E 测试）。
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、Provider Adapter、生成链路、数据库、资产清理链路。**
