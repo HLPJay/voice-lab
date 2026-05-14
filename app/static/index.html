@@ -1097,6 +1097,8 @@
       </div>
       <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
+    <!-- Script batch result / progress area (populated after submit) -->
+    <div id="batchScriptResult" style="display:none;margin-top:16px"></div>
   </div>
 
   <div class="tab-content" id="tab-voices">
@@ -5087,21 +5089,38 @@ function handleStopAsyncPolling() {
         lines.push({ role, text, profile_id: profileId, params: {} });
       }
     });
-    if (lines.length === 0) { alert('请至少添加一行台词'); return; }
-    if (lines.some(l => !l.profile_id)) { alert('请为每行台词选择声音人设'); return; }
+
+    // Validation
+    const resultsEl = document.getElementById('batchScriptResult');
+    const showResult = (html) => {
+      if (resultsEl) { resultsEl.style.display = ''; resultsEl.innerHTML = html; }
+    };
+    const clearResult = () => { if (resultsEl) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; } };
+
+    if (lines.length === 0) {
+      showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请至少填写一行台词</div>');
+      return;
+    }
+    const missingText = lines.filter(l => !l.text);
+    if (missingText.length > 0) {
+      showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">第 ' + (lines.indexOf(missingText[0]) + 1) + ' 行缺少台词文本</div>');
+      return;
+    }
+    const missingProfile = lines.filter(l => !l.profile_id);
+    if (missingProfile.length > 0) {
+      showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">第 ' + (lines.indexOf(missingProfile[0]) + 1) + ' 行缺少声音人设</div>');
+      return;
+    }
 
     const provider = document.getElementById('batchScriptProvider').value;
     const silence = parseInt(document.getElementById('batchScriptSilence').value) || 500;
     const outputFormat = document.getElementById('batchScriptOutputFormat').value;
     const needSubtitle = document.getElementById('batchScriptNeedSubtitle').checked;
 
-    if (provider === 'minimax' && !confirm('批量生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
-      return;
-    }
-
     const btn = document.getElementById('batchScriptSubmit');
     btn.disabled = true;
     btn.textContent = '提交中…';
+    clearResult();
 
     try {
       const resp = await guardedJsonFetch('/api/voice/batch/submit', {
@@ -5118,10 +5137,9 @@ function handleStopAsyncPolling() {
       if (!resp.ok) {
         const err = await parseApiError(resp);
         if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          const resultsEl = document.getElementById('batchScriptResult') || resultsArea;
-          resultsEl.innerHTML = renderApiError(err);
+          showResult(renderApiError(err));
         } else {
-          alert('提交失败：' + err.message);
+          showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(err.message || '未知错误') + '</div>');
         }
         btn.disabled = false;
         btn.textContent = '提交批量任务';
@@ -5130,15 +5148,32 @@ function handleStopAsyncPolling() {
 
       const data = await resp.json();
       _currentBatchId = data.batch_id;
+
+      // Show success + switch to longtext tab to show progress
+      showResult('<div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#276749">' +
+        '<div style="font-weight:600;margin-bottom:6px">批量剧本任务已提交</div>' +
+        '<div>任务ID：<code style="font-size:0.78rem;background:#edf2f7;padding:1px 4px;border-radius:3px">' + esc(data.batch_id) + '</code></div>' +
+        '<div>状态：' + esc(data.status || 'pending') + ' &nbsp;|&nbsp; 总段数：' + (data.total_segments || lines.length) + '</div>' +
+        '<div style="margin-top:8px;font-size:0.78rem;color:#718096">进度请查看下方「长文本」Tab</div>' +
+        '</div>');
+
+      // Switch to longtext tab so user can see progress
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const longtextTab = document.getElementById('tab-longtext');
+      const longtextBtn = document.querySelector('.tab-btn[data-tab="longtext"]');
+      if (longtextTab) longtextTab.classList.add('active');
+      if (longtextBtn) longtextBtn.classList.add('active');
+
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
+      loadRuntimeStatus();
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
         if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          const resultsEl = document.getElementById('batchScriptResult') || resultsArea;
-          resultsEl.innerHTML = renderApiError(e);
+          showResult(renderApiError(e));
         } else {
-          alert('提交失败：' + (e && e.message ? e.message : String(e)));
+          showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(e && e.message ? e.message : String(e)) + '</div>');
         }
       }
     } finally {
