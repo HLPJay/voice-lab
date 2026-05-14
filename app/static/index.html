@@ -2381,6 +2381,94 @@
   }
 
   // ============================================================
+  // Validation Error translation helpers
+  // ============================================================
+
+  const FIELD_LABELS = {
+    text: '文本',
+    profile_id: '声音人设',
+    provider: 'Provider',
+    audio_format: '音频格式',
+    output_format: '返回格式',
+    speed: '语速',
+    vol: '音量',
+    pitch: '音调',
+    emotion: '情绪',
+    variant_count: '版本数量',
+    segment_strategy: '分段策略',
+    max_segment_chars: '每段最大字数',
+    silence_between_ms: '段间静音',
+    script: '剧本台词',
+    role: '角色',
+    params: '参数',
+    provider_voice_id: '音色 ID',
+    voice_id: 'voice_id',
+    file_id: 'file_id',
+    prompt_file_id: 'prompt_file_id',
+    prompt_text: 'prompt_text',
+    preview_text: '试听文本',
+    prompt: '音色描述',
+    model: '模型',
+    language_boost: '语言增强',
+    need_noise_reduction: '降噪',
+    need_volume_normalization: '音量标准化',
+    input_sensitive: '敏感词检查',
+    confirm_cost: '成本确认',
+    limit: '分页数量',
+    offset: '分页偏移',
+    start: '开始日期',
+    end: '结束日期',
+  };
+
+  function formatFieldPath(loc) {
+    if (!Array.isArray(loc)) return '';
+    const parts = loc.filter(p => p !== 'body' && p !== 'query' && p !== 'path');
+    if (!parts.length) return '';
+    const scriptIdx = parts.indexOf('script');
+    if (scriptIdx >= 0 && typeof parts[scriptIdx + 1] === 'number') {
+      const rowNum = parts[scriptIdx + 1] + 1;
+      const field = parts[scriptIdx + 2];
+      if (field === 'text') return `第 ${rowNum} 行台词`;
+      if (field === 'profile_id') return `第 ${rowNum} 行声音人设`;
+      if (field === 'role') return `第 ${rowNum} 行角色`;
+      return `第 ${rowNum} 行`;
+    }
+    const last = parts[parts.length - 1];
+    return FIELD_LABELS[last] || String(last);
+  }
+
+  function translateValidationIssue(issue) {
+    const field = formatFieldPath(issue.loc);
+    const type = issue.type || '';
+    const msg = issue.msg || '';
+    const ctx = issue.ctx || {};
+    const prefix = field ? `${field}：` : '';
+
+    if (type.includes('missing')) return `${prefix}不能为空。`;
+    if (type.includes('string_too_short')) return `${prefix}长度不能少于 ${ctx.min_length || '要求的最小'} 个字符。`;
+    if (type.includes('string_too_long')) return `${prefix}长度不能超过 ${ctx.max_length || '要求的最大'} 个字符。`;
+    if (type.includes('greater_than')) return `${prefix}必须大于 ${ctx.gt}。`;
+    if (type.includes('greater_than_equal')) return `${prefix}必须大于等于 ${ctx.ge}。`;
+    if (type.includes('less_than')) return `${prefix}必须小于 ${ctx.lt}。`;
+    if (type.includes('less_than_equal')) return `${prefix}必须小于等于 ${ctx.le}。`;
+    if (type.includes('literal_error')) {
+      const expected = ctx.expected || '';
+      return `${prefix}只能选择 ${expected}。`;
+    }
+    if (type.includes('string_pattern_mismatch')) {
+      if ((issue.loc || []).includes('voice_id')) {
+        return `${prefix}格式不正确：至少 8 位，必须以字母开头，只能包含字母、数字、下划线和短横线，且不能以短横线或下划线结尾。`;
+      }
+      return `${prefix}格式不正确。`;
+    }
+    if (type.includes('int_parsing') || type.includes('int_type')) return `${prefix}必须是整数。`;
+    if (type.includes('float_parsing') || type.includes('float_type')) return `${prefix}必须是数字。`;
+    if (type.includes('bool_parsing') || type.includes('bool_type')) return `${prefix}必须是布尔值。`;
+    if (msg) return `${prefix}${msg}`;
+    return `${prefix}参数不合法。`;
+  }
+
+  // ============================================================
   // Resource Guard error helpers
   // ============================================================
 
@@ -2398,6 +2486,21 @@
         raw: null,
       };
     }
+
+    // Handle Pydantic/FastAPI 422 ValidationError
+    if (resp.status === 422 && Array.isArray(payload?.detail)) {
+      const messages = payload.detail.map(translateValidationIssue).filter(Boolean);
+      const message = messages.length > 0 ? messages.join('；') : `参数校验失败（HTTP 422）`;
+      return {
+        code: 'VALIDATION_ERROR',
+        message,
+        detail: payload.detail,
+        validationErrors: payload.detail,
+        status: 422,
+        raw: payload,
+      };
+    }
+
     const err = payload && payload.error ? payload.error : null;
     return {
       code: err?.code || 'HTTP_ERROR',
@@ -2441,6 +2544,10 @@
 
   function formatApiError(err) {
     if (!err) return '请求失败，请稍后重试。';
+
+    if (err.code === 'VALIDATION_ERROR') {
+      return err.message || '参数校验失败，请检查输入。';
+    }
 
     if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
       const detailText = err.detail || err.message || '';
@@ -3866,14 +3973,22 @@ function handleStopAsyncPolling() {
         },
         { provider, operation: 'provider_voice_preview', highRisk: true }
       );
-      const data = await resp.json();
       if (!resp.ok) {
-        resultDiv.innerHTML = `<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:8px">
-          <span style="background:#e53e3e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">✕</span>
-          <span style="color:#c53030;font-size:0.82rem">音色试听失败: ${esc(friendlyErrorMessage(extractErrorMessage(data)))}</span>
-        </div>`;
+        const err = await parseApiError(resp);
+        if (err.code === 'VALIDATION_ERROR') {
+          resultDiv.innerHTML = `<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:8px">
+            <span style="background:#e53e3e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">✕</span>
+            <span style="color:#c53030;font-size:0.82rem">音色试听失败: ${err.message}</span>
+          </div>`;
+        } else {
+          resultDiv.innerHTML = `<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:8px">
+            <span style="background:#e53e3e;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem">✕</span>
+            <span style="color:#c53030;font-size:0.82rem">音色试听失败: ${esc(friendlyErrorMessage(err.message))}</span>
+          </div>`;
+        }
         return;
       }
+      const data = await resp.json();
       if (data.audio_asset && data.audio_asset.url) {
         const mediaType = data.audio_asset.format === 'wav' ? 'audio/wav'
           : data.audio_asset.format === 'flac' ? 'audio/flac'
@@ -4473,6 +4588,12 @@ function handleStopAsyncPolling() {
           btn.innerHTML = '克隆';
           return;
         }
+        if (err.code === 'VALIDATION_ERROR') {
+          resultsEl.innerHTML = `<div class="error-msg">${err.message}</div>`;
+          btn.disabled = false;
+          btn.innerHTML = '克隆';
+          return;
+        }
         const errMsg = err.message || '';
         if (errMsg.toLowerCase().includes('duplicate')) {
           resultsEl.innerHTML = `<div class="error-msg">voice_id 已存在，请换一个新的 voice_id，或点击「自动生成」。注意：已删除的 voice_id 也不能复用。</div>`;
@@ -4651,11 +4772,19 @@ function handleStopAsyncPolling() {
         payload,
         { provider, operation: 'provider_voice_import_verify', highRisk: true }
       );
-      const data = await resp.json();
 
       if (!resp.ok) {
-        const errMsg = extractErrorMessage(data);
-        resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(friendlyErrorMessage(errMsg))}</div>`;
+        const err = await parseApiError(resp);
+        if (err.code === 'VALIDATION_ERROR') {
+          resultsEl.innerHTML = `<div class="error-msg">${err.message}</div>`;
+        } else {
+          resultsEl.innerHTML = `<div class="error-msg">导入失败：${esc(friendlyErrorMessage(err.message))}</div>`;
+        }
+        btn.disabled = false;
+        btn.innerHTML = '验证并导入';
+        return;
+      }
+      const data = await resp.json();
         btn.disabled = false;
         btn.innerHTML = '验证并导入';
         return;
@@ -4778,6 +4907,8 @@ function handleStopAsyncPolling() {
         const err = await parseApiError(resp);
         if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
           resultsEl.innerHTML = renderApiError(err);
+        } else if (err.code === 'VALIDATION_ERROR') {
+          resultsEl.innerHTML = `<div class="error-msg">${err.message}</div>`;
         } else {
           resultsEl.innerHTML = `<div class="error-msg">设计失败：${esc(friendlyErrorMessage(err.message))}</div>`;
         }
@@ -5238,6 +5369,8 @@ function handleStopAsyncPolling() {
         const err = await parseApiError(resp);
         if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
           showBatchLongtextResult(renderApiError(err));
+        } else if (err.code === 'VALIDATION_ERROR') {
+          showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">' + err.message + '</div>');
         } else {
           showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(err.message || '未知错误') + '</div>');
         }
@@ -5351,6 +5484,8 @@ function handleStopAsyncPolling() {
         const err = await parseApiError(resp);
         if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
           showResult(renderApiError(err));
+        } else if (err.code === 'VALIDATION_ERROR') {
+          showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">' + err.message + '</div>');
         } else {
           showResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(err.message || '未知错误') + '</div>');
         }
