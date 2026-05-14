@@ -1585,6 +1585,7 @@
   </div>
 
 <script src="/static/js/provider_capabilities.js"></script>
+<script src="/static/js/runtime_status.js"></script>
 <script>
   // ============================================================
   // Provider Capability Registry (P9-CAPABILITY3)
@@ -1592,124 +1593,9 @@
   // ============================================================
 
   // ============================================================
-  // Runtime status bar
+  // Runtime Status Bar
+  // Moved to /static/js/runtime_status.js — functions loaded via script tag above
   // ============================================================
-  let _runtimeStatusTimer = null;
-  let _runtimeStatusErrorNotified = false;
-
-  async function loadRuntimeStatus() {
-    const bar = document.getElementById('runtimeStatusBar');
-    if (!bar) return;
-    try {
-      const resp = await fetch('/api/voice/runtime/status');
-      if (!resp.ok) throw new Error('non-200');
-      const data = await resp.json();
-      _runtimeStatusErrorNotified = false;
-
-      const chipProvider = document.getElementById('chipProvider');
-      const chipModel = document.getElementById('chipModel');
-      const chipToday = document.getElementById('chipToday');
-      const chipMonth = document.getElementById('chipMonth');
-      const chipStatus = document.getElementById('chipProviderStatus');
-
-      if (chipProvider) {
-        // Follow current page selection, fall back to default
-        const defaultProvider = data.current.default_provider || '-';
-        const currentProvider = (typeof providerSelect !== 'undefined' && providerSelect.value)
-          ? providerSelect.value
-          : defaultProvider;
-        chipProvider.textContent = currentProvider;
-        chipProvider.title = currentProvider === defaultProvider
-          ? '当前 Provider：默认配置'
-          : '当前 Provider：页面选择';
-        chipProvider.classList.remove('muted');
-      }
-      if (chipModel) {
-        const defaultModel = data.current.default_model || '-';
-        chipModel.textContent = defaultModel;
-        chipModel.title = '当前模型：默认配置（' + defaultModel + '）';
-        chipModel.classList.remove('muted');
-      }
-      if (chipToday) {
-        chipToday.textContent = '今日 ' + (data.today.usage_characters || 0) + ' 字';
-        chipToday.title = '本地估算用量，不代表官方剩余额度';
-        chipToday.classList.remove('muted');
-      }
-      if (chipMonth) {
-        chipMonth.textContent = '本月 ' + (data.month.usage_characters || 0) + ' 字';
-        chipMonth.title = '本地估算用量，不代表官方剩余额度';
-        chipMonth.classList.remove('muted');
-      }
-      if (chipStatus) {
-        chipStatus.textContent = data.provider_status.label || '-';
-        chipStatus.classList.remove('muted', 'error', 'warning', 'available', 'clickable');
-        chipStatus.removeAttribute('title');
-
-        const ps = data.provider_status;
-        if (ps.state === 'error') {
-          chipStatus.classList.add('error', 'clickable');
-          const parts = [ps.label || '', ps.detail || '', ps.action_hint || ''].filter(Boolean);
-          if (parts.length) chipStatus.title = '最近一次 Provider 调用记录：' + parts.join('。');
-          chipStatus.style.cursor = 'pointer';
-          chipStatus.onclick = () => {
-            const provider = (typeof providerSelect !== 'undefined' && providerSelect.value) ? providerSelect.value : '';
-            const params = new URLSearchParams({ focus: 'call-logs' });
-            if (provider) params.set('provider', provider);
-            location.href = '/static/admin.html?' + params.toString();
-          };
-        } else if (ps.state === 'warning') {
-          chipStatus.classList.add('warning', 'clickable');
-          const parts = [ps.label || '', ps.detail || '', ps.action_hint || ''].filter(Boolean);
-          if (parts.length) chipStatus.title = '最近一次 Provider 调用记录：' + parts.join('。');
-          chipStatus.style.cursor = 'pointer';
-          chipStatus.onclick = () => {
-            const provider = (typeof providerSelect !== 'undefined' && providerSelect.value) ? providerSelect.value : '';
-            const params = new URLSearchParams({ focus: 'call-logs' });
-            if (provider) params.set('provider', provider);
-            location.href = '/static/admin.html?' + params.toString();
-          };
-        } else if (ps.state === 'available') {
-          chipStatus.classList.add('available');
-          const parts = [ps.detail || ''].filter(Boolean);
-          if (parts.length) chipStatus.title = '最近一次 Provider 调用记录：正常。' + parts.join('。');
-          else chipStatus.title = '最近一次 Provider 调用记录：正常。';
-          chipStatus.onclick = null;
-          chipStatus.style.cursor = '';
-        } else {
-          chipStatus.classList.add('muted');
-          chipStatus.title = '最近一次 Provider 调用记录：无调用记录。';
-          chipStatus.onclick = null;
-          chipStatus.style.cursor = '';
-        }
-      }
-    } catch (_) {
-      const chipToday = document.getElementById('chipToday');
-      const chipMonth = document.getElementById('chipMonth');
-      const chipStatus = document.getElementById('chipProviderStatus');
-      if (chipToday) chipToday.textContent = '用量统计不可用';
-      if (chipMonth) chipMonth.textContent = '';
-      if (chipStatus) {
-        chipStatus.textContent = '点击重试';
-        chipStatus.classList.remove('muted', 'available', 'warning', 'error', 'clickable');
-        chipStatus.classList.add('error', 'clickable');
-        chipStatus.title = '用量统计加载失败，点击重试';
-        chipStatus.style.cursor = 'pointer';
-        chipStatus.onclick = () => { loadRuntimeStatus(); };
-      }
-      if (!_runtimeStatusErrorNotified) {
-        _runtimeStatusErrorNotified = true;
-        showToast('用量统计加载失败，可点击状态条重试', 'error');
-      }
-    }
-  }
-
-  function scheduleRuntimeStatusRefresh() {
-    if (_runtimeStatusTimer) clearTimeout(_runtimeStatusTimer);
-    _runtimeStatusTimer = setTimeout(() => {
-      loadRuntimeStatus();
-      scheduleRuntimeStatusRefresh();
-    }, 60000);
-  }
 
   // ============================================================
   // Tab switching

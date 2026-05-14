@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-A：
+截至 P9-FE1-B：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3558,3 +3558,44 @@ grep -n "function loadProviderCapabilities" app/static/js/provider_capabilities.
 **测试结果：** 579 passed, 6 skipped（未改测试数量）。
 
 **未改 app/api、app/services、app/providers、app/domain、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。**
+
+### P9-FE1-B：前端 Runtime Status JS 模块化
+
+**阶段目标：** 把 `app/static/index.html` 中 Runtime Status Bar / Provider Status Chip 相关 JS 逻辑抽离到独立文件，降低 index.html 体积和维护风险。
+
+**新增文件：**
+
+- `app/static/js/runtime_status.js` — Runtime Status 前端模块
+
+**修改文件：**
+
+- `app/static/index.html` — 新增 `<script src="/static/js/runtime_status.js">` 引入模块（位于 provider_capabilities.js 之后）；移除已移动的 Runtime Status 函数定义
+
+**实现：**
+
+1. **runtime_status.js**：
+   - IIFE 包装，不使用 ES module
+   - window 状态变量：`_runtimeStatusTimer`、`_runtimeStatusErrorNotified`
+   - `window.loadRuntimeStatus`：获取 `/api/voice/runtime/status`，更新 chipProvider / chipModel / chipToday / chipMonth / chipProviderStatus 五个 chip，支持 error/warning/available/unknown 四种状态，点击跳转到 admin.html?focus=call-logs，失败时显示"点击重试"并调用 `window.showToast`（存在性判断）
+   - `window.scheduleRuntimeStatusRefresh`：60 秒轮询 timer，暴露到 window 以便 inline script 初始化
+   - `setRuntimeChip(id, text, className, title)` 辅助函数
+   - `rsEsc()` 本地 helper
+   - 使用 `document.getElementById('providerSelect')` 而非局部变量引用
+   - 所有 DOM 操作都有 null-check
+   - onclick 使用普通函数而非箭头函数（兼容性）
+
+2. **index.html 修改**：
+   - 在 inline `<script>` 前添加 `<script src="/static/js/runtime_status.js"></script>`（在 provider_capabilities.js 之后）
+   - 移除 `loadRuntimeStatus()` 和 `scheduleRuntimeStatusRefresh()` 函数定义及 `_runtimeStatusTimer` / `_runtimeStatusErrorNotified` 变量
+   - 初始化调用 `loadRuntimeStatus()` 和 `scheduleRuntimeStatusRefresh()` 保持不变（通过 window 引用）
+
+**验收检查：**
+
+```bash
+grep -n "function loadRuntimeStatus" app/static/index.html   # 无输出
+grep -n "function loadRuntimeStatus" app/static/js/runtime_status.js  # 1 处
+```
+
+**测试结果：** 579 passed, 6 skipped（未改测试数量）。
+
+**未改 app/api、app/services、app/providers、app/domain、index.html、admin.html、provider_capabilities.js、Provider Adapter、生成链路、数据库、资产清理链路。**
