@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-BE3A：
+截至 P8-BE3A1：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -41,6 +41,7 @@
 * P8-FIX7：高消费动作二次确认提示已完成（confirmHighCostVoiceAction helper、克隆/生成设计 handler 开头增加高消费确认、取消时不调用后端、按钮旁增加行内费用提示、guardedJsonFetch 原有 minimax 确认保留）
 * P8-CHECK1：阶段性全局验收与风险清单收口已完成（已复核主 tab / 高级子 tab / 历史播放下载删除复制 / localStorage 最近任务恢复 / 宽屏布局 / 绑定状态行内化 / 高消费确认 / API endpoint / 文档一致性，pytest 384 passed，已输出遗留风险清单，下一阶段建议 P8-BE3A 资产清理策略审查）
 * P8-BE3A：资产清理策略审查与只读统计已完成（新增 scripts/audit_assets.py 只读审查脚本，统计 AudioAsset 436 / SubtitleAsset 169 / VoiceJob 532 / storage 文件 33,803，识别孤立音频文件 19,505 / 孤立字幕文件 14,298，缺失文件 DB 记录 0，已删除任务资产 0，本阶段未删除任何文件）
+* P8-BE3A1：资产审查报告增强已完成（storage_root 脱敏为 <REDACTED>，排除 quarantine 目录扫描，新增 temp/metadata 统计、年龄分布、大小分布、最大孤立文件清单各 50 个、字幕 json+srt 配对分析 7,179 对、运行任务保护 102 个 running/processing 任务、回填候选人说明，report_version: p8-be3a1）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
