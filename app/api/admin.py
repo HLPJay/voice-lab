@@ -43,8 +43,8 @@ def list_call_logs(
     start: str | None = None,
     end: str | None = None,
     status: Literal["success", "error"] | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
 ) -> CallLogListResponse:
     # Build filter conditions once (used for both count and data query)
@@ -60,17 +60,22 @@ def list_call_logs(
     if end is not None:
         conditions.append(ProviderCallLog.created_at < end)
     if status == "success":
-        conditions.append(ProviderCallLog.status_code.isnot(None))
+        conditions.append(ProviderCallLog.status_code >= 200)
+        conditions.append(ProviderCallLog.status_code < 400)
         conditions.append(ProviderCallLog.error_type.is_(None))
     elif status == "error":
-        conditions.append(ProviderCallLog.error_type.isnot(None))
+        # error = has error_type OR status_code >= 400 OR status_code is null (null means no success response recorded)
+        conditions.append(
+            (ProviderCallLog.error_type.isnot(None))
+            | (ProviderCallLog.status_code >= 400)
+            | (ProviderCallLog.status_code.is_(None))
+        )
 
     # Count with same filters (no materialization)
     count_q = select(func.count(ProviderCallLog.id)).where(*conditions) if conditions else select(func.count(ProviderCallLog.id))
     total = session.exec(count_q).one() or 0
 
     # Data query with pagination
-    limit = min(limit, 200)
     query = select(ProviderCallLog).where(*conditions) if conditions else select(ProviderCallLog)
     query = query.order_by(ProviderCallLog.created_at.desc()).offset(offset).limit(limit)
 

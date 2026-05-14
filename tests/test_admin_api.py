@@ -42,6 +42,15 @@ def seed_call_logs(temp_db):
                 error_message="connection timeout",
                 created_at="2026-05-11T12:00:00+00:00",
             ),
+            ProviderCallLog(
+                id="calllog_004",
+                provider="minimax",
+                api_path="/v1/t2a_v2",
+                method="POST",
+                status_code=500,
+                duration_ms=1000,
+                created_at="2026-05-11T13:00:00+00:00",
+            ),
         ]
         for log in logs:
             session.add(log)
@@ -54,15 +63,15 @@ def test_call_logs_list_all(test_app, seed_call_logs):
     resp = client.get("/api/admin/call-logs")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["total"] == 3
-    assert len(body["logs"]) == 3
+    assert body["total"] == 4
+    assert len(body["logs"]) == 4
 
 
 def test_call_logs_filter_by_provider(test_app, seed_call_logs):
     """按 provider 过滤"""
     client = TestClient(test_app)
     resp = client.get("/api/admin/call-logs?provider=minimax")
-    assert resp.json()["total"] == 3
+    assert resp.json()["total"] == 4
     resp = client.get("/api/admin/call-logs?provider=openai")
     assert resp.json()["total"] == 0
 
@@ -71,7 +80,7 @@ def test_call_logs_filter_by_api_path(test_app, seed_call_logs):
     """按 api_path 过滤"""
     client = TestClient(test_app)
     resp = client.get("/api/admin/call-logs?api_path=/v1/t2a_v2")
-    assert resp.json()["total"] == 2
+    assert resp.json()["total"] == 3
     resp = client.get("/api/admin/call-logs?api_path=/v1/get_voice")
     assert resp.json()["total"] == 1
     resp = client.get("/api/admin/call-logs?api_path=/v1/nonexistent")
@@ -79,19 +88,20 @@ def test_call_logs_filter_by_api_path(test_app, seed_call_logs):
 
 
 def test_call_logs_filter_by_status(test_app, seed_call_logs):
-    """按 status=success/error 过滤"""
+    """按 status=success/error 过滤：success=2xx+3xx无error_type，error=有error_type或status_code>=400或status_code=null"""
     client = TestClient(test_app)
     resp = client.get("/api/admin/call-logs?status=success")
-    assert resp.json()["total"] == 2
+    assert resp.json()["total"] == 2  # calllog_001, calllog_002 (both 200, no error_type)
     resp = client.get("/api/admin/call-logs?status=error")
-    assert resp.json()["total"] == 1
+    # calllog_003: error_type not null, calllog_004: status_code=500
+    assert resp.json()["total"] == 2
 
 
 def test_call_logs_filter_by_time_range(test_app, seed_call_logs):
     """按时间范围过滤"""
     client = TestClient(test_app)
     resp = client.get("/api/admin/call-logs?start=2026-05-11T11:00:00+00:00")
-    assert resp.json()["total"] == 2
+    assert resp.json()["total"] == 3
     resp = client.get(
         "/api/admin/call-logs?start=2026-05-11T11:00:00+00:00&end=2026-05-11T12:00:00+00:00"
     )
@@ -104,13 +114,13 @@ def test_call_logs_pagination(test_app, seed_call_logs):
     resp = client.get("/api/admin/call-logs?limit=1&offset=0")
     body = resp.json()
     assert len(body["logs"]) == 1
-    assert body["total"] == 3
-    assert body["logs"][0]["id"] == "calllog_003"
+    assert body["total"] == 4
+    assert body["logs"][0]["id"] == "calllog_004"
 
     resp = client.get("/api/admin/call-logs?limit=1&offset=1")
     body = resp.json()
     assert len(body["logs"]) == 1
-    assert body["logs"][0]["id"] == "calllog_002"
+    assert body["logs"][0]["id"] == "calllog_003"
 
 
 def test_call_logs_order_desc(test_app, seed_call_logs):
@@ -119,14 +129,21 @@ def test_call_logs_order_desc(test_app, seed_call_logs):
     resp = client.get("/api/admin/call-logs")
     body = resp.json()
     ids = [log["id"] for log in body["logs"]]
-    assert ids == ["calllog_003", "calllog_002", "calllog_001"]
+    assert ids == ["calllog_004", "calllog_003", "calllog_002", "calllog_001"]
 
 
 def test_call_logs_limit_cap(test_app, seed_call_logs):
-    """limit 超过 200 被钳制"""
+    """limit 超过 200 返回 422"""
     client = TestClient(test_app)
     resp = client.get("/api/admin/call-logs?limit=999")
-    assert resp.json()["limit"] == 200
+    assert resp.status_code == 422
+
+
+def test_call_logs_offset_negative(test_app, seed_call_logs):
+    """offset < 0 返回 422"""
+    client = TestClient(test_app)
+    resp = client.get("/api/admin/call-logs?offset=-1")
+    assert resp.status_code == 422
 
 
 def test_call_logs_filter_by_job_id(test_app, seed_call_logs):

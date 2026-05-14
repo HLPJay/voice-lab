@@ -1,5 +1,28 @@
-from sqlalchemy import case, func
+from datetime import datetime, timedelta
 
+
+def _fill_zero_dates(data: list[dict], start: str | None, end: str | None) -> list[dict]:
+    """Fill in missing dates in range [start, end) with value=0."""
+    if not data:
+        return data
+    # Build a dict for quick lookup
+    by_date = {d["date"]: d["value"] for d in data}
+    # Determine date range
+    if start and end:
+        try:
+            cur = datetime.strptime(start[:10], "%Y-%m-%d")
+            end_dt = datetime.strptime(end[:10], "%Y-%m-%d")
+            result = []
+            while cur < end_dt:
+                date_str = cur.strftime("%Y-%m-%d")
+                result.append({"date": date_str, "value": by_date.get(date_str, 0)})
+                cur += timedelta(days=1)
+            return result
+        except (ValueError, IndexError):
+            return data
+    return data
+
+from sqlalchemy import case, func
 from sqlmodel import Session, select
 
 from app.models.provider_call_log import ProviderCallLog
@@ -8,8 +31,17 @@ from app.models.voice_job import VoiceJob
 
 
 def _error_count():
-    """Return a SQL expression that counts rows where error_type is not null."""
-    return func.sum(case((ProviderCallLog.error_type.isnot(None), 1), else_=0))
+    """Return a SQL expression that counts rows where error_type is not null,
+    OR status_code >= 400, OR status_code is null (no successful HTTP response recorded)."""
+    return func.sum(case(
+        (
+            ProviderCallLog.error_type.isnot(None)
+            | (ProviderCallLog.status_code >= 400)
+            | (ProviderCallLog.status_code.is_(None)),
+            1
+        ),
+        else_=0
+    ))
 
 
 class StatsService:
@@ -246,10 +278,8 @@ class StatsService:
             )
             if job_filters:
                 query = query.where(*job_filters)
-            return [
-                {"date": row[0], "value": int(row[1] or 0)}
-                for row in session.exec(query).all()
-            ]
+            data = [{"date": row[0], "value": int(row[1] or 0)} for row in session.exec(query).all()]
+            return _fill_zero_dates(data, start, end)
 
         # All other metrics use ProviderCallLog
         if metric == "characters":
@@ -287,13 +317,14 @@ class StatsService:
 
             # Merge: use max of call and asset chars per date
             dates = sorted(set(call_chars_by_date) | set(asset_chars_by_date))
-            return [
+            data = [
                 {
                     "date": date,
                     "value": max(call_chars_by_date.get(date, 0), asset_chars_by_date.get(date, 0)),
                 }
                 for date in dates
             ]
+            return _fill_zero_dates(data, start, end)
 
         if metric == "errors":
             q = (
@@ -306,7 +337,7 @@ class StatsService:
             )
             if call_filters:
                 q = q.where(*call_filters)
-            return [{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()]
+            return _fill_zero_dates([{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()], start, end)
 
         if metric == "api_calls":
             q = (
@@ -319,7 +350,7 @@ class StatsService:
             )
             if call_filters:
                 q = q.where(*call_filters)
-            return [{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()]
+            return _fill_zero_dates([{"date": r[0], "value": int(r[1] or 0)} for r in session.exec(q).all()], start, end)
 
         if metric == "avg_duration":
             q = (
@@ -332,6 +363,6 @@ class StatsService:
             )
             if call_filters:
                 q = q.where(*call_filters)
-            return [{"date": r[0], "value": round(float(r[1] or 0))} for r in session.exec(q).all()]
+            return _fill_zero_dates([{"date": r[0], "value": round(float(r[1] or 0))} for r in session.exec(q).all()], start, end)
 
         return []
