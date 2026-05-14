@@ -5405,16 +5405,18 @@ function handleStopAsyncPolling() {
       const subList = document.getElementById('batchSubtitleList');
       if (subList) { subList.style.display = ''; }
       const subId = data.merged_subtitle.id;
+
+      if (window._batchSubtitleCache && window._batchSubtitleCache[subId]) {
         _batchTimeline = window._batchSubtitleCache[subId];
         renderBatchSubtitleList(_batchTimeline);
         const dlSub = document.getElementById('batchDownloadSubtitle');
         if (dlSub) {
-          dlSub.href = `/api/voice/assets/${subId}/download`;
+          dlSub.href = `/api/voice/assets/${encodeURIComponent(subId)}/download`;
           dlSub.style.display = '';
         }
       } else {
         if (!window._batchSubtitleCache) window._batchSubtitleCache = {};
-        fetch(`/api/voice/assets/${subId}`)
+        fetch(`/api/voice/assets/${encodeURIComponent(subId)}`)
           .then(r => r.ok ? r.json() : null)
           .then(asset => {
             if (!asset || !asset.timeline || !asset.timeline.length) return;
@@ -5423,7 +5425,7 @@ function handleStopAsyncPolling() {
             renderBatchSubtitleList(_batchTimeline);
             const dlSub = document.getElementById('batchDownloadSubtitle');
             if (dlSub) {
-              dlSub.href = `/api/voice/assets/${subId}/download`;
+              dlSub.href = `/api/voice/assets/${encodeURIComponent(subId)}/download`;
               dlSub.style.display = '';
             }
           })
