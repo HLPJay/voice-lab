@@ -278,6 +278,54 @@
   @media (max-width: 480px) {
     .overview-grid { grid-template-columns: 1fr; }
   }
+
+  /* Capability Matrix */
+  .capability-matrix-wrap { overflow-x: auto; }
+
+  .capability-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    margin-top: 6px;
+  }
+
+  .capability-table th {
+    text-align: left;
+    color: #a0aec0;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+
+  .capability-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #f0f4f8;
+    color: #2d3748;
+    vertical-align: middle;
+  }
+
+  .capability-table tr:last-child td { border-bottom: none; }
+  .capability-table tr:hover td { background: #f7fafc; }
+
+  .capability-yes { color: #276749; font-weight: 600; }
+  .capability-no  { color: #a0aec0; }
+
+  .capability-chip {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #ebf4ff;
+    color: #2b6cb0;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    margin: 1px 2px;
+  }
+
+  .capability-range {
+    font-size: 0.72rem;
+    color: #718096;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -322,6 +370,18 @@
       <div class="stat-value" id="statDuration">—</div>
       <div class="stat-label">总音频时长</div>
       <div class="stat-sub" id="statErrors">错误 — 次</div>
+    </div>
+  </div>
+
+  <!-- Region 1b: Provider Capability Matrix -->
+  <div class="card">
+    <div class="card-title">Provider 能力矩阵</div>
+    <div id="capMatrixError"></div>
+    <div class="capability-matrix-wrap">
+      <table class="capability-table">
+        <thead id="capMatrixHead"></thead>
+        <tbody id="capMatrixBody"><tr><td class="empty-state"><span class="spinner"></span>加载中…</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -839,8 +899,95 @@
     return d.innerHTML;
   }
 
+  // ── Capability Matrix ─────────────────────────────────────────
+  async function loadCapabilityMatrix() {
+    try {
+      const resp = await fetch('/api/voice/capabilities');
+      if (!resp.ok) throw new Error('加载失败');
+      const data = await resp.json();
+      const providers = data.providers || [];
+      renderCapabilityMatrix(providers);
+    } catch (e) {
+      document.getElementById('capMatrixBody').innerHTML =
+        '<tr><td class="error-msg">能力矩阵加载失败：' + esc(e.message) + '</td></tr>';
+    }
+  }
+
+  function renderCapabilityMatrix(providers) {
+    const HEADERS = [
+      'Provider', '显示名', '启用', '默认模型',
+      'TTS', '流式', '字幕', '情绪',
+      '音频格式', '长文本', '剧本',
+      '克隆', '设计', '远端导入',
+      '文本上限', '语速范围', '音量范围', '音高范围',
+    ];
+    document.getElementById('capMatrixHead').innerHTML =
+      '<tr>' + HEADERS.map(h => `<th>${h}</th>`).join('') + '</tr>';
+    if (!providers.length) {
+      document.getElementById('capMatrixBody').innerHTML =
+        '<tr><td colspan="' + HEADERS.length + '" class="empty-state">暂无数据</td></tr>';
+      return;
+    }
+    document.getElementById('capMatrixBody').innerHTML =
+      providers.map(p => renderCapabilityRow(p, HEADERS.length)).join('');
+  }
+
+  function renderCapabilityRow(cap, colCount) {
+    const tts = cap.tts || {};
+    const batch = cap.batch || {};
+    const script = cap.script || {};
+    const vc = cap.voice_clone || {};
+    const vd = cap.voice_design || {};
+    const pv = cap.provider_voices || {};
+
+    const cells = [
+      esc(cap.provider),
+      esc(cap.display_name),
+      boolBadge(cap.enabled),
+      esc(cap.default_model || '—'),
+      boolBadge(tts.supported),
+      boolBadge(tts.supports_streaming),
+      boolBadge(tts.supports_subtitle),
+      boolBadge(tts.supports_emotion),
+      chips(tts.audio_formats || []),
+      boolBadge(batch.supported),
+      boolBadge(script.supported),
+      boolBadge(vc.supported),
+      boolBadge(vd.supported),
+      boolBadge(pv.supports_import_remote_voice),
+      maxText(tts.max_text_chars),
+      rangeText(tts.speed),
+      rangeText(tts.vol),
+      rangeText(tts.pitch),
+    ];
+
+    return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+  }
+
+  function boolBadge(value) {
+    return value
+      ? '<span class="capability-yes">✔</span>'
+      : '<span class="capability-no">✖</span>';
+  }
+
+  function chips(values) {
+    if (!values || !values.length) return '<span class="capability-no">✖</span>';
+    return values.map(v => `<span class="capability-chip">${esc(v)}</span>`).join('');
+  }
+
+  function rangeText(range) {
+    if (!range) return '—';
+    return `<span class="capability-range">${range.min} ~ ${range.max}</span>`;
+  }
+
+  function maxText(value) {
+    if (value == null) return '—';
+    return esc(String(value));
+  }
+
   // ── Init ───────────────────────────────────────────────────────
   initDates();
+  loadCapabilityMatrix();
   // Defer first draw so CSS layout is complete and canvas has correct dimensions
   requestAnimationFrame(() => { loadAll(); applyFocusFromURL(); });
 
