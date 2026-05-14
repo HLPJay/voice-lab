@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-E2E1：
+截至 P9-FE1-A：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3514,3 +3514,47 @@ python -m pytest tests/e2e -q
 **测试结果：** 579 passed, 6 skipped（新增 7 个 E2E 测试）。
 
 **未改 app/api、app/services、app/providers、app/domain、index.html、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。**
+
+### P9-FE1-A：前端 Provider Capability JS 模块化
+
+**阶段目标：** 把 `app/static/index.html` 中 Provider Capability 相关 JS 逻辑抽离到独立文件，降低 index.html 体积和后续维护风险。
+
+**新增文件：**
+
+- `app/static/js/provider_capabilities.js` — Provider Capability 前端模块
+
+**修改文件：**
+
+- `app/static/index.html` — 新增 `<script src="/static/js/provider_capabilities.js">` 引入模块；移除已移动的重复函数定义；`let MAX_SCRIPT_LINES` 改为 `var MAX_SCRIPT_LINES` 以支持外部模块修改
+
+**实现：**
+
+1. **provider_capabilities.js**：
+   - IIFE 包装，不使用 ES module
+   - window 状态变量：`_providerCapabilities`、`_providerCapabilitiesByName`、`_capabilitiesLoaded`、`_capabilitiesLoadFailed`、`_capabilitiesLoadAttempted`、`_capabilitiesFailureNotified`（E2E 测试依赖）
+   - 独立 `capEsc()` 函数（复制 index.html 的 `esc()` 逻辑）
+   - 函数列表：`loadProviderCapabilities`、`getProviderCapability`、`getSelectValue`、`setHintText`、`setTextMaxLength`、`updateSelectOptions`、`setControlDisabled`、`updateProviderSelectOptions`、`applyWorkspaceCapability`、`applyLongtextCapability`、`applyScriptCapability`、`applyProviderVoiceCapability`、`applyVoiceCloneCapability`、`applyVoiceDesignCapability`、`applyImportVoiceCapability`、`applyAllProviderCapabilities`、`bindProviderCapabilityEvents`
+   - 所有函数通过 `window.*` 暴露到全局
+   - 调用 `updateCloneBtnState`、`updateScriptLineLimitState`、`showToast` 时做存在性判断
+   - `applyScriptCapability` 通过 `window.MAX_SCRIPT_LINES` 修改剧本最大行数
+
+2. **index.html 修改**：
+   - 在 inline `<script>` 前添加 `<script src="/static/js/provider_capabilities.js"></script>`
+   - 移除已移动的 capability 函数定义（原 1589-2030 行，约 440 行）
+   - `MAX_SCRIPT_LINES` 从 `let` 改为 `var`
+   - 初始化调用 `bindProviderCapabilityEvents()` 和 `loadProviderCapabilities()` 保持不变
+
+3. **E2E 兼容**：
+   - `window._providerCapabilities` 在 capability 加载后被赋值，E2E `typeof _providerCapabilities !== 'undefined'` 断言继续通过
+   - E2E 可通过 `window.loadProviderCapabilities`、`window.applyAllProviderCapabilities` 访问函数
+
+**验收检查：**
+
+```bash
+grep -n "function loadProviderCapabilities" app/static/index.html   # 无输出
+grep -n "function loadProviderCapabilities" app/static/js/provider_capabilities.js  # 1 处
+```
+
+**测试结果：** 579 passed, 6 skipped（未改测试数量）。
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。**
