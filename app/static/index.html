@@ -1126,6 +1126,16 @@
         </div>
         <div id="batchScriptProgressStats" style="font-size:0.85rem;color:#718096;margin-bottom:12px"></div>
         <div id="batchScriptSegmentTable" style="font-size:0.82rem"></div>
+        <div id="batchScriptResultPlayer" style="display:none;margin-top:16px">
+          <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">批量结果</div>
+          <audio id="batchScriptMergedAudio" controls style="width:100%;margin-bottom:8px"></audio>
+          <div id="batchScriptCurrentSubtitle" style="padding:8px 12px;background:#f7fafc;border-radius:6px;min-height:40px;font-size:0.88rem;color:#2d3748;margin-bottom:8px"></div>
+          <div id="batchScriptSubtitleList" style="max-height:160px;overflow-y:auto;font-size:0.80rem;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a id="batchScriptDownloadAudio" class="btn-sm" href="#" style="display:none">下载合并音频</a>
+            <a id="batchScriptDownloadSubtitle" class="btn-sm" href="#" style="display:none">下载字幕</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -5335,8 +5345,126 @@ function handleStopAsyncPolling() {
     } catch (e) {}
   }
 
-  function renderBatchResultPlayer(data) {
-    const playerDiv = document.getElementById('batchResultPlayer');
+  function getBatchPanelDom(targetPanelId) {
+    if (targetPanelId === 'batchScriptProgressPanel') {
+      return {
+        playerDiv: document.getElementById('batchScriptResultPlayer'),
+        audio: document.getElementById('batchScriptMergedAudio'),
+        downloadAudio: document.getElementById('batchScriptDownloadAudio'),
+        currentSubtitle: document.getElementById('batchScriptCurrentSubtitle'),
+        subtitleList: document.getElementById('batchScriptSubtitleList'),
+        downloadSubtitle: document.getElementById('batchScriptDownloadSubtitle'),
+      };
+    }
+    return {
+      playerDiv: document.getElementById('batchResultPlayer'),
+      audio: document.getElementById('batchMergedAudio'),
+      downloadAudio: document.getElementById('batchDownloadAudio'),
+      currentSubtitle: document.getElementById('batchCurrentSubtitle'),
+      subtitleList: document.getElementById('batchSubtitleList'),
+      downloadSubtitle: document.getElementById('batchDownloadSubtitle'),
+    };
+  }
+
+  function renderBatchResultPlayer(data, targetPanelId = 'batchProgressPanel') {
+    const dom = getBatchPanelDom(targetPanelId);
+    const { playerDiv, audio, downloadAudio, currentSubtitle, subtitleList, downloadSubtitle } = dom;
+    if (!playerDiv) return;
+    if (!data.merged_audio) {
+      playerDiv.style.display = 'none';
+      return;
+    }
+    playerDiv.style.display = '';
+
+    // Only initialize player DOM once per batch
+    if (window._batchPlayerInitialized !== `${data.batch_id}-${targetPanelId}`) {
+      window._batchPlayerInitialized = `${data.batch_id}-${targetPanelId}`;
+
+      if (!audio) return;
+      audio.src = data.merged_audio.url;
+      audio.addEventListener('timeupdate', () => updateBatchSubtitleHighlight(targetPanelId));
+      audio.addEventListener('seeking', () => updateBatchSubtitleHighlight(targetPanelId));
+
+      if (downloadAudio) {
+        downloadAudio.href = data.merged_audio.url;
+        downloadAudio.style.display = '';
+      }
+
+      if (downloadSubtitle) downloadSubtitle.style.display = 'none';
+      if (currentSubtitle) currentSubtitle.textContent = '';
+      if (subtitleList) subtitleList.innerHTML = '';
+      _batchTimeline = [];
+    }
+
+    if (data.merged_subtitle && data.merged_subtitle.id) {
+      if (currentSubtitle) { currentSubtitle.style.display = ''; currentSubtitle.textContent = ''; }
+      if (subtitleList) { subtitleList.style.display = ''; }
+      const subId = data.merged_subtitle.id;
+
+      if (window._batchSubtitleCache && window._batchSubtitleCache[subId]) {
+        _batchTimeline = window._batchSubtitleCache[subId];
+        renderBatchSubtitleList(targetPanelId, _batchTimeline);
+        if (downloadSubtitle) {
+          downloadSubtitle.href = `/api/voice/assets/${encodeURIComponent(subId)}/download`;
+          downloadSubtitle.style.display = '';
+        }
+      } else {
+        if (!window._batchSubtitleCache) window._batchSubtitleCache = {};
+        fetch(`/api/voice/assets/${encodeURIComponent(subId)}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(asset => {
+            if (!asset || !asset.timeline || !asset.timeline.length) return;
+            window._batchSubtitleCache[subId] = asset.timeline;
+            _batchTimeline = asset.timeline;
+            renderBatchSubtitleList(targetPanelId, _batchTimeline);
+            if (downloadSubtitle) {
+              downloadSubtitle.href = `/api/voice/assets/${encodeURIComponent(subId)}/download`;
+              downloadSubtitle.style.display = '';
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      if (currentSubtitle) { currentSubtitle.style.display = 'none'; currentSubtitle.textContent = ''; }
+      if (subtitleList) { subtitleList.style.display = 'none'; subtitleList.innerHTML = ''; }
+      if (downloadSubtitle) downloadSubtitle.style.display = 'none';
+      _batchTimeline = [];
+    }
+  }
+
+  function renderBatchSubtitleList(targetPanelId, timeline) {
+    const dom = getBatchPanelDom(targetPanelId);
+    const list = dom.subtitleList;
+    if (!list) return;
+    list.innerHTML = '';
+    if (!timeline || !timeline.length) return;
+    timeline.forEach((item, idx) => {
+      const startSec = typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0;
+      const text = item.text || '';
+      const div = document.createElement('div');
+      div.dataset.index = idx;
+      div.dataset.start = startSec;
+      div.style.cssText = 'padding:5px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background 0.1s';
+      div.innerHTML = `<span style="color:#a0aec0;margin-right:8px;font-size:0.75rem">${formatTime(startSec)}</span>${esc(text)}`;
+      div.addEventListener('click', () => {
+        const audio = dom.audio;
+        if (audio) {
+          audio.currentTime = startSec;
+          audio.play().catch(() => {});
+        }
+      });
+      list.appendChild(div);
+    });
+  }
+
+  function updateBatchSubtitleHighlight(targetPanelId) {
+    const dom = getBatchPanelDom(targetPanelId);
+    const audio = dom.audio;
+    if (!audio) return;
+    const curTime = audio.currentTime;
+    const currentDiv = dom.currentSubtitle;
+    const list = dom.subtitleList;
+    if (!currentDiv || !list || !_batchTimeline.length) return;
     if (!playerDiv) return;
     if (!data.merged_audio) {
       playerDiv.style.display = 'none';
@@ -5414,36 +5542,13 @@ function handleStopAsyncPolling() {
     }
   }
 
-  function renderBatchSubtitleList(timeline) {
-    const list = document.getElementById('batchSubtitleList');
-    if (!list) return;
-    list.innerHTML = '';
-    if (!timeline || !timeline.length) return;
-    timeline.forEach((item, idx) => {
-      const startSec = typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0;
-      const text = item.text || '';
-      const div = document.createElement('div');
-      div.dataset.index = idx;
-      div.dataset.start = startSec;
-      div.style.cssText = 'padding:5px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background 0.1s';
-      div.innerHTML = `<span style="color:#a0aec0;margin-right:8px;font-size:0.75rem">${formatTime(startSec)}</span>${esc(text)}`;
-      div.addEventListener('click', () => {
-        const audio = document.getElementById('batchMergedAudio');
-        if (audio) {
-          audio.currentTime = startSec;
-          audio.play().catch(() => {});
-        }
-      });
-      list.appendChild(div);
-    });
-  }
-
-  function updateBatchSubtitleHighlight() {
-    const audio = document.getElementById('batchMergedAudio');
+  function updateBatchSubtitleHighlight(targetPanelId) {
+    const dom = getBatchPanelDom(targetPanelId);
+    const audio = dom.audio;
     if (!audio) return;
     const curTime = audio.currentTime;
-    const currentDiv = document.getElementById('batchCurrentSubtitle');
-    const list = document.getElementById('batchSubtitleList');
+    const currentDiv = dom.currentSubtitle;
+    const list = dom.subtitleList;
     if (!currentDiv || !list || !_batchTimeline.length) return;
     let activeIdx = -1;
     for (let i = 0; i < _batchTimeline.length; i++) {
@@ -5542,7 +5647,7 @@ function handleStopAsyncPolling() {
     // Show result player when done
     if (data.status === 'success' || data.status === 'partial' || data.status === 'failed') {
       stopBatchPoll();
-      if (data.status !== 'failed') renderBatchResultPlayer(data);
+      if (data.status !== 'failed') renderBatchResultPlayer(data, targetPanelId);
       loadRuntimeStatus();
     }
   }
