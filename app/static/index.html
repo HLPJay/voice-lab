@@ -251,6 +251,13 @@
     border: 1px solid #e2e8f0;
   }
 
+  .high-cost-inline-hint {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: #c05621;
+    line-height: 1.5;
+  }
+
   .card-title {
     font-size: 0.8rem;
     font-weight: 600;
@@ -1205,6 +1212,7 @@
           </div>
         </div>
         <button class="btn-primary" id="cloneBtn" onclick="handleCloneVoice()">克隆</button>
+        <div class="high-cost-inline-hint">高消费动作：声音克隆可能产生约 10 元级别费用，实际以 MiniMax 官网价格为准。</div>
         <div id="cloneResult"></div>
       </div>
       <div class="card" style="margin-top:16px">
@@ -1277,6 +1285,7 @@
           </div>
         </div>
         <button class="btn-primary" id="designBtn" onclick="handleDesignVoice()">生成设计</button>
+        <div class="high-cost-inline-hint">高消费动作：声音设计 / 创建音色可能产生约 10 元级别费用，实际以 MiniMax 官网价格为准。</div>
         <div id="designResult"></div>
       </div>
       <div class="card" style="margin-top:16px">
@@ -1924,6 +1933,22 @@
       bytes[i / 2] = parseInt(clean.slice(i, i + 2), 16);
     }
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  }
+
+  // P8-FIX7: High-cost action confirmation helper
+  function confirmHighCostVoiceAction(actionName) {
+    const message = [
+      `即将执行：${actionName}`,
+      '',
+      '这是高消费 / 工程验证能力。',
+      '声音克隆、声音设计或创建音色可能产生较高费用。',
+      '单次操作可能是约人民币 10 元级别，实际价格以 MiniMax 官方价格页为准。',
+      '',
+      '请确认你已经了解费用、额度限制和音频素材合规要求。',
+      '',
+      '是否继续？',
+    ].join('\n');
+    return window.confirm(message);
   }
 
   // Guarded fetch: shows confirm dialog for minimax high-risk operations, then auto-sets confirm_cost=true
@@ -4001,6 +4026,9 @@ function handleStopAsyncPolling() {
   }
 
   async function handleCloneVoice() {
+    if (!confirmHighCostVoiceAction('声音克隆')) {
+      return;
+    }
     const provider = document.getElementById('cloneProvider').value;
     const voiceId = document.getElementById('cloneVoiceId').value.trim();
     const fileId = document.getElementById('cloneFileId').value.trim();
@@ -4327,6 +4355,9 @@ function handleStopAsyncPolling() {
   // Design Tab
   // ============================================================
   async function handleDesignVoice() {
+    if (!confirmHighCostVoiceAction('声音设计 / 创建音色')) {
+      return;
+    }
     const provider = document.getElementById('designProvider').value;
     const voiceId = document.getElementById('designVoiceId').value.trim() || null;
     const prompt = document.getElementById('designPrompt').value.trim();
