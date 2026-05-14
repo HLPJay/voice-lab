@@ -4334,6 +4334,7 @@ function handleStopAsyncPolling() {
 
       // Auto-fill file_id in step 2
       document.getElementById('cloneFileId').value = data.file_id;
+      if (typeof updateCloneBtnState === 'function') updateCloneBtnState();
 
       resultsEl.innerHTML = `<div class="success-msg">
         上传成功，file_id 已填入步骤 2，可继续执行克隆。file_id=<code>${data.file_id}</code>，文件名=${esc(data.filename)}，大小=${data.bytes} bytes
