@@ -16,6 +16,8 @@ class TextSegmentService:
             return self._segment_sentence(text, max_chars)
         elif strategy == "auto":
             return self._segment_auto(text, max_chars)
+        elif strategy == "line":
+            return self._segment_line(text, max_chars)
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
@@ -127,4 +129,19 @@ class TextSegmentService:
                         current = ""
                 if current:
                     result.append(current)
+        return result
+
+    def _split_by_lines(self, text: str) -> list[str]:
+        """Split by single newline, stripping and removing empty lines."""
+        return [line.strip() for line in text.splitlines() if line.strip()]
+
+    def _segment_line(self, text: str, max_chars: int) -> list[str]:
+        """Each non-empty line becomes an independent segment; long lines are split by sentences."""
+        lines = self._split_by_lines(text)
+        result = []
+        for line in lines:
+            if len(line) <= max_chars:
+                result.append(line)
+            else:
+                result.extend(self._segment_sentence(line, max_chars))
         return result

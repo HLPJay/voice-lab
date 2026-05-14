@@ -82,3 +82,42 @@ def test_segment_sentence_long_sentence_splits_by_comma(service):
     assert len(result) > 1
     for seg in result:
         assert len(seg) <= 100
+
+
+def test_segment_line_each_line_is_segment(service):
+    """Each non-empty line becomes an independent segment."""
+    text = "第一条\n第二条\n第三条"
+    result = service.segment(text, strategy="line")
+    assert len(result) == 3
+    assert result == ["第一条", "第二条", "第三条"]
+
+
+def test_segment_line_ignores_empty_lines(service):
+    """Empty lines are stripped and do not create segments."""
+    text = "第一条\n\n第二条\n\n\n第三条"
+    result = service.segment(text, strategy="line")
+    assert len(result) == 3
+    assert result == ["第一条", "第二条", "第三条"]
+
+
+def test_segment_line_does_not_merge_short_lines(service):
+    """Short lines are not merged together."""
+    text = "短1\n短2"
+    result = service.segment(text, strategy="line", max_chars=2000)
+    assert len(result) == 2
+    assert result == ["短1", "短2"]
+
+
+def test_segment_line_long_line_is_split(service):
+    """A single line exceeding max_chars is further split by sentences."""
+    text = "第一句！第二句？第三句。" * 50  # each ~600 chars, far exceeds max_chars=100
+    result = service.segment(text, strategy="line", max_chars=100)
+    assert len(result) > 1
+    for seg in result:
+        assert len(seg) <= 100
+
+
+def test_segment_line_unknown_strategy_raises(service):
+    """Unknown strategy raises ValueError."""
+    with pytest.raises(ValueError, match="Unknown strategy: nonexistent"):
+        service.segment("some text", strategy="nonexistent")

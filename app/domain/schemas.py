@@ -356,7 +356,7 @@ class LongtextBatchRequest(BaseModel):
     provider: str | None = None
     output_format: Literal["hex", "url"] = "hex"
     audio_format: Literal["mp3", "wav", "flac"] = "mp3"
-    segment_strategy: str = "auto"  # auto/paragraph/sentence
+    segment_strategy: str = "auto"  # auto/paragraph/sentence/line
     max_segment_chars: int = Field(default=2000, ge=100, le=5000)
     silence_between_ms: int = Field(default=300, ge=0, le=3000)
     params: dict = Field(default_factory=dict)
