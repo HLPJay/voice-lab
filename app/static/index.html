@@ -988,10 +988,11 @@
         <div class="form-group">
           <label for="batchStrategy">分段策略</label>
           <select id="batchStrategy">
-            <option value="auto">自动（推荐）</option>
-            <option value="paragraph">按段落</option>
-            <option value="sentence">按句子</option>
+            <option value="auto">自动（按段落合并，推荐长文）</option>
+            <option value="paragraph">按空行分段</option>
+            <option value="sentence">按句子分段</option>
           </select>
+          <div style="font-size:0.75rem;color:#718096;margin-top:2px">自动分段会合并较短段落；如需更强控制，请使用空行分隔段落。</div>
         </div>
         <div class="form-group">
           <label for="batchMaxChars">每段上限（字）</label>
@@ -1106,6 +1107,7 @@
       </div>
       <div class="form-group full-width">
         <label>台词列表</label>
+        <div style="font-size:0.78rem;color:#718096;margin-bottom:6px">角色名仅用于区分段落，实际发音由声音人设决定。</div>
         <div id="scriptLines">
           <!-- Dynamic script lines -->
         </div>
@@ -5059,7 +5061,7 @@ function handleStopAsyncPolling() {
     row.dataset.lineId = id;
     row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
     row.innerHTML = `
-      <input type="text" id="scriptRole_${id}" placeholder="角色名" value="${esc(role)}" style="width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="role">
+      <input type="text" id="scriptRole_${id}" placeholder="例如：旁白、男声" value="${esc(role)}" style="width:100px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="role">
       <input type="text" id="scriptText_${id}" placeholder="台词内容" value="${esc(text)}" style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="text">
       <select id="scriptProfile_${id}" style="width:120px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="profile">
         <option value="">选择人设</option>
@@ -5397,8 +5399,12 @@ function handleStopAsyncPolling() {
     }
 
     if (data.merged_subtitle && data.merged_subtitle.id) {
+      // Show subtitle containers
+      const curSub = document.getElementById('batchCurrentSubtitle');
+      if (curSub) { curSub.style.display = ''; curSub.textContent = ''; }
+      const subList = document.getElementById('batchSubtitleList');
+      if (subList) { subList.style.display = ''; }
       const subId = data.merged_subtitle.id;
-      if (window._batchSubtitleCache && window._batchSubtitleCache[subId]) {
         _batchTimeline = window._batchSubtitleCache[subId];
         renderBatchSubtitleList(_batchTimeline);
         const dlSub = document.getElementById('batchDownloadSubtitle');
@@ -5423,6 +5429,15 @@ function handleStopAsyncPolling() {
           })
           .catch(() => {});
       }
+    } else {
+      // No subtitle: hide subtitle containers to avoid empty blocks
+      const curSub = document.getElementById('batchCurrentSubtitle');
+      if (curSub) { curSub.style.display = 'none'; curSub.textContent = ''; }
+      const subList = document.getElementById('batchSubtitleList');
+      if (subList) { subList.style.display = 'none'; subList.innerHTML = ''; }
+      const dlSub = document.getElementById('batchDownloadSubtitle');
+      if (dlSub) dlSub.style.display = 'none';
+      _batchTimeline = [];
     }
   }
 
@@ -5540,7 +5555,7 @@ function handleStopAsyncPolling() {
       html += `<tr style="border-bottom:1px solid #f0f0f0">
         <td style="padding:6px 8px;color:#718096">${seg.index + 1}</td>`;
       if (isScriptPanel) {
-        html += `<td style="padding:6px 8px">${esc(seg.role || '—')}</td>`;
+        html += `<td style="padding:6px 8px">${esc(seg.role) || '旁白'}</td>`;
       }
       html += `<td style="padding:6px 8px;color:#4a5568" title="${esc(seg.text_preview)}">${esc(seg.text_preview || '—')}</td>
         <td style="padding:6px 8px;${statusClass}">${esc(statusMap[seg.status] || seg.status)}</td>

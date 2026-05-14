@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-ADMIN1：
+截至 P8-UX11：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -62,6 +62,7 @@
 * P8-UX9：历史播放器加载与失败反馈修复已完成（新增 historyAudioPlayerHtml 含状态容器，audio loadstart 显示"音频加载中…"、loadedmetadata 显示"音频已就绪"、canplay 清空提示、error 显示"音频加载失败，可尝试下载"并附带下载链接；保持同一时间最多展开一个播放器；播放、下载、复制、删除逻辑不变；不影响后端 API、生成链路和资产清理链路）
 * P8-UX10：顶部运行状态一致性修复已完成（provider_status chip title 增加"最近一次 Provider 调用记录："来源前缀；成功的试听生成、长文本批量提交、剧本批量提交、批量任务完成（success/partial/failed）后主动刷新 runtime status；不新增健康探测，不影响生成链路和资产清理链路）
 * P8-ADMIN1：管理面板统计与调用日志口径校验已完成（loadLogs/loadErrors 跟随日期范围；getDateRange 结束日期改为次日 00:00 exclusive；前端 start>end 拦截并显示错误提示；list_call_logs limit/offset 添加 Query 校验（ge/le）；成功口径改为 status_code 200-399+无 error_type；错误口径改为 error_type 非空 OR status_code>=400 OR status_code=null；_error_count() 同步口径；get_daily_trend 所有指标均补零日期；trend chart Y 轴从 0 开始；最近调用/错误时间显示 YYYY-MM-DD HH:mm:ss UTC；状态列 badge 区分成功/4xx/5xx/null+无 error_type；追踪列 fallback 为 provider_trace_id/job_id；字符缺失加 title 说明；耗时 0ms 加 title 提示；voice_jobs list limit/offset 添加 Query(ge=1,le=100)/(ge=0) 校验；voice_jobs response 返回实际 limit 而非原始值；tests/test_admin_api.py 新增 2 个测试，tests/test_voice_jobs_delete.py 新增 4 个测试，共 471 passed）
+* P8-UX11：长文本与剧本语义轻量优化已完成（长文本分段策略文案改为"自动（按段落合并，推荐长文）/按空行分段/按句子分段"，增加自动分段说明；长文本结果区无字幕时隐藏字幕容器，不再显示空白块；剧本台词列表增加"角色名仅用于区分段落，实际发音由声音人设决定"说明；角色输入 placeholder 从"角色名"改为"例如：旁白、男声"；剧本进度表角色为空时显示"旁白"而非"—"；不改后端 API、生成链路、批量链路和资产清理链路）
 * 已知限制：历史 Tab 基于 VoiceJob，不等价于完整作品历史；BatchJob 总任务不在普通历史中展示；后续建议 P9-HISTORY 统一实现"任务历史+批量任务+音频资产库"
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
