@@ -1588,6 +1588,7 @@
 <script src="/static/js/runtime_status.js"></script>
 <script src="/static/js/history.js"></script>
 <script src="/static/js/audition_records.js"></script>
+<script src="/static/js/batch_longtext.js"></script>
 <script>
   // ============================================================
   // Provider Capability Registry (P9-CAPABILITY3)
@@ -4827,83 +4828,8 @@ function handleStopAsyncPolling() {
     el.style.display = 'none';
   };
 
-  async function handleBatchLongtextSubmit() {
-    const text = document.getElementById('batchText').value.trim();
-    if (!text) { window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请输入待分段文本</div>'); return; }
-    const profileId = document.getElementById('batchProfile').value;
-    if (!profileId) { window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请选择声音人设</div>'); return; }
-    const provider = document.getElementById('batchProvider').value;
-    const strategy = document.getElementById('batchStrategy').value;
-    const maxChars = parseInt(document.getElementById('batchMaxChars').value) || 2000;
-    const silence = parseInt(document.getElementById('batchSilence').value) || 300;
-    const outputFormat = document.getElementById('batchOutputFormat').value;
-    const needSubtitle = document.getElementById('batchNeedSubtitle').checked;
-
-    const params = {};
-    const speed = document.getElementById('batchSpeed').value;
-    const vol = document.getElementById('batchVol').value;
-    const pitch = document.getElementById('batchPitch').value;
-    const emotion = document.getElementById('batchEmotion').value;
-    if (speed) params.speed = parseFloat(speed);
-    if (vol) params.vol = parseFloat(vol);
-    if (pitch) params.pitch = parseInt(pitch);
-    if (emotion) params.emotion = emotion;
-
-    const btn = document.getElementById('batchLongtextSubmit');
-    btn.disabled = true;
-    btn.textContent = '提交中…';
-    window.clearBatchLongtextResult();
-
-    try {
-      const resp = await guardedJsonFetch('/api/voice/batch/submit', {
-        mode: 'longtext',
-        text,
-        profile_id: profileId,
-        provider,
-        segment_strategy: strategy,
-        max_segment_chars: maxChars,
-        silence_between_ms: silence,
-        output_format: 'hex',
-        audio_format: outputFormat,
-        params,
-        need_subtitle: needSubtitle,
-        confirm_cost: false,
-      }, { provider, operation: 'batch_longtext', highRisk: true });
-
-      if (!resp.ok) {
-        const err = await parseApiError(resp);
-        if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          window.showBatchLongtextResult(renderApiError(err));
-        } else if (err.code === 'VALIDATION_ERROR') {
-          window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">' + esc(err.message) + '</div>');
-        } else {
-          window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(formatApiError(err)) + '</div>');
-        }
-        btn.disabled = false;
-        btn.textContent = '提交批量任务';
-        return;
-      }
-
-      const data = await resp.json();
-      _currentBatchId = data.batch_id;
-      showBatchProgress(data.batch_id);
-      startBatchPoll(data.batch_id);
-      loadRuntimeStatus();
-    } catch (e) {
-      if (e.message !== 'USER_CANCELLED') {
-        if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          window.showBatchLongtextResult(renderApiError(e));
-        } else {
-          window.showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(e && e.message ? e.message : String(e)) + '</div>');
-        }
-      }
-    } finally {
-      if (btn.disabled) {
-        btn.disabled = false;
-        btn.textContent = '提交批量任务';
-      }
-    }
-  }
+  // handleBatchLongtextSubmit — moved to /static/js/batch_longtext.js
+  // (button onclick="handleBatchLongtextSubmit()" still resolves via window lookup)
 
   async function handleBatchScriptSubmit() {
     // Sync DOM values into _scriptRows state before collecting

@@ -3940,3 +3940,41 @@ git diff --check  # 无错误
 **测试结果：** 13 passed in 39s。full tests 未运行，原因：本次仅提取前端 helper 为 window 全局函数，未迁移业务逻辑，未改后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
 
 **未改 app/api、app/services、app/providers、app/domain、admin.html、app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
+
+### P9-FE1-E2：抽离长文本批量提交模块 batch_longtext.js
+
+**阶段目标：** 将 `handleBatchLongtextSubmit` 从 `index.html` 迁移到独立 IIFE 模块 `app/static/js/batch_longtext.js`，暴露 `window.handleBatchLongtextSubmit`，为后续 `batch_script.js` 抽离做准备。
+
+**修改文件：**
+- `app/static/js/batch_longtext.js` — 新建，承接 `handleBatchLongtextSubmit`
+- `app/static/index.html` — 新增 `<script src="/static/js/batch_longtext.js">`（audition_records.js 之后），移除 `handleBatchLongtextSubmit` 函数定义（替换为注释引用）
+- `tests/e2e/test_frontend_capabilities.py` — 新增 `test_batch_longtext_module_is_loaded_and_submit_validation_works`
+
+**实现：**
+- `batch_longtext.js` 为 IIFE，内部定义 `window.handleBatchLongtextSubmit` 异步函数
+- 依赖 index.html 中已有的 `window.showBatchLongtextResult` / `window.clearBatchLongtextResult`（E1 阶段已提取）
+- 依赖 index.html 中已有的 `guardedJsonFetch`、`parseApiError`、`renderApiError`、`esc`、`showBatchProgress`、`startBatchPoll`、`loadRuntimeStatus` 等全局函数（inline script 中定义，onclick 触发时已就绪）
+- `index.html` 中 `onclick="handleBatchLongtextSubmit()"` 保持不变（通过 `window` 作用域链解析）
+
+**保持不变：**
+- 共享轮询 / 渲染函数（`showBatchProgress` 等）未迁移，仍在 `index.html`
+- 共享状态变量（`_batchPollTimer` 等）未迁移，仍在 `index.html`
+- 剧本批量逻辑未改
+- API endpoint / request body 未改
+- 后端未改
+
+**E2E 验证：**
+- `test_batch_longtext_result_helpers_are_exposed`（E1 测试）：验证 `window.showBatchLongtextResult` / `window.clearBatchLongtextResult` 可用
+- `test_batch_longtext_module_is_loaded_and_submit_validation_works`（E2 测试）：验证 `batch_longtext.js` script 存在，`window.handleBatchLongtextSubmit` 为 function，空文本提交触发前端校验并显示"请输入待分段文本"
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "batch_longtext"  # 2 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 14 passed
+git diff --check  # 无错误
+```
+
+**测试结果：** 14 passed in 42s。full tests 未运行，原因：本次仅迁移前端长文本批量提交函数，未改后端 API、Provider Adapter、生成链路、数据库、资产清理链路；已运行前端 E2E 覆盖模块加载与前端校验。
+
+**未改 app/api、app/services、app/providers、app/domain、admin.html、app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。

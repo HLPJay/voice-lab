@@ -475,3 +475,46 @@ def test_batch_longtext_result_helpers_are_exposed(page, e2e_base_url, console_e
     page.evaluate("window.clearBatchLongtextResult()")
     assert page.locator("#testBatchLongtextResultMarker").count() == 0, \
         "Test marker should be gone after clearBatchLongtextResult"
+
+
+# ── Test 14: Batch longtext module loaded and validation works ──────────────────
+
+def test_batch_longtext_module_is_loaded_and_submit_validation_works(
+    page, e2e_base_url, console_errors
+):
+    """batch_longtext.js is loaded, window.handleBatchLongtextSubmit exists, and validation works."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # batch_longtext.js script tag exists
+    assert page.evaluate(
+        "!!document.querySelector('script[src=\"/static/js/batch_longtext.js\"]')"
+    ), "batch_longtext.js should be loaded"
+
+    # window.handleBatchLongtextSubmit is a function
+    assert page.evaluate(
+        "typeof window.handleBatchLongtextSubmit === 'function'"
+    ), "window.handleBatchLongtextSubmit should be a function"
+
+    # Click the Longtext tab
+    longtext_tab = page.locator('button.tab-btn[data-tab="longtext"]')
+    assert longtext_tab.count() == 1, "Longtext tab button not found"
+    longtext_tab.click()
+    page.wait_for_selector("#tab-longtext", state="attached", timeout=10000)
+    page.wait_for_timeout(500)
+
+    # Abort the batch API to ensure validation fires before any network call
+    page.route("**/api/voice/batch/submit", lambda route: route.abort())
+
+    # Click submit with empty batchText — validation should fire and show error
+    submit_btn = page.locator("#batchLongtextSubmit")
+    assert submit_btn.count() == 1, "batchLongtextSubmit button not found"
+    submit_btn.click()
+    page.wait_for_timeout(500)
+
+    # Error message "请输入待分段文本" should appear
+    result_html = page.locator("#batchLongtextResult").inner_html()
+    assert "请输入待分段文本" in result_html, (
+        f"Expected validation error for empty text, got: {result_html}"
+    )
