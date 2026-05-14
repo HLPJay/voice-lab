@@ -210,7 +210,7 @@ curl -X POST http://127.0.0.1:8000/api/voice/clone/create?provider=minimax \
 python -m pytest tests/ -x -q
 ```
 
-当前：439 passed, 6 skipped, 0 failed
+当前：466 passed, 6 skipped, 0 failed
 
 ### 资产清理专项测试
 

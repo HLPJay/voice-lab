@@ -55,6 +55,7 @@
 * P8-UX5-FIX：剧本页"提交批量任务"按钮修复已完成（补齐 batchScriptResult 结果容器；成功时在剧本 Tab 内显示 job_id/状态/总段数；失败时显示行级错误提示而非静默；output_format='hex' + audio_format=用户选择；按钮 loading 状态正常；不影响生成主链路和长文本批量功能）
 * P8-UX5-FIX2：剧本批量任务提交体验修正已完成（提交后不再自动跳转长文本 Tab，剧本 Tab 内新增 batchScriptProgressPanel 显示批量进度条和段落状态；showBatchProgress/startBatchPoll/pollBatchStatus/renderBatchStatus 均支持 targetPanelId 参数，默认行为不变，长文本批量进度保持兼容；不影响后端批量接口、生成链路和资产清理链路）
 * P8-AUDIT1：全量代码自检已完成（466 passed, 6 skipped；发现 P1 问题 1 项：AUDIT-001 长文本批量失败错误回退到 resultsArea；P2 问题 3 项：AUDIT-002 profile retry DOM 残留、AUDIT-003 _currentBatchPanelId 未声明变量、AUDIT-004 runtime status 失败静默；P3 问题 3 项；详见 docs/P8_FULL_CODE_AUDIT.md）
+* P8-UX6：P8-AUDIT1 问题修复已完成（修复 AUDIT-001 长文本批量失败错误容器（新增 batchLongtextResult）、AUDIT-002 profile retry 按钮 id 去重、AUDIT-003 _currentBatchPanelId 显式声明、AUDIT-004 runtime status 失败首次触发 showToast、AUDIT-005 README 测试数量 439→466；不影响后端 API、生成链路和资产清理链路）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台

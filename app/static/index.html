@@ -1034,6 +1034,8 @@
       </div>
       <button class="btn-primary" id="batchLongtextSubmit" onclick="handleBatchLongtextSubmit()">提交批量任务</button>
     </div>
+    <!-- Longtext batch result / error area -->
+    <div id="batchLongtextResult" style="display:none;margin-top:16px"></div>
     <!-- Progress Panel (shared, shown when job is running) -->
     <div id="batchProgressPanel" style="display:none">
       <div class="card">
@@ -1532,6 +1534,7 @@
   // Runtime status bar
   // ============================================================
   let _runtimeStatusTimer = null;
+  let _runtimeStatusErrorNotified = false;
 
   async function loadRuntimeStatus() {
     const bar = document.getElementById('runtimeStatusBar');
@@ -1540,6 +1543,7 @@
       const resp = await fetch('/api/voice/runtime/status');
       if (!resp.ok) throw new Error('non-200');
       const data = await resp.json();
+      _runtimeStatusErrorNotified = false;
 
       const chipProvider = document.getElementById('chipProvider');
       const chipModel = document.getElementById('chipModel');
@@ -1624,9 +1628,13 @@
         chipStatus.textContent = '点击重试';
         chipStatus.classList.remove('muted', 'available', 'warning', 'error', 'clickable');
         chipStatus.classList.add('error', 'clickable');
-        chipStatus.title = '加载失败，点击重试';
+        chipStatus.title = '用量统计加载失败，点击重试';
         chipStatus.style.cursor = 'pointer';
         chipStatus.onclick = () => { loadRuntimeStatus(); };
+      }
+      if (!_runtimeStatusErrorNotified) {
+        _runtimeStatusErrorNotified = true;
+        showToast('用量统计加载失败，可点击状态条重试', 'error');
       }
     }
   }
@@ -1893,14 +1901,19 @@
 
   // Load profiles into cache and populate all profile selects
   function populateAllProfiles() {
+    // Remove any stale retry button on success
+    document.getElementById('profileRetryBtn')?.remove();
     populateProfileSelect(profileSelect);
     populateProfileSelect(document.getElementById('bindingProfileSelect'));
     populateProfileSelect(document.getElementById('newBindingProfile'));
     populateProfileSelect(document.getElementById('batchProfile'));
   }
   function showProfileRetry() {
+    // Remove any existing retry button before adding a new one
+    document.getElementById('profileRetryBtn')?.remove();
     profileSelect.innerHTML = '<option value="">加载失败</option>';
     const btn = document.createElement('button');
+    btn.id = 'profileRetryBtn';
     btn.type = 'button';
     btn.textContent = '重试';
     btn.style.cssText = 'margin-left:8px;font-size:0.75rem;padding:2px 8px;cursor:pointer;';
@@ -5011,13 +5024,22 @@ function handleStopAsyncPolling() {
   // Batch polling state
   let _batchPollTimer = null;
   let _currentBatchId = null;
+  let _currentBatchPanelId = 'batchProgressPanel';
   let _batchTimeline = [];
 
   async function handleBatchLongtextSubmit() {
+    const batchLongtextResult = document.getElementById('batchLongtextResult');
+    const showBatchLongtextResult = (html) => {
+      if (batchLongtextResult) { batchLongtextResult.style.display = ''; batchLongtextResult.innerHTML = html; }
+    };
+    const clearBatchLongtextResult = () => {
+      if (batchLongtextResult) { batchLongtextResult.style.display = 'none'; batchLongtextResult.innerHTML = ''; }
+    };
+
     const text = document.getElementById('batchText').value.trim();
-    if (!text) { alert('请输入待分段文本'); return; }
+    if (!text) { showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请输入待分段文本</div>'); return; }
     const profileId = document.getElementById('batchProfile').value;
-    if (!profileId) { alert('请选择声音人设'); return; }
+    if (!profileId) { showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">请选择声音人设</div>'); return; }
     const provider = document.getElementById('batchProvider').value;
     const strategy = document.getElementById('batchStrategy').value;
     const maxChars = parseInt(document.getElementById('batchMaxChars').value) || 2000;
@@ -5038,6 +5060,7 @@ function handleStopAsyncPolling() {
     const btn = document.getElementById('batchLongtextSubmit');
     btn.disabled = true;
     btn.textContent = '提交中…';
+    clearBatchLongtextResult();
 
     try {
       const resp = await guardedJsonFetch('/api/voice/batch/submit', {
@@ -5058,10 +5081,9 @@ function handleStopAsyncPolling() {
       if (!resp.ok) {
         const err = await parseApiError(resp);
         if (err.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          const resultsEl = document.getElementById('batchResult') || resultsArea;
-          resultsEl.innerHTML = renderApiError(err);
+          showBatchLongtextResult(renderApiError(err));
         } else {
-          alert('提交失败：' + err.message);
+          showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(err.message || '未知错误') + '</div>');
         }
         btn.disabled = false;
         btn.textContent = '提交批量任务';
@@ -5075,10 +5097,9 @@ function handleStopAsyncPolling() {
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
         if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
-          const resultsEl = document.getElementById('batchResult') || resultsArea;
-          resultsEl.innerHTML = renderApiError(e);
+          showBatchLongtextResult(renderApiError(e));
         } else {
-          alert('提交失败：' + (e && e.message ? e.message : String(e)));
+          showBatchLongtextResult('<div style="color:#c53030;font-size:0.85rem;padding:8px 0">提交失败：' + esc(e && e.message ? e.message : String(e)) + '</div>');
         }
       }
     } finally {
