@@ -191,7 +191,7 @@
 
   .history-row {
     display: grid;
-    grid-template-columns: 52px 78px 150px minmax(120px, 1fr) 150px 260px;
+    grid-template-columns: 52px 78px 150px minmax(120px, 1fr) 150px 300px;
     align-items: center;
     column-gap: 10px;
     padding: 9px 0;
@@ -1795,6 +1795,30 @@
     quickBindVoice(voiceId, name, provider);
   });
 
+  // Event delegation for history play / copy / delete buttons
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const row = btn.closest('.history-row');
+    if (!row) return;
+    const jobId = row.dataset.jobId;
+
+    if (action === 'play-history') {
+      const assetId = btn.dataset.assetId;
+      toggleHistoryAudio(assetId, jobId, row);
+      return;
+    }
+    if (action === 'copy-job-id') {
+      copyJobId(jobId, btn);
+      return;
+    }
+    if (action === 'delete-history') {
+      deleteHistoryJob(jobId, row);
+      return;
+    }
+  });
+
   // ============================================================
   // TTS Tab
   // ============================================================
@@ -2080,22 +2104,83 @@
     }
   }
 
-  // P8-FIX4: Show unsupported history delete message
-  function showHistoryDeleteUnsupported() {
-    alert('当前后端暂未支持历史任务删除。P8-FE5 阶段将接入前端删除按钮。');
+  // P8-FIX5: Toggle history audio player expand/collapse
+  function toggleHistoryAudio(assetId, jobId, historyRow) {
+    if (!assetId) {
+      alert('该历史记录暂无可播放音频');
+      return;
+    }
+    // Audio row is a sibling of history-row
+    let audioRow = historyRow.nextElementSibling;
+    if (!audioRow || !audioRow.classList.contains('history-audio-row')) {
+      audioRow = document.createElement('div');
+      audioRow.className = 'history-audio-row';
+      historyRow.parentNode.insertBefore(audioRow, historyRow.nextSibling);
+    }
+
+    if (audioRow.classList.contains('visible')) {
+      audioRow.classList.remove('visible');
+      audioRow.innerHTML = '';
+    } else {
+      audioRow.innerHTML = '<div style="padding:8px 0">' + audioPlayerHtml(assetId) + '</div>';
+      audioRow.classList.add('visible');
+    }
   }
 
-  // P8-FIX5: Toggle history audio player expand/collapse
-  function toggleHistoryAudio(assetId, jobId) {
-    const row = document.getElementById('history-audio-' + jobId);
-    if (!row) return;
-    if (row.classList.contains('visible')) {
-      row.classList.remove('visible');
-      row.innerHTML = '';
-    } else {
-      row.innerHTML = '<div style="padding:8px 0">' + audioPlayerHtml(assetId) + '</div>';
-      row.classList.add('visible');
+  // P8-UX4: Delete a history job (soft delete)
+  async function deleteHistoryJob(jobId, historyRow) {
+    if (!jobId) return;
+    if (!confirm('确认删除这条历史记录？音频文件不会被物理删除。')) return;
+    // Disable delete buttons to prevent double-delete
+    const delBtn = historyRow.querySelector('[data-action="delete-history"]');
+    if (delBtn) { delBtn.disabled = true; delBtn.textContent = '删除中…'; }
+    try {
+      const resp = await fetch(`/api/voice/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+      if (resp.status === 404) {
+        alert('历史记录不存在或已删除。');
+        await refreshHistory();
+        return;
+      }
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        alert('删除失败：' + (data.detail || data.message || `HTTP ${resp.status}`));
+        return;
+      }
+      // Success: remove the row from DOM
+      const nextSibling = historyRow.nextElementSibling;
+      if (nextSibling && nextSibling.classList.contains('history-audio-row')) {
+        nextSibling.remove();
+      }
+      historyRow.remove();
+      // Update offset counters since we removed one item
+      if (_historyOffset > 0) _historyOffset--;
+      if (_historyTotal > 0) _historyTotal--;
+      updateHistoryFilterHint();
+      showToast('已删除历史记录');
+    } catch (e) {
+      alert('删除失败：' + (e.message || '网络错误'));
+    } finally {
+      if (delBtn) { delBtn.disabled = false; delBtn.textContent = '删除'; }
     }
+  }
+
+  function showToast(message, type) {
+    const existing = document.getElementById('toastMsg');
+    if (existing) existing.remove();
+    const el = document.createElement('div');
+    el.id = 'toastMsg';
+    const colors = { error: '#c53030', success: '#276749', info: '#2b6cb0' };
+    el.style.cssText = [
+      'position:fixed', 'top:16px', 'right:16px', 'z-index:9999',
+      'padding:10px 18px', 'border-radius:6px', 'font-size:0.82rem',
+      `background:${type === 'error' ? '#fff5f5' : type === 'success' ? '#f0fff4' : '#ebf8ff'}`,
+      `color:${colors[type] || colors.info}`,
+      'box-shadow:0 2px 8px rgba(0,0,0,0.12)',
+      'pointer-events:none',
+    ].join(';');
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
   }
 
   function hexToBlobUrl(hex, mime = 'audio/mpeg') {
@@ -3089,20 +3174,15 @@ function handleStopAsyncPolling() {
     const statusBadge = `<span class="job-status ${statusClass(job.status)}">${statusLabel(job.status)}</span>`;
 
     const assetId = getHistoryAudioAssetId(job);
-    let playBtn = '';
-    let downloadBtn = '';
-    if (assetId) {
-      playBtn = `<button class="btn-sm" onclick="toggleHistoryAudio('${escJs(assetId)}', '${escJs(rawJobId)}')">播放</button>`;
-      downloadBtn = `<a class="btn-sm" href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank">下载</a>`;
-    } else {
-      playBtn = `<button class="btn-sm" disabled title="当前历史记录未返回可播放音频资产">播放</button>`;
-      downloadBtn = `<button class="btn-sm" disabled title="当前历史记录未返回可下载音频资产">下载</button>`;
-    }
+    const playDisabled = !assetId ? ' disabled title="该历史记录暂无可播放音频"' : ` data-asset-id="${esc(assetId)}"`;
+    const playBtn = `<button class="btn-sm" data-action="play-history"${playDisabled}>播放</button>`;
+    const downloadBtn = assetId
+      ? `<a class="btn-sm" href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank">下载</a>`
+      : `<button class="btn-sm" disabled title="该历史记录暂无可下载音频">下载</button>`;
+    const copyBtn = `<button class="btn-sm" title="复制 job_id" data-action="copy-job-id" data-job-id="${esc(rawJobId)}">复制 ID</button>`;
+    const deleteBtn = `<button class="btn-sm" data-action="delete-history" data-job-id="${esc(rawJobId)}">删除</button>`;
 
-    const copyBtn = `<button class="btn-sm" title="复制 job_id" onclick="copyJobId('${escJs(rawJobId)}', this)">复制 ID</button>`;
-    const deleteBtn = `<button class="btn-sm" disabled title="后端暂未支持历史任务删除">删除</button>`;
-
-    return `<div class="history-row">
+    return `<div class="history-row" data-job-id="${esc(rawJobId)}">
       <span class="history-type">${esc(typeLabel)}</span>
       ${statusBadge}
       <span class="history-time">${esc(time)}</span>
@@ -3114,8 +3194,7 @@ function handleStopAsyncPolling() {
         ${copyBtn}
         ${deleteBtn}
       </span>
-    </div>
-    <div class="history-audio-row" id="history-audio-${escJs(rawJobId)}"></div>`;
+    </div>`;
   }
 
   // P8-4B: Empty state for history list
