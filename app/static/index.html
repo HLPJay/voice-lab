@@ -1215,10 +1215,10 @@
 
   <div class="tab-content" id="tab-advanced">
     <!-- High-cost / engineering validation notice -->
-    <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
+    <div class="card" style="background:#fffaf0;border:1px solid #fbd38d;margin-bottom:16px">
       <div style="padding:12px 16px">
-        <div style="font-size:0.85rem;font-weight:600;color:#c53030;margin-bottom:4px">⚠ 高成本 / 工程验证能力</div>
-        <div style="font-size:0.78rem;color:#c53030">以下能力属于高成本或工程验证能力，暂缓产品化。使用 MiniMax 真实 provider 前请确认费用、限制和音频素材合规性。</div>
+        <div style="font-size:0.85rem;font-weight:600;color:#9c4221;margin-bottom:4px">高成本 / 工程验证能力</div>
+        <div style="font-size:0.78rem;color:#9c4221">以下能力可能产生较高 API 调用成本，适合工程验证和少量样本测试。使用真实 Provider 前请确认费用、限制和音频素材合规性。</div>
       </div>
     </div>
 
@@ -1262,15 +1262,17 @@
         <div class="card-title">步骤 2：执行克隆</div>
         <div class="config-grid">
           <div class="form-group">
-            <label for="cloneVoiceId">voice_id（自定义标识）</label>
+            <label for="cloneVoiceId">voice_id</label>
+            <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:4px">voice_id 是你为克隆音色指定的自定义标识。</div>
             <div style="display:flex;gap:6px;align-items:center">
-              <input type="text" id="cloneVoiceId" placeholder="如 my_voice_01" value="" style="flex:1">
-              <button class="btn-sm" id="cloneAutoIdBtn" type="button" onclick="handleCloneAutoId()">自动生成</button>
+              <input type="text" id="cloneVoiceId" placeholder="如 my_voice_01" value="" style="flex:1" oninput="updateCloneBtnState()">
+              <button class="btn-sm" id="cloneAutoIdBtn" type="button" onclick="handleCloneAutoId()" title="生成一个本地可识别的 voice_id">生成 voice_id</button>
             </div>
           </div>
           <div class="form-group">
-            <label for="cloneFileId">file_id（上传后自动填充）</label>
-            <input type="number" id="cloneFileId" placeholder="从步骤1获取" value="">
+            <label for="cloneFileId">file_id</label>
+            <div style="font-size:0.72rem;color:#a0aec0;margin-bottom:4px">上传成功后会自动填入，也可以手动粘贴已有 file_id。</div>
+            <input type="number" id="cloneFileId" placeholder="上传成功后自动填入" value="" oninput="updateCloneBtnState()">
           </div>
           <div class="form-group">
             <label for="clonePromptFileId">prompt_file_id（可选）</label>
@@ -1282,30 +1284,33 @@
           </div>
           <div class="form-group">
             <label for="clonePreviewText">preview_text（试听文本）</label>
-            <input type="text" id="clonePreviewText" value="你好，这是一段声音克隆的试听文本，用于验证克隆效果。" placeholder="试听用短文本">
+            <input type="text" id="clonePreviewText" value="你好，这是一段声音克隆的试听文本，用于验证克隆效果。" placeholder="试听用短文本" oninput="updateCloneBtnState()">
           </div>
           <div class="form-group">
             <label for="cloneModel">model（preview_text 有值时必填）</label>
-            <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-2.8-hd">
+            <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-2.8-hd" oninput="updateCloneBtnState()">
           </div>
           <div class="form-group full-width">
             <div class="checkbox-row">
               <input type="checkbox" id="needNoiseReduction">
-              <label for="needNoiseReduction" style="font-weight:400;cursor:pointer">降噪（need_noise_reduction）</label>
+              <label for="needNoiseReduction" style="font-weight:400;cursor:pointer">降噪</label>
+              <span style="font-size:0.72rem;color:#a0aec0">适合有明显底噪的样本。</span>
             </div>
             <div class="checkbox-row">
               <input type="checkbox" id="needVolumeNormalization">
-              <label for="needVolumeNormalization" style="font-weight:400;cursor:pointer">音量标准化（need_volume_normalization）</label>
+              <label for="needVolumeNormalization" style="font-weight:400;cursor:pointer">音量标准化</label>
+              <span style="font-size:0.72rem;color:#a0aec0">适合音量忽大忽小的样本。</span>
             </div>
           </div>
         </div>
         <button class="btn-primary" id="cloneBtn" onclick="handleCloneVoice()">克隆</button>
+        <div id="cloneBtnHint" style="font-size:0.72rem;color:#a0aec0;margin-top:4px">file_id 和 voice_id 填写完整后才能执行克隆。</div>
         <div class="high-cost-inline-hint">高消费动作：声音克隆可能产生约 10 元级别费用，实际以 MiniMax 官网价格为准。</div>
         <div id="cloneResult"></div>
       </div>
       <div class="card" style="margin-top:16px">
         <div class="card-title">导入已有克隆音色</div>
-        <p style="font-size:0.80rem;color:#718096;margin:0 0 12px">MiniMax 远端已经克隆成功，但本地没有登记时，可在这里输入 voice_id 导入本地缓存。导入后即可绑定到人设使用。</p>
+        <p style="font-size:0.80rem;color:#718096;margin:0 0 12px">用于把 MiniMax 远端已存在的 voice_id 记录到本地，便于绑定到声音人设；不会重新克隆音频。</p>
         <div class="config-grid">
           <div class="form-group">
             <label for="importCloneProvider">Provider</label>
@@ -1342,7 +1347,7 @@
             </div>
           </div>
         </div>
-        <button class="btn-secondary" id="importCloneBtn" onclick="handleImportRemoteVoice('clone')">验证并导入</button>
+        <button class="btn-secondary" id="importCloneBtn" onclick="handleImportRemoteVoice('clone')" title="导入远端已有 voice_id 到本地音色库">验证并导入</button>
         <div id="importCloneResult"></div>
       </div>
     </div>
@@ -1749,6 +1754,9 @@
       switchAdvancedSubtab(btn.dataset.advancedSubtab);
     });
   });
+
+  // Init clone button disabled state
+  updateCloneBtnState();
 
   // ============================================================
   // Global data cache
@@ -4328,7 +4336,7 @@ function handleStopAsyncPolling() {
       document.getElementById('cloneFileId').value = data.file_id;
 
       resultsEl.innerHTML = `<div class="success-msg">
-        上传成功：file_id=<code>${data.file_id}</code>，文件名=${esc(data.filename)}，大小=${data.bytes} bytes
+        上传成功，file_id 已填入步骤 2，可继续执行克隆。file_id=<code>${data.file_id}</code>，文件名=${esc(data.filename)}，大小=${data.bytes} bytes
       </div>`;
     } catch (e) {
       resultsEl.innerHTML = `<div class="error-msg">网络错误：${esc(e.message)}</div>`;
@@ -4350,6 +4358,20 @@ function handleStopAsyncPolling() {
     const rand = Math.random().toString(36).substring(2, 8);
     const id = `voice_clone_${yyyy}${mm}${dd}${hh}${nn}${ss}_${rand}`;
     document.getElementById('cloneVoiceId').value = id;
+    updateCloneBtnState();
+  }
+
+  function updateCloneBtnState() {
+    const btn = document.getElementById('cloneBtn');
+    if (!btn) return;
+    const fileId = document.getElementById('cloneFileId').value.trim();
+    const voiceId = document.getElementById('cloneVoiceId').value.trim();
+    const previewText = document.getElementById('clonePreviewText').value.trim();
+    const model = document.getElementById('cloneModel').value.trim();
+    const disabled = !fileId || !voiceId || (previewText && !model);
+    btn.disabled = disabled;
+    const hint = document.getElementById('cloneBtnHint');
+    if (hint) hint.style.display = disabled ? '' : 'none';
   }
 
   async function handleCloneVoice() {
