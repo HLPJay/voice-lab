@@ -532,13 +532,68 @@ class TestRestoreBehavior:
         assert "conflict" in result.stdout.lower()
         # Original file must not be overwritten
         assert orig_file.read_text(encoding="utf-8") == "existing content"
+        # Quarantine file must still exist (restore was skipped due to conflict)
+        assert q_file.exists(), "Quarantine file must still exist when restore is skipped due to conflict"
+
+    def test_restore_moves_file_back(self, tmp_path: Path):
+        """Restore must move (not copy) — quarantine file must not exist after successful restore."""
+        storage = tmp_path / "storage"
+        orig_dir = storage / "audio"
+        orig_dir.mkdir(parents=True)
+        # No original file (path is free)
+
+        q_dir = storage / "quarantine" / "20260101T000000" / "audio"
+        q_dir.mkdir(parents=True)
+        q_file = q_dir / "orphan.mp3"
+        q_file.write_text("quarantined content", encoding="utf-8")
+
+        manifest = {
+            "manifest_version": MANIFEST_VERSION,
+            "mode": "quarantine",
+            "files": [
+                {
+                    "candidate_id": "cand_000001",
+                    "kind": "orphan-audio",
+                    "reason": "orphan_audio",
+                    "original_relative_path": "audio/orphan.mp3",
+                    "quarantine_relative_path": "quarantine/20260101T000000/audio/orphan.mp3",
+                    "size_bytes": 100,
+                    "modified_time": "2026-04-01T00:00:00",
+                    "status": "moved",
+                    "skip_reason": None,
+                    "error": None,
+                },
+            ],
+        }
+        manifest_file = tmp_path / "manifest.json"
+        manifest_file.write_text(json.dumps(manifest), encoding="utf-8")
+
+        result = subprocess.run(
+            [
+                sys.executable, "scripts/cleanup_assets.py",
+                "--restore",
+                "--manifest", str(manifest_file),
+                "--confirm", "RESTORE",
+                "--storage-dir", str(storage),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"Restore failed: {result.stderr}"
+        assert "restored" in result.stdout.lower()
+        # Original file must now exist
+        orig_file = orig_dir / "orphan.mp3"
+        assert orig_file.exists(), "Original file must exist after restore"
+        assert orig_file.read_text(encoding="utf-8") == "quarantined content"
+        # Quarantine file must be gone (move semantics)
+        assert not q_file.exists(), "Quarantine file must be removed after restore"
 
 
 class TestNoDestructiveInQuarantine:
-    """Verify quarantine execution does not delete source files."""
+    """Verify quarantine uses move semantics (source removed, file preserved in quarantine)."""
 
-    def test_quarantine_source_file_preserved(self, tmp_path: Path):
-        """Quarantine must copy (not move) — source file remains after quarantine."""
+    def test_quarantine_source_file_moved(self, tmp_path: Path):
+        """Quarantine must move (not copy) — source file must not exist after quarantine."""
         storage = tmp_path / "storage"
         audio_dir = storage / "audio"
         audio_dir.mkdir(parents=True)
@@ -586,5 +641,11 @@ class TestNoDestructiveInQuarantine:
             text=True,
         )
 
-        # Source file must still exist (copy, not move)
-        assert audio_file.exists(), "Source file was deleted — quarantine must copy, not move"
+        # Source file must be gone (move semantics, not copy)
+        assert not audio_file.exists(), "Source file still exists — quarantine must move, not copy"
+        # Quarantine file must exist
+        q_dirs = list((storage / "quarantine").glob("*"))
+        assert len(q_dirs) == 1
+        # Use rglob to get only files, excluding manifest.json
+        q_files = [f for f in q_dirs[0].rglob("*") if f.is_file() and f.name != "manifest.json"]
+        assert len(q_files) == 1, f"Quarantine file must exist after move, found: {q_files}"

@@ -288,8 +288,12 @@ class TestOutputStructure:
 class TestNoDestructiveOperations:
     """Verify the script does not contain destructive operation code."""
 
-    def test_no_file_deletion_in_source(self):
-        """Source must not contain unlink, os.remove, or shutil.rmtree."""
+    def test_no_permanent_deletion_in_source(self):
+        """Source must not contain permanent deletion operations (unlink, os.remove, shutil.rmtree).
+
+        Note: shutil.move is allowed for quarantine (move to quarantine dir) and restore
+        (move back to original dir) — these are reversible operations that preserve files.
+        """
         src = Path("scripts/cleanup_assets.py").read_text(encoding="utf-8")
         # Check epilog is excluded from this test
         epilog_marker = "Examples:"
@@ -306,12 +310,11 @@ class TestNoDestructiveOperations:
             "TRUNCATE ",
             "UPDATE ",
             "DELETE ",
-            "shutil.move",
             ".rename(",
             "os.rename",
         ]
         found = [x for x in forbidden if x in src_code]
-        assert not found, f"Destructive operations found in script: {found}"
+        assert not found, f"Permanent deletion operations found in script: {found}"
 
     def test_dry_run_mode_enforced(self):
         """Running with forbidden args must fail, not silently do nothing."""

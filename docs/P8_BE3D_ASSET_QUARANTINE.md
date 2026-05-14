@@ -3,7 +3,7 @@
 ## 1. 背景
 
 P8-BE3C 已完成 dry-run 工具。BE3D 在此基础上增加 `--quarantine` 和 `--restore` 两个模式。核心原则：
-- quarantine 只移动文件（`shutil.copy2`），不删除
+- quarantine 使用 `shutil.move` 移动文件，源文件被移走，不复制，不删除
 - 生成 manifest.json，支持 restore
 - 禁止永久删除、禁止修改数据库
 
@@ -67,9 +67,9 @@ P8-BE3C 已完成 dry-run 工具。BE3D 在此基础上增加 `--quarantine` 和
 
 ### 5.3 文件隔离
 
-- 使用 `shutil.copy2` 复制文件到 `storage/quarantine/<timestamp>/`
-- **不删除**源文件（与 move 不同，copy 保留原始文件）
-- 源文件在 manifest 中记录为 status=moved，供未来 BE3E purge 阶段处理
+- 使用 `shutil.move` 移动文件到 `storage/quarantine/<timestamp>/`
+- **源文件被移走**，不复制，不删除
+- manifest 中记录为 status=moved，供未来 BE3E purge 阶段处理
 
 ### 5.4 路径安全
 
@@ -140,7 +140,7 @@ storage/quarantine/<timestamp>/
 
 - **只恢复 status=moved 的文件**（其他状态跳过）
 - **不覆盖**：如果原始路径已存在，跳过（conflict）
-- 使用 `shutil.copy2` 复制回原始位置
+- 使用 `shutil.move` 移回原始位置
 
 ### 7.3 恢复结果字段
 
@@ -156,12 +156,12 @@ storage/quarantine/<timestamp>/
 - 未实现 purge（永久删除）
 - 未实现 purge-quarantine
 - 未修改数据库
-- 未删除源文件（quarantine 为 copy，不删除）
+- 未复制源文件（quarantine 使用 move，移走源文件）
 - `--purge` / `--purge-quarantine` 在任何情况下都被拒绝
 
 ## 9. 测试覆盖
 
-`tests/test_cleanup_assets_quarantine.py`：23 个测试
+`tests/test_cleanup_assets_quarantine.py`：24 个测试
 
 | 测试类 | 覆盖内容 |
 |---|---|
@@ -174,8 +174,8 @@ storage/quarantine/<timestamp>/
 | TestRestoreManifestValidation | manifest 版本和模式校验 |
 | TestQuarantineManifestStructure | manifest 结构正确性 |
 | TestRestoreBehavior | restore 跳过非 moved 状态和冲突文件 |
-| TestNoDestructiveInQuarantine | quarantine 保留源文件 |
+| TestNoDestructiveInQuarantine | quarantine 移走源文件（move 语义） |
 
 ## 10. 阶段结论
 
-**P8-BE3D 已完成。** 当前阶段在 BE3C dry-run 工具基础上增加 `--quarantine` 和 `--restore` 两个模式：quarantine 通过 `shutil.copy2` 将候选文件隔离到 `storage/quarantine/<timestamp>/`，生成 manifest.json 支持未来 restore；restore 验证 manifest 后将 status=moved 的文件复制回原始位置，不覆盖已有文件。下一阶段建议进入 P8-BE3E：quarantine 永久删除（purge），需在 30 天隔离期后执行。
+**P8-BE3D 已完成。** 当前阶段在 BE3C dry-run 工具基础上增加 `--quarantine` 和 `--restore` 两个模式：quarantine 通过 `shutil.move` 将候选文件隔离到 `storage/quarantine/<timestamp>/`，生成 manifest.json 支持未来 restore；restore 验证 manifest 后将 status=moved 的文件移回原始位置，不覆盖已有文件。下一阶段建议进入 P8-BE3E：quarantine 永久删除（purge），需在 30 天隔离期后执行。

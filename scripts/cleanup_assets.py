@@ -571,7 +571,7 @@ def run_quarantine(
                 q_subdir = q_dir / "audio"
 
             q_rel = str(q_subdir.relative_to(root)) + "/" + Path(rel_path).name
-            q_full = q_dir / Path(rel_path).name
+            q_full = q_subdir / Path(rel_path).name
 
             # --- Avoid name collision ---
             if q_full.exists():
@@ -617,9 +617,9 @@ def run_quarantine(
                 skipped_count += 1
                 continue
 
-            # --- Move file (copy, don't delete) ---
+            # --- Move file to quarantine (atomic move, source removed) ---
             try:
-                shutil.copy2(src_full, q_full)
+                shutil.move(src_full, q_full)
                 manifest_files.append({
                     "candidate_id": cand_id,
                     "kind": kind,
@@ -759,10 +759,10 @@ def run_restore(
             skipped_count += 1
             continue
 
-        # Restore: copy back to original location
+        # Restore: move back to original location
         try:
             orig_full.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(q_full, orig_full)
+            shutil.move(q_full, orig_full)
             restore_files.append({
                 **entry,
                 "restore_status": "restored",
