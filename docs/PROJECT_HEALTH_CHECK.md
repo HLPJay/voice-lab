@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-C：
+截至 P9-FE1-C-FIX：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -3702,4 +3702,41 @@ grep -n "_historyOffset" app/static/index.html           # 无输出（已移除
 
 **测试结果：** 580 passed, 6 skipped（本阶段未新增 E2E 测试）。
 
-**未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、Provider Adapter、生成链路、数据库、资产清理链路。
+**未改 app/api、app/services、app/providers、app/domain、admin.html、provider_capabilities.js、runtime_status.js、Provider Adapter、生成链路、数据库、资产清理链路。**
+
+### P9-FE1-C-FIX：补 History Tab E2E 回归测试
+
+**阶段目标：** 为 P9-FE1-C 抽离后的 history.js 补充最小浏览器回归测试，防止 history.js 抽离后出现 DOM ID 不匹配、全局函数未暴露、Tab 打开 JS 报错等问题。
+
+**修改文件：**
+
+- `app/static/js/history.js` — 新增 `window.renderHistoryList` 和 `window.filterHistoryJobs` 暴露（测试依赖）
+- `tests/e2e/test_frontend_capabilities.py` — 新增 2 个 E2E 测试
+
+**实现：**
+
+1. **test_history_module_is_loaded**：
+   - 断言 `document.querySelector('script[src="/static/js/history.js"]')` 存在
+   - 断言 `window.loadHistory`、`window.refreshHistory`、`window.renderHistoryList` 为 function
+   - 断言 `window._historyJobs` 已初始化
+
+2. **test_history_tab_opens_and_refreshes_without_error**：
+   - 点击历史 Tab，等待 `#tab-history` 和 `#historyList` 出现
+   - 如果 `#historyRefreshBtn` 存在则点击
+   - 如果 `#historySearch` 存在则输入关键词后清空
+   - 如果 `#historyStatusFilter` 存在则选择 all
+   - 不要求数据库有历史数据
+   - 无 JS 报错即通过
+
+3. **history.js 修正**：`window.renderHistoryList` 和 `window.filterHistoryJobs` 未暴露，补加。
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e -q  # 10 passed
+python -m pytest tests/ -x -q  # 582 passed, 6 skipped
+```
+
+**测试结果：** 582 passed, 6 skipped（新增 2 个 E2E 测试）。
+
+**未改 app/api、app/services、app/providers、app/domain、index.html、admin.html、provider_capabilities.js、runtime_status.js、history.js 业务逻辑、Provider Adapter、生成链路、数据库、资产清理链路。

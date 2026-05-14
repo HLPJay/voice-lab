@@ -440,6 +440,8 @@
   window.handleHistorySearchInput = handleHistorySearchInput;
   window.handleHistoryStatusFilterChange = handleHistoryStatusFilterChange;
   window.clearHistoryFilters = clearHistoryFilters;
+  window.renderHistoryList = renderHistoryList;
+  window.filterHistoryJobs = filterHistoryJobs;
 
   // ── init: load history on page load ────────────────────────────────
   window.loadHistory(0);

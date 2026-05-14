@@ -283,3 +283,69 @@ def test_script_tab_opens_without_profile_select_error(page, e2e_base_url, conso
 
     # No critical JS errors should have occurred (console_errors fixture will fail on error)
     # The test passes if we reach here without an uncaught exception
+
+
+# ── Test 9: History module is loaded ─────────────────────────────────────────────
+
+def test_history_module_is_loaded(page, e2e_base_url, console_errors):
+    """history.js script tag exists and window global functions are available."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)  # allow scripts to initialize
+
+    # history.js script tag exists
+    assert page.evaluate("!!document.querySelector('script[src=\"/static/js/history.js\"]')")
+
+    # window global functions are exposed
+    assert page.evaluate("typeof window.loadHistory === 'function'")
+    assert page.evaluate("typeof window.refreshHistory === 'function'")
+    assert page.evaluate("typeof window.renderHistoryList === 'function'")
+
+    # state variable is initialized
+    assert page.evaluate("typeof window._historyJobs !== 'undefined'")
+
+
+# ── Test 10: History Tab opens and refreshes without error ──────────────────────
+
+def test_history_tab_opens_and_refreshes_without_error(page, e2e_base_url, console_errors):
+    """Clicking the History tab, waiting for list, and clicking refresh causes no JS errors."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Click the History tab
+    history_tab = page.locator('button.tab-btn[data-tab="history"]')
+    assert history_tab.count() == 1, "History tab button not found"
+    history_tab.click()
+
+    page.wait_for_selector("#tab-history", state="attached", timeout=10000)
+    page.wait_for_selector("#historyList", state="attached", timeout=10000)
+    page.wait_for_timeout(1500)  # allow loadHistory to execute
+
+    # historyList must exist
+    assert page.locator("#historyList").count() == 1
+
+    # Click refresh button if present
+    refresh_btn = page.locator("#historyRefreshBtn")
+    if refresh_btn.count() == 1:
+        refresh_btn.click()
+        page.wait_for_timeout(800)
+
+    # Search input: type and clear if present
+    search = page.locator("#historySearch")
+    if search.count() == 1:
+        search.fill("test")
+        page.wait_for_timeout(300)
+        search.fill("")
+        page.wait_for_timeout(300)
+
+    # Status filter: select 'all' if present
+    status_filter = page.locator("#historyStatusFilter")
+    if status_filter.count() == 1:
+        status_filter.select_option("all")
+        page.wait_for_timeout(300)
+
+    # loadMoreHistory button exists but not required to be clicked
+    # (test environment may have no more data)
+
+    # No critical JS errors occurred
+    # console_errors fixture will fail on real JS errors
