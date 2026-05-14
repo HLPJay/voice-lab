@@ -52,7 +52,8 @@
 * P8-UX2-FIX：顶部 Provider 状态语义优化已完成（将”最近调用异常”细分为额度受限/限流中/鉴权失败/网络超时/服务异常/参数错误/PROVIDER_ERROR 等可行动状态；前端 chip 按 state 着色（available/warning/error/unknown），可点击跳转管理面板，detail 和 action_hint 在 title 属性展示；不影响生成链路，不调用外部 Provider）
 * P8-UX3：状态条语义、chip 导航、retry 按钮已完成（Provider chip 跟随页面选择并显示 title 说明；today/month chip 增加”本地估算用量，不代表官方剩余额度”tooltip；warning/error chip onclick 跳转 admin.html?focus=call-logs；Advanced 危险区从红色改为浅橙/米色；profile 加载失败增加重试按钮；runtime status chip 失败后可点击重试；docs/generated/ 加入 .gitignore；README 配置表与 config.py 核对无误）
 * P8-UX4-FIX：历史记录播放与删除操作修复已完成（历史按钮改为基于完整 job_id 的稳定事件绑定，播放支持 audio_asset.download URL 展开播放器，删除调用 DELETE /api/voice/jobs/{job_id} 执行软删除并从列表移除；不删除音频文件，不影响生成链路，不影响资产清理链路，tests/test_voice_jobs_delete.py 和 tests/test_voice_jobs_assets.py 已有 9 个测试覆盖后端接口）
-* P8-UX5-FIX：剧本页"提交批量任务"按钮修复已完成（补齐 batchScriptResult 结果容器；成功时在剧本 Tab 内显示 job_id/状态/总段数并自动切换到长文本 Tab 查看进度；失败时显示行级错误提示而非静默；output_format='hex' + audio_format=用户选择；按钮 loading 状态正常；不影响生成主链路和长文本批量功能）
+* P8-UX5-FIX：剧本页"提交批量任务"按钮修复已完成（补齐 batchScriptResult 结果容器；成功时在剧本 Tab 内显示 job_id/状态/总段数；失败时显示行级错误提示而非静默；output_format='hex' + audio_format=用户选择；按钮 loading 状态正常；不影响生成主链路和长文本批量功能）
+* P8-UX5-FIX2：剧本批量任务提交体验修正已完成（提交后不再自动跳转长文本 Tab，剧本 Tab 内新增 batchScriptProgressPanel 显示批量进度条和段落状态；showBatchProgress/startBatchPoll/pollBatchStatus/renderBatchStatus 均支持 targetPanelId 参数，默认行为不变，长文本批量进度保持兼容；不影响后端批量接口、生成链路和资产清理链路）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台

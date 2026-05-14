@@ -1099,6 +1099,17 @@
     </div>
     <!-- Script batch result / progress area (populated after submit) -->
     <div id="batchScriptResult" style="display:none;margin-top:16px"></div>
+    <!-- Script batch progress panel (shown after successful submit) -->
+    <div id="batchScriptProgressPanel" style="display:none;margin-top:16px">
+      <div class="card">
+        <div class="card-title">批量进度 <span id="batchScriptProgressTitle"></span></div>
+        <div id="batchScriptProgressBar" style="height:8px;background:#e2e8f0;border-radius:4px;margin-bottom:12px">
+          <div id="batchScriptProgressFill" style="height:100%;background:#4c51bf;border-radius:4px;width:0%;transition:width 0.3s"></div>
+        </div>
+        <div id="batchScriptProgressStats" style="font-size:0.85rem;color:#718096;margin-bottom:12px"></div>
+        <div id="batchScriptSegmentTable" style="font-size:0.82rem"></div>
+      </div>
+    </div>
   </div>
 
   <div class="tab-content" id="tab-voices">
@@ -5149,24 +5160,16 @@ function handleStopAsyncPolling() {
       const data = await resp.json();
       _currentBatchId = data.batch_id;
 
-      // Show success + switch to longtext tab to show progress
+      // Show success inline — stay on script tab
       showResult('<div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#276749">' +
         '<div style="font-weight:600;margin-bottom:6px">批量剧本任务已提交</div>' +
         '<div>任务ID：<code style="font-size:0.78rem;background:#edf2f7;padding:1px 4px;border-radius:3px">' + esc(data.batch_id) + '</code></div>' +
         '<div>状态：' + esc(data.status || 'pending') + ' &nbsp;|&nbsp; 总段数：' + (data.total_segments || lines.length) + '</div>' +
-        '<div style="margin-top:8px;font-size:0.78rem;color:#718096">进度请查看下方「长文本」Tab</div>' +
+        '<div style="margin-top:8px;font-size:0.78rem;color:#718096">批量进度如下方显示</div>' +
         '</div>');
 
-      // Switch to longtext tab so user can see progress
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const longtextTab = document.getElementById('tab-longtext');
-      const longtextBtn = document.querySelector('.tab-btn[data-tab="longtext"]');
-      if (longtextTab) longtextTab.classList.add('active');
-      if (longtextBtn) longtextBtn.classList.add('active');
-
-      showBatchProgress(data.batch_id);
-      startBatchPoll(data.batch_id);
+      showBatchProgress(data.batch_id, 'batchScriptProgressPanel');
+      startBatchPoll(data.batch_id, 'batchScriptProgressPanel');
       loadRuntimeStatus();
     } catch (e) {
       if (e.message !== 'USER_CANCELLED') {
@@ -5184,19 +5187,35 @@ function handleStopAsyncPolling() {
     }
   }
 
-  function showBatchProgress(batchId) {
-    document.getElementById('batchProgressPanel').style.display = '';
-    document.getElementById('batchProgressTitle').textContent = `(任务ID: ${batchId})`;
-    document.getElementById('batchProgressStats').textContent = '加载中…';
-    document.getElementById('batchSegmentTable').innerHTML = '';
-    document.getElementById('batchResultPlayer').style.display = 'none';
+  function showBatchProgress(batchId, targetPanelId = 'batchProgressPanel') {
+    const panel = document.getElementById(targetPanelId);
+    if (panel) panel.style.display = '';
+    const getEl = id => document.getElementById(id);
+    const titleEl = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptProgressTitle')
+      : getEl('batchProgressTitle');
+    const statsEl = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptProgressStats')
+      : getEl('batchProgressStats');
+    const tableEl = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptSegmentTable')
+      : getEl('batchSegmentTable');
+    const fillEl = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptProgressFill')
+      : getEl('batchProgressFill');
+    if (titleEl) titleEl.textContent = `(任务ID: ${batchId})`;
+    if (statsEl) statsEl.textContent = '加载中…';
+    if (tableEl) tableEl.innerHTML = '';
+    const playerPanel = document.getElementById('batchResultPlayer');
+    if (playerPanel) playerPanel.style.display = 'none';
     _batchTimeline = [];
   }
 
-  function startBatchPoll(batchId) {
-    if (_batchPollTimer) clearInterval(_batchPollTimer);
-    _batchPollTimer = setInterval(() => pollBatchStatus(batchId), 3000);
-    pollBatchStatus(batchId);  // immediate first poll
+  function startBatchPoll(batchId, targetPanelId = 'batchProgressPanel') {
+    stopBatchPoll();
+    _currentBatchPanelId = targetPanelId;
+    _batchPollTimer = setInterval(() => pollBatchStatus(batchId, targetPanelId), 3000);
+    pollBatchStatus(batchId, targetPanelId);  // immediate first poll
   }
 
   function stopBatchPoll() {
@@ -5206,12 +5225,12 @@ function handleStopAsyncPolling() {
     }
   }
 
-  async function pollBatchStatus(batchId) {
+  async function pollBatchStatus(batchId, targetPanelId = 'batchProgressPanel') {
     try {
       const resp = await fetch(`/api/voice/batch/${batchId}/status`);
       if (!resp.ok) return;
       const data = await resp.json();
-      renderBatchStatus(data);
+      renderBatchStatus(data, targetPanelId);
     } catch (e) {}
   }
 
@@ -5338,19 +5357,26 @@ function handleStopAsyncPolling() {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
-  function renderBatchStatus(data) {
+  function renderBatchStatus(data, targetPanelId = 'batchProgressPanel') {
     const total = data.total_segments || 0;
     const completed = data.completed_segments || 0;
     const failed = data.failed_segments || 0;
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    const fill = document.getElementById('batchProgressFill');
-    const stats = document.getElementById('batchProgressStats');
+    const getEl = id => document.getElementById(id);
+    const fill = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptProgressFill')
+      : getEl('batchProgressFill');
+    const stats = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptProgressStats')
+      : getEl('batchProgressStats');
+    const table = targetPanelId === 'batchScriptProgressPanel'
+      ? getEl('batchScriptSegmentTable')
+      : getEl('batchSegmentTable');
     if (fill) fill.style.width = pct + '%';
     if (stats) stats.textContent =
       `已完成 ${completed}/${total} 段` + (failed > 0 ? `（失败 ${failed} 段）` : '');
 
-    const table = document.getElementById('batchSegmentTable');
     if (!table) return;
 
     const statusMap = {
@@ -5415,8 +5441,8 @@ function handleStopAsyncPolling() {
         alert('重试失败：' + (data.detail || JSON.stringify(data)));
         return;
       }
-      showBatchProgress(batchId);
-      startBatchPoll(batchId);
+      showBatchProgress(batchId, _currentBatchPanelId);
+      startBatchPoll(batchId, _currentBatchPanelId);
     } catch (e) {
       alert('重试失败：' + e.message);
     }
