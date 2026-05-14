@@ -61,7 +61,8 @@
 * P8-UX8-FIX：删除按钮文案明确化已完成（删除按钮从"删"恢复为"删除"、操作列宽度 190px → 210px；新增同一时间最多展开一个播放器的 auto-collapse 逻辑；播放、下载、复制、删除功能不变）
 * P8-UX9：历史播放器加载与失败反馈修复已完成（新增 historyAudioPlayerHtml 含状态容器，audio loadstart 显示"音频加载中…"、loadedmetadata 显示"音频已就绪"、canplay 清空提示、error 显示"音频加载失败，可尝试下载"并附带下载链接；保持同一时间最多展开一个播放器；播放、下载、复制、删除逻辑不变；不影响后端 API、生成链路和资产清理链路）
 * P8-UX10：顶部运行状态一致性修复已完成（provider_status chip title 增加"最近一次 Provider 调用记录："来源前缀；成功的试听生成、长文本批量提交、剧本批量提交、批量任务完成（success/partial/failed）后主动刷新 runtime status；不新增健康探测，不影响生成链路和资产清理链路）
-* P8-ADMIN1：管理面板统计与调用日志口径校验已完成（loadLogs/loadErrors 跟随日期范围；getDateRange 结束日期改为次日 00:00 exclusive；前端 start>end 拦截并显示错误提示；list_call_logs limit/offset 添加 Query 校验（ge/le）；成功口径改为 status_code 200-399+无 error_type；错误口径改为 error_type 非空 OR status_code>=400 OR status_code=null；_error_count() 同步口径；get_daily_trend 所有指标均补零日期；trend chart Y 轴从 0 开始；最近调用/错误时间显示 YYYY-MM-DD HH:mm:ss UTC；状态列 badge 区分成功/4xx/5xx/null+无 error_type；追踪列 fallback 为 provider_trace_id/job_id；字符缺失加 title 说明；耗时 0ms 加 title 提示；tests/test_admin_api.py 新增 2 个测试共 467 passed）
+* P8-ADMIN1：管理面板统计与调用日志口径校验已完成（loadLogs/loadErrors 跟随日期范围；getDateRange 结束日期改为次日 00:00 exclusive；前端 start>end 拦截并显示错误提示；list_call_logs limit/offset 添加 Query 校验（ge/le）；成功口径改为 status_code 200-399+无 error_type；错误口径改为 error_type 非空 OR status_code>=400 OR status_code=null；_error_count() 同步口径；get_daily_trend 所有指标均补零日期；trend chart Y 轴从 0 开始；最近调用/错误时间显示 YYYY-MM-DD HH:mm:ss UTC；状态列 badge 区分成功/4xx/5xx/null+无 error_type；追踪列 fallback 为 provider_trace_id/job_id；字符缺失加 title 说明；耗时 0ms 加 title 提示；voice_jobs list limit/offset 添加 Query(ge=1,le=100)/(ge=0) 校验；voice_jobs response 返回实际 limit 而非原始值；tests/test_admin_api.py 新增 2 个测试，tests/test_voice_jobs_delete.py 新增 4 个测试，共 471 passed）
+* 已知限制：历史 Tab 基于 VoiceJob，不等价于完整作品历史；BatchJob 总任务不在普通历史中展示；后续建议 P9-HISTORY 统一实现"任务历史+批量任务+音频资产库"
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台

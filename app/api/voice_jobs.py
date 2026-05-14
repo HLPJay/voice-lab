@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -56,8 +56,8 @@ async def list_jobs(
     job_type: str | None = None,
     status: str | None = None,
     profile_id: str | None = None,
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
 ):
     jobs, total = voice_job_repo.list_jobs(
@@ -65,7 +65,7 @@ async def list_jobs(
         job_type=job_type,
         status=status,
         profile_id=profile_id,
-        limit=min(limit, 100),
+        limit=limit,
         offset=offset,
     )
     return {

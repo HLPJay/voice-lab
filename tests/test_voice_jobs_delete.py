@@ -105,3 +105,38 @@ def test_list_deleted_jobs_when_status_deleted(test_app, seed_mock_binding):
     assert resp.status_code == 200
     jobs = resp.json()["jobs"]
     assert any(job["job_id"] == job_id for job in jobs)
+
+
+def test_list_jobs_limit_zero_returns_422(test_app, seed_mock_binding):
+    """limit=0 returns 422."""
+    client = TestClient(test_app)
+    resp = client.get("/api/voice/jobs?limit=0")
+    assert resp.status_code == 422
+
+
+def test_list_jobs_limit_over_100_returns_422(test_app, seed_mock_binding):
+    """limit=101 returns 422."""
+    client = TestClient(test_app)
+    resp = client.get("/api/voice/jobs?limit=101")
+    assert resp.status_code == 422
+
+
+def test_list_jobs_offset_negative_returns_422(test_app, seed_mock_binding):
+    """offset=-1 returns 422."""
+    client = TestClient(test_app)
+    resp = client.get("/api/voice/jobs?offset=-1")
+    assert resp.status_code == 422
+
+
+def test_list_jobs_returns_correct_limit_in_response(test_app, seed_mock_binding):
+    """Response limit field matches the actual limit used."""
+    client = TestClient(test_app)
+    resp = client.get("/api/voice/jobs?limit=5")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["limit"] == 5
+    assert len(body["jobs"]) <= 5
+
+    resp2 = client.get("/api/voice/jobs?limit=50")
+    assert resp2.status_code == 200
+    assert resp2.json()["limit"] == 50
