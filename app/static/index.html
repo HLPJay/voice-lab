@@ -889,10 +889,10 @@
 
   <div class="tab-content" id="tab-history">
     <div class="card" style="margin-top:0" id="historyCard">
-      <div class="card-title" style="cursor:pointer" onclick="toggleHistory()" id="historyToggle">
-        历史记录 ▾
+      <div class="card-title" id="historyToggle">
+        历史记录
       </div>
-      <div id="historyArea" style="display:none">
+      <div id="historyArea">
         <div id="historyToolbar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;margin-bottom:8px">
           <input id="historySearch" type="text" placeholder="搜索历史文本 / provider / job_id" style="flex:1;min-width:160px;padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" oninput="handleHistorySearchInput()">
           <select id="historyStatusFilter" style="padding:4px 8px;font-size:0.82rem;border:1px solid #e2e8f0;border-radius:4px" onchange="handleHistoryStatusFilterChange()">
@@ -1287,6 +1287,13 @@
       }
       if (tab === 'script') {
         loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchScriptProfile')));
+      }
+      if (tab === 'history') {
+        const area = document.getElementById('historyArea');
+        if (area) area.style.display = 'block';
+        if (_historyJobs.length === 0) {
+          loadHistory(0);
+        }
       }
     });
   });
@@ -1781,7 +1788,7 @@ function handleStopAsyncPolling() {
     const toggle = document.getElementById('historyToggle');
     const isOpen = area.style.display !== 'none';
     area.style.display = isOpen ? 'none' : '';
-    toggle.textContent = isOpen ? '历史记录 ▾' : '历史记录 ▴';
+    toggle.textContent = isOpen ? '历史记录' : '历史记录';
     if (!isOpen && !_historyOffset) {
       loadHistory(0);
     }
@@ -2473,7 +2480,7 @@ function handleStopAsyncPolling() {
     if (assetId) {
       actionCell = `<span>${audioPlayerHtml(assetId)}</span><span style="margin-left:6px">${downloadBtnHtml(assetId)}</span>`;
     } else {
-      actionCell = `<span style="font-size:0.75rem;color:#a0aec0">无资产</span>`;
+      actionCell = `<button class="btn-sm" disabled title="当前历史记录未返回可播放音频资产">播放</button><button class="btn-sm" disabled title="当前历史记录未返回可下载音频资产">下载</button>`;
     }
 
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0f0f0;font-size:0.82rem;line-height:1.4">
@@ -2483,7 +2490,7 @@ function handleStopAsyncPolling() {
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4a5568">${textSnippet}</span>
       <span style="color:#718096;font-size:0.72rem;white-space:nowrap;font-family:monospace" title="${esc(rawJobId)}">${esc(jobIdShort)}</span>
       <span>${actionCell}</span>
-      <button onclick="copyJobId('${escJs(rawJobId)}', this)" style="padding:2px 8px;font-size:0.72rem;background:#edf2f7;border:1px solid #cbd5e0;border-radius:4px;cursor:pointer;white-space:nowrap">复制</button>
+      <button onclick="copyJobId('${escJs(rawJobId)}', this)" title="复制 job_id" style="padding:2px 8px;font-size:0.72rem;background:#edf2f7;border:1px solid #cbd5e0;border-radius:4px;cursor:pointer;white-space:nowrap">复制 ID</button>
       <button onclick="showHistoryDeleteUnsupported()" style="padding:2px 8px;font-size:0.72rem;background:#fff;border:1px solid #fed7d7;border-radius:4px;color:#c53030;cursor:not-allowed" disabled>删除</button>
     </div>`;
   }
