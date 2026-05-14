@@ -1631,7 +1631,7 @@
         loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
       }
       if (tab === 'script') {
-        loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchScriptProfile')));
+        loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
       }
       if (tab === 'history') {
         const area = document.getElementById('historyArea');
@@ -1703,6 +1703,7 @@
   }
 
   function populateProfileSelect(selectEl, selectedId = '') {
+    if (!selectEl) return;
     // Preserve existing user selection when repopulating
     const currentValue = selectEl.value;
     selectEl.innerHTML = '';

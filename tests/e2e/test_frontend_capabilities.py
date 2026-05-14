@@ -261,3 +261,25 @@ def test_admin_capabilities_failure_only_affects_matrix(page, e2e_base_url, cons
     assert page.locator("#startDate").count() == 1
     assert page.locator("#endDate").count() == 1
     assert page.locator("#statJobs").count() == 1
+
+
+# ── Test 8: Script tab opens without populateProfileSelect error ─────────────────
+
+def test_script_tab_opens_without_profile_select_error(page, e2e_base_url, console_errors):
+    """Clicking the Script tab does not throw 'Cannot read properties of null'."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)  # allow initial load to settle
+
+    # Click the Script tab
+    script_tab = page.locator('button.tab-btn[data-tab="script"]')
+    assert script_tab.count() == 1, "Script tab button not found"
+    script_tab.click()
+    page.wait_for_timeout(1500)  # allow async loadProfiles + populateProfileSelect to run
+
+    # Script tab content should be visible
+    tab_content = page.locator("#tab-script")
+    assert tab_content.count() == 1, "Script tab content not found"
+
+    # No critical JS errors should have occurred (console_errors fixture will fail on error)
+    # The test passes if we reach here without an uncaught exception
