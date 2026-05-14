@@ -191,7 +191,7 @@
 
   .history-row {
     display: grid;
-    grid-template-columns: 52px 78px 150px minmax(220px, 1fr) 130px 190px;
+    grid-template-columns: 52px 78px 150px minmax(220px, 1fr) 130px 210px;
     align-items: center;
     column-gap: 10px;
     padding: 9px 0;
@@ -2147,12 +2147,20 @@
       historyRow.parentNode.insertBefore(audioRow, historyRow.nextSibling);
     }
 
+    // Close previously active audio row if it's a different row
+    if (_activeHistoryAudioRow && _activeHistoryAudioRow !== audioRow && _activeHistoryAudioRow.classList.contains('visible')) {
+      _activeHistoryAudioRow.classList.remove('visible');
+      _activeHistoryAudioRow.innerHTML = '';
+    }
+
     if (audioRow.classList.contains('visible')) {
       audioRow.classList.remove('visible');
       audioRow.innerHTML = '';
+      _activeHistoryAudioRow = null;
     } else {
       audioRow.innerHTML = '<div style="padding:8px 0">' + audioPlayerHtml(assetId) + '</div>';
       audioRow.classList.add('visible');
+      _activeHistoryAudioRow = audioRow;
     }
   }
 
@@ -2178,6 +2186,7 @@
       // Success: remove the row from DOM
       const nextSibling = historyRow.nextElementSibling;
       if (nextSibling && nextSibling.classList.contains('history-audio-row')) {
+        if (_activeHistoryAudioRow === nextSibling) _activeHistoryAudioRow = null;
         nextSibling.remove();
       }
       historyRow.remove();
@@ -2498,6 +2507,7 @@ function handleStopAsyncPolling() {
   let _historyJobs = [];
   let _historySearch = '';
   let _historyStatusFilter = 'all';
+  let _activeHistoryAudioRow = null;  // tracks the currently open audio row
 
   function toggleHistory() {
     const area = document.getElementById('historyArea');
@@ -3209,7 +3219,7 @@ function handleStopAsyncPolling() {
       ? `<a class="btn-sm" href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank" title="下载音频">下载</a>`
       : `<button class="btn-sm" disabled title="该历史记录暂无可下载音频">下载</button>`;
     const copyBtn = `<button class="btn-sm" title="复制 job_id" data-action="copy-job-id" data-job-id="${esc(rawJobId)}">复制</button>`;
-    const deleteBtn = `<button class="btn-sm" data-action="delete-history" data-job-id="${esc(rawJobId)}" title="删除历史记录，不删除音频文件">删</button>`;
+    const deleteBtn = `<button class="btn-sm" data-action="delete-history" data-job-id="${esc(rawJobId)}" title="删除历史记录，不删除音频文件">删除</button>`;
 
     return `<div class="history-row" data-job-id="${esc(rawJobId)}">
       <span class="history-type">${esc(typeLabel)}</span>
