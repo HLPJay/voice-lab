@@ -262,6 +262,20 @@
     display: block;
   }
 
+  .history-audio-status {
+    margin: 6px 0 8px;
+    font-size: 0.78rem;
+    color: #718096;
+  }
+
+  .history-audio-status.error {
+    color: #c53030;
+  }
+
+  .history-audio-status.muted {
+    color: #a0aec0;
+  }
+
   @media (max-width: 760px) {
     :root {
       --page-padding-x: 14px;
@@ -2158,9 +2172,15 @@
       audioRow.innerHTML = '';
       _activeHistoryAudioRow = null;
     } else {
-      audioRow.innerHTML = '<div style="padding:8px 0">' + audioPlayerHtml(assetId) + '</div>';
+      audioRow.innerHTML = '<div style="padding:8px 0">' + historyAudioPlayerHtml(assetId) + '</div>';
       audioRow.classList.add('visible');
       _activeHistoryAudioRow = audioRow;
+      // Attach audio event listeners for loading / error feedback
+      const audioEl = audioRow.querySelector('audio');
+      const statusEl = audioRow.querySelector('.history-audio-status');
+      if (audioEl && statusEl) {
+        attachHistoryAudioEvents(audioEl, statusEl, assetId);
+      }
     }
   }
 
@@ -3108,6 +3128,31 @@ function handleStopAsyncPolling() {
     return `<audio class="audio-player" controls preload="none">
       <source src="/api/voice/assets/${assetId}/download" type="audio/mpeg">
       您的浏览器不支持音频播放</audio>`;
+  }
+
+  function historyAudioPlayerHtml(assetId) {
+    return `<div class="history-audio-status">音频加载中…</div>
+      <audio class="audio-player" controls preload="metadata" src="/api/voice/assets/${assetId}/download">
+      您的浏览器不支持音频播放</audio>`;
+  }
+
+  function attachHistoryAudioEvents(audioEl, statusEl, assetId) {
+    audioEl.addEventListener('loadedmetadata', () => {
+      statusEl.textContent = '音频已就绪';
+      statusEl.className = 'history-audio-status muted';
+    });
+    audioEl.addEventListener('canplay', () => {
+      statusEl.textContent = '';
+      statusEl.className = 'history-audio-status';
+    });
+    audioEl.addEventListener('error', () => {
+      statusEl.innerHTML = `音频加载失败，可尝试 <a href="/api/voice/assets/${encodeURIComponent(assetId)}/download" target="_blank">下载</a>`;
+      statusEl.className = 'history-audio-status error';
+    });
+    audioEl.addEventListener('emptied', () => {
+      // Audio source was reset (e.g., on pause+remove), clear status
+      statusEl.textContent = '';
+    });
   }
 
   function downloadBtnHtml(assetId) {
