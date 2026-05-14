@@ -1480,10 +1480,10 @@
     </div>
     <!-- Danger sub-tab content -->
     <div class="advanced-subtab-panel" id="subtab-danger">
-      <div class="card" style="background:#fff5f5;border:1px solid #feb2b2;margin-bottom:16px">
+      <div class="card" style="background:#fffaf0;border:1px solid #fbd38d;margin-bottom:16px">
         <div style="padding:12px 16px">
-          <div style="font-size:0.85rem;font-weight:600;color:#c53030;margin-bottom:4px">⚠ 删除音色</div>
-          <div style="font-size:0.78rem;color:#c53030">删除音色属于高风险操作。真实 provider 下可能会影响远端音色资产和本地绑定状态。请确认 voice_id、音色类型和 provider 后再操作。</div>
+          <div style="font-size:0.85rem;font-weight:600;color:#c05621;margin-bottom:4px">⚠ 删除音色</div>
+          <div style="font-size:0.78rem;color:#c05621">删除音色属于高风险操作。真实 provider 下可能会影响远端音色资产和本地绑定状态。请确认 voice_id、音色类型和 provider 后再操作。</div>
         </div>
       </div>
       <div class="card">
@@ -1535,19 +1535,31 @@
       const chipStatus = document.getElementById('chipProviderStatus');
 
       if (chipProvider) {
-        chipProvider.textContent = data.current.default_provider || '-';
+        // Follow current page selection, fall back to default
+        const defaultProvider = data.current.default_provider || '-';
+        const currentProvider = (typeof providerSelect !== 'undefined' && providerSelect.value)
+          ? providerSelect.value
+          : defaultProvider;
+        chipProvider.textContent = currentProvider;
+        chipProvider.title = currentProvider === defaultProvider
+          ? '当前 Provider：默认配置'
+          : '当前 Provider：页面选择';
         chipProvider.classList.remove('muted');
       }
       if (chipModel) {
-        chipModel.textContent = data.current.default_model || '-';
+        const defaultModel = data.current.default_model || '-';
+        chipModel.textContent = defaultModel;
+        chipModel.title = '当前模型：默认配置（' + defaultModel + '）';
         chipModel.classList.remove('muted');
       }
       if (chipToday) {
         chipToday.textContent = '今日 ' + (data.today.usage_characters || 0) + ' 字';
+        chipToday.title = '本地估算用量，不代表官方剩余额度';
         chipToday.classList.remove('muted');
       }
       if (chipMonth) {
         chipMonth.textContent = '本月 ' + (data.month.usage_characters || 0) + ' 字';
+        chipMonth.title = '本地估算用量，不代表官方剩余额度';
         chipMonth.classList.remove('muted');
       }
       if (chipStatus) {
@@ -1561,13 +1573,23 @@
           const parts = [ps.label || '', ps.detail || '', ps.action_hint || ''].filter(Boolean);
           if (parts.length) chipStatus.title = parts.join('。');
           chipStatus.style.cursor = 'pointer';
-          chipStatus.onclick = () => { location.href = '/static/admin.html'; };
+          chipStatus.onclick = () => {
+            const provider = (typeof providerSelect !== 'undefined' && providerSelect.value) ? providerSelect.value : '';
+            const params = new URLSearchParams({ focus: 'call-logs' });
+            if (provider) params.set('provider', provider);
+            location.href = '/static/admin.html?' + params.toString();
+          };
         } else if (ps.state === 'warning') {
           chipStatus.classList.add('warning', 'clickable');
           const parts = [ps.label || '', ps.detail || '', ps.action_hint || ''].filter(Boolean);
           if (parts.length) chipStatus.title = parts.join('。');
           chipStatus.style.cursor = 'pointer';
-          chipStatus.onclick = () => { location.href = '/static/admin.html'; };
+          chipStatus.onclick = () => {
+            const provider = (typeof providerSelect !== 'undefined' && providerSelect.value) ? providerSelect.value : '';
+            const params = new URLSearchParams({ focus: 'call-logs' });
+            if (provider) params.set('provider', provider);
+            location.href = '/static/admin.html?' + params.toString();
+          };
         } else if (ps.state === 'available') {
           chipStatus.classList.add('available');
           if (ps.detail) chipStatus.title = ps.detail;
@@ -1585,7 +1607,14 @@
       const chipStatus = document.getElementById('chipProviderStatus');
       if (chipToday) chipToday.textContent = '用量统计不可用';
       if (chipMonth) chipMonth.textContent = '';
-      if (chipStatus) chipStatus.textContent = '';
+      if (chipStatus) {
+        chipStatus.textContent = '点击重试';
+        chipStatus.classList.remove('muted', 'available', 'warning', 'error', 'clickable');
+        chipStatus.classList.add('error', 'clickable');
+        chipStatus.title = '加载失败，点击重试';
+        chipStatus.style.cursor = 'pointer';
+        chipStatus.onclick = () => { loadRuntimeStatus(); };
+      }
     }
   }
 
@@ -1826,14 +1855,25 @@
   }));
 
   // Load profiles into cache and populate all profile selects
-  loadProfiles().then(profiles => {
+  function populateAllProfiles() {
     populateProfileSelect(profileSelect);
     populateProfileSelect(document.getElementById('bindingProfileSelect'));
     populateProfileSelect(document.getElementById('newBindingProfile'));
     populateProfileSelect(document.getElementById('batchProfile'));
-  }).catch(() => {
+  }
+  function showProfileRetry() {
     profileSelect.innerHTML = '<option value="">加载失败</option>';
-  });
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '重试';
+    btn.style.cssText = 'margin-left:8px;font-size:0.75rem;padding:2px 8px;cursor:pointer;';
+    btn.onclick = () => {
+      profileSelect.innerHTML = '<option value="">加载中…</option>';
+      loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
+    };
+    profileSelect.parentNode.appendChild(btn);
+  }
+  loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
 
   // T2A Tab: also load binding status when provider changes
   providerSelect.addEventListener('change', () => { checkBindingStatus(); updateCostHint(); });
