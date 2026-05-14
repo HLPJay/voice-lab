@@ -1,12 +1,24 @@
-# Voice Lab 声音中台
+# Voice Lab 本地 AI 音频创作工作台
 
-Voice Lab 是一个可扩展的声音生成中台，支持 MiniMax T2A（Text-to-Audio）全系列接口，同时通过 Provider Adapter 模式保持上层业务与具体厂商解耦。
+Voice Lab 是一个基于 MiniMax 音频能力构建的本地 AI 音频创作工作台，当前面向单用户、本地 Web App、个人创作者音频生产场景。
+
+**当前不是**：多人 SaaS / 高并发多人使用 / 开放 API 平台 / 含登录系统的产品
+**当前是**：本地 Web App / 单用户 / 个人创作者音频工作台
 
 ```
-文案 → VoiceProfile → RenderPlan → Provider Adapter → MiniMax / Mock / 未来厂商
-                                                          ↓
-                                              音频资产 + 字幕时间轴 + 生成记录
+文案 → VoiceProfile → RenderPlan → Provider Adapter → MiniMax / Mock
+                                                    ↓
+                                    音频资产 + 字幕时间轴 + 生成记录
 ```
+
+## 当前主导航
+
+- 创作工作台
+- 长文本
+- 剧本
+- 音色
+- 历史
+- 高级
 
 ## 已支持的 MiniMax 接口
 
@@ -15,12 +27,68 @@ Voice Lab 是一个可扩展的声音生成中台，支持 MiniMax T2A（Text-to
 | 同步 T2A | `POST /v1/t2a_v2` | `POST /api/voice/render` |
 | 异步 T2A | `POST /v1/t2a_async_v2` | `POST /api/voice/render/async` |
 | 异步状态查询 | `GET /v1/query/t2a_async_query_v2` | `GET /api/voice/render/async/{job_id}/status` |
+| **WebSocket 流式 T2A** | `WebSocket /v1/t2a_v2` | `WebSocket /api/voice/render/stream` |
 | 文件上传 | `POST /v1/files/upload` | `POST /api/voice/clone/upload` |
 | 声音克隆 | `POST /v1/voice_clone` | `POST /api/voice/clone/create` |
 | 声音设计 | `POST /v1/voice_design` | `POST /api/voice/design/create` |
 | 声音删除 | `POST /v1/delete_voice` | `POST /api/voice/voices/delete` |
 | 音色列表 | `POST /v1/get_voice` | `GET /api/voice/provider-voices` |
-| 文件下载 | `GET /v1/files/retrieve` | 内部调用（异步T2A完成时自动下载） |
+| 文件下载 | `GET /v1/files/retrieve` | 内部调用（异步 T2A 完成时自动下载） |
+
+## 当前已支持能力
+
+### 语音生成
+
+- 同步 T2A（短文本即时返回）
+- 异步 T2A（长文本，返回 job_id）
+- WebSocket 流式 T2A（实时流式返回）
+- 多版本试音（多组参数批量生成）
+- 字幕生成（json + srt 成对输出）
+- 音频本地保存
+- 音频下载
+
+### 长文本与剧本
+
+- 长文本分段生成（自动分句）
+- 批量任务（多段并行提交）
+- 多角色剧本生成
+- 失败段重试
+- 成功段复用（避免重复生成）
+- 音频合并
+- 字幕合并
+- partial / failed / completed 状态追踪
+
+### 音色与声音资产
+
+- VoiceProfile（声音人设）
+- ProviderVoice（provider 层音色）
+- VoiceBinding（人设与音色绑定）
+- 音色试听（WebSocket 流式）
+- 音色绑定与解绑
+- 绑定状态展示
+- provider voice 缓存（避免重复请求）
+- 删除音色后本地 provider_voice / binding 软失效
+
+### 历史与资产
+
+- 历史任务查询
+- 历史播放
+- 历史下载
+- 任务详情
+- 音频资产查询（AudioAsset）
+- 字幕资产查询（SubtitleAsset）
+- 历史任务软删除
+- localStorage 最近任务恢复
+
+### 成本与安全保护
+
+- Cost Guard（成本追踪）
+- 高消费动作二次确认
+- Resource Guard 友好提示
+- Provider 调用日志
+- Admin 统计面板
+- ProviderVoice 状态校验
+- Mock Provider 完整闭环测试
 
 ## 快速开始
 
@@ -50,23 +118,24 @@ MINIMAX_API_KEY=your_real_api_key_here
 uvicorn app.main:app --reload
 ```
 
-访问 http://127.0.0.1:8000/static/index.html 打开测试面板（4个Tab：T2A生成 / 音色管理 / 声音克隆 / 声音设计）。
+访问 http://127.0.0.1:8000/static/index.html 打开 Voice Lab。
 
 ## API 一览
 
 ### 语音生成
 
 ```
-POST /api/voice/render              # 同步T2A（短文本，即时返回音频）
-POST /api/voice/render/async        # 异步T2A（长文本，返回job_id）
+POST /api/voice/render              # 同步 T2A（短文本，即时返回音频）
+POST /api/voice/render/async        # 异步 T2A（长文本，返回 job_id）
 GET  /api/voice/render/async/{id}/status  # 轮询异步任务状态
+WS   /api/voice/render/stream       # WebSocket 流式 T2A
 POST /api/voice/variants/render     # 多版本试音（多组参数批量生成）
 ```
 
 ### 声音管理
 
 ```
-POST /api/voice/clone/upload        # 上传克隆/Prompt音频文件
+POST /api/voice/clone/upload        # 上传克隆/Prompt 音频文件
 POST /api/voice/clone/create        # 执行声音克隆
 POST /api/voice/design/create       # 文字描述生成声音
 POST /api/voice/voices/delete       # 删除克隆/设计声音
@@ -135,13 +204,20 @@ curl -X POST http://127.0.0.1:8000/api/voice/clone/create?provider=minimax \
 
 ## 测试
 
-### Mock 测试（无需 API Key）
+### 全量测试
 
 ```bash
 python -m pytest tests/ -x -q
 ```
 
-当前：245 passed, 6 skipped
+当前：439 passed, 6 skipped, 0 failed
+
+### 资产清理专项测试
+
+```bash
+python -m pytest tests/test_cleanup_assets_dry_run.py -q        # 31 passed
+python -m pytest tests/test_cleanup_assets_quarantine.py -q     # 24 passed
+```
 
 ### E2E 真实 API 测试
 
@@ -151,7 +227,59 @@ python -m pytest tests/ -x -q
 python -m pytest tests/ -m e2e -x -v
 ```
 
-覆盖 6 个端到端场景：同步T2A、异步T2A轮询、音色列表、声音设计、克隆上传、声音删除。
+## 资产清理运维工具
+
+**当前不是自动任务。** 项目启动后不会自动 dry-run、不会自动 quarantine、不会自动 purge、不会自动删除任何文件、不会自动修改数据库。
+
+### 当前支持的手动命令
+
+**dry-run（只生成计划，不移动/删除文件）：**
+
+```bash
+python scripts/cleanup_assets.py \
+  --dry-run \
+  --kind orphan \
+  --min-age-days 7 \
+  --max-files 1000
+```
+
+**quarantine（将候选文件隔离到 quarantine/，生成 manifest.json）：**
+
+```bash
+python scripts/cleanup_assets.py \
+  --quarantine \
+  --plan docs/generated/asset_cleanup_dry_run.json \
+  --confirm QUARANTINE
+```
+
+**restore（从 manifest.json 恢复 quarantine 文件）：**
+
+```bash
+python scripts/cleanup_assets.py \
+  --restore \
+  --manifest storage/quarantine/<timestamp>/manifest.json \
+  --confirm RESTORE
+```
+
+### 资产清理原则
+
+- **DB 引用资产** = 用户资产，默认永久保留，清理工具禁止处理
+- **orphan 文件** = 系统残留候选，只能先 dry-run，不直接删除
+- **subtitle 必须 json + srt 成对处理**，不能只删其中一个
+- **quarantine 使用 move 语义**，不是 copy（源文件被移走）
+- **restore 可恢复** quarantine 文件（move 回原始位置）
+- **purge 当前未实现**，作为后续 P8-BE3E 或更后阶段
+- **purge 需要 30 天隔离观察期** 后再考虑
+
+### 后续可接入方向
+
+以下为后续方向，**不是当前已实现**：
+
+- Admin 页面展示 dry-run 报告
+- 每周定时自动 dry-run，只读生成报告
+- Admin 手动确认后执行 quarantine
+- quarantine 满 30 天后考虑 purge
+- purge 必须单独阶段实现，不能混入其他阶段
 
 ## 架构设计
 
@@ -174,6 +302,7 @@ python -m pytest tests/ -m e2e -x -v
 3. **所有生成结果保存为本地资产**，不依赖 MiniMax 24小时临时 URL
 4. **Provider 通过 Registry 注册和验证**，上层无 Provider 特定逻辑
 5. **Mock Provider 完整闭环**，开发和测试不依赖真实 API
+6. **文件清理必须先 dry-run、再 quarantine、再考虑 purge**，不能跳过阶段
 
 ### 技术栈
 
@@ -192,13 +321,15 @@ python -m pytest tests/ -m e2e -x -v
 
 ```
 storage/
-  audio/YYYY-MM-DD/       # 音频文件
-  subtitles/YYYY-MM-DD/   # 字幕文件（JSON + SRT）
-  metadata/YYYY-MM-DD/    # 元数据
-  temp/                   # 临时文件
+  audio/YYYY-MM-DD/              # 音频文件
+  subtitles/YYYY-MM-DD/           # 字幕文件（JSON + SRT 成对）
+  metadata/YYYY-MM-DD/            # 元数据
+  temp/                          # 临时文件（清理时优先）
+  quarantine/<timestamp>/         # 隔离文件 + manifest.json
 ```
 
-数据库只保存路径、参数、任务记录和元数据，不保存音频二进制。
+- 数据库只保存路径、参数、任务记录和元数据，不保存音频二进制
+- quarantine 下保存被隔离文件和 manifest.json，支持 restore
 
 ## 配置说明
 
@@ -206,7 +337,7 @@ storage/
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `MINIMAX_API_KEY` | — | MiniMax API密钥，缺失时仅 mock 可用 |
+| `MINIMAX_API_KEY` | — | MiniMax API 密钥，缺失时仅 mock 可用 |
 | `MINIMAX_BASE_URL` | `https://api.minimaxi.com` | MiniMax API 基地址 |
 | `MINIMAX_DEFAULT_MODEL` | `speech-2.8-hd` | 默认语音模型 |
 | `MINIMAX_TIMEOUT_SECONDS` | `120` | API 请求超时 |
@@ -215,11 +346,39 @@ storage/
 | `CLONE_AUDIO_MIN_DURATION_SEC` | `10` | 克隆音频最短时长 |
 | `CLONE_AUDIO_MAX_DURATION_SEC` | `300` | 克隆音频最长时长 |
 
+## 当前边界
+
+**当前不支持：**
+
+- 多人 SaaS / 高并发多人使用
+- 登录系统 / 用户体系
+- BYOK（Bring Your Own Key）
+- 开放 API 平台
+- Redis / PostgreSQL / worker 队列
+- 自动资产清理（当前为手动运维工具）
+- 自动 purge
+- 多设备同步
+
+## 后续路线
+
+1. **Project / 作品概念**：将每次创作归档为独立 Project
+2. **创作模板入口**：情绪独白、长文本朗读、多角色剧本
+3. **历史记录升级为资产库**：重命名、收藏、标签、搜索
+4. **手机端 H5 快速创作**：轻量入口
+5. **Audio Capability Gateway 抽象**：统一音频能力接口，支持更多 Provider
+6. **资产清理后续接入**：Admin dry-run 报告 → 人工确认 quarantine → 30 天后 purge
+7. **更多 Provider**：OpenAI TTS、Azure Speech、ElevenLabs、本地 CosyVoice / GPT-SoVITS
+
 ## 文档索引
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — 架构标准与核心对象
-- [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) — 项目目录结构与层边界
-- [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) — 分阶段实现计划（P0-P2）
-- [MINIMAX_OFFICIAL_REFERENCES.md](docs/MINIMAX_OFFICIAL_REFERENCES.md) — MiniMax 官方 API 参考
-- [HANDOFF.md](docs/HANDOFF.md) — 当前状态与接手说明
+- [PROJECT_HEALTH_CHECK.md](docs/PROJECT_HEALTH_CHECK.md) — 项目健康检查与当前状态
+- [P8_BE3D_ASSET_QUARANTINE.md](docs/P8_BE3D_ASSET_QUARANTINE.md) — 资产 quarantine/restore 工具说明
 - [CONTROL_AND_SAFETY.md](docs/CONTROL_AND_SAFETY.md) — 测试策略与安全控制
+- [MINIMAX_OFFICIAL_REFERENCES.md](docs/MINIMAX_OFFICIAL_REFERENCES.md) — MiniMax 官方 API 参考
+- [HANDOFF.md](docs/HANDOFF.md) — 接手说明与当前状态
+
+以下为历史文档（已部分过时，仅作参考）：
+
+- ARCHITECTURE.md — 早期架构说明
+- PROJECT_STRUCTURE.md — 早期目录结构
+- IMPLEMENTATION_PLAN.md — 早期实现计划（P0-P2）
