@@ -144,14 +144,14 @@
   }
 
   .history-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 52px 78px 150px minmax(120px, 1fr) 150px 260px;
     align-items: center;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0;
+    column-gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid #edf2f7;
     font-size: 0.82rem;
     line-height: 1.4;
-    flex-wrap: wrap;
   }
 
   .history-row:last-child {
@@ -172,12 +172,11 @@
   }
 
   .history-text {
-    flex: 1;
-    min-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: #4a5568;
+    min-width: 0;
   }
 
   .history-job-id {
@@ -187,14 +186,24 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 120px;
+    min-width: 0;
   }
 
   .history-actions {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 6px;
-    flex-shrink: 0;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .history-actions .btn-sm {
+    padding: 4px 8px;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    border-radius: 6px;
+    white-space: nowrap;
   }
 
   .history-audio-row {
@@ -205,6 +214,19 @@
 
   .history-audio-row.visible {
     display: block;
+  }
+
+  @media (max-width: 760px) {
+    .history-row {
+      grid-template-columns: 1fr;
+      row-gap: 6px;
+      align-items: start;
+    }
+
+    .history-actions {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
   }
 
   .tab-content { display: none; }

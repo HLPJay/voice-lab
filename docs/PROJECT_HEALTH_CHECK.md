@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P8-FIX5：
+截至 P8-FIX5B：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -34,6 +34,7 @@
 * P8-BE1：历史任务返回音频资产字段已完成（/api/voice/jobs 返回 audio_asset、voice_asset_repo 新增按 job_id 查询方法、前端历史播放/下载按钮可自动启用）
 * P8-BE2：历史任务删除接口已完成（DELETE /api/voice/jobs/{job_id} 采用 status="deleted" 软删除、list_jobs 默认排除 deleted、重复删除幂等、前端删除按钮留给 P8-FE5）
 * P8-FIX5：前端交互与信息密度全局自检修复已完成（高级子 tab 事件与主 tab 隔离、switchAdvancedSubtab 实现、声音设计/绑定管理/危险操作可点击、历史任务紧凑单行布局、播放器懒展开、播放/下载/复制 ID/删除操作位集中展示）
+* P8-FIX5B：历史记录严格单行表格化修复已完成（.history-row 从 flex-wrap 改为 grid 单行布局、操作按钮固定在最后一列、文本和 job_id 使用省略号、窄屏降级为单列布局、播放器仍然懒展开）
 * 当前前端已从测试面板重组为任务维度工作台
 * 当前主导航为：
   * 创作工作台
