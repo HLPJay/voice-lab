@@ -3865,3 +3865,40 @@ git diff --check  # 无错误
 **测试结果：** 12 passed in 36s。full tests 未运行，原因：仅补前端 E2E，未改业务逻辑、后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
 
 **未改 app/static/index.html、app/static/js/audition_records.js、app/api、app/services、app/providers、app/domain、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。
+
+### P9-FE1-E0：长文本批量模块抽离前边界审查
+
+**本次只做审查和小清理，未做功能迁移。**
+
+**清理：** 移除 `tests/e2e/test_frontend_capabilities.py` 中未使用的 `import json`。
+
+**审查结论：**
+
+长文本批量相关函数按共享程度分为三类：
+
+| 函数 | 类型 | 能否迁移 |
+|---|---|---|
+| `handleBatchLongtextSubmit()` | 长文本独有 | ✅ 可迁移 |
+| `showBatchLongtextResult(html)` | 长文本内部嵌套 helper | ⚠️ 需先提取为 `window.*` |
+| `clearBatchLongtextResult()` | 长文本内部嵌套 helper | ⚠️ 需先提取为 `window.*` |
+| `showBatchProgress()` / `startBatchPoll()` / `stopBatchPoll()` / `pollBatchStatus()` | 共享，两批量共用 | ❌ 暂不迁移 |
+| `renderBatchStatus()` / `renderBatchResultPlayer()` | 共享，两批量共用 | ❌ 暂不迁移 |
+| `renderBatchSubtitleList()` / `updateBatchSubtitleHighlight()` | 共享，两批量共用 | ❌ 暂不迁移 |
+| `handleBatchPlay()` / `handleBatchRetry()` / `getBatchPanelDom()` | 共享，两批量共用 | ❌ 暂不迁移 |
+
+**状态变量共享风险：** `_batchPollTimer`、`_currentBatchId`、`_currentBatchPanelId`、`_batchTimeline` 为两批量共用。交替提交时轮询 timer 会指向最后一次启动的 batch，先前批次可能丢失进度更新。
+
+**P9-FE1-E 前提条件：** 需先将 `showBatchLongtextResult` / `clearBatchLongtextResult` 从 `handleBatchLongtextSubmit` 内部提取为 `window.*` 函数，否则模块无法调用。
+
+**文档更新：** `docs/P9_FRONTEND_MODULARIZATION.md` 新增 5.0 节（P9-FE1-E0 边界审查），更新 5.1 节迁移前提，更新测试覆盖表和已知风险。
+
+**验收检查：**
+
+```bash
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "audition"  # 2 passed
+git diff --check  # 无错误
+```
+
+**测试结果：** 2 passed。full tests 未运行，原因：本次仅清理未使用 import 并更新文档，未改业务逻辑、前端运行代码、后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
+
+**未改 app/static/index.html、app/static/js/*、app/api、app/services、app/providers、app/domain、admin.html、Provider Adapter、生成链路、数据库、资产清理链路。

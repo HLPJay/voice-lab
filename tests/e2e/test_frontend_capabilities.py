@@ -11,8 +11,6 @@ Tests cover:
 7. Admin capabilities failure does not crash other regions.
 """
 
-import json
-
 import pytest
 
 
