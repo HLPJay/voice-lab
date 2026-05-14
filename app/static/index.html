@@ -824,6 +824,25 @@
     background: #f7fafc;
     border-radius: 6px;
   }
+
+  /* Provider Capability dynamic hints */
+  .capability-hint {
+    margin-top: 4px;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: #718096;
+  }
+  .capability-hint.warning {
+    color: #c05621;
+  }
+  .capability-hint.error {
+    color: #c53030;
+  }
+  .capability-disabled-note {
+    margin-top: 6px;
+    font-size: 0.76rem;
+    color: #c05621;
+  }
 </style>
 </head>
 <body>
@@ -1253,6 +1272,7 @@
           <div class="form-group full-width">
             <label for="cloneFile">选择音频文件（.mp3/.m4a/.wav）</label>
             <input type="file" id="cloneFile" accept=".mp3,.m4a,.wav,audio/*">
+            <div id="cloneFileHint" class="capability-hint" style="margin-top:4px"></div>
           </div>
         </div>
         <button class="btn-primary" id="uploadBtn" onclick="handleUploadAudio()">上传</button>
@@ -1307,6 +1327,7 @@
         </div>
         <button class="btn-primary" id="cloneBtn" onclick="handleCloneVoice()">克隆</button>
         <div id="cloneBtnHint" style="font-size:0.72rem;color:#a0aec0;margin-top:4px">file_id 和 voice_id 填写完整后才能执行克隆。</div>
+        <div id="cloneCapabilityHint" class="capability-hint" style="margin-top:4px"></div>
         <div class="high-cost-inline-hint">高消费动作：声音克隆可能产生约 10 元级别费用，实际以 MiniMax 官网价格为准。</div>
         <div id="cloneResult"></div>
       </div>
@@ -1380,6 +1401,7 @@
           </div>
         </div>
         <button class="btn-primary" id="designBtn" onclick="handleDesignVoice()">生成设计</button>
+        <div id="designCapabilityHint" class="capability-hint" style="margin-top:4px"></div>
         <div class="high-cost-inline-hint">高消费动作：声音设计 / 创建音色可能产生约 10 元级别费用，实际以 MiniMax 官网价格为准。</div>
         <div id="designResult"></div>
       </div>
@@ -1564,6 +1586,444 @@
 
 <script>
   // ============================================================
+  // Provider Capability Registry (P9-CAPABILITY3)
+  // ============================================================
+  let _providerCapabilities = null;
+  let _providerCapabilitiesByName = {};
+  let _capabilitiesLoaded = false;
+  let _capabilitiesLoadFailed = false;
+  let _capabilitiesLoadAttempted = false;
+
+  async function loadProviderCapabilities() {
+    if (_capabilitiesLoadAttempted) return;
+    _capabilitiesLoadAttempted = true;
+    try {
+      const resp = await fetch('/api/voice/capabilities');
+      if (!resp.ok) throw new Error('capabilities load failed');
+      const data = await resp.json();
+
+      const providers = Array.isArray(data.providers) ? data.providers : [];
+      _providerCapabilities = providers;
+      _providerCapabilitiesByName = {};
+      providers.forEach(cap => {
+        if (cap && cap.provider) {
+          _providerCapabilitiesByName[cap.provider] = cap;
+        }
+      });
+
+      _capabilitiesLoaded = true;
+      _capabilitiesLoadFailed = false;
+      applyAllProviderCapabilities();
+    } catch (err) {
+      console.warn('loadProviderCapabilities failed', err);
+      _capabilitiesLoaded = false;
+      _capabilitiesLoadFailed = true;
+      if (typeof showToast === 'function') {
+        showToast('Provider 能力加载失败，已使用默认前端配置。', 'warning');
+      }
+    }
+  }
+
+  function getProviderCapability(provider) {
+    if (!provider) return null;
+    return _providerCapabilitiesByName[provider] || null;
+  }
+
+  function getSelectValue(id, fallback) {
+    if (fallback === undefined) fallback = null;
+    const el = document.getElementById(id);
+    return el ? el.value : fallback;
+  }
+
+  function setHintText(id, text, type) {
+    if (type === undefined) type = 'muted';
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'capability-hint ' + type;
+  }
+
+  function setTextMaxLength(textareaId, maxLength, countId) {
+    const el = document.getElementById(textareaId);
+    if (!el || !maxLength) return;
+    el.maxLength = maxLength;
+
+    if (el.value.length > maxLength) {
+      el.value = el.value.slice(0, maxLength);
+    }
+
+    if (countId) {
+      const countEl = document.getElementById(countId);
+      if (countEl) {
+        countEl.textContent = el.value.length + ' / ' + maxLength;
+      }
+    }
+  }
+
+  function updateSelectOptions(selectId, allowedValues, labelMap) {
+    const el = document.getElementById(selectId);
+    if (!el || !Array.isArray(allowedValues) || allowedValues.length === 0) return;
+
+    const current = el.value;
+    el.innerHTML = allowedValues.map(function(v) {
+      const label = (labelMap && labelMap[v]) ? labelMap[v] : v.toUpperCase();
+      return '<option value="' + esc(v) + '">' + esc(label) + '</option>';
+    }).join('');
+
+    if (allowedValues.indexOf(current) !== -1) {
+      el.value = current;
+    } else {
+      el.value = allowedValues[0];
+    }
+  }
+
+  function setNumberRange(inputId, range, label) {
+    const el = document.getElementById(inputId);
+    if (!el || !range) return;
+    el.min = range.min;
+    el.max = range.max;
+    el.placeholder = range.min + '-' + range.max;
+    el.title = (label || '') + '范围：' + range.min + '-' + range.max;
+
+    if (el.value !== '') {
+      const num = Number(el.value);
+      if (Number.isFinite(num)) {
+        if (num < Number(range.min)) el.value = range.min;
+        if (num > Number(range.max)) el.value = range.max;
+      }
+    }
+  }
+
+  function setControlDisabled(id, disabled, title) {
+    if (title === undefined) title = '';
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !!disabled;
+    if (title) el.title = title;
+  }
+
+  function updateProviderSelectOptions(selectId) {
+    const el = document.getElementById(selectId);
+    if (!el || !_providerCapabilities) return;
+    const current = el.value;
+
+    el.innerHTML = _providerCapabilities
+      .filter(function(cap) { return cap.enabled; })
+      .map(function(cap) {
+        return '<option value="' + esc(cap.provider) + '">' + esc(cap.display_name || cap.provider) + '</option>';
+      }).join('');
+
+    if (_providerCapabilitiesByName[current]) {
+      el.value = current;
+    }
+  }
+
+  function applyWorkspaceCapability() {
+    const provider = getSelectValue('providerSelect', 'mock');
+    const cap = getProviderCapability(provider);
+    if (!cap || !cap.tts) return;
+
+    const tts = cap.tts;
+
+    setTextMaxLength('textInput', tts.max_text_chars || 10000, 'charCount');
+
+    updateSelectOptions('audioFormat', tts.audio_formats || ['mp3'], {
+      mp3: 'MP3',
+      wav: 'WAV',
+      flac: 'FLAC'
+    });
+
+    setNumberRange('paramSpeed', tts.speed, '语速');
+    setNumberRange('paramVol', tts.vol, '音量');
+    setNumberRange('paramPitch', tts.pitch, '音调');
+
+    setControlDisabled(
+      'needSubtitle',
+      !tts.supports_subtitle,
+      tts.supports_subtitle ? '' : '当前 Provider 不支持字幕生成'
+    );
+    if (!tts.supports_subtitle) {
+      const sub = document.getElementById('needSubtitle');
+      if (sub) sub.checked = false;
+    }
+
+    setControlDisabled(
+      'paramEmotion',
+      !tts.supports_emotion,
+      tts.supports_emotion ? '' : '当前 Provider 不支持情绪参数'
+    );
+    if (!tts.supports_emotion) {
+      const emo = document.getElementById('paramEmotion');
+      if (emo) emo.value = '';
+    }
+
+    document.querySelectorAll('input[name="genMode"]').forEach(function(radio) {
+      if (radio.value === 'stream') {
+        radio.disabled = !tts.supports_streaming;
+        radio.title = tts.supports_streaming ? '' : '当前 Provider 不支持流式生成';
+        if (!tts.supports_streaming && radio.checked) {
+          const single = document.querySelector('input[name="genMode"][value="single"]');
+          if (single) single.checked = true;
+        }
+      }
+    });
+  }
+
+  function applyLongtextCapability() {
+    const provider = getSelectValue('batchProvider', getSelectValue('providerSelect', 'mock'));
+    const cap = getProviderCapability(provider);
+    if (!cap || !cap.batch) return;
+
+    const batch = cap.batch;
+    const tts = cap.tts || {};
+
+    setTextMaxLength('batchText', batch.max_text_chars || 50000);
+
+    updateSelectOptions('batchStrategy', batch.segment_strategies || ['auto', 'paragraph', 'sentence', 'line'], {
+      auto: '自动（按段落合并，推荐长文）',
+      paragraph: '按空行分段',
+      sentence: '按句子分段',
+      line: '每行一段'
+    });
+
+    if (batch.max_segment_chars) setNumberRange('batchMaxChars', batch.max_segment_chars, '每段最大字数');
+    if (batch.silence_between_ms) setNumberRange('batchSilence', batch.silence_between_ms, '段间静音');
+
+    updateSelectOptions('batchOutputFormat', tts.audio_formats || ['mp3'], {
+      mp3: 'MP3',
+      wav: 'WAV',
+      flac: 'FLAC'
+    });
+
+    const supportsSubtitle = !!(batch.supports_merge_subtitle && tts.supports_subtitle);
+    setControlDisabled(
+      'batchNeedSubtitle',
+      !supportsSubtitle,
+      supportsSubtitle ? '' : '当前 Provider 不支持批量字幕'
+    );
+    const sub = document.getElementById('batchNeedSubtitle');
+    if (sub && !supportsSubtitle) sub.checked = false;
+  }
+
+  function applyScriptCapability() {
+    const provider = getSelectValue('batchScriptProvider', getSelectValue('providerSelect', 'mock'));
+    const cap = getProviderCapability(provider);
+    if (!cap || !cap.script) return;
+
+    const script = cap.script;
+    const tts = cap.tts || {};
+
+    if (typeof MAX_SCRIPT_LINES !== 'undefined') {
+      MAX_SCRIPT_LINES = script.max_segments || 200;
+    }
+
+    if (typeof updateScriptLineLimitState === 'function') {
+      updateScriptLineLimitState();
+    }
+
+    if (script.silence_between_ms) setNumberRange('batchScriptSilence', script.silence_between_ms, '段间静音');
+
+    updateSelectOptions('batchScriptOutputFormat', tts.audio_formats || ['mp3'], {
+      mp3: 'MP3',
+      wav: 'WAV',
+      flac: 'FLAC'
+    });
+
+    const supportsSubtitle = !!(script.supports_merge_subtitle && tts.supports_subtitle);
+    setControlDisabled(
+      'batchScriptNeedSubtitle',
+      !supportsSubtitle,
+      supportsSubtitle ? '' : '当前 Provider 不支持剧本字幕'
+    );
+    const sub = document.getElementById('batchScriptNeedSubtitle');
+    if (sub && !supportsSubtitle) sub.checked = false;
+  }
+
+  function applyProviderVoiceCapability() {
+    const provider = getSelectValue('voiceProvider', getSelectValue('providerSelect', 'mock'));
+    const cap = getProviderCapability(provider);
+    if (!cap) return;
+
+    const pv = cap.provider_voices || {};
+    const tts = cap.tts || {};
+
+    if (pv.preview_text_max) {
+      setTextMaxLength('auditionText', pv.preview_text_max);
+    }
+
+    updateSelectOptions('auditionModel', tts.models || ['speech-2.8-hd']);
+
+    setNumberRange('auditionSpeed', tts.speed, '语速');
+    setNumberRange('auditionVol', tts.vol, '音量');
+    setNumberRange('auditionPitch', tts.pitch, '音调');
+
+    if (tts.supports_subtitle === false) {
+      const subEl = document.getElementById('auditionNeedSubtitle');
+      if (subEl) {
+        subEl.checked = false;
+        subEl.disabled = true;
+        subEl.title = '当前 Provider 不支持字幕生成';
+      }
+    }
+  }
+
+  function applyVoiceCloneCapability() {
+    const provider = getSelectValue('cloneProvider', getSelectValue('providerSelect', 'mock'));
+    const cap = getProviderCapability(provider);
+    if (!cap || !cap.voice_clone) return;
+
+    const clone = cap.voice_clone;
+
+    if (!clone.supported) {
+      setHintText('cloneCapabilityHint', '当前 Provider 不支持声音克隆。', 'error');
+      const btn = document.getElementById('cloneBtn');
+      if (btn) btn.disabled = true;
+      return;
+    }
+
+    const hintEl = document.getElementById('cloneCapabilityHint');
+    if (hintEl) {
+      hintEl.textContent = '';
+      hintEl.className = 'capability-hint';
+    }
+    const btn = document.getElementById('cloneBtn');
+    if (btn) btn.disabled = false;
+
+    if (clone.preview_text_max) {
+      setTextMaxLength('clonePreviewText', clone.preview_text_max);
+    }
+
+    if (clone.voice_id) {
+      const el = document.getElementById('cloneVoiceId');
+      if (el) {
+        el.minLength = clone.voice_id.min_length;
+        el.maxLength = clone.voice_id.max_length;
+        el.pattern = clone.voice_id.pattern;
+        el.title = clone.voice_id.hint || '';
+      }
+
+      const hint = document.getElementById('cloneVoiceIdHint');
+      if (hint && clone.voice_id.hint) {
+        hint.textContent = clone.voice_id.hint;
+        hint.style.display = '';
+      }
+    }
+
+    setControlDisabled(
+      'needNoiseReduction',
+      !clone.supports_noise_reduction,
+      clone.supports_noise_reduction ? '' : '当前 Provider 不支持降噪'
+    );
+
+    setControlDisabled(
+      'needVolumeNormalization',
+      !clone.supports_volume_normalization,
+      clone.supports_volume_normalization ? '' : '当前 Provider 不支持音量标准化'
+    );
+
+    const fileHint = document.getElementById('cloneFileHint');
+    if (fileHint && clone.max_file_size_mb) {
+      fileHint.textContent = '音频文件最大 ' + clone.max_file_size_mb + ' MB。';
+    }
+
+    if (typeof updateCloneBtnState === 'function') {
+      updateCloneBtnState();
+    }
+  }
+
+  function applyVoiceDesignCapability() {
+    const provider = getSelectValue('designProvider', getSelectValue('providerSelect', 'mock'));
+    const cap = getProviderCapability(provider);
+    if (!cap || !cap.voice_design) return;
+
+    const design = cap.voice_design;
+
+    if (!design.supported) {
+      setHintText('designCapabilityHint', '当前 Provider 不支持声音设计。', 'error');
+      const btn = document.getElementById('designBtn');
+      if (btn) btn.disabled = true;
+      return;
+    }
+
+    const hintEl = document.getElementById('designCapabilityHint');
+    if (hintEl) {
+      hintEl.textContent = '';
+      hintEl.className = 'capability-hint';
+    }
+    const btn = document.getElementById('designBtn');
+    if (btn) btn.disabled = false;
+
+    if (design.prompt_max) {
+      setTextMaxLength('designPrompt', design.prompt_max);
+    }
+
+    if (design.preview_text_max) {
+      setTextMaxLength('designPreviewText', design.preview_text_max);
+    }
+
+    if (design.voice_id) {
+      const el = document.getElementById('designVoiceId');
+      if (el) {
+        el.minLength = design.voice_id.min_length;
+        el.maxLength = design.voice_id.max_length;
+        el.pattern = design.voice_id.pattern;
+        el.title = design.voice_id.hint || '';
+      }
+    }
+  }
+
+  function applyImportVoiceCapability() {
+    const provider = getSelectValue('voiceProvider', getSelectValue('providerSelect', 'mock'));
+    const cap = getProviderCapability(provider);
+    if (!cap || !cap.provider_voices) return;
+
+    const pv = cap.provider_voices;
+
+    if (pv.preview_text_max) {
+      setTextMaxLength('importClonePreviewText', pv.preview_text_max);
+    }
+
+    const verify = document.getElementById('importCloneVerify');
+    if (verify && !pv.supports_import_remote_voice) {
+      verify.checked = false;
+      verify.disabled = true;
+      verify.title = '当前 Provider 不支持远端音色导入';
+    } else if (verify) {
+      verify.disabled = false;
+      verify.title = '';
+    }
+  }
+
+  function applyAllProviderCapabilities() {
+    applyWorkspaceCapability();
+    applyLongtextCapability();
+    applyScriptCapability();
+    applyProviderVoiceCapability();
+    applyVoiceCloneCapability();
+    applyVoiceDesignCapability();
+    applyImportVoiceCapability();
+  }
+
+  function bindProviderCapabilityEvents() {
+    var ids = [
+      'providerSelect',
+      'batchProvider',
+      'batchScriptProvider',
+      'voiceProvider',
+      'cloneProvider',
+      'designProvider'
+    ];
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', function() {
+          applyAllProviderCapabilities();
+        });
+      }
+    });
+  }
+
+  // ============================================================
   // Runtime status bar
   // ============================================================
   let _runtimeStatusTimer = null;
@@ -1733,6 +2193,10 @@
   loadRuntimeStatus();
   scheduleRuntimeStatusRefresh();
 
+  // P9-CAPABILITY3: Load provider capabilities and bind provider change events
+  bindProviderCapabilityEvents();
+  loadProviderCapabilities();
+
   // ============================================================
   // Advanced sub-tab switching
   // ============================================================
@@ -1897,7 +2361,8 @@
   const resultsArea = document.getElementById('resultsArea');
 
   textInput.addEventListener('input', () => {
-    charCount.textContent = `${textInput.value.length} / 9500`;
+    const maxLen = parseInt(textInput.maxLength) || 9500;
+    charCount.textContent = textInput.value.length + ' / ' + maxLen;
     updateCostHint();
   });
 
@@ -5221,7 +5686,7 @@ function handleStopAsyncPolling() {
   // Script lines management
   let _scriptLineCount = 0;
   const _scriptRows = [];  // stable state: {id, role, text, profileId}
-  const MAX_SCRIPT_LINES = 200;
+  let MAX_SCRIPT_LINES = 200;
 
   function updateScriptLineLimitState() {
     const btn = document.getElementById('scriptAddLineBtn');
