@@ -839,6 +839,7 @@
     </div>
 
     <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
+    <div id="recentJobRestore"></div>
     <div class="results-area" id="resultsArea"></div>
   </div>
 
@@ -1643,6 +1644,166 @@
   providerSelect.addEventListener('change', () => { checkBindingStatus(); updateCostHint(); });
   profileSelect.addEventListener('change', checkBindingStatus);
 
+  // P8-5: localStorage recent job helpers
+  const RECENT_JOB_STORAGE_KEY = 'voice_lab_recent_job_v1';
+
+  function safeTextPreview(value, maxLen = 80) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (text.length <= maxLen) return text;
+    return text.slice(0, maxLen) + '…';
+  }
+
+  function extractJobId(data) {
+    return data?.job_id || data?.id || data?.job?.job_id || data?.job?.id || null;
+  }
+
+  function extractAudioAssetId(data) {
+    if (data?.audio_asset?.id) return data.audio_asset.id;
+    if (data?.audio_asset_id) return data.audio_asset_id;
+    if (data?.asset_id) return data.asset_id;
+    return null;
+  }
+
+  function buildRecentJobPayload(data, fallback) {
+    fallback = fallback || {};
+    const jobId = extractJobId(data) || fallback.job_id;
+    if (!jobId) return null;
+    return {
+      version: 1,
+      saved_at: new Date().toISOString(),
+      job_id: jobId,
+      job_type: data?.job_type || fallback.job_type || 'single',
+      status: data?.status || fallback.status || '',
+      provider: data?.provider || fallback.provider || '',
+      model: data?.model || fallback.model || '',
+      text_preview: safeTextPreview(data?.input_text || data?.processed_text || fallback.text || ''),
+      audio_asset_id: extractAudioAssetId(data) || fallback.audio_asset_id || null,
+    };
+  }
+
+  function saveRecentJob(data, fallback) {
+    try {
+      const payload = buildRecentJobPayload(data, fallback);
+      if (!payload) return;
+      localStorage.setItem(RECENT_JOB_STORAGE_KEY, JSON.stringify(payload));
+      renderRecentJobRestore();
+    } catch (err) {
+      console.warn('save recent job failed', err);
+    }
+  }
+
+  function loadRecentJob() {
+    try {
+      const raw = localStorage.getItem(RECENT_JOB_STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || data.version !== 1 || !data.job_id) {
+        localStorage.removeItem(RECENT_JOB_STORAGE_KEY);
+        return null;
+      }
+      return data;
+    } catch (err) {
+      console.warn('load recent job failed', err);
+      localStorage.removeItem(RECENT_JOB_STORAGE_KEY);
+      return null;
+    }
+  }
+
+  function clearRecentJob() {
+    try {
+      localStorage.removeItem(RECENT_JOB_STORAGE_KEY);
+    } catch (err) {
+      console.warn('clear recent job failed', err);
+    }
+    renderRecentJobRestore();
+  }
+
+  function renderRecentJobRestore() {
+    const el = document.getElementById('recentJobRestore');
+    if (!el) return;
+    const recent = loadRecentJob();
+    if (!recent) {
+      el.innerHTML = '';
+      return;
+    }
+    const savedAt = recent.saved_at ? new Date(recent.saved_at).toLocaleString() : '';
+    const assetHint = recent.audio_asset_id ? '有音频资产' : '未记录音频资产';
+    el.innerHTML = `
+      <div class="card" style="padding:12px 14px;margin-bottom:12px;border-left:4px solid #667eea">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem;color:#2d3748">最近任务</div>
+            <div style="font-size:0.78rem;color:#718096;margin-top:4px">
+              ${esc(recent.text_preview || '无文本预览')} · ${esc(recent.status || '未知状态')} · ${esc(assetHint)}
+            </div>
+            <div style="font-size:0.72rem;color:#a0aec0;margin-top:2px">
+              ${esc(recent.job_id)} ${savedAt ? '· ' + esc(savedAt) : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-sm" onclick="restoreRecentJob()">恢复</button>
+            <button class="btn-sm" onclick="clearRecentJob()">清除</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function restoreRecentJob() {
+    const recent = loadRecentJob();
+    if (!recent || !recent.job_id) {
+      renderRecentJobRestore();
+      return;
+    }
+    const results = document.getElementById('resultsArea');
+    if (results) {
+      results.innerHTML = '<div class="muted">正在恢复最近任务...</div>';
+      results.classList.add('visible');
+    }
+    try {
+      const job = await apiJson(`/api/voice/jobs/${encodeURIComponent(recent.job_id)}`);
+      saveRecentJob(job, {
+        job_id: recent.job_id,
+        text: recent.text_preview,
+      });
+      renderRecoveredJob(job);
+    } catch (err) {
+      if (results) {
+        results.innerHTML = renderApiError(err);
+        results.classList.add('visible');
+      }
+    }
+  }
+
+  function renderRecoveredJob(job) {
+    const results = document.getElementById('resultsArea');
+    if (!results) return;
+    const assetId = extractAudioAssetId(job);
+    const status = job.status || '';
+    const text = job.processed_text || job.input_text || '';
+    const audioSection = assetId
+      ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(assetId)}`
+      : `<div class="muted">该任务当前未返回音频资产。</div>`;
+    const subtitleSection = job.subtitle_asset?.timeline
+      ? `${resultSectionLabel('字幕时间轴')}${timelineTable(job.subtitle_asset.timeline)}`
+      : `<div class="muted">该任务当前未返回字幕时间轴。</div>`;
+    results.innerHTML = `
+      <div class="card">
+        <div class="card-title">最近任务恢复</div>
+        <div class="muted" style="margin-bottom:10px">从历史任务接口恢复，显示的是服务端最新状态。</div>
+        <div style="margin-bottom:8px;font-size:0.82rem;color:#718096">
+          <span>job_id: ${esc(job.job_id || '')}</span>
+          <span style="margin-left:12px">provider: ${esc(job.provider || '')}</span>
+          <span style="margin-left:12px">model: ${esc(job.model || '')}</span>
+        </div>
+        ${statusLabel(status)}
+        ${resultStatusHintHtml(status)}
+        ${text ? `<div style="margin:10px 0;font-size:0.86rem;color:#4a5568">${esc(safeTextPreview(text, 160))}</div>` : ''}
+        ${audioSection}
+        ${subtitleSection}
+      </div>`;
+    results.classList.add('visible');
+  }
+
   function setLoading(on) {
     generateBtn.disabled = on;
     generateBtn.innerHTML = on
@@ -2032,6 +2193,9 @@ function handleStopAsyncPolling() {
   // Load history on page init
   loadHistory(0);
 
+  // P8-5: render recent job restore card on page load
+  renderRecentJobRestore();
+
   async function handleGenerate() {
     const text = textInput.value.trim();
     if (!text) { alert('请输入文案'); return; }
@@ -2096,8 +2260,10 @@ function handleStopAsyncPolling() {
       const data = await resp.json();
 
       if (isAsync) {
+        saveRecentJob(data, { job_type: 'async', text: text });
         startAsyncPolling(data.job_id);
       } else {
+        saveRecentJob(data, { job_type: isVariant ? 'variants' : 'single', text: text });
         renderResults(data, isVariant);
         resultsArea.classList.add('visible');
         setLoading(false);
@@ -2182,6 +2348,7 @@ function handleStopAsyncPolling() {
                 break;
             case "completed":
                 renderStreamResult(msg, audioChunks);
+                saveRecentJob(msg, { job_type: 'stream' });
                 setLoading(false);
                 loadHistory(0);
                 ws.close();
@@ -2332,6 +2499,7 @@ function handleStopAsyncPolling() {
 
       if (data.status === 'success') {
         stopAsyncPolling();
+        saveRecentJob(data, { job_type: 'async' });
         renderAsyncResult(data);
         setLoading(false);
         loadHistory(0);
