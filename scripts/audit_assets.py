@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-P8-BE3A1: Enhanced read-only asset audit script.
+P8-BE3A2: Hardened read-only asset audit script.
 
-Additions over P8-BE3A:
-  - storage_root redacted to "<REDACTED>" in JSON output
-  - Excludes quarantine/ from storage scanning
-  - temp and metadata subdirectory statistics
-  - Age distribution buckets (0-1d, 1-7d, 7-30d, 30-90d, 90d+)
-  - Size distribution buckets (0B, <10KB, 10KB-1MB, 1MB-10MB, 10MB+)
-  - Largest orphan files (top 50 per category)
-  - Subtitle pair analysis (json/srt pairing)
-  - Running job guard (running/queued/processing/protected statuses)
-  - Backfill candidates note
-  - report_version: "p8-be3a1"
+Additions over P8-BE3A1:
+  - pending added to running-like statuses (standard: queued/pending/running/processing)
+  - protected listed separately as extended status
+  - storage_dirs with per-directory file counts and bytes
+  - content_file_count / all_scanned_file_count distinguish content vs all scanned
+  - temp / metadata age and size distributions
+  - largest_storage_files for temp and metadata
+  - safe_path_str hardened: outside root paths return <OUTSIDE_STORAGE_ROOT>/<filename>
+  - orphan_subtitle_pair_analysis added
+  - report_privacy_check added
+  - policy_readiness_check added
+  - report_version: "p8-be3a2"
 
 No deletions are performed. Output: docs/generated/asset_audit_report.json
 """
@@ -43,12 +44,15 @@ MAX_LARGEST = 50  # Max entries in largest_orphan_files per category
 EXCLUDED_STORAGE_DIRS = {"quarantine"}  # dirs to skip in storage scan
 AGE_BUCKETS = ["0-1d", "1-7d", "7-30d", "30-90d", "90d+"]
 SIZE_BUCKETS = ["0B", "<10KB", "10KB-1MB", "1MB-10MB", "10MB+"]
-# Job statuses that indicate a running/active job — these assets are protected
-RUNNING_JOB_STATUSES = {"running", "queued", "processing", "protected"}
+# Standard running-like job statuses (active / not finished)
+STANDARD_RUNNING_JOB_STATUSES = {"queued", "pending", "running", "processing"}
+# Extended statuses that are non-standard but still indicate active state
+EXTENDED_RUNNING_JOB_STATUSES = {"protected"}
+RUNNING_JOB_STATUSES = STANDARD_RUNNING_JOB_STATUSES | EXTENDED_RUNNING_JOB_STATUSES
 
 
 def safe_path_str(path: str | None, root: Path) -> str | None:
-    """Return a safe relative path string, or the original if not relative to root."""
+    """Return a safe relative path string, or <OUTSIDE_STORAGE_ROOT>/<filename> if outside root."""
     if not path:
         return None
     try:
@@ -57,10 +61,11 @@ def safe_path_str(path: str | None, root: Path) -> str | None:
             try:
                 return str(p.relative_to(root.resolve()))
             except Exception:
-                return str(p)
+                # Do not return absolute paths outside storage root
+                return f"<OUTSIDE_STORAGE_ROOT>/{p.name}"
         return str(p)
     except Exception:
-        return str(path)
+        return "<INVALID_PATH>"
 
 
 def safe_file_info(full_path: Path, root: Path) -> dict | None:
@@ -133,6 +138,54 @@ def build_distribution(items: list[dict]) -> dict[str, int]:
     return dict(Counter(item.get("bucket", "unknown") for item in items))
 
 
+def file_info_summary(files: list[dict]) -> dict[str, Any]:
+    """Return a summary dict for a list of file info dicts."""
+    return {
+        "file_count": len(files),
+        "total_bytes": sum(f["size_bytes"] for f in files),
+    }
+
+
+def build_subtitle_pair_analysis(subtitle_files: list[dict]) -> dict[str, Any]:
+    """Group subtitle files by base name within the same date directory."""
+    by_dir_and_base: dict[str, dict[str, str]] = {}
+    for f in subtitle_files:
+        rp = f["relative_path"]
+        p = Path(rp)
+        if len(p.parts) >= 2:
+            subdir = p.parts[0]
+            date_part = p.parts[1] if len(p.parts) > 1 else ""
+            base = p.stem
+            key = f"{subdir}/{date_part}/{base}"
+            ext = p.suffix.lower()
+            if key not in by_dir_and_base:
+                by_dir_and_base[key] = {}
+            if ext in (".json", ".srt"):
+                by_dir_and_base[key][ext] = rp
+
+    paired = []
+    json_only = []
+    srt_only = []
+    for base, files in by_dir_and_base.items():
+        has_json = ".json" in files
+        has_srt = ".srt" in files
+        if has_json and has_srt:
+            paired.append({"base": base, "json_path": files[".json"], "srt_path": files[".srt"]})
+        elif has_json:
+            json_only.append({"base": base, "json_path": files[".json"]})
+        elif has_srt:
+            srt_only.append({"base": base, "srt_path": files[".srt"]})
+
+    return {
+        "paired_json_and_srt": len(paired),
+        "json_only_no_srt": len(json_only),
+        "srt_only_no_json": len(srt_only),
+        "paired_samples": paired[:10],
+        "json_only_samples": json_only[:10],
+        "srt_only_samples": srt_only[:10],
+    }
+
+
 def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any]:
     root = Path(storage_dir) if storage_dir else Path(get_settings().storage_dir)
     output_path = Path(output_path) if output_path else Path("docs/generated/asset_audit_report.json")
@@ -170,8 +223,6 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
     # --- Storage scan (excluding quarantine) ---
     audio_files = scan_storage_directory(root, "audio")
     subtitle_files = scan_storage_directory(root, "subtitles")
-
-    # Also scan temp and metadata for stats even though they may not have orphan logic
     temp_files = scan_storage_directory(root, "temp")
     metadata_files = scan_storage_directory(root, "metadata")
 
@@ -191,14 +242,33 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
     # --- Stats ---
     job_status_counts = dict(Counter(j.status for j in voice_jobs))
 
-    storage_file_count = len(audio_files) + len(subtitle_files)
-    storage_total_bytes = sum(f["size_bytes"] for f in audio_files) + sum(f["size_bytes"] for f in subtitle_files)
+    audio_file_count = len(audio_files)
+    subtitle_file_count = len(subtitle_files)
+    temp_file_count = len(temp_files)
+    metadata_file_count = len(metadata_files)
+
     audio_total_bytes = sum(f["size_bytes"] for f in audio_files)
     subtitle_total_bytes = sum(f["size_bytes"] for f in subtitle_files)
-    temp_file_count = len(temp_files)
     temp_total_bytes = sum(f["size_bytes"] for f in temp_files)
-    metadata_file_count = len(metadata_files)
     metadata_total_bytes = sum(f["size_bytes"] for f in metadata_files)
+
+    # content = audio + subtitles; all_scanned = audio + subtitles + temp + metadata
+    content_file_count = audio_file_count + subtitle_file_count
+    content_total_bytes = audio_total_bytes + subtitle_total_bytes
+    all_scanned_file_count = content_file_count + temp_file_count + metadata_file_count
+    all_scanned_total_bytes = content_total_bytes + temp_total_bytes + metadata_total_bytes
+
+    # Legacy field for backwards compatibility
+    storage_file_count = content_file_count
+    storage_total_bytes = content_total_bytes
+
+    # Per-directory summary
+    storage_dirs = {
+        "audio": {"file_count": audio_file_count, "total_bytes": audio_total_bytes},
+        "subtitles": {"file_count": subtitle_file_count, "total_bytes": subtitle_total_bytes},
+        "temp": {"file_count": temp_file_count, "total_bytes": temp_total_bytes},
+        "metadata": {"file_count": metadata_file_count, "total_bytes": metadata_total_bytes},
+    }
 
     # --- Asset file existence ---
     audio_with_file = sum(1 for a in audio_assets if a.file_path and Path(a.file_path).exists())
@@ -217,7 +287,6 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
     for f in audio_files:
         full = root / f["relative_path"]
         if str(full.resolve()) not in audio_file_paths_db:
-            f["bucket"] = age_bucket(f["modified_age_days"])
             orphan_audio.append(f)
     orphan_audio_truncated = len(orphan_audio) > MAX_ITEMS
     orphan_audio_limited = orphan_audio[:MAX_ITEMS]
@@ -226,7 +295,6 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
     for f in subtitle_files:
         full = root / f["relative_path"]
         if str(full.resolve()) not in subtitle_file_paths_db and str(full.resolve()) not in subtitle_srt_paths_db:
-            f["bucket"] = age_bucket(f["modified_age_days"])
             orphan_subtitle.append(f)
     orphan_subtitle_truncated = len(orphan_subtitle) > MAX_ITEMS
     orphan_subtitle_limited = orphan_subtitle[:MAX_ITEMS]
@@ -306,121 +374,127 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
     missing_file_subtitle_limited = missing_file_subtitle[:MAX_ITEMS]
 
     # --- Age distributions ---
-    def age_dist_items(files: list[dict]) -> list[dict]:
+    def tag_age_bucket(files: list[dict]) -> list[dict]:
         for f in files:
             f["bucket"] = age_bucket(f["modified_age_days"])
         return files
 
-    orphan_audio_age_dist = build_distribution(age_dist_items([f.copy() for f in orphan_audio]))
-    orphan_subtitle_age_dist = build_distribution(age_dist_items([f.copy() for f in orphan_subtitle]))
+    orphan_audio_age_dist = build_distribution(tag_age_bucket([f.copy() for f in orphan_audio]))
+    orphan_subtitle_age_dist = build_distribution(tag_age_bucket([f.copy() for f in orphan_subtitle]))
+    temp_age_dist = build_distribution(tag_age_bucket([f.copy() for f in temp_files]))
+    metadata_age_dist = build_distribution(tag_age_bucket([f.copy() for f in metadata_files]))
 
     # --- Size distributions ---
-    def size_dist_items(files: list[dict]) -> list[dict]:
+    def tag_size_bucket(files: list[dict]) -> list[dict]:
         for f in files:
             f["bucket"] = size_bucket(f["size_bytes"])
         return files
 
-    orphan_audio_size_dist = build_distribution(size_dist_items([f.copy() for f in orphan_audio]))
-    orphan_subtitle_size_dist = build_distribution(size_dist_items([f.copy() for f in orphan_subtitle]))
+    orphan_audio_size_dist = build_distribution(tag_size_bucket([f.copy() for f in orphan_audio]))
+    orphan_subtitle_size_dist = build_distribution(tag_size_bucket([f.copy() for f in orphan_subtitle]))
+    temp_size_dist = build_distribution(tag_size_bucket([f.copy() for f in temp_files]))
+    metadata_size_dist = build_distribution(tag_size_bucket([f.copy() for f in metadata_files]))
 
-    # --- Largest orphan files (top 50 per category) ---
-    orphan_audio_sorted = sorted(orphan_audio, key=lambda x: x["size_bytes"], reverse=True)
-    orphan_subtitle_sorted = sorted(orphan_subtitle, key=lambda x: x["size_bytes"], reverse=True)
+    # --- Largest orphan files ---
+    def largest_items(files: list[dict]) -> list[dict]:
+        return [
+            {
+                "relative_path": f["relative_path"],
+                "size_bytes": f["size_bytes"],
+                "modified_time": f["modified_time"],
+                "modified_age_days": f["modified_age_days"],
+            }
+            for f in sorted(files, key=lambda x: x["size_bytes"], reverse=True)[:MAX_LARGEST]
+        ]
 
-    largest_orphan_audio = [
-        {
-            "relative_path": f["relative_path"],
-            "size_bytes": f["size_bytes"],
-            "modified_time": f["modified_time"],
-            "modified_age_days": f["modified_age_days"],
-        }
-        for f in orphan_audio_sorted[:MAX_LARGEST]
-    ]
-    largest_orphan_subtitle = [
-        {
-            "relative_path": f["relative_path"],
-            "size_bytes": f["size_bytes"],
-            "modified_time": f["modified_time"],
-            "modified_age_days": f["modified_age_days"],
-        }
-        for f in orphan_subtitle_sorted[:MAX_LARGEST]
-    ]
+    largest_orphan_audio = largest_items(orphan_audio)
+    largest_orphan_subtitle = largest_items(orphan_subtitle)
 
-    # --- Subtitle pair analysis ---
-    # Group subtitle files by base name (without extension) within the same date directory
-    subtitle_by_dir_and_base: dict[str, dict[str, str]] = {}
-    for f in subtitle_files:
-        rp = f["relative_path"]
-        p = Path(rp)
-        # e.g. storage/subtitles/2025-01-15/abc123.json -> (subdir, base=abc123)
-        if len(p.parts) >= 2:
-            subdir = p.parts[0]  # "subtitles"
-            date_part = p.parts[1] if len(p.parts) > 1 else ""  # "2025-01-15"
-            base = p.stem  # "abc123"
-            key = f"{subdir}/{date_part}/{base}"
-            ext = p.suffix.lower()
-            if key not in subtitle_by_dir_and_base:
-                subtitle_by_dir_and_base[key] = {}
-            if ext in (".json", ".srt"):
-                subtitle_by_dir_and_base[key][ext] = rp
+    # --- Largest temp / metadata files ---
+    largest_temp = largest_items(temp_files)
+    largest_metadata = largest_items(metadata_files)
 
-    subtitle_pairs = []
-    subtitle_json_only = []
-    subtitle_srt_only = []
-    for base, files in subtitle_by_dir_and_base.items():
-        has_json = ".json" in files
-        has_srt = ".srt" in files
-        if has_json and has_srt:
-            subtitle_pairs.append({
-                "base": base,
-                "json_path": files[".json"],
-                "srt_path": files[".srt"],
-            })
-        elif has_json:
-            subtitle_json_only.append({"base": base, "json_path": files[".json"]})
-        elif has_srt:
-            subtitle_srt_only.append({"base": base, "srt_path": files[".srt"]})
+    # --- All subtitle pair analysis (all subtitle files on disk) ---
+    all_subtitle_pair_analysis = build_subtitle_pair_analysis(subtitle_files)
 
-    subtitle_pair_analysis = {
-        "paired_json_and_srt": len(subtitle_pairs),
-        "json_only_no_srt": len(subtitle_json_only),
-        "srt_only_no_json": len(subtitle_srt_only),
-        "paired_samples": subtitle_pairs[:10],
-        "json_only_samples": subtitle_json_only[:10],
-        "srt_only_samples": subtitle_srt_only[:10],
-    }
+    # --- Orphan subtitle pair analysis (only orphan subtitle files) ---
+    orphan_subtitle_pair_analysis = build_subtitle_pair_analysis(orphan_subtitle)
 
     # --- Running job guard ---
     running_jobs = [j for j in voice_jobs if j.status in RUNNING_JOB_STATUSES]
+    running_like_jobs = [j for j in voice_jobs if j.status in STANDARD_RUNNING_JOB_STATUSES]
     running_job_ids = {j.id for j in running_jobs}
+    running_like_job_ids = {j.id for j in running_like_jobs}
     running_job_status_dist = dict(Counter(j.status for j in running_jobs))
+    running_like_status_dist = dict(Counter(j.status for j in running_like_jobs))
 
     # Assets linked to running jobs (protected from cleanup)
     protected_audio = [a for a in audio_assets if a.job_id in running_job_ids]
     protected_subtitle = [s for s in subtitle_assets if s.job_id in running_job_ids]
 
+    # --- Policy readiness check ---
+    has_recent_orphan = (
+        orphan_audio_age_dist.get("0-1d", 0) > 0
+        or orphan_audio_age_dist.get("1-7d", 0) > 0
+        or orphan_subtitle_age_dist.get("0-1d", 0) > 0
+        or orphan_subtitle_age_dist.get("1-7d", 0) > 0
+    )
+    has_large_orphan = len(orphan_audio) > 0 or len(orphan_subtitle) > 0
+    has_deleted_job_assets = len(deleted_audio) > 0 or len(deleted_subtitle) > 0
+    has_missing_db_records = len(missing_file_audio) > 0 or len(missing_file_subtitle) > 0
+
+    policy_readiness_check = {
+        "has_running_like_jobs": len(running_like_jobs) > 0,
+        "has_recent_orphan_files": has_recent_orphan,
+        "has_temp_files": temp_file_count > 0,
+        "has_metadata_files": metadata_file_count > 0,
+        "has_missing_db_records": has_missing_db_records,
+        "has_deleted_job_assets": has_deleted_job_assets,
+        "has_large_orphan_files": has_large_orphan,
+        "orphan_should_not_be_deleted_directly": True,
+        "recommended_next_stage": "P8-BE3B asset cleanup policy confirmation",
+    }
+
+    # --- Report privacy check ---
+    report_privacy_check = {
+        "storage_root_redacted": True,
+        "absolute_path_output_allowed": False,
+        "contains_audio_content": False,
+        "safe_path_policy": (
+            "relative paths under storage root; outside paths redacted as <OUTSIDE_STORAGE_ROOT>/<filename>; "
+            "invalid paths redacted as <INVALID_PATH>"
+        ),
+    }
+
     # --- Build report ---
     report = {
         "generated_at": datetime.now().isoformat(),
         "storage_root": "<REDACTED>",
-        "report_version": "p8-be3a1",
+        "report_version": "p8-be3a2",
         "summary": {
             "audio_asset_count": len(audio_assets),
             "subtitle_asset_count": len(subtitle_assets),
             "voice_job_count": len(voice_jobs),
             "job_status_counts": job_status_counts,
+            # Legacy aliases (content = audio + subtitles only)
             "storage_file_count": storage_file_count,
             "storage_total_bytes": storage_total_bytes,
-            "audio_file_count": len(audio_files),
+            "audio_file_count": audio_file_count,
             "audio_total_bytes": audio_total_bytes,
-            "subtitle_file_count": len(subtitle_files),
+            "subtitle_file_count": subtitle_file_count,
             "subtitle_total_bytes": subtitle_total_bytes,
             "temp_file_count": temp_file_count,
             "temp_total_bytes": temp_total_bytes,
             "metadata_file_count": metadata_file_count,
             "metadata_total_bytes": metadata_total_bytes,
             "excluded_storage_dirs": list(EXCLUDED_STORAGE_DIRS),
+            # Explicit content vs all-scanned distinction
+            "content_file_count": content_file_count,
+            "content_total_bytes": content_total_bytes,
+            "all_scanned_file_count": all_scanned_file_count,
+            "all_scanned_total_bytes": all_scanned_total_bytes,
         },
+        "storage_dirs": storage_dirs,
         "database_asset_file_existence": {
             "audio_assets_with_existing_file": audio_with_file,
             "audio_assets_missing_file": audio_missing_file,
@@ -467,11 +541,15 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
             "buckets": AGE_BUCKETS,
             "orphan_audio_files": orphan_audio_age_dist,
             "orphan_subtitle_files": orphan_subtitle_age_dist,
+            "temp_files": temp_age_dist,
+            "metadata_files": metadata_age_dist,
         },
         "size_distribution": {
             "buckets": SIZE_BUCKETS,
             "orphan_audio_files": orphan_audio_size_dist,
             "orphan_subtitle_files": orphan_subtitle_size_dist,
+            "temp_files": temp_size_dist,
+            "metadata_files": metadata_size_dist,
         },
         "largest_orphan_files": {
             "audio": {
@@ -485,16 +563,48 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
                 "items": largest_orphan_subtitle,
             },
         },
-        "subtitle_pair_analysis": subtitle_pair_analysis,
+        "largest_storage_files": {
+            "temp": {
+                "total": temp_file_count,
+                "returned": len(largest_temp),
+                "items": largest_temp,
+            },
+            "metadata": {
+                "total": metadata_file_count,
+                "returned": len(largest_metadata),
+                "items": largest_metadata,
+            },
+        },
+        "subtitle_pair_analysis": all_subtitle_pair_analysis,
+        "orphan_subtitle_pair_analysis": orphan_subtitle_pair_analysis,
         "running_job_guard": {
-            "note": f"Assets linked to jobs with status in {RUNNING_JOB_STATUSES} are protected from cleanup",
-            "running_job_count": len(running_jobs),
-            "running_job_status_distribution": running_job_status_dist,
+            "standard_running_statuses": list(STANDARD_RUNNING_JOB_STATUSES),
+            "extended_running_statuses": list(EXTENDED_RUNNING_JOB_STATUSES),
+            "note": (
+                "Assets linked to jobs with standard running-like statuses are protected. "
+                "Cleanup tools should re-check job status before execution."
+            ),
+            "recommended_protection_window_hours": 72,
+            "running_like_job_count": len(running_like_jobs),
+            "running_like_status_distribution": running_like_status_dist,
+            "all_running_job_count": len(running_jobs),
+            "all_running_status_distribution": running_job_status_dist,
             "protected_audio_asset_count": len(protected_audio),
             "protected_subtitle_asset_count": len(protected_subtitle),
         },
         "cleanup_candidates_readonly": {
-            "note": "These are candidates only. This report does not delete anything.",
+            "note": (
+                "These are candidates only. This report does not delete anything. "
+                "Orphan files are NOT safe to delete directly — they may have backfill value "
+                "or belong to jobs that will be referenced in the future."
+            ),
+            "not_deletion_recommendation": (
+                "Orphan files are files on disk that are not referenced by current database records. "
+                "They are NOT automatically deletable. Possible origins: early test files, "
+                "provider-side files not recorded in DB, or files from jobs whose records were "
+                "manually deleted. Before deleting any orphan file, verify it is not needed "
+                "for record reconstruction or backfill."
+            ),
             "missing_file_db_records": {
                 "audio_assets": {
                     "truncated": missing_file_audio_truncated,
@@ -537,6 +647,8 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
             "if the files can be matched to jobs via filename or metadata. "
             "Before deleting any orphan file, verify it is not needed for record reconstruction."
         ),
+        "report_privacy_check": report_privacy_check,
+        "policy_readiness_check": policy_readiness_check,
     }
 
     # --- Write report ---
@@ -544,26 +656,32 @@ def run_audit(storage_dir: str | None, output_path: str | None) -> dict[str, Any
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # --- Console summary ---
-    print("Asset audit (p8-be3a1) completed.")
+    print("Asset audit (p8-be3a2) completed.")
     print(f"  AudioAsset: {len(audio_assets)}")
     print(f"  SubtitleAsset: {len(subtitle_assets)}")
     print(f"  VoiceJob: {len(voice_jobs)}")
-    print(f"  Storage files: {storage_file_count}")
-    print(f"  Orphan audio files (not in DB): {len(orphan_audio)}")
-    print(f"  Orphan subtitle files (not in DB): {len(orphan_subtitle)}")
+    print(f"  Content files (audio+subtitles): {content_file_count}")
+    print(f"  All scanned files: {all_scanned_file_count}")
+    print(f"  Orphan audio: {len(orphan_audio)}")
+    print(f"  Orphan subtitle: {len(orphan_subtitle)}")
     print(f"  Missing file DB records (audio): {len(missing_file_audio)}")
     print(f"  Missing file DB records (subtitle): {len(missing_file_subtitle)}")
     print(f"  Deleted job audio assets: {len(deleted_audio)}")
     print(f"  Deleted job subtitle assets: {len(deleted_subtitle)}")
-    print(f"  Running job protected assets: {len(protected_audio)} audio, {len(protected_subtitle)} subtitle")
-    print(f"  Subtitle pairs (json+srt): {subtitle_pair_analysis['paired_json_and_srt']}")
+    print(f"  Running-like jobs (standard): {len(running_like_jobs)}")
+    print(f"  Running jobs (all): {len(running_jobs)}")
+    print(f"  Protected audio assets: {len(protected_audio)}")
+    print(f"  Protected subtitle assets: {len(protected_subtitle)}")
+    print(f"  Orphan subtitle pairs: {orphan_subtitle_pair_analysis['paired_json_and_srt']}")
+    print(f"  All subtitle pairs: {all_subtitle_pair_analysis['paired_json_and_srt']}")
+    print(f"  Policy readiness: {policy_readiness_check}")
     print(f"  Report: {output_path}")
 
     return report
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="P8-BE3A1 Read-only asset audit script (enhanced)")
+    parser = argparse.ArgumentParser(description="P8-BE3A2 Hardened read-only asset audit script")
     parser.add_argument(
         "--output",
         default="docs/generated/asset_audit_report.json",
