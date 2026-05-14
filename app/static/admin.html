@@ -379,7 +379,7 @@
   <div class="card" id="logsSection">
     <div class="card-title">最近调用记录</div>
     <div class="refresh-row">
-      <button class="btn-icon" onclick="loadLogs()">↻ 刷新</button>
+      <button class="btn-icon" onclick="refreshLogs()">↻ 刷新</button>
     </div>
     <table class="data-table">
       <thead>
@@ -401,7 +401,7 @@
   <div class="card">
     <div class="card-title">最近错误</div>
     <div class="refresh-row">
-      <button class="btn-icon" onclick="loadErrors()">↻ 刷新</button>
+      <button class="btn-icon" onclick="refreshErrors()">↻ 刷新</button>
     </div>
     <table class="data-table">
       <thead>
@@ -441,15 +441,48 @@
   function getDateRange() {
     const startInput = document.getElementById('startDate').value;
     const endInput = document.getElementById('endDate').value;
-    // start at beginning of start day, end at beginning of next day (exclusive)
-    const start = startInput ? startInput + 'T00:00:00Z' : null;
+
+    let start = null;
     let end = null;
-    if (endInput) {
-      const nextDay = new Date(endInput + 'T00:00:00Z');
-      nextDay.setDate(nextDay.getDate() + 1);
-      end = nextDay.toISOString().slice(0, 19) + 'Z';
+
+    if (startInput) {
+      const startLocal = new Date(`${startInput}T00:00:00`);
+      start = startLocal.toISOString();
     }
+
+    if (endInput) {
+      const endLocal = new Date(`${endInput}T00:00:00`);
+      endLocal.setDate(endLocal.getDate() + 1);
+      end = endLocal.toISOString();
+    }
+
     return { start, end };
+  }
+
+  function validateDateRange() {
+    const startInput = document.getElementById('startDate').value;
+    const endInput = document.getElementById('endDate').value;
+    const errEl = document.getElementById('dateRangeError');
+
+    if (startInput && endInput && startInput > endInput) {
+      errEl.style.display = '';
+      return false;
+    }
+
+    errEl.style.display = 'none';
+    return true;
+  }
+
+  async function refreshLogs() {
+    if (!validateDateRange()) return;
+    const { start, end } = getDateRange();
+    await loadLogs(start, end);
+  }
+
+  async function refreshErrors() {
+    if (!validateDateRange()) return;
+    const { start, end } = getDateRange();
+    await loadErrors(start, end);
   }
 
   function buildQuery(params) {
@@ -464,13 +497,8 @@
   let currentMetric = 'jobs';
 
   async function loadAll() {
+    if (!validateDateRange()) return;
     const { start, end } = getDateRange();
-    const errEl = document.getElementById('dateRangeError');
-    if (start && end && start > end) {
-      errEl.style.display = '';
-      return;
-    }
-    errEl.style.display = 'none';
     await Promise.all([loadSummary(start, end), loadDailyTrend(start, end, currentMetric), loadLogs(start, end), loadErrors(start, end)]);
   }
 
@@ -588,6 +616,7 @@
   let _lastMetric = 'jobs';
 
   function switchMetric(metric) {
+    if (!validateDateRange()) return;
     currentMetric = metric;
     document.querySelectorAll('.chart-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.metric === metric));
     const { start, end } = getDateRange();
