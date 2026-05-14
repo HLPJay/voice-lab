@@ -1593,6 +1593,7 @@
   let _capabilitiesLoaded = false;
   let _capabilitiesLoadFailed = false;
   let _capabilitiesLoadAttempted = false;
+  let _capabilitiesFailureNotified = false;
 
   async function loadProviderCapabilities() {
     if (_capabilitiesLoadAttempted) return;
@@ -1613,13 +1614,18 @@
 
       _capabilitiesLoaded = true;
       _capabilitiesLoadFailed = false;
+      _capabilitiesFailureNotified = false;
+
+      ['providerSelect', 'batchProvider', 'batchScriptProvider', 'voiceProvider', 'cloneProvider', 'designProvider'].forEach(updateProviderSelectOptions);
+
       applyAllProviderCapabilities();
     } catch (err) {
       console.warn('loadProviderCapabilities failed', err);
       _capabilitiesLoaded = false;
       _capabilitiesLoadFailed = true;
-      if (typeof showToast === 'function') {
+      if (!_capabilitiesFailureNotified && typeof showToast === 'function') {
         showToast('Provider 能力加载失败，已使用默认前端配置。', 'warning');
+        _capabilitiesFailureNotified = true;
       }
     }
   }
@@ -1699,7 +1705,7 @@
     const el = document.getElementById(id);
     if (!el) return;
     el.disabled = !!disabled;
-    if (title) el.title = title;
+    el.title = title || '';
   }
 
   function updateProviderSelectOptions(selectId) {
