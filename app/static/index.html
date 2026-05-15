@@ -872,6 +872,196 @@
     font-size: 0.76rem;
     color: #c05621;
   }
+
+  /* ── workspace layout ─────────────────────────────── */
+  .workspace-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .workspace-main {
+    min-width: 0;
+  }
+
+  .sample-sidebar-root {
+    position: sticky;
+    top: 16px;
+    align-self: start;
+  }
+
+  .sample-sidebar-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .sample-source-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #3182ce;
+    background: #ebf8ff;
+    border: 1px solid #bee3f8;
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  .sample-duration {
+    font-size: 0.68rem;
+    color: #718096;
+  }
+
+  .sample-text {
+    font-size: 0.78rem;
+    color: #2d3748;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  .sample-profile {
+    font-size: 0.70rem;
+    color: #718096;
+    margin-bottom: 8px;
+  }
+
+  .sample-profile-name {
+    font-weight: 600;
+    color: #4a5568;
+  }
+
+  .sample-voice-name {
+    color: #718096;
+  }
+
+  .sample-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sample-sidebar-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #4a5568;
+    letter-spacing: 0.04em;
+  }
+
+  .sample-sidebar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+
+  .sample-card {
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .sample-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.70rem;
+    color: #718096;
+    margin-bottom: 6px;
+  }
+
+  .sample-card-text {
+    font-size: 0.80rem;
+    color: #2d3748;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    word-break: break-word;
+  }
+
+  .sample-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sample-btn-play,
+  .sample-btn-copy,
+  .sample-btn-fill,
+  .sample-btn-delete {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e0;
+    background: #edf2f7;
+    color: #2d3748;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .sample-btn-play:hover { background: #bee3f8; border-color: #3182ce; color: #2b6cb0; }
+  .sample-btn-copy:hover { background: #c6f6d5; border-color: #38a169; color: #276749; }
+  .sample-btn-fill:hover { background: #feebc8; border-color: #dd6b20; color: #c05621; }
+  .sample-btn-delete:hover { background: #fed7d7; border-color: #e53e3e; color: #c53030; }
+
+  .sample-btn-clear {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e0;
+    background: #edf2f7;
+    color: #718096;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+
+  .sample-btn-clear:hover { background: #fed7d7; border-color: #e53e3e; color: #c53030; }
+
+  .sample-card audio {
+    width: 100%;
+    height: 32px;
+    margin-top: 8px;
+  }
+
+  .sample-sidebar-empty {
+    font-size: 0.80rem;
+    color: #a0aec0;
+    line-height: 1.6;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  @media (max-width: 1024px) {
+    .workspace-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sample-sidebar-root {
+      position: static;
+    }
+
+    .sample-sidebar-list {
+      max-height: none;
+    }
+  }
 </style>
 </head>
 <body>
@@ -904,6 +1094,8 @@
 
 
   <div class="tab-content active" id="tab-workspace">
+    <div class="workspace-layout">
+      <div class="workspace-main">
     <!-- Lightweight workspace hint -->
     <div class="card" style="padding:16px 20px">
       <div class="card-title">创作工作台</div>
@@ -1014,6 +1206,8 @@
     <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
     <div class="results-area" id="resultsArea"></div>
   </div>
+  <aside id="sampleSidebarRoot" class="sample-sidebar-root"></aside>
+</div>
 
   <div class="tab-content" id="tab-longtext">
     <div class="card" style="padding:14px 20px">
@@ -1634,6 +1828,10 @@
 <script src="/static/js/voice_import.js"></script>
 <script src="/static/js/voice_design.js"></script>
 <script src="/static/js/sample_store.js"></script>
+<script src="/static/js/sample_sidebar.js"></script>
+<script>
+  window.SampleSidebar.init();
+</script>
 <script>
   // ============================================================
   // Provider Capability Registry (P9-CAPABILITY3)
