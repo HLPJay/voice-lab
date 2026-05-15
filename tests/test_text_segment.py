@@ -153,3 +153,53 @@ def test_segment_auto_long_text_without_punctuation_is_hard_split(service):
     result = service.segment(text, strategy="auto", max_chars=100)
     assert len(result) == 3
     assert all(len(seg) <= 100 for seg in result)
+
+
+def test_segment_sentence_each_sentence_is_segment(service):
+    """Sentence strategy: each sentence becomes an independent segment (UX6)."""
+    text = "乖乖的。\n你是我的。"
+    result = service.segment(text, strategy="sentence", max_chars=2000)
+    assert len(result) == 2
+    assert result == ["乖乖的。", "你是我的。"]
+
+
+def test_segment_sentence_mixed_cn_en_punctuation(service):
+    """Sentence strategy: handles both Chinese and English sentence endings."""
+    text = "你好！Are you ok? 我很好。"
+    result = service.segment(text, strategy="sentence", max_chars=2000)
+    assert len(result) == 3
+    assert result == ["你好！", "Are you ok?", "我很好。"]
+
+
+def test_segment_sentence_no_merge(service):
+    """Sentence strategy: short sentences are NOT merged (UX6 fix)."""
+    text = "短句A。短句B。"
+    result = service.segment(text, strategy="sentence", max_chars=2000)
+    # Each sentence should be a separate segment, not merged into one
+    assert len(result) == 2
+    assert result == ["短句A。", "短句B。"]
+
+
+def test_segment_sentence_oversized_single_splits(service):
+    """Sentence strategy: single sentence exceeding max_chars is split."""
+    text = "a" * 101 + "。"
+    result = service.segment(text, strategy="sentence", max_chars=50)
+    assert len(result) >= 2
+    assert all(len(seg) <= 50 for seg in result)
+
+
+def test_segment_auto_merges_short_sentences(service):
+    """Auto strategy: short sentences are still merged (UX6 does not change auto)."""
+    text = "乖乖的。\n你是我的。"
+    result = service.segment(text, strategy="auto", max_chars=2000)
+    # Auto should still merge into 1 segment
+    assert len(result) == 1
+    assert result[0] == "乖乖的。\n你是我的。"
+
+
+def test_segment_line_unchanged_by_sentence_fix(service):
+    """Line strategy: unchanged by UX6 sentence fix."""
+    text = "第一条\n第二条"
+    result = service.segment(text, strategy="line", max_chars=2000)
+    assert len(result) == 2
+    assert result == ["第一条", "第二条"]

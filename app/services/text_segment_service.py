@@ -103,22 +103,14 @@ class TextSegmentService:
     def _segment_sentence(self, text: str, max_chars: int) -> list[str]:
         sentences = self._split_sentences(text)
         result = []
-        current = ""
         for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
             if len(sent) <= max_chars:
-                if len(current) + len(sent) + 1 <= max_chars:
-                    current = (current + "\n" + sent).strip()
-                else:
-                    if current:
-                        result.append(current)
-                    current = sent
+                result.append(sent)
             else:
-                if current:
-                    result.append(current)
                 result.extend(self._split_by_comma(sent, max_chars))
-                current = ""
-        if current:
-            result.append(current)
         return result
 
     def _segment_auto(self, text: str, max_chars: int) -> list[str]:

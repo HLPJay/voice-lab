@@ -516,3 +516,36 @@ P12 真实使用问题已基本收口。已完成的修复涵盖：
 - P12-BE：如有真实用户需求再评估后端能力增强
 
 本阶段不再做小修小补，以产品化为主。
+
+## P12-USAGE-UX6：sentence 策略语义修复
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- UX5 只改了文案（"按句子分段" → "按句子边界（短句会合并）"），但用户仍选择"sentence"时期望"一句一段"
+- 实际行为：`_segment_sentence()` 内部将多个短句合并到 `current`，直到接近 max_chars 才输出
+- 输入"乖乖的。\n你是我的。"仍只生成 1 段
+
+**根因：**
+- `_segment_sentence()` 的 current 合并逻辑导致短句被合并
+
+**修复方案：**
+- sentence 策略改为真正的"每句一段"
+- auto 策略保持合并能力（不变）
+- paragraph / line 策略不变
+
+**修复位置：**
+- `app/services/text_segment_service.py`：重写 `_segment_sentence()`
+- `app/static/index.html`：sentence option 文案 + hint 更新
+- `tests/test_text_segment.py`：新增 6 个 UX6 覆盖测试
+
+**验证方式：**
+- `tests/test_text_segment.py`：24 passed ✅
+- sentence 短句不合并：✅
+- auto 保持合并：✅
+- line 不受影响：✅
+
+**未改范围：**
+- 不改 batch payload
+- 不改后端 API
+- 不调用真实 MiniMax
