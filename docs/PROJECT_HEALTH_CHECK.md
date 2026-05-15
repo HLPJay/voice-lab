@@ -49,7 +49,8 @@
 * P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口已完成 ✅
 * P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计已完成 ✅
 * P14-CONTEXT-B1：context_store.js 基础模块已完成，待复核
-* 当前下一阶段：P14-CONTEXT-B1-CHECK
+* P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核已完成 ✅
+* 当前下一阶段：P14-CONTEXT-B1-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7600,3 +7601,40 @@ P14-CONTEXT-B0 已完成 ContextStore 设计。本阶段新增独立前端存储
 ### 阶段状态
 
 B1 完成，待 B1-CHECK 复核。
+
+## P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核
+
+### 背景
+
+P14-CONTEXT-B1 已新增独立前端存储模块 `context_store.js`。本阶段复核其 API、存储格式、longtext/script normalize、LRU、fail-safe 和边界隔离。
+
+### 复核结果
+
+- 确认 `context_store.js` 为独立 IIFE 模块，`'use strict'`
+- 确认暴露 `window.ContextStore` 7 个方法
+- 确认使用 `voice_lab_sample_context_v1`
+- 确认使用 `{version, contexts}` 存储格式并兼容 legacy flat array
+- 确认支持 longtext context normalize（full_text 截断、字段 clamp、strategy/output_format/audio_format fallback）
+- 确认支持 script context normalize（lines 过滤空 text、200 行上限、silence clamp 0-3000）
+- 确认支持 50 条上限与 created_at 倒序 LRU 淘汰
+- 确认 pushContext 同 id 替换旧记录，不重复插入
+- 确认 localStorage / QuotaExceededError fail-safe
+- 确认 context_id 优先 input.context_id > sample_id > generateId()
+- 确认 generateId 纯前端，不调用后端
+- 确认未修改 SampleStore / SampleSidebar / index.html / batch 脚本
+- 确认未接入生成链路
+- 确认未调用真实 MiniMax
+
+### 非阻塞观察
+
+1. **`max_segment_chars` NaN fallback 值**：B0 设计文档写 default 2000，但实现 `isNaN → 100`。B0 文档只明确 ge=100/le=5000 约束，未明确定义 NaN fallback。实现取下限 100 是合理解读，不阻塞。
+2. **unknown type 处理**：B0 说"校正 type"但未明确归一为 'unknown'，实现保持原值传入，不算错。
+3. **`deleteContext` 注释错误**：`deleteContext` JSDoc 注释写"does not persist"，但代码实际会持久化。这是注释 bug，不影响行为。
+
+### 测试结果
+
+结果：506 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B1-CHECK 完成，建议进入 P14-CONTEXT-B1-CLOSE。
