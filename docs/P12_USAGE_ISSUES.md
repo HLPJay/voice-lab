@@ -549,3 +549,25 @@ P12 真实使用问题已基本收口。已完成的修复涵盖：
 - 不改 batch payload
 - 不改后端 API
 - 不调用真实 MiniMax
+
+---
+
+## P12-USAGE-CHECK2：post-UX6 最终收口
+
+**收口时间：** 2026-05-15
+
+UX6 已将 sentence 策略修复为"每句一段"。CHECK2 确认无回归。
+
+**P12 真实使用修复阶段已最终收口，共 19 项：**
+- FIX1/2/3/3B：绑定提示同步
+- UX1/2/3：UI/UX 优化
+- FIX4/4A0/4B0：下载规范化
+- UX4/4A0/4B1：quick bind 布局
+- FIX5/5A0/5B1/5B2：音频时长展示与持久化
+- UX5/UX5-FIX：分段文案 + HTML 引号
+- FIX6/6A0/6B1：duration persistence + pydub fallback
+- UX6：sentence 语义修复
+
+**剩余工作转入：**
+- P13-CREATION-A0：样本观察侧边栏设计
+- P12-BE / P12-APP：如有需求再评估
