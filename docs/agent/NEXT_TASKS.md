@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核**
+**P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口**
 
 ## 已完成（续）
 
+- P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核 ✅
 - P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板 ✅
 - P14-CONTEXT-C2-CHECK：剧本一键回填复核 ✅ (发现阻塞问题)
 - P14-CONTEXT-C2：剧本一键回填 ✅
@@ -116,7 +117,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-C2-FIX1-CHECK | verify script restore batch mode switching fix | P14-CONTEXT-C2-FIX1 完成 |
 | P14-CONTEXT-C2-CLOSE | close script restore stage | P14-CONTEXT-C2-FIX1-CHECK 完成 |
 | P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-CONTEXT-B1-CLOSE 完成 |
 | P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-CONTEXT-B1-CLOSE 完成 |
