@@ -171,3 +171,35 @@
 
 **审查输出：**
 - `docs/P12_DOWNLOAD_AUDIT.md`：完整审查报告
+
+## P12-USAGE-FIX4-B0：后端批量 merged_audio asset_id 审查
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+FIX4-A0 审查发现 `renderBatchResultPlayer` 中 `data.merged_audio.url` 直接作为下载 href，可能导致下载失败。
+
+**审查结论：**
+
+经后端代码审查，**批量音频下载 URL 实际上已经是正确的**：
+
+| 检查项 | 结论 |
+|---|---|
+| `merged_audio.id` | 就是 `merged_audio_asset_id`（即 AudioAsset.id）✅ |
+| `merged_audio.url` | `/api/voice/assets/{merged_audio_asset_id}/download` ✅ |
+| 批量合并音频是否已保存为 AudioAsset | ✅ 是（`_update_status()` 中创建） |
+| URL 格式与单条/异步下载是否一致 | ✅ 完全一致 |
+
+**关键代码位置：**
+- `app/services/batch_orchestration_service.py`，lines 395-409：创建 `AudioAsset` 并存储 `merged_audio_asset_id`
+- `app/services/batch_orchestration_service.py`，lines 638-645：返回 `merged_audio = {"id": ..., "url": ...}`
+- `app/domain/schemas.py`，line 411：`merged_audio: dict | None`
+
+**真正可能的下载失败原因：**
+- 合并过程中异常处理导致文件不完整，但状态显示成功
+- 文件路径 `merged_audio_path` 指向不存在的位置
+
+**无需前端改动！**
+
+**审查输出：**
+- `docs/P12_DOWNLOAD_AUDIT.md` FIX4-B0 章节：后端审查详情

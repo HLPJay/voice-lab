@@ -31,6 +31,7 @@
 - P12-USAGE-FIX3B：add status to bind map entries ✅
 - P12-USAGE-UX2：redesign recent job entry ✅
 - P12-USAGE-FIX4-A0：audit audio download failures ✅
+- P12-USAGE-FIX4-B0：audit batch merged audio asset_id ✅
 
 ## Next
 

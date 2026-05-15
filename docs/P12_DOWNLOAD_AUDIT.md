@@ -11,8 +11,8 @@
 | 单条同步生成 | `renderResults` | `#resultsArea` 内 `downloadBtnHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset download |
 | 异步轮询生成 | `renderAsyncResult` | `#resultsArea` 内 `downloadBtnHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset download |
 | 流式生成 | `renderStreamResult` | 两个下载按钮 | (1) `/api/voice/assets/${assetId}/download`<br>(2) `blobUrl` | ✅/⚠️ 混合 | blob 仅当前会话 | **中** | 正确标注了浏览器缓存限制 |
-| 批量长文本 | `renderBatchResultPlayer` | `#batchDownloadAudio` | `data.merged_audio.url` | ❌ 否 | **是** | **高** | 直接用 URL 而非 asset API |
-| 批量剧本 | `renderBatchResultPlayer` | `#batchScriptDownloadAudio` | `data.merged_audio.url` | ❌ 否 | **是** | **高** | 同上，batch_longtext/script 共用同一函数 |
+| 批量长文本 | `renderBatchResultPlayer` | `#batchDownloadAudio` | `data.merged_audio.url` = `/api/voice/assets/{id}/download` | ✅ 是（URL 已正确） | 否（URL 稳定） | **低（URL 正确）** | 后端已返回 asset_id 和正确 download URL |
+| 批量剧本 | `renderBatchResultPlayer` | `#batchScriptDownloadAudio` | `data.merged_audio.url` = `/api/voice/assets/{id}/download` | ✅ 是（URL 已正确） | 否（URL 稳定） | **低（URL 正确）** | 同上，batch_longtext/script 共用同一函数 |
 | 批量字幕 | `renderBatchResultPlayer` | `#batchDownloadSubtitle` | `/api/voice/assets/${subId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API |
 | 最近任务恢复 | `renderRecoveredJob` | `#resultsArea` 内 `downloadBtnHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API |
 | 历史任务 | `renderHistoryItem` | 复用 `audioPlayerHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API |
@@ -219,3 +219,145 @@ if (data.merged_audio.url.startsWith('/api/')) {
 **后端配合项：**
 - 批量合并完成后是否已存储 asset？
 - `merged_audio` 响应结构是否包含 `asset_id`？
+
+
+---
+
+## P12-USAGE-FIX4-B0：后端批量 merged_audio asset_id 审查
+
+**审查时间：** 2026-05-15
+
+---
+
+### 1. 后端相关文件列表
+
+| 文件 | 相关函数 / endpoint | 作用 | 是否涉及 merged_audio | 是否涉及 asset 保存 |
+|---|---|---|---|---|
+| `app/api/batch.py` | `POST /batch/submit`<br>`GET /batch/{batch_id}/status`<br>`GET /batch/{batch_id}/download` | 批量任务提交<br>批量状态查询<br>批量合并音频下载 | ✅ status 返回 merged_audio<br>✅ download 用 merged_audio_asset_id | ✅ download 使用 asset_repo |
+| `app/services/batch_orchestration_service.py` | `submit_longtext()`<br>`submit_script()`<br>`get_status()`<br>`_update_status()` | 提交长文本/剧本任务<br>查询状态<br>更新任务状态 | ✅ `get_status()` 返回 merged_audio dict<br>✅ `_update_status()` 创建 AudioAsset | ✅ 创建 AudioAsset 并保存 merged_audio_asset_id |
+| `app/domain/schemas.py` | `BatchStatusResponse`<br>`BatchSegmentStatus` | 批量状态响应结构定义 | ✅ `merged_audio: dict \| None`<br>`merged_audio.id` = asset_id<br>`merged_audio.url` = 下载 URL | ❌ 仅定义结构 |
+| `app/models/batch_job.py` | `BatchJob`<br>`BatchSegment` | 批量任务数据库模型 | ✅ `merged_audio_asset_id`<br>`merged_subtitle_asset_id` | ❌ 仅存储 ID |
+| `app/services/audio_merge_service.py` | `AudioMerger.merge()` | 合并多个音频文件 | ❌ 只做音频合并 | ❌ 不保存 asset |
+| `app/api/voice_assets.py` | `GET /assets/{asset_id}/download` | 通用资产下载接口 | ❌ 通用接口，被批量下载复用 | ❌ 通用下载 |
+
+---
+
+### 2. merged_audio 当前结构
+
+**BatchStatusResponse 返回值（app/domain/schemas.py，line 411）：**
+```python
+merged_audio: dict | None = None  # {"id": "audio_xxx", "url": "/api/voice/assets/xxx/download"}
+```
+
+**实际填充逻辑（app/services/batch_orchestration_service.py，lines 638-645）：**
+```python
+if batch_job.merged_audio_asset_id:
+    merged_audio = {
+        "id": batch_job.merged_audio_asset_id,  # ← 这就是 asset_id！
+        "url": f"/api/voice/assets/{batch_job.merged_audio_asset_id}/download",  # ← 已经是正确 URL
+    }
+    merged_asset = session.get(AudioAsset, batch_job.merged_audio_asset_id)
+    if merged_asset:
+        total_duration_ms = merged_asset.duration_ms
+```
+
+**结论：`merged_audio` 当前结构包含：**
+- `id` = `merged_audio_asset_id`（这就是 asset_id）
+- `url` = `/api/voice/assets/{merged_audio_asset_id}/download`（已经是正确下载 URL）
+- **无** `asset_id` 字段名，但 `id` 就是 asset_id
+
+---
+
+### 3. 批量合并音频保存判断
+
+**Q1：批量合并音频是否已经保存为 voice_asset？**
+
+✅ 是。
+
+在 `batch_orchestration_service.py` 的 `_update_status()` 中（lines 395-409）：
+```python
+merged_audio_asset = AudioAsset(
+    id=merged_audio_id,
+    job_id=batch_job_id,
+    provider=provider,
+    file_path=merged_audio_path,  # 本地文件路径
+    file_url=f"/api/voice/assets/{merged_audio_id}/download",  # 下载 URL
+    format=audio_format,
+    duration_ms=...,
+    created_at=now,
+)
+voice_asset_repo.create_audio_asset(session, merged_audio_asset)
+batch_job.merged_audio_asset_id = merged_audio_id  # ← 保存到 BatchJob
+```
+
+**Q2：如果已保存，asset_id 在哪里？**
+
+- `BatchJob.merged_audio_asset_id` = `merged_audio_id`（即 AudioAsset.id）
+- `BatchStatusResponse.merged_audio.id` = `merged_audio_id`（即 AudioAsset.id）
+- **这就是 asset_id！**
+
+**Q3：当前 url 是什么来源？**
+
+- `merged_audio.url` = `/api/voice/assets/{merged_audio_asset_id}/download`
+- 这是后端生成的稳定 URL，指向 `/assets/{id}/download` 接口
+- 与单条/异步生成的下载 URL 格式完全一致
+
+**Q4：为什么会导致下载失败？**
+
+根据代码审查，URL 格式是正确的。但下载可能失败的原因：
+1. **合并失败但状态未正确更新**：`audio_merger.merge()` 抛出异常但 `batch_job.status` 可能未正确反映失败
+2. **文件路径问题**：`merged_audio_path` 可能指向不存在的位置
+3. **文件合并不完整**：部分 segment 成功后 merge 失败
+
+**实际最可能原因：**
+用户报告"部分音频下载失败"——如果是批量完成后下载失败，很可能是 merge 过程中有异常但任务状态没有正确反映为 failed，导致前端认为 merged_audio 已就绪但实际文件不存在。
+
+---
+
+### 4. 下一步修复方案
+
+**分支 A（推荐）：后端已有 asset_id，前端 URL 已正确**
+
+根据审查结论：
+- ✅ `merged_audio.id` 就是 asset_id
+- ✅ `merged_audio.url` = `/api/voice/assets/{id}/download` 已经是正确 URL
+- ✅ 批量音频已保存为 AudioAsset
+
+**无需前端改动 URL 逻辑！**
+
+但需要排查下载失败的实际原因：
+1. **排查 merge 是否真的成功**：检查 `merged_audio_path` 是否存在
+2. **排查 FileResponse 是否正确**：检查 `batch_download` 接口的 FileResponse
+3. **可能的修复**：在 `batch_download` 中增加文件存在性校验，返回更明确的错误信息
+
+**建议 FIX4-C0（排查）：**
+- 在后端 `batch_download` 中，如果文件不存在，明确返回 404 而不是模糊错误
+- 检查 `audio_merger.merge()` 的异常处理是否会导致不完整的文件被保存
+
+**如果经排查确认是前端问题（不太可能），则：**
+- 前端 `renderBatchResultPlayer` 可以统一使用 `data.merged_audio.id` 构造 URL：
+  ```javascript
+  // 优先使用 id 构造，与其他场景保持一致
+  downloadAudio.href = `/api/voice/assets/${data.merged_audio.id}/download`;
+  audio.src = `/api/voice/assets/${data.merged_audio.id}/download`;
+  ```
+
+---
+
+### 5. 风险和不改范围
+
+**已确认安全：**
+- ✅ 批量音频已保存为 voice_asset
+- ✅ merged_audio.url 格式正确，与单条/异步下载 URL 格式一致
+- ✅ merged_audio.id 就是 asset_id
+
+**需进一步排查：**
+- ❓ 合并过程中异常处理是否导致文件不完整但状态显示成功
+- ❓ 文件路径 `merged_audio_path` 是否正确
+- ❓ 真实使用中"部分下载失败"的具体错误信息
+
+**不改范围（本次审查不涉及）：**
+- 不改生成链路
+- 不改 batch payload
+- 不改前端下载逻辑（URL 本身正确）
+- 不调用真实 MiniMax
