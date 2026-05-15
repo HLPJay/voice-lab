@@ -4126,3 +4126,30 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 17 pas
 **下一步：** P9-FE1-F2 Phase 2（迁移行管理函数和 `_scriptRows` 状态）或补剧本批量 mock 提交成功 E2E。
 
 **未改 app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、app/static/js/batch_longtext.js、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、数据库、资产清理链路。
+
+---
+
+## P9-FE1-F2-FIX：剧本批量 mock 提交成功 E2E
+
+**问题：** Test 18 `test_batch_script_mock_submit_success_starts_progress` 前期因 per-row 验证失败而无法通过。`handleBatchScriptSubmit` 在收集台词行时会遍历所有 `_scriptRows` 条目（默认 3 行），若任意一行的 DOM `scriptText_${id}` 值为空即触发"第 X 行缺少台词文本"错误，导致 `batch/submit` API 根本未被调用。
+
+**根本原因：** `page.evaluate` 仅设置了 row 0 的状态和 DOM 值，row 1 和 row 2 的 `scriptText_` 输入框仍为空，触发 per-row 空文本校验。
+
+**修复：**
+- `page.evaluate` 循环遍历所有 3 行（`i = 0, 1, 2`），对每行同步设置 `_scriptRows[i]` 状态对象和对应 DOM 元素的 `value`
+- 同时将 `batchScriptProvider` 设为 `'mock'` 以绕过 `guardedJsonFetch` 的 highRisk 确认框
+- 移除 `batch_script.js` 入口处的 `console.log('[BS] handleBatchScriptSubmit called...')` 调试语句
+- 清理 test 内 3 处 `print()` 调试语句
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py::test_batch_script_mock_submit_success_starts_progress -v  # 1 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "script"  # 4 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 18 passed
+```
+
+**测试结果：** 18 passed in 58.62s。
+
+**下一步：** P9-FE1-F2 Phase 2（迁移行管理函数和 `_scriptRows` 状态）。
+
+**未改** app/static/index.html（业务逻辑）、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、数据库。

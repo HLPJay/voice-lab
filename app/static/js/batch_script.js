@@ -30,13 +30,13 @@
 
   window.handleBatchScriptSubmit = async function() {
     // Sync DOM values into _scriptRows state before collecting
-    document.querySelectorAll('[id^="scriptLine_"]').forEach(row => {
-      const id = parseInt(row.id.split('_')[1]);
-      const state = _scriptRows.find(r => r.id === id);
+    document.querySelectorAll('[id^="scriptLine_"]').forEach(function(row) {
+      var id = parseInt(row.id.split('_')[1]);
+      var state = _scriptRows.find(function(r) { return r.id === id; });
       if (!state) return;
-      const roleEl = document.getElementById('scriptRole_' + id);
-      const textEl = document.getElementById('scriptText_' + id);
-      const profileEl = document.getElementById('scriptProfile_' + id);
+      var roleEl = document.getElementById('scriptRole_' + id);
+      var textEl = document.getElementById('scriptText_' + id);
+      var profileEl = document.getElementById('scriptProfile_' + id);
       if (roleEl) state.role = roleEl.value;
       if (textEl) state.text = textEl.value;
       if (profileEl) state.profileId = profileEl.value;

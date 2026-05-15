@@ -681,5 +681,130 @@ def test_batch_script_module_is_loaded_and_submit_validation_still_works(
     )
 
 
-    # Verify batch/submit was NOT called (route.abort() would have thrown if reached)
-    # If we got here, the API was never called because validation short-circuited first
+# ── Test 18: batch_script.js mock submit success starts progress ────────────────────
+
+def test_batch_script_mock_submit_success_starts_progress(
+    page, e2e_base_url, console_errors
+):
+    """Mock batch/submit + status so handleBatchScriptSubmit completes without real MiniMax."""
+    # Capture all browser console messages
+    browser_logs = []
+    page.on("console", lambda msg: browser_logs.append(msg.type + ': ' + msg.text) if msg.type in ('log', 'error') else None)
+
+    submit_called = {}
+
+    def handle_submit(route):
+        submit_called["yes"] = True
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "batch_id": "e2e_batch_script_001",
+                "status": "queued",
+                "total_segments": 1,
+            }),
+        )
+
+    def handle_status(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "batch_id": "e2e_batch_script_001",
+                "status": "processing",
+                "total_segments": 1,
+                "completed_segments": 0,
+                "failed_segments": 0,
+                "segments": [{
+                    "index": 0,
+                    "role": "旁白",
+                    "text_preview": "这是一句剧本台词",
+                    "status": "processing",
+                    "duration_ms": None,
+                    "error_message": None,
+                }]
+            }),
+        )
+
+    # Register routes BEFORE navigation
+    page.route("**/api/voice/batch/submit", handle_submit)
+    page.route("**/api/voice/batch/e2e_batch_script_001/status", handle_status)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Navigate to Script tab
+    page.locator('button.tab-btn[data-tab="script"]').click()
+    page.wait_for_selector("#tab-script", state="attached", timeout=10000)
+    page.wait_for_timeout(1500)  # allow addScriptLine + loadProfiles to complete
+
+    # Set up valid script row state AND DOM values for all 3 default rows
+    # (per-row validation checks ALL _scriptRows entries, not just lines entries)
+    page.evaluate(""" () => {
+        // Set state and DOM for ALL 3 default rows (per-row validation checks every row)
+        for (var i = 0; i < 3; i++) {
+            // State
+            if (typeof _scriptRows !== 'undefined' && _scriptRows[i]) {
+                _scriptRows[i].role = '旁白';
+                _scriptRows[i].text = '第' + (i+1) + '句台词';
+                _scriptRows[i].profileId = 'e2e_test_profile';
+            }
+            // DOM - role
+            var roleEl = document.getElementById('scriptRole_' + i);
+            if (roleEl) roleEl.value = '旁白';
+            // DOM - text
+            var textEl = document.getElementById('scriptText_' + i);
+            if (textEl) textEl.value = '第' + (i+1) + '句台词';
+            // DOM - profile
+            var sel = document.getElementById('scriptProfile_' + i);
+            if (sel) {
+                sel.innerHTML = '<option value="e2e_test_profile">E2E Test Profile</option>';
+                sel.value = 'e2e_test_profile';
+            }
+        }
+
+        // Set provider to mock to bypass guardedJsonFetch confirm dialog
+        var providerSel = document.getElementById('batchScriptProvider');
+        if (providerSel) providerSel.value = 'mock';
+    } """)
+
+    # Click submit button — onclick="handleBatchScriptSubmit()" fires in the browser
+    page.locator("#batchScriptSubmit").click()
+
+    # Wait for the API call to complete (async operation)
+    import time
+    start = time.time()
+    while time.time() - start < 5:
+        if submit_called.get("yes"):
+            break
+        page.wait_for_timeout(200)
+
+    page.wait_for_timeout(500)  # allow DOM updates to settle
+
+    # Check result HTML
+    result_check = page.evaluate(""" () => {
+        var el = document.getElementById('batchScriptResult');
+        return el ? el.innerHTML.substring(0, 300) : 'NO_RESULT_EL';
+    } """)
+    # Verify submit was called
+    assert submit_called.get("yes"), f"batch/submit should have been called: {submit_called}"
+
+    # Verify "批量剧本任务已提交" appears in result area
+    result_html = page.locator("#batchScriptResult").inner_html()
+    assert "批量剧本任务已提交" in result_html, (
+        f"Expected success message, got: {result_html}"
+    )
+    assert "e2e_batch_script_001" in result_html, (
+        f"Expected batch_id in result, got: {result_html}"
+    )
+
+    # Verify progress panel is shown
+    progress_panel = page.locator("#batchScriptProgressPanel")
+    assert progress_panel.count() == 1, "batchScriptProgressPanel should exist"
+
+    # Verify button text restored
+    btn_text = page.locator("#batchScriptSubmit").text_content()
+    assert "提交批量任务" in btn_text, f"Button should be restored, got: {btn_text}"
+
+    # Clean up: stop any batch poll timer left behind
+    page.evaluate("window.stopBatchPoll && window.stopBatchPoll()")
