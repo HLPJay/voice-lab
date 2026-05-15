@@ -9,7 +9,7 @@
 * P12 真实使用修复阶段已最终收口
 * P12-USAGE-CHECK2：close post-UX6 polish ✅
 * 当前下一阶段：P13-CREATION-A0 样本观察侧边栏设计
-* P13-CREATION-A0：样本观察侧边栏设计审查进行中
+* P13-CREATION-A0：样本观察侧边栏设计审查已完成，待 A0-CHECK 复核
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5348,7 +5348,7 @@ P12 已归档完成，P13 开始从"生成音频"进入"观察样本、复用样
 
 ### 阶段状态
 
-进行中，审查与设计文档已完成，待提交后收口。
+A0 设计文档已提交。A0-CHECK 负责修正文档中的字段级事实口径，完成后再进入 P13-CREATION-B0。
 
 ### A0 结论
 
@@ -5370,3 +5370,29 @@ P12 已归档完成，P13 开始从"生成音频"进入"观察样本、复用样
 | P13-CREATION-B4 | 新增 sidebar UI |
 | P13-CREATION-B5 | 接入 batch_longtext / batch_script 样本摘要 |
 | P13-CREATION-CHECK | 完整验收与回归 |
+
+## P13-CREATION-A0-CHECK：A0 文档事实核验与修正
+
+### 背景
+
+A0 文档已完成，但复核发现部分字段描述过于确定，需要与当前代码事实对齐后再进入 B0。
+
+### 修正内容
+
+- 修正 recent_job.js 不存在且不应复用语义的描述
+- 修正 workspace sample metadata 来源为"请求上下文 + 返回结果"组合口径
+- 修正 batch segment 字段为待 B0 核验
+- 修正 history 字段描述（补充前端实际使用字段）
+- 修正 batch_script 描述与 batch_longtext 保持一致
+- 增加 B0 字段级核验清单
+
+### 阶段边界
+
+- 只改文档
+- 不改业务代码
+- 不调用真实 MiniMax
+- 不进入 B0 实现
+
+### 阶段状态
+
+A0-CHECK 已完成，文档事实口径已修正，可以进入 P13-CREATION-B0。
