@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P14-SCRIPT-UX-B1：实现剧本行数 / 字数 / 角色 / 音色完整性提示**
+**P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口**
 
 ## 已完成（续）
 
@@ -25,6 +25,7 @@
 - P14-LONGTEXT-UX-B1-CHECK：长文本 UX hints 实现复核 ✅
 - P14-LONGTEXT-UX-B1-CLOSE：长文本 UX hints 阶段收口 ✅
 - P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计 ✅
+- P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核 ✅
 
 ## 已完成
 
@@ -93,9 +94,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-SCRIPT-UX-B1 | implement script count / role / profile completeness hints | P14-SCRIPT-UX-B0 完成 |
-| P14-SCRIPT-UX-B1-CHECK | verify script UX hints implementation | P14-SCRIPT-UX-B1 完成 |
-| P14-CONTEXT-B0 | design ContextStore for recoverable creation context | P14-SCRIPT-UX-B1-CHECK 完成 |
+| P14-SCRIPT-UX-B1-CLOSE | close script UX hints stage | P14-SCRIPT-UX-B1-CHECK 完成 |
+| P14-CONTEXT-B0 | design ContextStore for recoverable creation context | P14-SCRIPT-UX-B1-CLOSE 完成 |
 | P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-LONGTEXT-UX-B1-CHECK 完成 |
 | P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-LONGTEXT-UX-B1-CHECK 完成 |
 | P14-CONTEXT-B1 | longtext context save and restore design | P14-CONTEXT-B0 完成 |

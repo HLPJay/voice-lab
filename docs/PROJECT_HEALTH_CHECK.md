@@ -45,8 +45,8 @@
 * P14-LONGTEXT-UX-B1-CHECK：长文本 UX hints 实现复核已完成 ✅
 * P14-LONGTEXT-UX-B1-CLOSE：长文本 UX hints 阶段收口已完成 ✅
 * P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计已完成 ✅
-* P14-SCRIPT-UX-B1：剧本行数 / 字数 / 角色 / 音色完整性提示已完成，待复核
-* 当前下一阶段：P14-SCRIPT-UX-B1-CHECK
+* P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核已完成 ✅
+* 当前下一阶段：P14-SCRIPT-UX-B1-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7430,3 +7430,43 @@ P14-SCRIPT-UX-B0 已完成设计。B1 在剧本页面实现生成前提示，帮
 ### 阶段状态
 
 B1 完成，待 B1-CHECK 复核。
+
+## P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核
+
+### 背景
+
+P14-SCRIPT-UX-B1 已实现剧本行数、有效台词、字数、预计生成段数、角色统计、音色完整性和字幕耗时提示。本阶段对实现进行复核。
+
+### 复核结果
+
+- 确认剧本提示区 DOM 存在（`#batchScriptHints` 及 8 个子元素）
+- 确认总行数 / 有效台词行数统计正确（`_scriptRows.length`，`text.trim()` 非空）
+- 确认空文本行不计入有效行数、预计生成段数和预计消耗
+- 确认总字数统计只统计有效台词行 `text.trim().length` 之和
+- 确认预计生成段数等于有效台词行数
+- 确认角色统计基于有效台词行 role 去重（`Object.keys(roleSet)`）
+- 确认未填写角色名 warning 生效（`emptyRoleRows > 0` 时显示）
+- 确认涉及音色数基于有效台词行 profileId 去重（`Object.keys(profileSet)`）
+- 确认未选择音色 warning 生效（`missingProfileRows > 0` 时显示）
+- 确认字幕耗时提示随 `#batchScriptNeedSubtitle` change 更新
+- 确认不调用 fetch / guardedJsonFetch / MiniMax
+- 确认不修改 `_scriptRows` 结构
+- 确认不修改 batch_script.js
+- 确认不修改剧本 submit payload
+- 确认不修改后端逻辑
+- 确认不修改 SampleStore / SampleSidebar
+- 确认未接 ContextStore / 回填
+- 确认 `addScriptLine` / `removeScriptLine` 末尾调用 `updateBatchScriptHints()`
+- 确认 `bindBatchScriptHints()` 防重复绑定
+
+### 非阻塞观察
+
+当前字数提示显示为 `约 N 字`，预计消耗与总字数等价。后续如需更明确表达消耗，可考虑改为 `约 N 字｜预计消耗：N 字`，但不阻塞 B1-CHECK。
+
+### 测试结果
+
+结果：467 passed。
+
+### 阶段状态
+
+P14-SCRIPT-UX-B1-CHECK 通过，建议进入 P14-SCRIPT-UX-B1-CLOSE。
