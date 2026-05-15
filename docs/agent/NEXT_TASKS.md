@@ -36,7 +36,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P11 | 后端能力增强（如有需求） | 用户反馈 |
+| P11-FE-REDUCE | index.html 瘦身（优先抽 product_hints.js） | 无 |
+| P11-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12 | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
@@ -60,3 +61,4 @@
 - 完整变更记录：`docs/PROJECT_HEALTH_CHECK.md`
 - 前端模块化演进：`docs/P9_FRONTEND_MODULARIZATION.md`
 - 产品打磨计划：`docs/P10_PRODUCT_POLISH_PLAN.md`
+- P11 瘦身计划：`docs/P11_INDEX_REDUCTION_PLAN.md`
