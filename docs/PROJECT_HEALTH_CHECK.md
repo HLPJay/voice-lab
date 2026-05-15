@@ -22,7 +22,8 @@
 * P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正已完成 ✅
 * P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正已完成 ✅
 * P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正已完成 ✅
-* 当前下一阶段：P13-CREATION-B4-CHECK sample sidebar UI 复核
+* P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 已实现，待 B4-CHECK 收口
+* 当前下一阶段：P13-CREATION-B4-CLOSE 状态收口
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6178,3 +6179,45 @@ B4-CHECK-FIX3 为空状态添加了刷新按钮，但 `render()` 在 `total === 
 ### 阶段状态
 
 B4-CHECK-FIX4 完成后，进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK：sample sidebar UI 复核
+
+### 背景
+
+B4 已完成 sample_sidebar.js + index.html 容器 UI，实现最近样本观察面板。该阶段经过 B4-CHECK-FIX、B4-CHECK-FIX2、B4-CHECK-FIX3、B4-CHECK-FIX4 多轮修正后进入最终复核。
+
+### 复核内容
+
+- 确认 `sample_store.js` 先于 `sample_sidebar.js` 加载
+- 确认 Workspace 中存在 `sampleSidebarRoot` 容器
+- 确认 `window.SampleSidebar` 暴露 init / render / refresh / playSample / deleteSample / clearSamples / copyText / fillTextInput
+- 确认 sidebar 只通过 `SampleStore.getSamples()` 读取样本
+- 确认不直接读取 localStorage，不读写 recentJobs
+- 确认 HTML 文本使用 `esc()`，HTML attribute 使用 `attr()`
+- 确认播放 / 下载 URL 使用 `isSafeAudioUrl()`
+- 确认拒绝 blob / javascript / data URL
+- 确认空状态和非空状态都能响应刷新按钮
+- 确认清空前有 confirm
+- 确认初版最多展示最近 20 条
+- 确认 sample card 展示 source / text_preview / voice / profile / provider / model / created_at / duration
+- 确认播放在当前 card 内渲染 `<audio controls autoplay>`
+- 确认下载按钮只使用 sample.download_url
+- 确认复制文本和回填 #textInput 行为存在
+- 确认未接 batch_longtext / batch_script
+- 确认未接 history sample_store
+- 确认未修改后端 API / 数据库结构
+- 确认测试通过
+
+### 测试结果
+
+- `tests/test_sample_store_static.py`
+- `tests/test_sample_store_workspace_integration_static.py`
+- `tests/test_sample_store_audition_integration_static.py`
+- `tests/test_history_play_static.py`
+- `tests/test_sample_sidebar_static.py`
+
+结果：181 passed。
+
+### 阶段结论
+
+P13-CREATION-B4 复核通过，可以进入 B4-CLOSE。下一步只做状态收口，不进入 B5 实现。
