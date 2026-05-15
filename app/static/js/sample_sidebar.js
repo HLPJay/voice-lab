@@ -724,6 +724,7 @@
           '<span class="sample-detail-meta-label">创建:</span>' +
           '<span class="sample-detail-meta-value">' + createdAtEsc + '</span>' +
         '</div>' : '') +
+        '</div>' +
         scriptDetailHtml;
 
     } else {

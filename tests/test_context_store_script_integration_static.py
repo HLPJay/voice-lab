@@ -555,6 +555,34 @@ class TestSampleSidebarScriptDetail:
         assert "type === 'longtext'" in region or 'type === "longtext"' in region, \
             'restore button must be conditional on context.type === "longtext"'
 
+    def test_showSampleDetail_script_branch_closes_meta_div_before_lines(self):
+        """script branch must close sample-detail-meta div before appending scriptDetailHtml."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function showSampleDetail'):]
+        # Find the script branch
+        script_branch_idx = body.find("context.type === 'script'")
+        if script_branch_idx < 0:
+            script_branch_idx = body.find('context.type === "script"')
+        assert script_branch_idx >= 0, \
+            'showSampleDetail must have a context.type === "script" branch'
+        # Find the closing brace of the if/else-if chain to bound our search
+        else_branch_idx = body.find('} else {', script_branch_idx)
+        script_substr = body[script_branch_idx:else_branch_idx if else_branch_idx > 0 else len(body)]
+        # scriptDetailHtml must be preceded by '</div>' that closes sample-detail-meta
+        # Find the panel.innerHTML assignment in the script branch (skip var declaration)
+        inner_html_idx = script_substr.find("panel.innerHTML +=")
+        assert inner_html_idx >= 0, 'script branch must have panel.innerHTML +='
+        panel_part = script_substr[inner_html_idx:]
+        close_div_idx = panel_part.find("'</div>'")
+        # Find scriptDetailHtml after the panel.innerHTML assignment (in the += chain)
+        script_detail_idx = panel_part.find('scriptDetailHtml')
+        assert close_div_idx >= 0, \
+            "script branch must contain closing '</div>' for sample-detail-meta"
+        assert script_detail_idx >= 0, \
+            'script branch must reference scriptDetailHtml'
+        assert close_div_idx < script_detail_idx, \
+            "sample-detail-meta closing '</div>' must appear before scriptDetailHtml in script branch"
+
 
 # ── Behavioral tests (Node.js) ──────────────────────────────────────────────
 
