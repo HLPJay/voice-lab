@@ -18,7 +18,9 @@
 * P13-CREATION-B2-CHECK：workspace sample_store 接入复核已完成 ✅
 * P13-CREATION-B3：audition_records 接入 sample_store 已复核通过 ✅
 * P13-CREATION-B3-CHECK：audition_records sample_store 接入复核已完成 ✅
-* 当前下一阶段：P13-CREATION-B4-CHECK-FIX sample sidebar UI 契约修正
+* P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正已完成 ✅
+* P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正已完成 ✅
+* 当前下一阶段：P13-CREATION-B4-CHECK sample sidebar UI 复核
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6093,3 +6095,30 @@ B4 初版实现完成后复核发现 sidebar UI 存在若干契约问题：rende
 ### 阶段状态
 
 B4-CHECK-FIX 完成后，再进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正
+
+### 背景
+
+B4-CHECK-FIX 修复了 sidebar 读取、刷新、清空确认、20 条限制和卡片内播放等问题。继续复核发现 HTML attribute escape、下载按钮、provider/model/created_at 展示和任务状态仍需修正。
+
+### 修正内容
+
+- 新增 attribute escape helper `attr()`，避免将 `esc()` 直接用于 HTML attribute
+- `data-sample-id`、`data-id`、`title`、`<source src>`、下载 `href` 均使用 `attr()` escape
+- 修正 `sourceLabel` 处理顺序：raw source 先映射，展示时再 escape
+- sample card 补充 provider / model / created_at metadata 展示
+- sample card 增加下载按钮（`<a class="sample-btn-download">`），只使用 `sample.download_url`
+- 修正 NEXT_TASKS 当前阶段为 B4-CHECK
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX2 完成后，进入 B4-CHECK。

@@ -30,13 +30,26 @@
   }
 
   /**
-   * HTML escape helper — prevents untrusted text from becoming code.
-   * Uses a detached div so it works in all browsers without regex munging.
+   * HTML escape for text content (innerHTML text nodes and text children).
+   * Uses textContent pattern — safe for all browsers, no regex edge-cases.
    */
   function esc(s) {
     var div = document.createElement('div');
     div.textContent = s == null ? '' : String(s);
     return div.innerHTML;
+  }
+
+  /**
+   * HTML attribute value escape — escapes & " ' < > for use inside
+   * quoted attribute values (data-* attributes, title, href, src, etc.).
+   */
+  function attr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   /**
@@ -62,6 +75,21 @@
     return sec + '″';
   }
 
+  function formatCreatedAt(value) {
+    if (!value) return '';
+    try {
+      var d = new Date(value);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /**
+   * Map source tag to human-readable label. Receives raw source string.
+   * Returns escaped label for display.
+   */
   function sourceLabel(source) {
     var map = {
       workspace_sync: '单条',
@@ -82,46 +110,75 @@
   // ── card builder ────────────────────────────────────────────────────
 
   function buildCard(sample) {
-    var id = esc(sample.sample_id || '');
+    // Raw values
+    var idRaw = sample.sample_id || '';
     var textRaw = sample.text_preview || '';
-    var text = esc(truncateText(textRaw, 60));
-    var textTitle = esc(textRaw);
-    var profileName = esc(sample.profile_name || sample.profile_id || '');
-    var voiceName = esc(sample.voice_name || sample.voice_id || '');
-    var source = esc(sample.source || '');
-    var sourceBadge = sourceLabel(source);
-    var duration = formatDuration(sample.duration_ms);
-    var durationEsc = esc(duration);
+    var sourceRaw = sample.source || '';
+    var providerRaw = sample.provider || '';
+    var modelRaw = sample.model || '';
+    var createdAtRaw = sample.created_at || '';
+    var profileNameRaw = sample.profile_name || sample.profile_id || '';
+    var voiceNameRaw = sample.voice_name || sample.voice_id || '';
     var downloadUrl = sample.download_url || '';
     var canPlay = downloadUrl && downloadUrl.indexOf('blob:') !== 0;
+    var canDownload = downloadUrl && downloadUrl.indexOf('blob:') !== 0;
 
-    var html = '<div class="sample-card" data-sample-id="' + id + '">';
+    // Escaped display values
+    var idAttr = attr(idRaw);
+    var textEsc = esc(truncateText(textRaw, 60));
+    var textTitleAttr = attr(textRaw);
+    var sourceBadge = sourceLabel(sourceRaw); // sourceLabel calls esc internally
+    var durationEsc = esc(formatDuration(sample.duration_ms));
+    var providerEsc = esc(providerRaw);
+    var modelEsc = esc(modelRaw);
+    var createdAtEsc = esc(formatCreatedAt(createdAtRaw));
+    var profileNameEsc = esc(profileNameRaw);
+    var voiceNameEsc = esc(voiceNameRaw);
+    var downloadUrlAttr = attr(downloadUrl);
+    var downloadName = attr(sample.asset_id || sample.sample_id || 'sample-audio');
+
+    var html = '<div class="sample-card" data-sample-id="' + idAttr + '">';
 
     // Header row: source badge + duration
-    if (sourceBadge || duration) {
+    if (sourceBadge || durationEsc) {
       html += '<div class="sample-card-meta">';
       if (sourceBadge) {
         html += '<span class="sample-source-badge">' + sourceBadge + '</span>';
       }
-      if (duration) {
+      if (durationEsc) {
         html += '<span class="sample-duration">' + durationEsc + '</span>';
       }
       html += '</div>';
     }
 
     // Text preview
-    if (text) {
-      html += '<div class="sample-text" title="' + textTitle + '">' + text + '</div>';
+    if (textEsc) {
+      html += '<div class="sample-text" title="' + textTitleAttr + '">' + textEsc + '</div>';
+    }
+
+    // Secondary metadata: provider / model / created_at
+    if (providerEsc || modelEsc || createdAtEsc) {
+      html += '<div class="sample-card-meta sample-card-meta-secondary">';
+      if (providerEsc) {
+        html += '<span class="sample-meta-item"><span class="sample-meta-label">Provider:</span> ' + providerEsc + '</span>';
+      }
+      if (modelEsc) {
+        html += '<span class="sample-meta-item"><span class="sample-meta-label">Model:</span> ' + modelEsc + '</span>';
+      }
+      if (createdAtEsc) {
+        html += '<span class="sample-meta-item"><span class="sample-meta-label">时间:</span> ' + createdAtEsc + '</span>';
+      }
+      html += '</div>';
     }
 
     // Profile + voice
-    if (profileName || voiceName) {
+    if (profileNameEsc || voiceNameEsc) {
       html += '<div class="sample-profile">';
-      if (profileName) {
-        html += '<span class="sample-profile-name">' + profileName + '</span>';
+      if (profileNameEsc) {
+        html += '<span class="sample-profile-name">' + profileNameEsc + '</span>';
       }
-      if (voiceName) {
-        html += ' › <span class="sample-voice-name">' + voiceName + '</span>';
+      if (voiceNameEsc) {
+        html += ' › <span class="sample-voice-name">' + voiceNameEsc + '</span>';
       }
       html += '</div>';
     }
@@ -129,11 +186,14 @@
     // Action buttons — play uses data-id (not data-url) for in-card playback
     html += '<div class="sample-card-actions">';
     if (canPlay) {
-      html += '<button class="sample-btn-play" data-id="' + id + '" title="播放">▶</button>';
+      html += '<button class="sample-btn-play" data-id="' + idAttr + '" title="播放">▶</button>';
+    }
+    if (canDownload) {
+      html += '<a class="sample-btn-download" href="' + downloadUrlAttr + '" download="' + downloadName + '" title="下载">⇩</a>';
     }
     html += '<button class="sample-btn-copy" data-text="' + encodeURIComponent(textRaw) + '" title="复制文本">⎘</button>';
     html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(textRaw) + '" title="填入工作台">↓</button>';
-    html += '<button class="sample-btn-delete" data-id="' + id + '" title="删除">✕</button>';
+    html += '<button class="sample-btn-delete" data-id="' + idAttr + '" title="删除">✕</button>';
     html += '</div>';
 
     html += '</div>';
@@ -274,13 +334,13 @@
       return;
     }
 
-    // Build in-card audio player
+    // Build in-card audio player — use attr() for the src attribute
     var player = document.createElement('div');
     player.className = 'sample-card-player';
-    var audioSrc = esc(downloadUrl);
+    var audioSrcAttr = attr(downloadUrl);
     player.innerHTML =
       '<audio controls autoplay style="width:100%;height:32px;margin-top:8px">' +
-        '<source src="' + audioSrc + '" type="audio/mpeg">' +
+        '<source src="' + audioSrcAttr + '" type="audio/mpeg">' +
         '您的浏览器不支持音频播放</audio>';
     card.appendChild(player);
   }

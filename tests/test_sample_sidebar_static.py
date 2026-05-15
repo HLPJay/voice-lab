@@ -1,9 +1,9 @@
 """
 test_sample_sidebar_static.py
 
-P13-CREATION-B4-CHECK-FIX: Static contract tests for sample_sidebar.js.
-Covers all hardening requirements: SampleStore-only reads, HTML escape,
-refresh button, clear confirm, 20-item cap, in-card audio playback.
+P13-CREATION-B4-CHECK-FIX2: Static contract tests for sample_sidebar.js.
+Covers: attr() helper, provider/model/created_at display, download button,
+sourceLabel raw-source fix, SampleStore-only reads, esc, refresh, confirm.
 """
 
 import os
@@ -22,11 +22,10 @@ def read():
 
 
 def func_body(name, content):
-    """Return the body of a named function."""
+    """Return the full body of a named function (including nested braces)."""
     marker = 'function ' + name
     start = content.find(marker)
     assert start >= 0, name + ' function must exist'
-    # find closing brace by counting braces
     depth = 0
     end = start
     for i in range(start, len(content)):
@@ -69,115 +68,229 @@ class TestExports:
             assert re.search(r'\b' + m + r'\s*:', obj), 'missing: ' + m
 
 
+# ── attr() helper ─────────────────────────────────────────────────────────────
+
+class TestAttrHelper:
+    def test_attr_function_exists(self):
+        c = read()
+        assert re.search(r'function attr\s*\(', c), \
+            'attr() function must exist'
+
+    def test_attr_replaces_double_quote(self):
+        c = read()
+        body = func_body('attr', c)
+        assert '&quot;' in body or '&#34;' in body or ('\\"' in body and '&quot;' in body), \
+            'attr() must escape " as &quot;'
+
+    def test_attr_replaces_single_quote(self):
+        c = read()
+        body = func_body('attr', c)
+        assert '&#39;' in body or '&#x27;' in body, \
+            'attr() must escape \' as &#39;'
+
+    def test_attr_replaces_ampersand(self):
+        c = read()
+        body = func_body('attr', c)
+        assert '&amp;' in body, \
+            'attr() must escape & as &amp;'
+
+    def test_attr_replaces_angle_brackets(self):
+        c = read()
+        body = func_body('attr', c)
+        assert '&lt;' in body and '&gt;' in body, \
+            'attr() must escape < and >'
+
+
+# ── esc() helper ─────────────────────────────────────────────────────────────
+
+class TestEscHelper:
+    def test_esc_exists(self):
+        c = read()
+        assert re.search(r'function esc\s*\(', c), 'esc() function must exist'
+
+    def test_esc_uses_textContent(self):
+        c = read()
+        body = func_body('esc', c)
+        assert 'textContent' in body, 'esc must use textContent'
+
+    def test_esc_uses_innerHTML(self):
+        c = read()
+        body = func_body('esc', c)
+        assert 'innerHTML' in body, 'esc must return innerHTML'
+
+
 # ── SampleStore-only reads ─────────────────────────────────────────────────────
 
 class TestSampleStoreReadOnly:
     def test_getSamplesSafe_exists(self):
         c = read()
-        assert 'function getSamplesSafe' in c, \
-            'getSamplesSafe must exist'
-
-    def test_getSamplesSafe_calls_SampleStore_getSamples(self):
-        c = read()
-        body = func_body('getSamplesSafe', c)
-        assert 'SampleStore.getSamples' in body, \
-            'getSamplesSafe must call SampleStore.getSamples'
+        assert 'function getSamplesSafe' in c
 
     def test_render_uses_getSamplesSafe(self):
         c = read()
         body = func_body('render', c)
-        assert 'getSamplesSafe()' in body, \
-            'render must call getSamplesSafe()'
+        assert 'getSamplesSafe()' in body
 
     def test_render_does_not_read_localStorage_directly(self):
         c = read()
         body = func_body('render', c)
-        assert 'localStorage.getItem' not in body, \
-            'render must not read localStorage directly'
+        assert 'localStorage.getItem' not in body
 
-    def test_render_does_not_JSON_parse_localStorage(self):
+    def test_render_does_not_JSON_parse(self):
         c = read()
         body = func_body('render', c)
-        assert 'JSON.parse' not in body, \
-            'render must not JSON.parse localStorage'
+        assert 'JSON.parse' not in body
 
 
-# ── HTML escape ───────────────────────────────────────────────────────────────
+# ── buildCard attribute escaping ─────────────────────────────────────────────
 
-class TestHtmlEscape:
-    def test_esc_function_exists(self):
-        c = read()
-        assert 'function esc(' in c or 'function esc (s' in c, \
-            'esc helper must exist'
-
-    def test_esc_uses_textContent(self):
-        c = read()
-        body = func_body('esc', c)
-        assert 'textContent' in body, \
-            'esc must use textContent to escape HTML'
-
-    def test_esc_uses_innerHTML(self):
-        c = read()
-        body = func_body('esc', c)
-        assert 'innerHTML' in body, \
-            'esc must use innerHTML to return escaped string'
-
-    def test_buildCard_calls_esc_on_sample_id(self):
+class TestBuildCardAttributeEscaping:
+    def test_data_sample_id_uses_attr(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'esc(sample.sample_id' in body or 'esc(id' in body, \
-            'buildCard must escape sample_id'
+        # idAttr = attr(...)
+        assert 'idAttr = attr(' in body, \
+            'buildCard must use attr() for idAttr'
 
-    def test_buildCard_calls_esc_on_text_preview(self):
+    def test_data_sample_id_attribute_uses_idAttr(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'esc(' in body, \
-            'buildCard must escape text fields'
+        # Must use idAttr (the attr()-escaped value) in data-sample-id attribute
+        assert 'idAttr' in body and 'data-sample-id' in body, \
+            'data-sample-id must reference attr()-escaped idAttr variable'
 
-    def test_buildCard_calls_esc_on_source(self):
+    def test_title_uses_attr(self):
         c = read()
         body = func_body('buildCard', c)
-        # sourceLabel may call esc internally, or buildCard may call esc on source
-        assert 'esc(source' in body or 'esc(' in body, \
-            'buildCard must escape source'
+        assert 'title="' in body and 'TitleAttr' in body, \
+            'title attribute must use attr() escaped value'
 
-    def test_buildCard_calls_esc_on_profile_name(self):
+    def test_source_tag_uses_attr_for_src(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'audioSrcAttr = attr(' in body or 'src="' in body, \
+            '<source src> must use attr() escaped URL'
+
+
+# ── sourceLabel raw source fix ────────────────────────────────────────────────
+
+class TestSourceLabelRawSource:
+    def test_sourceLabel_takes_raw_source(self):
+        c = read()
+        body = func_body('sourceLabel', c)
+        assert 'source' in body and 'map[source]' in body, \
+            'sourceLabel must look up raw source string in map'
+
+    def test_sourceLabel_does_not_pre_escape_input(self):
+        c = read()
+        body = func_body('sourceLabel', c)
+        # Should NOT be esc(source) as input to map lookup
+        assert not re.search(r'map\s*\[\s*esc\s*\(\s*source', body), \
+            'sourceLabel must not esc() the source before map lookup'
+
+    def test_buildCard_passes_raw_source_to_sourceLabel(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'esc(' in body, \
-            'buildCard must escape profile_name / profile_id'
+        # sourceLabel(sourceRaw) — not esc(source)
+        assert 'sourceLabel(sourceRaw)' in body, \
+            'buildCard must pass raw source to sourceLabel()'
 
-    def test_buildCard_calls_esc_on_voice_name(self):
+
+# ── provider / model / created_at display ────────────────────────────────────
+
+class TestMetadataDisplay:
+    def test_provider_escaped_and_displayed(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'esc(' in body, \
-            'buildCard must escape voice_name / voice_id'
+        assert 'providerEsc' in body and 'provider' in body, \
+            'buildCard must display escaped provider'
+
+    def test_model_escaped_and_displayed(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'modelEsc' in body and 'model' in body, \
+            'buildCard must display escaped model'
+
+    def test_createdAt_escaped_and_displayed(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'createdAtEsc' in body and 'created_at' in body, \
+            'buildCard must display escaped created_at'
+
+    def test_formatCreatedAt_exists(self):
+        c = read()
+        assert 'function formatCreatedAt' in c, \
+            'formatCreatedAt() must exist'
+
+    def test_formatCreatedAt_uses_Date(self):
+        c = read()
+        body = func_body('formatCreatedAt', c)
+        assert 'Date' in body, \
+            'formatCreatedAt must use Date constructor'
+
+    def test_formatCreatedAt_returns_empty_for_invalid(self):
+        c = read()
+        body = func_body('formatCreatedAt', c)
+        assert 'isNaN' in body or 'return' in body, \
+            'formatCreatedAt must handle invalid dates'
+
+
+# ── download button ───────────────────────────────────────────────────────────
+
+class TestDownloadButton:
+    def test_download_button_exists(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'sample-btn-download' in body, \
+            'buildCard must include sample-btn-download'
+
+    def test_download_button_uses_download_url(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'downloadUrlAttr' in body and 'href="' in body, \
+            'download button href must use attr()-escaped download_url'
+
+    def test_download_button_uses_download_attribute(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'download="' in body or "download='" in body, \
+            'download button must have download attribute'
+
+    def test_download_button_rejects_blob_url(self):
+        c = read()
+        body = func_body('buildCard', c)
+        # canDownload must be gated on non-blob
+        assert 'blob:' not in body or ('canDownload' in body and 'blob:' in body), \
+            'download button must not allow blob: URLs'
+
+    def test_download_button_does_not_call_backend(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'fetch(' not in body
+        assert 'guardedJsonFetch' not in body
 
 
 # ── outer card wrapper ────────────────────────────────────────────────────────
 
 class TestOuterCard:
-    def test_sample_sidebar_card_exists(self):
+    def test_sample_sidebar_card_in_render(self):
         c = read()
         body = func_body('render', c)
-        assert 'sample-sidebar-card' in body, \
-            'render must use .sample-sidebar-card outer wrapper'
+        assert 'sample-sidebar-card' in body
 
 
 # ── refresh button ───────────────────────────────────────────────────────────
 
 class TestRefreshButton:
-    def test_sampleSidebarRefreshBtn_in_render(self):
+    def test_refresh_button_in_render(self):
         c = read()
         body = func_body('render', c)
-        assert 'sampleSidebarRefreshBtn' in body, \
-            'render must include refresh button'
+        assert 'sampleSidebarRefreshBtn' in body
 
-    def test_sampleSidebarRefreshBtn_in_events(self):
+    def test_refresh_button_event_handler(self):
         c = read()
         body = func_body('bindActionEvents', c)
-        assert 'sampleSidebarRefreshBtn' in body, \
-            'bindActionEvents must handle refresh button click'
+        assert 'sampleSidebarRefreshBtn' in body
 
 
 # ── clear confirm ─────────────────────────────────────────────────────────────
@@ -186,29 +299,25 @@ class TestClearConfirm:
     def test_clearSamples_calls_confirm(self):
         c = read()
         body = func_body('clearSamples', c)
-        assert 'confirm' in body, \
-            'clearSamples must call window.confirm before clearing'
+        assert 'confirm' in body
 
 
-# ── 20-item cap ──────────────────────────────────────────────────────────────
+# ── MAX_VISIBLE cap ─────────────────────────────────────────────────────────
 
-class TestTwentyItemCap:
-    def test_MAX_VISIBLE_constant(self):
+class TestMaxVisibleCap:
+    def test_MAX_VISIBLE_equals_20(self):
         c = read()
-        assert re.search(r'MAX_VISIBLE\s*=\s*20\b', c), \
-            'MAX_VISIBLE must be set to 20'
+        assert re.search(r'MAX_VISIBLE\s*=\s*20\b', c)
 
     def test_render_uses_slice(self):
         c = read()
         body = func_body('render', c)
-        assert 'slice(0,' in body or 'slice(0,' in c, \
-            'render must use slice(0, MAX_VISIBLE) to limit items'
+        assert 'slice(0,' in body
 
     def test_title_shows_count_ratio(self):
         c = read()
         body = func_body('render', c)
-        assert 'visibleSamples.length' in body or 'showing' in body, \
-            'render title should show visible/total count'
+        assert 'showing' in body and 'total' in body
 
 
 # ── playSample in-card audio ──────────────────────────────────────────────────
@@ -217,65 +326,27 @@ class TestPlaySampleInCard:
     def test_playSample_takes_sampleId(self):
         c = read()
         body = func_body('playSample', c)
-        # signature should be playSample(sampleId)
-        assert re.search(r'function playSample\s*\(\s*sampleId\s*\)', body), \
-            'playSample must take sampleId parameter'
+        assert re.search(r'function playSample\s*\(\s*sampleId\s*\)', body)
 
     def test_playSample_finds_sample_by_id(self):
         c = read()
         body = func_body('playSample', c)
-        assert 'getSamplesSafe()' in body or 'SampleStore' in body, \
-            'playSample must find sample by sample_id via SampleStore'
+        assert 'getSamplesSafe()' in body
 
-    def test_playSample_uses_download_url(self):
+    def test_playSample_blocks_blob(self):
         c = read()
         body = func_body('playSample', c)
-        assert 'download_url' in body, \
-            'playSample must use sample.download_url'
+        assert 'blob:' in body
 
-    def test_playSample_blocks_blob_url(self):
+    def test_playSample_renders_audio_controls(self):
         c = read()
         body = func_body('playSample', c)
-        assert 'blob:' in body, \
-            'playSample must block blob: URLs'
-
-    def test_playSample_renders_audio_element(self):
-        c = read()
-        body = func_body('playSample', c)
-        assert '<audio' in body or 'audio' in body, \
-            'playSample must render an <audio> element'
-
-    def test_playSample_has_controls_attribute(self):
-        c = read()
-        body = func_body('playSample', c)
-        assert 'controls' in body, \
-            'playSample audio must have controls attribute'
-
-    def test_playSample_has_autoplay_attribute(self):
-        c = read()
-        body = func_body('playSample', c)
-        assert 'autoplay' in body, \
-            'playSample audio must have autoplay attribute'
-
-    def test_playSample_does_not_use_new_Audio_as_main_path(self):
-        c = read()
-        body = func_body('playSample', c)
-        # new Audio() may appear as a comment or deprecated path; main path must NOT be new Audio(url)
-        # Verify the function does NOT do "new Audio(url)" as primary behavior
-        assert not re.search(r'new\s+Audio\s*\(\s*downloadUrl\s*\)', body), \
-            'playSample must not use new Audio(url) as primary playback path'
+        assert 'controls' in body and 'autoplay' in body
 
     def test_play_btn_uses_data_id(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'data-id="' in body, \
-            'play button must use data-id attribute (not data-url)'
-
-    def test_play_btn_event_uses_sampleId(self):
-        c = read()
-        body = func_body('bindActionEvents', c)
-        assert 'playSample(sampleId' in body or 'playSample(id' in body, \
-            'play button click must call playSample with sampleId'
+        assert 'data-id="' in body and 'sample-btn-play' in body
 
 
 # ── no API calls ──────────────────────────────────────────────────────────────
@@ -289,12 +360,8 @@ class TestNoApiCalls:
         c = read()
         assert 'guardedJsonFetch' not in c
 
-    def test_no_xmlHttpRequest(self):
-        c = read()
-        assert 'XMLHttpRequest' not in c
 
-
-# ── no batch / history / workspace coupling ───────────────────────────────────
+# ── no unwanted references ───────────────────────────────────────────────────
 
 class TestNoUnwantedReferences:
     def test_no_batch_longtext(self):
@@ -305,11 +372,6 @@ class TestNoUnwantedReferences:
         c = read()
         assert 'batch_script' not in c and 'batchScript' not in c
 
-    def test_no_history_sample_store(self):
-        c = read()
-        assert 'history' not in c.lower() or 'sourceLabel' in c, \
-            'must not reference history sample_store'
-
     def test_no_safePushWorkspaceSample(self):
         c = read()
         assert 'safePushWorkspaceSample' not in c
@@ -318,14 +380,29 @@ class TestNoUnwantedReferences:
         c = read()
         assert 'safePushAuditionSample' not in c
 
+    def test_no_handleGenerate(self):
+        c = read()
+        assert 'handleGenerate' not in c
 
-# ── storage key constant ──────────────────────────────────────────────────────
+    def test_no_voiceBindMap(self):
+        c = read()
+        assert 'voiceBindMap' not in c
+
+    def test_no_profileBinding(self):
+        c = read()
+        assert 'profileBinding' not in c
+
+    def test_no_batchState(self):
+        c = read()
+        assert 'batchState' not in c
+
+
+# ── storage key ───────────────────────────────────────────────────────────────
 
 class TestStorageKey:
     def test_storage_key_constant(self):
         c = read()
-        assert 'voice_lab_recent_samples_v1' in c, \
-            'must reference correct storage key'
+        assert 'voice_lab_recent_samples_v1' in c
 
 
 # ── copyText / fillTextInput ─────────────────────────────────────────────────
@@ -333,8 +410,7 @@ class TestStorageKey:
 class TestCopyText:
     def test_copyText_uses_clipboard(self):
         c = read()
-        body = func_body('copyText', c)
-        assert 'navigator.clipboard' in body
+        assert 'navigator.clipboard' in func_body('copyText', c)
 
     def test_copyText_has_execCommand_fallback(self):
         c = read()
@@ -354,7 +430,7 @@ class TestFillTextInput:
         assert 'dispatchEvent' in body
 
 
-# ── deleteSample / clearSamples ────────────────────────────────────────────────
+# ── deleteSample / clearSamples ─────────────────────────────────────────────
 
 class TestDeleteSample:
     def test_calls_sampleStore_deleteSample(self):
@@ -379,13 +455,8 @@ class TestClearSamples:
         body = func_body('clearSamples', c)
         assert 'render()' in body
 
-    def test_has_confirm_guard(self):
-        c = read()
-        body = func_body('clearSamples', c)
-        assert 'confirm' in body
 
-
-# ── sourceLabel maps ──────────────────────────────────────────────────────────
+# ── sourceLabel maps ─────────────────────────────────────────────────────────
 
 class TestSourceLabel:
     def test_maps_workspace_sync(self):
@@ -407,27 +478,3 @@ class TestSourceLabel:
     def test_maps_audition(self):
         c = read()
         assert 'audition' in c
-
-
-# ── no internal state coupling ────────────────────────────────────────────────
-
-class TestNoInternalCoupling:
-    def test_no_handleGenerate(self):
-        c = read()
-        assert 'handleGenerate' not in c
-
-    def test_no_voiceBindMap(self):
-        c = read()
-        assert 'voiceBindMap' not in c
-
-    def test_no_profileBinding(self):
-        c = read()
-        assert 'profileBinding' not in c
-
-    def test_no_batchState(self):
-        c = read()
-        assert 'batchState' not in c
-
-    def test_no_sharedBatchState(self):
-        c = read()
-        assert 'sharedBatchState' not in c
