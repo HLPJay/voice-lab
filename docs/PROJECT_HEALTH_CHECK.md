@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P11-FE-REDUCE-A0（index.html 瘦身计划审查）：
+截至 P11-FE-REDUCE-B1（product_hints.js 已抽出）：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台

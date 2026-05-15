@@ -237,4 +237,46 @@ P9-FE2-A0 说"error_helpers.js 迁移成本大，拆分收益有限"和"profile_
 
 **修正结论：**
 - `product_hints.js` 是当前唯一值得优先抽离的模块
+
+---
+
+## P11-FE-REDUCE-B1：product_hints.js 抽离实现
+
+**执行时间：** 2026-05-15
+
+### 实现内容
+
+**新建文件：** `app/static/js/product_hints.js`
+
+**迁移内容：**
+- `updateWorkspaceVoiceBindingHint` → `window.updateWorkspaceVoiceBindingHint`
+- `updateBatchVoiceBindingHint` → `window.updateBatchVoiceBindingHint`
+- `updateScriptLineVoiceHint` → `window.updateScriptLineVoiceHint`
+- `switchToVoicesTab()` — 共享的切 tab 逻辑
+
+**关键设计决策：**
+- 函数内改为 `document.getElementById()` 访问 DOM，而非依赖 inline script 中的脚本局部变量 `profileSelect` / `providerSelect`
+- 这样 product_hints.js 在 index.html inline script 之前加载时，函数仍能正常工作（因为事件处理器在 inline script 中设置，设置时函数已在 window 上）
+- 使用局部 `phEsc()` 替代 index.html 的 `esc()`
+
+**index.html 改动：**
+- 新增 `<script src="/static/js/product_hints.js"></script>`（history.js 之后）
+- 删除三个函数定义（原 lines 1926–2016）
+- 事件绑定调用方式不变（仍为 `updateWorkspaceVoiceBindingHint()`，通过 window 引用）
+
+**验收结果：**
+
+| 验收项 | 结果 |
+|---|---|
+| `window.updateWorkspaceVoiceBindingHint` 类型为 function | ✅ |
+| `window.updateBatchVoiceBindingHint` 类型为 function | ✅ |
+| `window.updateScriptLineVoiceHint` 类型为 function | ✅ |
+| B1/B2/B3 E2E 全部 pass | ✅（4 targeted, 29 total） |
+| 不调用真实 MiniMax API | ✅ |
+
+### E2E
+
+- targeted（B1/B2/B3）：4 passed
+- full suite：29 passed
+- 无需新增 module-loaded E2E（B1/B2/B3 已有 behavioral E2E 覆盖）
 - 其它模块（voice_list、script_lines、error_helpers、batch_shared）当前阶段不应动

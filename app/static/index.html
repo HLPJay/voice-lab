@@ -1607,6 +1607,7 @@
 <script src="/static/js/provider_capabilities.js"></script>
 <script src="/static/js/runtime_status.js"></script>
 <script src="/static/js/history.js"></script>
+<script src="/static/js/product_hints.js"></script>
 <script src="/static/js/audition_records.js"></script>
 <script src="/static/js/batch_longtext.js"></script>
 <script src="/static/js/batch_script.js"></script>
@@ -1921,98 +1922,6 @@
       loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
     };
     profileSelect.parentNode.appendChild(btn);
-  }
-
-  // P10-PRODUCT-B1: workspace voice binding hint
-  function updateWorkspaceVoiceBindingHint() {
-    const profileId = profileSelect.value;
-    const provider = providerSelect.value;
-    const hintEl = document.getElementById('workspaceVoiceBindingHint');
-    if (!hintEl) return;
-    if (!profileId) {
-      hintEl.style.display = 'none';
-      return;
-    }
-    hintEl.style.display = '';
-    // Check if _voiceBindMap has a binding for this profile+provider
-    const bindMap = window._voiceBindMap || {};
-    // _voiceBindMap is keyed by voiceId, each entry is an array of bindings
-    let foundVoiceId = null;
-    let foundModel = null;
-    for (const voiceId in bindMap) {
-      const bindings = bindMap[voiceId] || [];
-      const match = bindings.find(b => b.profile_id === profileId && b.provider === provider && b.status === 'available');
-      if (match) {
-        foundVoiceId = voiceId;
-        foundModel = match.model || null;
-        break;
-      }
-    }
-    if (foundVoiceId) {
-      hintEl.innerHTML = `<span style="color:#2f855a">当前音色：${esc(foundVoiceId)}${foundModel ? ' (' + esc(foundModel) + ')' : ''}</span>`;
-    } else {
-      hintEl.innerHTML = `<span style="color:#c53030">该人设尚未绑定音色</span> <button type="button" id="workspaceVoiceBindingSwitchBtn" style="font-size:0.75rem;padding:1px 6px;cursor:pointer;margin-left:4px">去选择音色</button>`;
-      const switchBtn = document.getElementById('workspaceVoiceBindingSwitchBtn');
-      if (switchBtn) {
-        switchBtn.addEventListener('click', function() {
-          var voicesBtn = document.querySelector('.tab-btn[data-tab="voices"]');
-          if (voicesBtn) voicesBtn.click();
-        });
-      }
-    }
-  }
-
-  // B3-longtext: voice binding hint for longtext tab
-  function updateBatchVoiceBindingHint() {
-    const profileId = document.getElementById('batchProfile')?.value;
-    const provider = document.getElementById('batchProvider')?.value;
-    const hintEl = document.getElementById('batchVoiceBindingHint');
-    if (!hintEl) return;
-    if (!profileId) { hintEl.style.display = 'none'; return; }
-    hintEl.style.display = '';
-    const bindMap = window._voiceBindMap || {};
-    let foundVoiceId = null, foundModel = null;
-    for (const voiceId in bindMap) {
-      const match = (bindMap[voiceId] || []).find(b => b.profile_id === profileId && b.provider === provider && b.status === 'available');
-      if (match) { foundVoiceId = voiceId; foundModel = match.model || null; break; }
-    }
-    if (foundVoiceId) {
-      hintEl.innerHTML = `<span style="color:#2f855a">当前音色：${esc(foundVoiceId)}${foundModel ? ' (' + esc(foundModel) + ')' : ''}</span>`;
-    } else {
-      hintEl.innerHTML = `<span style="color:#c53030">该人设尚未绑定音色</span> <button type="button" id="batchVoiceBindingSwitchBtn" style="font-size:0.75rem;padding:1px 6px;cursor:pointer;margin-left:4px">去选择音色</button>`;
-      const switchBtn = document.getElementById('batchVoiceBindingSwitchBtn');
-      if (switchBtn) {
-        switchBtn.addEventListener('click', function() {
-          var voicesBtn = document.querySelector('.tab-btn[data-tab="voices"]');
-          if (voicesBtn) voicesBtn.click();
-        });
-      }
-    }
-  }
-
-  // B3-script: per-line voice binding hint for script tab
-  function updateScriptLineVoiceHint(id) {
-    const profileId = document.getElementById(`scriptProfile_${id}`)?.value;
-    const provider = document.getElementById('batchScriptProvider')?.value;
-    const hintEl = document.getElementById(`scriptVoiceHint_${id}`);
-    if (!hintEl) return;
-    if (!profileId) { hintEl.style.display = 'none'; return; }
-    hintEl.style.display = '';
-    const bindMap = window._voiceBindMap || {};
-    let foundVoiceId = null, foundModel = null;
-    for (const voiceId in bindMap) {
-      const match = (bindMap[voiceId] || []).find(b => b.profile_id === profileId && b.provider === provider && b.status === 'available');
-      if (match) { foundVoiceId = voiceId; foundModel = match.model || null; break; }
-    }
-    if (foundVoiceId) {
-      hintEl.innerHTML = `<span style="color:#2f855a">当前音色：${esc(foundVoiceId)}${foundModel ? ' (' + esc(foundModel) + ')' : ''}</span>`;
-    } else {
-      hintEl.innerHTML = `<span style="color:#c53030">尚未绑定</span> <button type="button" class="scriptVoiceSwitchBtn" data-line-id="${id}" style="font-size:0.7rem;padding:1px 5px;cursor:pointer;margin-left:2px">去选择音色</button>`;
-      hintEl.querySelector('.scriptVoiceSwitchBtn')?.addEventListener('click', function() {
-        var voicesBtn = document.querySelector('.tab-btn[data-tab="voices"]');
-        if (voicesBtn) voicesBtn.click();
-      });
-    }
   }
 
   loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
