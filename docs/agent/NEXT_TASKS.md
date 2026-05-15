@@ -34,7 +34,7 @@
 
 ## Next
 
-1. **P10-PRODUCT-B6** — 历史最近任务快捷入口
+1. **P10-PRODUCT-B6** — 历史最近任务快捷入口（将已有 `#recentJobRestore` 移到 workspace 顶部 hint card 之后）
 
 **实现内容：**
 - 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区 `#workspaceVoiceBindingHint`

@@ -895,3 +895,84 @@ B3 可行，方案已在上节确定。Batch tab 只在 profile select 附近增
 | tab 按钮显示"音色工具" | ✅ |
 | data-tab 保持 advanced | ✅ |
 | 不改业务逻辑 | ✅ |
+
+---
+
+## P10-PRODUCT-B6-A0：历史最近任务快捷入口边界审查
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不改业务代码，不新增 UI
+
+---
+
+### B6 审查范围
+
+- P8-5 localStorage recent job 恢复逻辑现状
+- 当前 `#recentJobRestore` 元素的位置和渲染逻辑
+- 是否已有"最近任务"快捷入口
+- B6 是否需要新增实现
+
+---
+
+### 现有实现确认（P8-5 已完成）
+
+**已存在：**
+- `#recentJobRestore` 元素位于 workspace tab 内（`generateBtn` 和 `resultsArea` 之间）
+- `renderRecentJobRestore()` 在页面加载时调用（line 2683），渲染最近任务卡片
+- 卡片显示：文本预览、状态、job_id、时间
+- 卡片按钮：**恢复**（调用 `restoreRecentJob()`）和 **清除**（调用 `clearRecentJob()`）
+- `restoreRecentJob()` 调用 `/api/voice/jobs/${job_id}` 获取最新状态，渲染到 `resultsArea`
+- localStorage key：`voice_lab_recent_job_v1`，只存一条最近任务
+
+**结论：P8-5 已实现"最近任务快捷入口"核心功能。**
+
+---
+
+### B6 评估
+
+**B6 原本的目标（来自 P10-PRODUCT-A0 节 3.3）：**
+- 在 workspace 顶部增加"最近任务"快捷入口（3条）
+- 点击可快速恢复
+
+**当前实际状态：**
+- 已有一条最近任务的快捷入口，位于 workspace generateBtn 下方
+- 每次生成后自动保存到 localStorage
+- 点击"恢复"会调用 API 获取最新状态并渲染到 resultsArea
+
+**是否需要改进：**
+- 如果目标是"展示多条"：当前只支持一条，需要扩展 localStorage 结构并改 UI
+- 如果目标是"移到 workspace 顶部"：当前在 generateBtn 下方，可在 hint card 之后移动 DOM 位置
+- 如果目标是"已有功能就够用"：P8-5 已满足最小需求
+
+---
+
+### B6-A0 建议结论
+
+**方案：最小化 — 仅将 `#recentJobRestore` 移到 workspace 顶部（hint card 之后）**
+
+理由：
+- 不改 localStorage 结构（仍然只存一条）
+- 不调用 history API
+- 不新增模块
+- 只移动 DOM 位置，使最近任务入口更显眼
+
+**具体改动：**
+1. 将 `#recentJobRestore` DOM 元素从 `generateBtn` 下方移到 workspace hint card（`#workspaceHintCard`）之后、`#textInput` card 之前
+2. 不改任何 JS 逻辑
+
+**验收标准：**
+1. 最近任务卡片显示在 workspace 顶部 hint 之后
+2. "恢复"和"清除"按钮行为不变
+3. 不调用 history API
+
+---
+
+### B6 影响范围
+
+| 文件 | 改动 |
+|---|---|
+| `app/static/index.html` | 仅将 `#recentJobRestore` DOM 元素在 workspace tab 内移到新位置 |
+| 后端 API | 无 |
+| localStorage 结构 | 无 |
+| E2E | 可选（展示行为，不改生成链路） |
