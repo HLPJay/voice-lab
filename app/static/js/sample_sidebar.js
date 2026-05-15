@@ -360,6 +360,25 @@
         }
         return;
       }
+
+      // Restore script context from detail panel
+      if (target.classList.contains('sample-detail-restore-script-btn')) {
+        var contextId = target.getAttribute ? target.getAttribute('data-context-id') : null;
+        if (contextId) {
+          var ctx = null;
+          try {
+            if (window.ContextStore && typeof window.ContextStore.getContext === 'function') {
+              ctx = window.ContextStore.getContext(contextId);
+            }
+          } catch (e) {
+            ctx = null;
+          }
+          if (ctx) {
+            restoreScriptContext(ctx);
+          }
+        }
+        return;
+      }
     });
   }
 
@@ -611,6 +630,147 @@
     }, 0);
   }
 
+  // ── helper: switch to script batch tab ────────────────────────────────
+
+  function switchToScriptBatchMode() {
+    var btn = document.querySelector('.tab-btn[data-tab="script"]');
+    if (btn && typeof btn.click === 'function') {
+      btn.click();
+      return;
+    }
+    // Fallback: manual class toggle
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(function (b) {
+      b.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-content').forEach(function (c) {
+      c.classList.remove('active');
+    });
+    if (btn) btn.classList.add('active');
+    var panel = document.getElementById('tab-script');
+    if (panel) panel.classList.add('active');
+  }
+
+  // ── helper: clear script lines for restore ───────────────────────────
+
+  function clearScriptLinesForRestore() {
+    var container = document.getElementById('scriptLines');
+    if (!container) return;
+    container.innerHTML = '';
+    if (typeof _scriptRows !== 'undefined') {
+      _scriptRows.length = 0;
+    }
+    if (typeof _scriptLineCount !== 'undefined') {
+      _scriptLineCount = 0;
+    }
+    if (typeof updateScriptLineLimitState === 'function') {
+      updateScriptLineLimitState();
+    }
+  }
+
+  // ── helper: apply script context to form fields ─────────────────────
+
+  function applyScriptContextToForm(context) {
+    if (!context || context.type !== 'script') return;
+
+    // Restore global script parameters
+    setValueIfPresent('batchScriptProvider', context.provider);
+    setValueIfPresent('batchScriptSilence', context.silence_between_ms);
+    setValueIfPresent('batchScriptOutputFormat', context.audio_format);
+    setCheckedIfPresent('batchScriptNeedSubtitle', context.need_subtitle);
+
+    // Clear and restore script lines
+    clearScriptLinesForRestore();
+
+    var lines = Array.isArray(context.lines) ? context.lines : [];
+    var maxLines = typeof MAX_SCRIPT_LINES !== 'undefined' ? MAX_SCRIPT_LINES : 200;
+    var linesToRestore = lines.slice(0, maxLines);
+
+    if (linesToRestore.length === 0) {
+      // At least one empty line
+      if (typeof addScriptLine === 'function') {
+        addScriptLine('', '', '');
+      }
+      return;
+    }
+
+    // Restore each line — addScriptLine populates profile async, so we need
+    // to re-apply profile_id values after the initial population
+    var lineIdToProfileId = {};
+    linesToRestore.forEach(function (line) {
+      var role = line.role != null ? String(line.role) : '';
+      var text = line.text != null ? String(line.text) : '';
+      var profileId = line.profile_id != null ? String(line.profile_id) : '';
+      if (typeof addScriptLine === 'function') {
+        addScriptLine(role, text, profileId);
+      }
+      // Track the most recent id for this profile (addScriptLine increments _scriptLineCount)
+      var id = -1;
+      if (typeof _scriptRows !== 'undefined' && _scriptRows.length > 0) {
+        id = _scriptRows[_scriptRows.length - 1].id;
+      }
+      if (id >= 0 && profileId) {
+        lineIdToProfileId[id] = profileId;
+      }
+    });
+
+    // Re-apply profile_ids after async population
+    if (Object.keys(lineIdToProfileId).length > 0) {
+      setTimeout(function () {
+        Object.keys(lineIdToProfileId).forEach(function (id) {
+          var sel = document.getElementById('scriptProfile_' + id);
+          if (sel) {
+            sel.value = lineIdToProfileId[id];
+            dispatchInputChange(sel);
+          }
+        });
+      }, 0);
+    }
+
+    // Trigger events on global fields
+    var providerEl = document.getElementById('batchScriptProvider');
+    if (providerEl) dispatchInputChange(providerEl);
+    var silenceEl = document.getElementById('batchScriptSilence');
+    if (silenceEl) dispatchInputChange(silenceEl);
+    var outputEl = document.getElementById('batchScriptOutputFormat');
+    if (outputEl) dispatchInputChange(outputEl);
+    var subtitleEl = document.getElementById('batchScriptNeedSubtitle');
+    if (subtitleEl) dispatchInputChange(subtitleEl);
+  }
+
+  // ── helper: restore script context ───────────────────────────────────
+
+  function restoreScriptContext(context) {
+    if (!context || context.type !== 'script') return;
+
+    // Switch to script tab first
+    switchToScriptBatchMode();
+
+    // Apply form fields after tab switch
+    setTimeout(function () {
+      applyScriptContextToForm(context);
+
+      // Focus first script text input
+      var firstTextInput = document.querySelector('#scriptLines input[id^="scriptText_"]');
+      if (firstTextInput) {
+        firstTextInput.focus();
+      }
+
+      // Show success feedback
+      var toastCalled = false;
+      if (window.showToast && typeof window.showToast === 'function') {
+        window.showToast('已恢复到剧本，可继续编辑后重新提交', 'success');
+        toastCalled = true;
+      } else if (typeof showToast === 'function') {
+        showToast('已恢复到剧本，可继续编辑后重新提交', 'success');
+        toastCalled = true;
+      }
+
+      // Close detail panel
+      var panel = document.querySelector('.sample-detail-panel');
+      if (panel) panel.remove();
+    }, 0);
+  }
+
   // ── showSampleDetail ─────────────────────────────────────────────────
 
   function showSampleDetail(sampleId) {
@@ -715,6 +875,7 @@
 
     } else if (context.type === 'script') {
       var scriptDetailHtml = renderScriptLinesDetail(context);
+      var contextIdAttr = attr(String(context.context_id || ''));
       panel.innerHTML +=
         '<div class="sample-detail-meta-row">' +
           '<span class="sample-detail-meta-label">来源:</span>' +
@@ -725,7 +886,10 @@
           '<span class="sample-detail-meta-value">' + createdAtEsc + '</span>' +
         '</div>' : '') +
         '</div>' +
-        scriptDetailHtml;
+        scriptDetailHtml +
+        '<div class="sample-detail-actions">' +
+          '<button class="sample-detail-restore-script-btn" data-context-id="' + contextIdAttr + '">恢复到剧本</button>' +
+        '</div>';
 
     } else {
       panel.innerHTML +=

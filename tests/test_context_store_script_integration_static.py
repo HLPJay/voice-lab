@@ -583,6 +583,254 @@ class TestSampleSidebarScriptDetail:
         assert close_div_idx < script_detail_idx, \
             "sample-detail-meta closing '</div>' must appear before scriptDetailHtml in script branch"
 
+    def test_showSampleDetail_script_shows_restore_button(self):
+        """script context detail must show 'restore to script' button."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function showSampleDetail'):]
+        # Find the script branch
+        script_branch_idx = body.find("context.type === 'script'")
+        if script_branch_idx < 0:
+            script_branch_idx = body.find('context.type === "script"')
+        assert script_branch_idx >= 0, \
+            'showSampleDetail must have context.type === "script" branch'
+        # Find the next else branch to bound our search
+        else_branch_idx = body.find('} else {', script_branch_idx)
+        script_branch = body[script_branch_idx:else_branch_idx if else_branch_idx > 0 else len(body)]
+        assert 'sample-detail-restore-script-btn' in script_branch, \
+            'script detail must show sample-detail-restore-script-btn'
+
+    def test_showSampleDetail_longtext_hides_restore_script_button(self):
+        """longtext context detail must NOT show 'restore to script' button."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function showSampleDetail'):]
+        # Find the longtext branch
+        longtext_branch_idx = body.find("context.type === 'longtext'")
+        if longtext_branch_idx < 0:
+            longtext_branch_idx = body.find('context.type === "longtext"')
+        assert longtext_branch_idx >= 0, \
+            'showSampleDetail must have context.type === "longtext" branch'
+        # Find the next else/else-if branch
+        next_branch_start = body.find('} else if', longtext_branch_idx)
+        if next_branch_start < 0:
+            next_branch_start = body.find('} else {', longtext_branch_idx)
+        lt_branch = body[longtext_branch_idx:next_branch_start if next_branch_start > 0 else len(body)]
+        assert 'sample-detail-restore-script-btn' not in lt_branch, \
+            'longtext detail must NOT show sample-detail-restore-script-btn'
+
+    def test_showSampleDetail_script_restore_button_uses_data_context_id(self):
+        """script restore button must use data-context-id, not data-lines."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function showSampleDetail'):]
+        script_branch_idx = body.find("context.type === 'script'")
+        if script_branch_idx < 0:
+            script_branch_idx = body.find('context.type === "script"')
+        assert script_branch_idx >= 0
+        else_branch_idx = body.find('} else {', script_branch_idx)
+        script_branch = body[script_branch_idx:else_branch_idx if else_branch_idx > 0 else len(body)]
+        assert 'data-context-id' in script_branch, \
+            'restore script button must use data-context-id'
+        assert 'data-lines' not in script_branch, \
+            'restore script button must NOT use data-lines'
+        assert 'data-full-text' not in script_branch, \
+            'restore script button must NOT use data-full-text'
+
+    def test_restoreScriptContext_function_exists(self):
+        """restoreScriptContext function must exist."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'function restoreScriptContext' in content, \
+            'restoreScriptContext function must exist'
+
+    def test_restoreScriptContext_guards_type(self):
+        """restoreScriptContext must guard on context.type === 'script'."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function restoreScriptContext'):]
+        # Find the function body end
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert "context.type !== 'script'" in func_body or 'context.type !== "script"' in func_body, \
+            'restoreScriptContext must guard on context.type !== "script"'
+
+    def test_restoreScriptContext_does_not_fetch(self):
+        """restoreScriptContext must not call fetch or guardedJsonFetch."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function restoreScriptContext'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'fetch' not in func_body or func_body.index('fetch') > func_body.index('//'), \
+            'restoreScriptContext must not call fetch'
+        assert 'guardedJsonFetch' not in func_body, \
+            'restoreScriptContext must not call guardedJsonFetch'
+        assert 'handleBatchScriptSubmit' not in func_body, \
+            'restoreScriptContext must not call handleBatchScriptSubmit'
+        assert 'ContextStore.pushContext' not in func_body, \
+            'restoreScriptContext must not write to ContextStore'
+        assert 'SampleStore.pushSample' not in func_body, \
+            'restoreScriptContext must not write to SampleStore'
+
+    def test_restoreScriptContext_calls_switchToScriptBatchMode(self):
+        """restoreScriptContext must call switchToScriptBatchMode."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function restoreScriptContext'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'switchToScriptBatchMode' in func_body, \
+            'restoreScriptContext must call switchToScriptBatchMode'
+
+    def test_restoreScriptContext_calls_applyScriptContextToForm(self):
+        """restoreScriptContext must call applyScriptContextToForm."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function restoreScriptContext'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'applyScriptContextToForm' in func_body, \
+            'restoreScriptContext must call applyScriptContextToForm'
+
+    def test_applyScriptContextToForm_function_exists(self):
+        """applyScriptContextToForm function must exist."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'function applyScriptContextToForm' in content, \
+            'applyScriptContextToForm function must exist'
+
+    def test_applyScriptContextToForm_restores_provider(self):
+        """applyScriptContextToForm must restore batchScriptProvider."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function applyScriptContextToForm'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'batchScriptProvider' in func_body, \
+            'applyScriptContextToForm must restore batchScriptProvider'
+        assert 'silence' in func_body.lower() or 'Silence' in func_body, \
+            'applyScriptContextToForm must restore silence'
+        assert 'audio_format' in func_body.lower() or 'OutputFormat' in func_body, \
+            'applyScriptContextToForm must restore audio_format'
+        assert 'need_subtitle' in func_body.lower() or 'Subtitle' in func_body, \
+            'applyScriptContextToForm must restore need_subtitle'
+
+    def test_applyScriptContextToForm_calls_addScriptLine(self):
+        """applyScriptContextToForm must call addScriptLine to restore lines."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function applyScriptContextToForm'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'addScriptLine' in func_body, \
+            'applyScriptContextToForm must call addScriptLine'
+
+    def test_applyScriptContextToForm_does_not_call_fillTextInput(self):
+        """applyScriptContextToForm must not call fillTextInput."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function applyScriptContextToForm'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'fillTextInput' not in func_body, \
+            'applyScriptContextToForm must not call fillTextInput'
+
+    def test_applyScriptContextToForm_does_not_call_restoreLongtextContext(self):
+        """applyScriptContextToForm must not call restoreLongtextContext."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function applyScriptContextToForm'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'restoreLongtextContext' not in func_body, \
+            'applyScriptContextToForm must not call restoreLongtextContext'
+
+    def test_switchToScriptBatchMode_function_exists(self):
+        """switchToScriptBatchMode function must exist."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'function switchToScriptBatchMode' in content, \
+            'switchToScriptBatchMode function must exist'
+
+    def test_longtext_restore_button_still_exists(self):
+        """longtext restore button must still exist (not removed by C2)."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'sample-detail-restore-btn' in content, \
+            'sample-detail-restore-btn must still exist'
+
+    def test_flat_buttons_still_exist_no_more_menu(self):
+        """flat action buttons must still exist, no more menu."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'sample-btn-copy' in content, \
+            'sample-btn-copy must still exist'
+        assert 'sample-btn-fill' in content, \
+            'sample-btn-fill must still exist'
+        assert 'sample-btn-delete' in content, \
+            'sample-btn-delete must still exist'
+        assert 'sample-btn-more' not in content, \
+            'sample-btn-more must not exist (UXFIX1)'
+        assert 'sample-more-menu' not in content, \
+            'sample-more-menu must not exist (UXFIX1)'
+
 
 # ── Behavioral tests (Node.js) ──────────────────────────────────────────────
 

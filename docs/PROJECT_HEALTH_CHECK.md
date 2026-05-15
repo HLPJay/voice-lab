@@ -66,7 +66,8 @@
 * P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复已完成 ✅
 * P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构已完成 ✅
 * P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C2
+* P14-CONTEXT-C2：剧本一键回填已完成 ✅
+* 当前下一阶段：P14-CONTEXT-C2-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8265,6 +8266,52 @@ P14-CONTEXT-C1-FIX1 已在 `showSampleDetail` 的 script 分支中补充 `'</div
 ### 阶段状态
 
 P14-CONTEXT-C1-FIX1-CHECK 通过，建议进入 **P14-CONTEXT-C2**。
+
+## P14-CONTEXT-C2：剧本一键回填
+
+### 背景
+
+P14-CONTEXT-C1 已实现剧本 context 保存和详情展示。本阶段在 script 详情面板中增加"恢复到剧本"按钮，实现剧本 context 一键回填到剧本 Tab 表单。
+
+### 实现内容
+
+**sample_sidebar.js：**
+- `showSampleDetail` 的 script 分支底部增加 `sample-detail-restore-script-btn` 按钮，使用 `data-context-id` 属性
+- 新增 `switchToScriptBatchMode()`：切换到剧本 Tab（点击 `.tab-btn[data-tab="script"]`）
+- 新增 `clearScriptLinesForRestore()`：清空当前剧本行 DOM 和 `_scriptRows` / `_scriptLineCount`
+- 新增 `applyScriptContextToForm(context)`：恢复 provider / silence_between_ms / audio_format / need_subtitle全局字段；清空并逐行恢复 `context.lines`（调用 `addScriptLine`）；profile_id 延迟二次设置；触发 input/change 事件
+- 新增 `restoreScriptContext(context)`：校验 `context.type === 'script'`；调用 `switchToScriptBatchMode`；延迟调用 `applyScriptContextToForm`；聚焦第一行台词；显示成功 toast；关闭详情面板
+- 事件绑定：`.sample-detail-restore-script-btn` click handler 通过 `ContextStore.getContext` 重新读取 context 后调用 `restoreScriptContext`
+
+**index.html CSS：**
+- 新增 `.sample-detail-restore-script-btn` 样式（绿色主题，与 longtext 的蓝色主题区分）
+
+### 字段恢复映射
+
+全局字段：provider → `#batchScriptProvider`，silence_between_ms → `#batchScriptSilence`，audio_format → `#batchScriptOutputFormat`，need_subtitle → `#batchScriptNeedSubtitle.checked`
+
+剧本行：`context.lines[].role` → `#scriptRole_${id}`，`context.lines[].text` → `#scriptText_${id}`，`context.lines[].profile_id` → `#scriptProfile_${id}`（延迟二次设置）
+
+不恢复：output_format（固定 'hex'）、params（行级参数当前 UI 无输入）、batch_id
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：219 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 阶段边界
+
+- 仅在 script 详情面板增加恢复按钮，不在卡片平铺区增加
+- 不自动提交剧本任务
+- 不调用后端 API / MiniMax
+- 不修改 ContextStore / SampleStore schema
+- 不修改 batch submit payload
+- 不修改 longtext 恢复逻辑
+- 不回退平铺按钮 UXFIX1
+
+### 阶段状态
+
+P14-CONTEXT-C2 完成，建议进入 **P14-CONTEXT-C2-CHECK**。
 
 
 
