@@ -7148,3 +7148,7 @@ P14-PRODUCT-A0 已明确长文本和剧本是主生产入口，并将 SampleSide
 ### 阶段状态
 
 P14-PRODUCT-A0-FIX1 完成。
+
+## P14-PRODUCT-A0-FIX2：文档章节编号修正
+
+修正 `docs/P14_PRODUCT_A0_SAMPLE_REUSE_AND_RESTORE.md` 中 A0 结论章节编号重复问题。无产品结论变化，无代码变更。

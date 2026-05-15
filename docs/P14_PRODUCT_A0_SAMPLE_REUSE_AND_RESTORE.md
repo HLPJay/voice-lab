@@ -661,7 +661,7 @@ P14-LONGTEXT-UX-B0 应优先于 ContextStore 实现。
 建议优先做 P14-LONGTEXT-UX-B0。
 ```
 
-## 17. A0 结论
+## 18. A0 结论
 
 P13 将 SampleSidebar 定位为"最近样本观察面板"，P14 应将其升级为"样本复用入口"。
 
