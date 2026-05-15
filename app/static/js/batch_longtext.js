@@ -73,6 +73,52 @@
 
       var data = await resp.json();
       _currentBatchId = data.batch_id;
+
+      // Save batch sample context for later sample_store write
+      if (data && data.batch_id) {
+        if (!window._batchSampleContextById) window._batchSampleContextById = {};
+        window._batchSampleContextById[data.batch_id] = {
+          source: 'batch_longtext_merged',
+          mode: 'longtext',
+          text_preview: text,
+          provider: provider,
+          profile_id: profileId || null,
+          profile_name: null,
+          audio_format: outputFormat || null,
+          model: null,
+          voice_id: null,
+          voice_name: null,
+        };
+      }
+
+      // Save longtext context to ContextStore (fail-safe, non-blocking)
+      try {
+        if (window.ContextStore && typeof window.ContextStore.pushContext === 'function' && data && data.batch_id) {
+          var contextId = data.batch_id;
+          window.ContextStore.pushContext({
+            context_id: contextId,
+            type: 'longtext',
+            source: 'batch_longtext_merged',
+            full_text: text,
+            provider: provider,
+            profile_id: profileId || null,
+            segment_strategy: strategy,
+            max_segment_chars: maxChars,
+            silence_between_ms: silence,
+            output_format: 'hex',
+            audio_format: outputFormat,
+            need_subtitle: needSubtitle,
+            params: params,
+            batch_id: data.batch_id,
+          });
+          if (window._batchSampleContextById && window._batchSampleContextById[data.batch_id]) {
+            window._batchSampleContextById[data.batch_id].context_id = contextId;
+          }
+        }
+      } catch (e) {
+        // fail-safe: context save must not block batch generation
+      }
+
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
       loadRuntimeStatus();

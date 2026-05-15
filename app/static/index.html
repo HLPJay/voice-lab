@@ -872,6 +872,411 @@
     font-size: 0.76rem;
     color: #c05621;
   }
+
+  /* ── workspace layout ─────────────────────────────── */
+  .workspace-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .workspace-main {
+    min-width: 0;
+  }
+
+  .sample-sidebar-root {
+    position: sticky;
+    top: 16px;
+    align-self: start;
+  }
+
+  .sample-sidebar-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .sample-source-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #3182ce;
+    background: #ebf8ff;
+    border: 1px solid #bee3f8;
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  .sample-duration {
+    font-size: 0.68rem;
+    color: #718096;
+  }
+
+  .sample-text {
+    font-size: 0.78rem;
+    color: #2d3748;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  .sample-profile {
+    font-size: 0.70rem;
+    color: #718096;
+    margin-bottom: 8px;
+  }
+
+  .sample-profile-name {
+    font-weight: 600;
+    color: #4a5568;
+  }
+
+  .sample-voice-name {
+    color: #718096;
+  }
+
+  .sample-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sample-sidebar-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #4a5568;
+    letter-spacing: 0.04em;
+  }
+
+  .sample-sidebar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+
+  .sample-card {
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    padding: 10px;
+    background: #f8fafc;
+    flex: 0 0 auto;
+  }
+
+  .sample-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.70rem;
+    color: #718096;
+    margin-bottom: 6px;
+  }
+
+  .sample-card-text {
+    font-size: 0.80rem;
+    color: #2d3748;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    word-break: break-word;
+  }
+
+  .sample-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .sample-btn-play,
+  .sample-btn-copy,
+  .sample-btn-fill,
+  .sample-btn-delete {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e0;
+    background: #edf2f7;
+    color: #2d3748;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .sample-btn-play:hover { background: #bee3f8; border-color: #3182ce; color: #2b6cb0; }
+  .sample-btn-copy:hover { background: #c6f6d5; border-color: #38a169; color: #276749; }
+  .sample-btn-fill:hover { background: #feebc8; border-color: #dd6b20; color: #c05621; }
+  .sample-btn-delete:hover { background: #fed7d7; border-color: #e53e3e; color: #c53030; }
+
+  .sample-btn-clear {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e0;
+    background: #edf2f7;
+    color: #718096;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+
+  .sample-btn-clear:hover { background: #fed7d7; border-color: #e53e3e; color: #c53030; }
+
+  .sample-card audio {
+    width: 100%;
+    height: 32px;
+    margin-top: 8px;
+  }
+
+  .sample-sidebar-empty {
+    font-size: 0.80rem;
+    color: #a0aec0;
+    line-height: 1.6;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .sample-detail-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-top: 8px;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+
+  .sample-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .sample-detail-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  .sample-detail-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.80rem;
+    color: #94a3b8;
+    padding: 2px 4px;
+  }
+
+  .sample-detail-close:hover {
+    color: #475569;
+  }
+
+  .sample-detail-meta {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .sample-detail-meta-row {
+    display: flex;
+    gap: 6px;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: #64748b;
+  }
+
+  .sample-detail-meta-label {
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+
+  .sample-detail-meta-value {
+    color: #475569;
+    word-break: break-all;
+  }
+
+  .sample-detail-text-label {
+    padding: 6px 10px 2px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  .sample-detail-text-wrap {
+    padding: 0 10px 10px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .sample-detail-text {
+    font-size: 0.80rem;
+    color: #334155;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+  }
+
+  .sample-detail-empty {
+    font-size: 0.80rem;
+    color: #94a3b8;
+    padding: 16px 10px;
+    text-align: center;
+  }
+
+  .sample-detail-actions {
+    padding: 8px 10px 10px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .sample-detail-restore-btn {
+    width: 100%;
+    padding: 7px 12px;
+    background: #ebf8ff;
+    border: 1px solid #90cdf4;
+    border-radius: 6px;
+    color: #2b6cb0;
+    font-size: 0.80rem;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .sample-detail-restore-btn:hover {
+    background: #bee3f8;
+    border-color: #4299e1;
+  }
+
+  .sample-detail-restore-script-btn {
+    width: 100%;
+    padding: 7px 12px;
+    background: #f0fff4;
+    border: 1px solid #9ae6b4;
+    border-radius: 6px;
+    color: #276749;
+    font-size: 0.80rem;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .sample-detail-restore-script-btn:hover {
+    background: #c6f6d5;
+    border-color: #68d391;
+  }
+
+  .sample-detail-lines-wrap {
+    padding: 0 10px 10px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .sample-detail-script-line {
+    padding: 5px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.78rem;
+  }
+
+  .sample-detail-script-line:last-child {
+    border-bottom: none;
+  }
+
+  .sample-detail-line-num {
+    color: #94a3b8;
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+
+  .sample-detail-line-role {
+    color: #2b6cb0;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+
+  .sample-detail-line-text {
+    color: #334155;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.5;
+    margin-top: 2px;
+    padding-left: 16px;
+  }
+
+  .sample-detail-line-profile {
+    color: #94a3b8;
+    font-size: 0.72rem;
+    margin-top: 2px;
+    padding-left: 16px;
+  }
+
+  @media (max-width: 1024px) {
+    .workspace-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sample-sidebar-root {
+      position: static;
+    }
+
+    .sample-sidebar-list {
+      max-height: none;
+    }
+  }
+
+  /* Longtext batch hints */
+  .batch-hints {
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: #4a5568;
+  }
+  .batch-hint-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-bottom: 4px;
+  }
+  .batch-hint-row span {
+    white-space: nowrap;
+  }
+  .batch-hint-warning {
+    color: #c05621;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .batch-hint-strategy {
+    font-size: 0.78rem;
+    color: #718096;
+    margin-bottom: 4px;
+  }
+  .batch-hint-subtitle {
+    font-size: 0.78rem;
+    color: #718096;
+  }
+
+  /* Script batch hints */
+  .batch-script-hints {
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: #4a5568;
+  }
 </style>
 </head>
 <body>
@@ -904,6 +1309,8 @@
 
 
   <div class="tab-content active" id="tab-workspace">
+    <div class="workspace-layout">
+      <div class="workspace-main">
     <!-- Lightweight workspace hint -->
     <div class="card" style="padding:16px 20px">
       <div class="card-title">创作工作台</div>
@@ -1014,6 +1421,9 @@
     <button class="btn-primary" id="generateBtn" onclick="handleGenerate()">生成</button>
     <div class="results-area" id="resultsArea"></div>
   </div>
+  <aside id="sampleSidebarRoot" class="sample-sidebar-root"></aside>
+</div>
+</div>
 
   <div class="tab-content" id="tab-longtext">
     <div class="card" style="padding:14px 20px">
@@ -1026,6 +1436,16 @@
       <div class="form-group full-width">
         <label for="batchText">待分段文本</label>
         <textarea id="batchText" placeholder="输入长篇文章或段落文本，系统将自动分段后逐段生成音频并合并" style="min-height:120px" maxlength="50000"></textarea>
+        <div class="batch-hints" id="batchLongtextHints">
+          <div class="batch-hint-row">
+            <span id="batchTextCount">当前字数：0 / 50000 字</span>
+            <span id="batchEstimatedCost">预计消耗：0 字</span>
+            <span id="batchEstimatedSegments">预计分段：0 段</span>
+          </div>
+          <div class="batch-hint-warning" id="batchTextWarning" style="display:none"></div>
+          <div class="batch-hint-strategy" id="batchStrategyHint"></div>
+          <div class="batch-hint-subtitle" id="batchSubtitleHint" style="display:none">已开启字幕，生成耗时可能增加。</div>
+        </div>
       </div>
       <div class="config-grid">
         <div class="form-group">
@@ -1176,6 +1596,20 @@
           <!-- Dynamic script lines -->
         </div>
         <button class="btn-sm" id="scriptAddLineBtn" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
+      </div>
+      <div class="batch-script-hints" id="batchScriptHints">
+        <div class="batch-hint-row">
+          <span id="batchScriptLineStats">剧本统计：共 0 行，0 行有效</span>
+          <span id="batchScriptCharStats">约 0 字</span>
+          <span id="batchScriptEstimatedSegments">预计生成：0 段</span>
+        </div>
+        <div class="batch-hint-row">
+          <span id="batchScriptRoleStats">角色：0 个</span>
+          <span id="batchScriptProfileStats">涉及音色：0 个</span>
+        </div>
+        <div class="batch-hint-warning" id="batchScriptRoleWarning" style="display:none"></div>
+        <div class="batch-hint-warning" id="batchScriptProfileWarning" style="display:none"></div>
+        <div class="batch-hint-subtitle" id="batchScriptSubtitleHint" style="display:none">已开启字幕，生成耗时可能增加。</div>
       </div>
       <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
@@ -1633,6 +2067,12 @@
 <script src="/static/js/voice_clone.js"></script>
 <script src="/static/js/voice_import.js"></script>
 <script src="/static/js/voice_design.js"></script>
+<script src="/static/js/sample_store.js"></script>
+<script src="/static/js/context_store.js"></script>
+<script src="/static/js/sample_sidebar.js"></script>
+<script>
+  window.SampleSidebar.init();
+</script>
 <script>
   // ============================================================
   // Provider Capability Registry (P9-CAPABILITY3)
@@ -1996,6 +2436,110 @@
     if (data?.audio_asset_id) return data.audio_asset_id;
     if (data?.asset_id) return data.asset_id;
     return null;
+  }
+
+  function buildAssetDownloadUrl(assetId) {
+    if (!assetId) return null;
+    return '/api/voice/assets/' + encodeURIComponent(assetId) + '/download';
+  }
+
+  function getSelectedProfileName() {
+    var el = document.getElementById('profileSelect');
+    if (el && el.selectedOptions && el.selectedOptions[0]) {
+      return el.selectedOptions[0].textContent || null;
+    }
+    if (el && el.options && el.selectedIndex >= 0) {
+      return el.options[el.selectedIndex].textContent || null;
+    }
+    return null;
+  }
+
+  function buildWorkspaceSampleContext(options) {
+    options = options || {};
+    var text = options.text || '';
+    var profileId = options.profile_id || null;
+    var provider = options.provider || null;
+    var audioFormat = options.audio_format || 'mp3';
+
+    var ctx = {
+      text_preview: text.length > 100 ? text.substring(0, 100) + '…' : text,
+      profile_id: profileId,
+      profile_name: getSelectedProfileName(),
+      provider: provider,
+      model: null,
+      job_id: options.job_id || null,
+      audio_format: audioFormat,
+      voice_id: null,
+      voice_name: null,
+    };
+
+    if (profileId && provider && window._voiceBindMap) {
+      for (var vid in window._voiceBindMap) {
+        var bindings = window._voiceBindMap[vid] || [];
+        for (var i = 0; i < bindings.length; i++) {
+          var b = bindings[i];
+          if (b.profile_id === profileId && b.provider === provider) {
+            ctx.voice_id = vid;
+            ctx.voice_name = vid;
+            ctx.model = b.model || null;
+            break;
+          }
+        }
+        if (ctx.voice_id) break;
+      }
+    }
+
+    return ctx;
+  }
+
+  function safePushWorkspaceSample(source, data, extra) {
+    try {
+      extra = extra || {};
+      if (!window.SampleStore || typeof window.SampleStore.pushSample !== 'function') return null;
+
+      var ctx = extra.context || window._workspaceSampleContext || {};
+      var assetId = extra.asset_id || extractAudioAssetId(data);
+      if (!assetId) return null;
+
+      var durationMs =
+        extra.duration_ms ||
+        data?.audio_asset?.duration_ms ||
+        data?.duration_ms ||
+        data?.audio_duration_ms ||
+        data?.total_duration_ms ||
+        null;
+
+      var audioFormat =
+        extra.audio_format ||
+        ctx.audio_format ||
+        data?.audio_asset?.format ||
+        data?.audio_format ||
+        data?.format ||
+        'mp3';
+
+      var sample = {
+        source: source,
+        job_id: extra.job_id || extractJobId(data) || ctx.job_id || null,
+        asset_id: assetId,
+        download_url: buildAssetDownloadUrl(assetId),
+        text_preview: ctx.text_preview || '',
+        profile_id: ctx.profile_id || null,
+        profile_name: ctx.profile_name || null,
+        provider: data?.provider || ctx.provider || null,
+        model: extra.model || data?.model || ctx.model || null,
+        voice_id: ctx.voice_id || null,
+        voice_name: ctx.voice_name || null,
+        duration_ms: durationMs,
+        audio_format: audioFormat,
+        status: 'completed',
+        tags: [source],
+      };
+
+      return window.SampleStore.pushSample(sample);
+    } catch (e) {
+      console.warn('push workspace sample failed', e);
+      return null;
+    }
   }
 
   function buildRecentJobPayload(data, fallback) {
@@ -2679,6 +3223,14 @@ function handleStopAsyncPolling() {
     resultsArea.classList.remove('visible');
     resultsArea.innerHTML = '';
 
+    // Save workspace sample context for ALL modes (sync/variants/async/stream)
+    window._workspaceSampleContext = buildWorkspaceSampleContext({
+      text: text,
+      profile_id: profileId,
+      provider: provider,
+      audio_format: audioFormat,
+    });
+
     if (isStream) {
       startStreamGenerate(text, profileId, provider, subtitle, audioFormat, { speed, vol, pitch, emotion });
       return;
@@ -2719,6 +3271,7 @@ function handleStopAsyncPolling() {
 
       if (isAsync) {
         saveRecentJob(data, { job_type: 'async', text: text });
+        window._workspaceSampleContext.job_id = data.job_id || null;
         startAsyncPolling(data.job_id);
       } else {
         saveRecentJob(data, { job_type: isVariant ? 'variants' : 'single', text: text });
@@ -2895,6 +3448,12 @@ function handleStopAsyncPolling() {
         ${!asset ? `<p style="font-size:0.82rem;color:#718096;margin-top:6px">当前流式结果未返回服务端音频资产，仅提供浏览器缓存下载。</p>` : ''}
       </div>`;
     resultsArea.classList.add('visible');
+    if (asset && asset.id) {
+      safePushWorkspaceSample('workspace_stream', completed, {
+        asset_id: asset.id,
+        duration_ms: asset.duration_ms || completed.total_duration_ms || null,
+      });
+    }
   }
 
   function startAsyncPolling(jobId) {
@@ -3096,6 +3655,13 @@ function handleStopAsyncPolling() {
       }
       html += `
       </div>`;
+      if (audio && audio.id) {
+        safePushWorkspaceSample('workspace_async', data, {
+          asset_id: audio.id,
+          duration_ms: audio.duration_ms || null,
+          job_id: data.job_id || null,
+        });
+      }
     }
 
     resultsArea.innerHTML = html;
@@ -3141,6 +3707,15 @@ function handleStopAsyncPolling() {
       html += '</div></div>';
       resultsArea.innerHTML = html;
       resultsArea.classList.add('visible');
+      data.variants.forEach(function(v) {
+        if (!v.audio_asset_id) return;
+        safePushWorkspaceSample('workspace_variant', v, {
+          asset_id: v.audio_asset_id,
+          duration_ms: v.duration_ms || null,
+          job_id: extractJobId(data),
+          model: v.model || data.model || null,
+        });
+      });
     } else {
       const job = data;
       const audio = job.audio_asset;
@@ -3178,6 +3753,12 @@ function handleStopAsyncPolling() {
         }
         html += `
       </div>`;
+        if (audio && audio.id) {
+          safePushWorkspaceSample('workspace_sync', data, {
+            asset_id: audio.id,
+            duration_ms: audio.duration_ms || null,
+          });
+        }
       } else {
         // queued/pending/running/processing: no audio/download/subtitle sections
         html += `
@@ -3656,12 +4237,20 @@ function handleStopAsyncPolling() {
             <div style="font-size:0.72rem;color:#718096"><span style="color:#4a5568;font-weight:500">时长</span> ${duration}</div>
           </div>
         </div>`;
-        window._auditionRecords.push({
-          voiceId, voiceName: voiceName || '',
-          text, audioUrl: data.audio_asset.url,
+        const auditionRecord = {
+          voiceId,
+          voiceName: voiceName || '',
+          provider,
+          model,
+          text,
+          audioUrl: data.audio_asset.url,
+          assetId: data.audio_asset.id || null,
           durationMs: data.audio_asset.duration_ms || null,
+          audioFormat: data.audio_asset.format || 'mp3',
           timestamp: Date.now(),
-        });
+        };
+        window._auditionRecords.push(auditionRecord);
+        window.safePushAuditionSample?.(auditionRecord);
         renderAuditionRecords();
         loadRuntimeStatus();
       } else {
@@ -4314,6 +4903,7 @@ function handleStopAsyncPolling() {
     }
     // Update voice binding hint for this line after profile is set
     updateScriptLineVoiceHint(id);
+    updateBatchScriptHints();
   }
 
   function removeScriptLine(id) {
@@ -4322,6 +4912,7 @@ function handleStopAsyncPolling() {
     const idx = _scriptRows.findIndex(r => r.id === id);
     if (idx >= 0) _scriptRows.splice(idx, 1);
     updateScriptLineLimitState();
+    updateBatchScriptHints();
   }
 
   // Event delegation for script line inputs (keeps state in sync)
@@ -4380,11 +4971,347 @@ function handleStopAsyncPolling() {
     el.style.display = 'none';
   };
 
+  // Longtext batch UX hints
+  function getBatchTextValue() {
+    const el = document.getElementById('batchText');
+    return el ? el.value : '';
+  }
+
+  function getBatchMaxCharsValue() {
+    const el = document.getElementById('batchMaxChars');
+    if (!el) return 2000;
+    const v = parseInt(el.value, 10);
+    if (isNaN(v)) return 2000;
+    return Math.max(100, Math.min(5000, v));
+  }
+
+  function getBatchStrategyValue() {
+    const el = document.getElementById('batchStrategy');
+    return el ? el.value : 'auto';
+  }
+
+  function countBatchTextChars(text) {
+    return String(text || '').length;
+  }
+
+  function estimateBatchSegments(text, strategy, maxChars) {
+    const str = String(text || '');
+    if (!str) return 0;
+    const mc = (typeof maxChars === 'number' && maxChars > 0) ? maxChars : 2000;
+    const clamped = Math.max(100, Math.min(5000, mc));
+
+    if (strategy === 'line') {
+      const lines = str.split('\n');
+      let count = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          count += Math.ceil(lines[i].trim().length / clamped) || 1;
+        }
+      }
+      return count;
+    }
+
+    if (strategy === 'sentence') {
+      const parts = str.split(/(?<=[。！？!?])/);
+      let count = 0;
+      for (let i = 0; i < parts.length; i++) {
+        const s = parts[i].trim();
+        if (s) {
+          count += Math.ceil(s.length / clamped) || 1;
+        }
+      }
+      return count;
+    }
+
+    if (strategy === 'paragraph') {
+      const blocks = str.split(/\n\s*\n/);
+      let count = 0;
+      for (let i = 0; i < blocks.length; i++) {
+        const s = blocks[i].trim();
+        if (s) {
+          count += Math.ceil(s.length / clamped) || 1;
+        }
+      }
+      return count;
+    }
+
+    // auto: split by blank lines, then greedy merge short paragraphs
+    const paragraphs = str.split(/\n\s*\n/).filter(function(p) { return p.trim(); });
+    if (paragraphs.length === 0) return 0;
+    // Greedy merge: accumulate paragraphs until exceeding clamped
+    let segments = [];
+    let current = '';
+    for (let i = 0; i < paragraphs.length; i++) {
+      const p = paragraphs[i];
+      if (!current) {
+        current = p;
+      } else if ((current.length + p.length + 1) <= clamped) {
+        current += '\n' + p;
+      } else {
+        segments.push(current);
+        current = p;
+      }
+    }
+    if (current) segments.push(current);
+    return segments.length || (str.trim() ? 1 : 0);
+  }
+
+  function getBatchStrategyHint(strategy, estimatedSegments) {
+    const n = typeof estimatedSegments === 'number' ? estimatedSegments : 0;
+    const segText = n === 0 ? '' : (n === 1 ? '当前预计：1 段。' : '当前预计：约 ' + n + ' 段。');
+    if (strategy === 'auto') {
+      return '自动策略会保持自然段边界，但会把较短段落合并到每段上限内。' + segText + ' 若希望每段单独生成，请选择"按空行分段"或"每行一段"，或降低每段上限。';
+    }
+    if (strategy === 'paragraph') {
+      return '按空行分段：以空行作为段落边界，适合已经整理好段落结构的长文。普通换行不一定等同于空行。';
+    }
+    if (strategy === 'sentence') {
+      return '每句一段：按句号、问号、感叹号等句子边界拆分，适合段落不清晰但句子边界明显的文本。';
+    }
+    if (strategy === 'line') {
+      return '每行一段：每一行作为独立生成段，适合手动控制节奏、列表、分镜旁白或台词。';
+    }
+    return '';
+  }
+
+  function updateBatchLongtextHints() {
+    const text = getBatchTextValue();
+    const count = countBatchTextChars(text);
+    const maxChars = getBatchMaxCharsValue();
+    const strategy = getBatchStrategyValue();
+    const estimated = estimateBatchSegments(text, strategy, maxChars);
+
+    const countEl = document.getElementById('batchTextCount');
+    if (countEl) countEl.textContent = '当前字数：' + count + ' / 50000 字';
+
+    const costEl = document.getElementById('batchEstimatedCost');
+    if (costEl) costEl.textContent = '预计消耗：' + count + ' 字';
+
+    const segEl = document.getElementById('batchEstimatedSegments');
+    if (segEl) segEl.textContent = '预计分段：' + (count === 0 ? '0 段' : (estimated === 1 ? '1 段' : '约 ' + estimated + ' 段'));
+
+    const warnEl = document.getElementById('batchTextWarning');
+    if (warnEl) {
+      if (count >= 47500) {
+        warnEl.textContent = '接近 50000 字上限。';
+        warnEl.style.display = '';
+      } else if (count >= 40000) {
+        warnEl.textContent = '文本较长，请确认分段策略。';
+        warnEl.style.display = '';
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
+
+    const hintEl = document.getElementById('batchStrategyHint');
+    if (hintEl) hintEl.textContent = getBatchStrategyHint(strategy, estimated);
+
+    const subEl = document.getElementById('batchSubtitleHint');
+    if (subEl) {
+      const subEl2 = document.getElementById('batchNeedSubtitle');
+      subEl.style.display = (subEl2 && subEl2.checked) ? '' : 'none';
+    }
+  }
+
+  // Script batch hints
+
+  function getScriptRowsSafe() {
+    if (typeof _scriptRows === 'undefined') return [];
+    return _scriptRows;
+  }
+
+  function collectScriptStats() {
+    var rows = getScriptRowsSafe();
+    var totalRows = rows.length;
+    var validRows = 0;
+    var totalChars = 0;
+    var roleSet = {};
+    var emptyRoleRows = 0;
+    var profileSet = {};
+    var missingProfileRows = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var text = row.text ? row.text.trim() : '';
+      if (!text) continue;
+      validRows++;
+      totalChars += text.length;
+      var role = row.role ? row.role.trim() : '';
+      if (role) {
+        roleSet[role] = true;
+      } else {
+        emptyRoleRows++;
+      }
+      var profileId = row.profileId ? row.profileId.trim() : '';
+      if (profileId) {
+        profileSet[profileId] = true;
+      } else {
+        missingProfileRows++;
+      }
+    }
+    var roleNames = Object.keys(roleSet);
+    return {
+      totalRows: totalRows,
+      validRows: validRows,
+      emptyRows: totalRows - validRows,
+      totalChars: totalChars,
+      estimatedSegments: validRows,
+      roleCount: roleNames.length,
+      roleNames: roleNames,
+      emptyRoleRows: emptyRoleRows,
+      profileCount: Object.keys(profileSet).length,
+      missingProfileRows: missingProfileRows
+    };
+  }
+
+  function formatRoleList(roleNames) {
+    if (!roleNames || roleNames.length === 0) return '0 个';
+    var shown = roleNames.slice(0, 3);
+    var rest = roleNames.length - shown.length;
+    var text = shown.join(' / ');
+    if (rest > 0) {
+      text += ' 等 ' + roleNames.length + ' 个';
+    } else {
+      text += '（共 ' + roleNames.length + ' 个）';
+    }
+    return text;
+  }
+
+  function updateBatchScriptHints() {
+    var stats = collectScriptStats();
+
+    var lineStatsEl = document.getElementById('batchScriptLineStats');
+    if (lineStatsEl) lineStatsEl.textContent = '剧本统计：共 ' + stats.totalRows + ' 行，' + stats.validRows + ' 行有效';
+
+    var charStatsEl = document.getElementById('batchScriptCharStats');
+    if (charStatsEl) charStatsEl.textContent = '约 ' + stats.totalChars + ' 字';
+
+    var segEl = document.getElementById('batchScriptEstimatedSegments');
+    if (segEl) segEl.textContent = '预计生成：' + stats.estimatedSegments + ' 段';
+
+    var roleStatsEl = document.getElementById('batchScriptRoleStats');
+    if (roleStatsEl) roleStatsEl.textContent = '角色：' + formatRoleList(stats.roleNames);
+
+    var profileStatsEl = document.getElementById('batchScriptProfileStats');
+    if (profileStatsEl) profileStatsEl.textContent = '涉及音色：' + stats.profileCount + ' 个';
+
+    var roleWarnEl = document.getElementById('batchScriptRoleWarning');
+    if (roleWarnEl) {
+      if (stats.emptyRoleRows > 0) {
+        roleWarnEl.textContent = '有 ' + stats.emptyRoleRows + ' 行未填写角色名。';
+        roleWarnEl.style.display = '';
+      } else {
+        roleWarnEl.style.display = 'none';
+      }
+    }
+
+    var profileWarnEl = document.getElementById('batchScriptProfileWarning');
+    if (profileWarnEl) {
+      if (stats.missingProfileRows > 0) {
+        profileWarnEl.textContent = '有 ' + stats.missingProfileRows + ' 行未选择音色，请确认是否使用默认音色或手动选择。';
+        profileWarnEl.style.display = '';
+      } else {
+        profileWarnEl.style.display = 'none';
+      }
+    }
+
+    var subHintEl = document.getElementById('batchScriptSubtitleHint');
+    if (subHintEl) {
+      var subCb = document.getElementById('batchScriptNeedSubtitle');
+      subHintEl.style.display = (subCb && subCb.checked) ? '' : 'none';
+    }
+  }
+
+  var _batchScriptHintsBound = false;
+  function bindBatchScriptHints() {
+    if (_batchScriptHintsBound) return;
+    _batchScriptHintsBound = true;
+    var linesEl = document.getElementById('scriptLines');
+    var subEl = document.getElementById('batchScriptNeedSubtitle');
+    if (linesEl) {
+      linesEl.addEventListener('input', updateBatchScriptHints);
+      linesEl.addEventListener('change', updateBatchScriptHints);
+    }
+    if (subEl) subEl.addEventListener('change', updateBatchScriptHints);
+    updateBatchScriptHints();
+  }
+
+  var _batchLongtextHintsBound = false;
+  function bindBatchLongtextHints() {
+    if (_batchLongtextHintsBound) return;
+    _batchLongtextHintsBound = true;
+    var textEl = document.getElementById('batchText');
+    var stratEl = document.getElementById('batchStrategy');
+    var maxEl = document.getElementById('batchMaxChars');
+    var subEl = document.getElementById('batchNeedSubtitle');
+    if (textEl) textEl.addEventListener('input', updateBatchLongtextHints);
+    if (stratEl) stratEl.addEventListener('change', updateBatchLongtextHints);
+    if (maxEl) maxEl.addEventListener('input', updateBatchLongtextHints);
+    if (maxEl) maxEl.addEventListener('change', updateBatchLongtextHints);
+    if (subEl) subEl.addEventListener('change', updateBatchLongtextHints);
+    updateBatchLongtextHints();
+  }
+
   // handleBatchLongtextSubmit — moved to /static/js/batch_longtext.js
   // (button onclick="handleBatchLongtextSubmit()" still resolves via window lookup)
 
   // handleBatchScriptSubmit — moved to /static/js/batch_script.js
   // (button onclick="handleBatchScriptSubmit()" still resolves via window lookup)
+
+  function isSafeBatchAudioUrl(url) {
+    if (!url) return false;
+    const s = String(url).trim().toLowerCase();
+    if (s.indexOf('blob:') === 0) return false;
+    if (s.indexOf('javascript:') === 0) return false;
+    if (s.indexOf('data:') === 0) return false;
+    return s.indexOf('/api/') === 0 ||
+           s.indexOf('http://') === 0 ||
+           s.indexOf('https://') === 0;
+  }
+
+  function safePushBatchSample(source, data, extra = {}) {
+    try {
+      if (!window.SampleStore || typeof window.SampleStore.pushSample !== 'function') return null;
+      if (!data || data.status !== 'success') return null;
+      if (!data.batch_id) return null;
+      const audio = data.merged_audio || {};
+      if (!audio.id) return null;
+      if (!isSafeBatchAudioUrl(audio.url)) return null;
+      const batchId = data.batch_id;
+      const pushKey = batchId + ':' + source;
+      if (!window._batchSamplePushedByKey) window._batchSamplePushedByKey = {};
+      if (window._batchSamplePushedByKey[pushKey]) return null;
+      const downloadUrl = '/api/voice/batch/' + encodeURIComponent(batchId) + '/download';
+      const firstSegmentText = (data.segments && data.segments[0]) ? data.segments[0].text_preview : '';
+      const textPreview = extra.text_preview || firstSegmentText || '批量文本';
+      const sample = window.SampleStore.pushSample({
+        source: source,
+        job_id: batchId,
+        batch_id: batchId,
+        segment_id: null,
+        asset_id: audio.id,
+        download_url: downloadUrl,
+        text_preview: textPreview,
+        provider: extra.provider || null,
+        model: null,
+        voice_id: null,
+        voice_name: null,
+        profile_id: extra.profile_id || null,
+        profile_name: null,
+        duration_ms: data.total_duration_ms || null,
+        audio_format: extra.audio_format || null,
+        status: 'completed',
+        tags: ['batch', 'merged'],
+        context_id: extra.context_id || null,
+      });
+      window._batchSamplePushedByKey[pushKey] = true;
+      if (window.SampleSidebar && typeof window.SampleSidebar.refresh === 'function') {
+        window.SampleSidebar.refresh();
+      }
+      return sample;
+    } catch (e) {
+      return null;
+    }
+  }
 
   function showBatchProgress(batchId, targetPanelId = 'batchProgressPanel') {
     const panel = document.getElementById(targetPanelId);
@@ -4465,6 +5392,15 @@ function handleStopAsyncPolling() {
       return;
     }
     playerDiv.style.display = '';
+
+    // Push batch merged audio to sample_store
+    const batchSource = targetPanelId === 'batchScriptProgressPanel'
+      ? 'batch_script_merged'
+      : 'batch_longtext_merged';
+    const batchExtra = (window._batchSampleContextById && data.batch_id)
+      ? (window._batchSampleContextById[data.batch_id] || {})
+      : {};
+    safePushBatchSample(batchSource, data, batchExtra);
 
     // Only initialize player DOM once per batch
     if (window._batchPlayerInitialized !== `${data.batch_id}-${targetPanelId}`) {
@@ -4697,6 +5633,10 @@ function handleStopAsyncPolling() {
       alert('重试失败：' + e.message);
     }
   }
+</script>
+<script>
+  bindBatchLongtextHints();
+  bindBatchScriptHints();
 </script>
 </body>
 </html>

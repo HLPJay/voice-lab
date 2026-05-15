@@ -2,7 +2,59 @@
 
 ## 当前阶段
 
-**P13-CREATION-A0：样本观察侧边栏设计**
+**P15-STATS-A0：后期统计能力设计**
+
+## 已完成（续）
+
+- P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置 ✅
+- P14-CONTEXT-C2-FIX2-CHECK：SampleSidebar 详情面板插入位置修复复核 ✅
+- P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切 ✅
+- P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核 ✅
+- P14-PRODUCT-B0-SKIP：SampleSidebar 常驻策略确认，跳过隐藏/过滤设计 ✅
+- P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口 ✅
+- P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核 ✅
+- P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板 ✅
+- P14-CONTEXT-C2-CHECK：剧本一键回填复核 ✅ (发现阻塞问题)
+- P14-CONTEXT-C2：剧本一键回填 ✅
+- P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核 ✅
+- P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构 ✅
+- P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复 ✅
+- P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核 ✅ (发现阻塞问题)
+- P14-CONTEXT-C1：剧本 context 保存与详情查看实现 ✅
+- P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查 ✅
+- P14-CONTEXT-B3-CHECK：长文本一键回填复核 ✅
+- P14-CONTEXT-B3：长文本一键回填 ✅
+- P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计 ✅
+- P13-CREATION-B5-A0-CODE-CHECK-FIX：batch A0 文档代码事实校验修正 ✅
+- P13-CREATION-B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧 ✅
+- P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检 ✅
+- P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store ✅
+- P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正 ✅
+- P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
+- P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口 ✅
+- P13-FINAL-CHECK：P13 最近样本系统最终验收 ✅
+- P13-CLOSE：P13 最近样本系统阶段收口归档 ✅
+- P14-PRODUCT-A0：样本复用与配置恢复产品方案审查 ✅
+- P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充 ✅
+- P14-PRODUCT-A0-FIX2：文档章节编号修正 ✅
+- P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计 ✅
+- P14-LONGTEXT-UX-B0-FIX1：剧本生产入口统计提示方向补充 ✅
+- P14-LONGTEXT-UX-B1：长文本字数统计、预计分段、策略说明 ✅
+- P14-LONGTEXT-UX-B1-CHECK：长文本 UX hints 实现复核 ✅
+- P14-LONGTEXT-UX-B1-CLOSE：长文本 UX hints 阶段收口 ✅
+- P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计 ✅
+- P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核 ✅
+- P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口 ✅
+- P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计 ✅
+- P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核 ✅
+- P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复 ✅
+- P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口 ✅
+- P14-CONTEXT-B2-A0：长文本 context 保存与详情查看接入前置审查 ✅
+- P14-CONTEXT-B2：长文本 context 保存与详情查看实现 ✅
+- P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核 ✅
+- P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口 ✅
+- P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计 ✅
+- P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现 ✅
 
 ## 已完成
 
@@ -46,14 +98,35 @@
 - P12-USAGE-CHECK：close real usage polish ✅
 - P12-USAGE-UX6：fix sentence segmentation semantics ✅
 - P12-USAGE-CHECK2：close post-UX6 polish ✅
+- P13-CREATION-A0：样本观察侧边栏设计审查 ✅
+- P13-CREATION-A0-CHECK：A0 文档事实核验与修正 ✅
+- P13-CREATION-B0：样本观察侧边栏最小实现方案设计 ✅
+- P13-CREATION-B1：sample_store.js 前端样本存储模块实现 ✅
+- P13-CREATION-B1-CHECK-FIX：sample_store 契约修正 ✅
+- P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强 ✅
+- P13-CREATION-B2：workspace 生成结果接入 sample_store ✅
+- P13-CREATION-B2-CHECK-FIX：workspace sample_store 接入修正 ✅
+- P13-CREATION-B2-CHECK-FIX2：workspace sample metadata model 来源修正 ✅
+- P13-CREATION-B2-CHECK：workspace sample_store 接入复核 ✅
+- P13-CREATION-B3：audition_records 接入 sample_store ✅
+- P13-CREATION-B3-CHECK：audition_records sample_store 接入复核 ✅
+- P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 实现 ✅
+- P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正 ✅
+- P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正 ✅
+- P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正 ✅
+- P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正 ✅
+- P13-CREATION-B4-CHECK：sample sidebar UI 复核 ✅
+- P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口 ✅
+- P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-CREATION-A0 | design sample observation sidebar | P10 完成 |
-| P12-BE | 后端能力增强（如有需求） | 用户反馈 |
-| P12-APP | 本地 App 打包评估 | P10 完成 |
+| P14-CONTEXT-C2-FIX3-CHECK | verify SampleSidebar detail panel flex shrink fix | P14-CONTEXT-C2-FIX3 完成 |
+| P15-STATS-A0 | design post-generation statistics capability | P14-PRODUCT-B0-SKIP 完成 |
+| P15-STATS-B1 | implement lightweight local statistics | P15-STATS-A0 完成 |
+| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
 ## Paused / Do not touch yet

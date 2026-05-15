@@ -8,7 +8,74 @@
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
 * P12 真实使用修复阶段已最终收口
 * P12-USAGE-CHECK2：close post-UX6 polish ✅
-* 当前下一阶段：P13-CREATION-A0 样本观察侧边栏设计
+* P13-CREATION-A0：样本观察侧边栏设计审查已完成 ✅
+* P13-CREATION-A0-CHECK：A0 文档事实核验与修正已完成 ✅
+* P13-CREATION-B0：样本观察侧边栏最小实现方案设计已完成 ✅
+* P13-CREATION-B1：sample_store.js 前端样本存储模块实现已完成 ✅
+* P13-CREATION-B1-CHECK-FIX：sample_store 契约修正已完成 ✅
+* P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
+* P13-CREATION-B2：workspace 生成结果接入 sample_store 已复核通过 ✅
+* P13-CREATION-B2-CHECK：workspace sample_store 接入复核已完成 ✅
+* P13-CREATION-B3：audition_records 接入 sample_store 已复核通过 ✅
+* P13-CREATION-B3-CHECK：audition_records sample_store 接入复核已完成 ✅
+* P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正已完成 ✅
+* P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正已完成 ✅
+* P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正已完成 ✅
+* P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正已完成 ✅
+* P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 已复核通过 ✅
+* P13-CREATION-B4-CHECK：sample sidebar UI 复核已完成 ✅
+* P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口已完成 ✅
+* P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归已完成 ✅
+* P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计已完成 ✅
+* P13-CREATION-B5-A0-CODE-CHECK-FIX：batch A0 文档代码事实校验修正已完成 ✅
+* P13-CREATION-B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧已完成 ✅
+* P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检已完成 ✅
+* P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store 已完成 ✅
+* P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正已完成 ✅
+* P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
+* P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口已完成 ✅
+* P13-FINAL-CHECK：P13 最近样本系统最终验收已完成 ✅
+* P13-CLOSE：P13 最近样本系统阶段收口归档已完成 ✅
+* 当前状态：P13 最近样本系统已归档
+* P14-PRODUCT-A0：样本复用与配置恢复产品方案审查已完成 ✅
+* P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充已完成 ✅
+* P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计已完成 ✅
+* P14-LONGTEXT-UX-B0-FIX1：剧本生产入口统计提示方向补充已完成 ✅
+* P14-LONGTEXT-UX-B1：长文本字数统计、预计分段、策略说明已完成 ✅
+* P14-LONGTEXT-UX-B1-CHECK：长文本 UX hints 实现复核已完成 ✅
+* P14-LONGTEXT-UX-B1-CLOSE：长文本 UX hints 阶段收口已完成 ✅
+* P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计已完成 ✅
+* P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核已完成 ✅
+* P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口已完成 ✅
+* P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计已完成 ✅
+* P14-CONTEXT-B1：context_store.js 基础模块已完成，待复核
+* P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核已完成 ✅
+* P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复已完成 ✅
+* P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口已完成 ✅
+* P14-CONTEXT-B2：长文本 context 保存与详情查看已完成 ✅
+* P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核已完成 ✅
+* P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口已完成 ✅
+* P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计已完成 ✅
+* P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复已完成 ✅
+* P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现已完成 ✅
+* P14-CONTEXT-B3：长文本一键回填已完成 ✅
+* P14-CONTEXT-B3-CHECK：长文本一键回填复核已完成 ✅
+* P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查已完成 ✅
+* P14-CONTEXT-C1：剧本 context 保存与详情查看实现已完成 ✅
+* P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核已完成 ✅（发现阻塞问题）
+* P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复已完成 ✅
+* P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构已完成 ✅
+* P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核已完成 ✅
+* P14-CONTEXT-C2：剧本一键回填已完成 ✅
+* P14-CONTEXT-C2-CHECK：剧本一键回填复核已完成 ✅（发现阻塞问题）
+* P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板已完成 ✅
+* P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核已完成 ✅
+* P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置已完成 ✅
+* P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切已完成 ✅
+* P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核已完成 ✅
+* P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口已完成 ✅
+* P14-PRODUCT-B0-SKIP：SampleSidebar 常驻策略确认，跳过隐藏/过滤设计已完成 ✅
+* 当前下一阶段：P15-STATS-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5319,3 +5386,3241 @@ P12 阶段共完成 19 项修复：
 - P13-CREATION-A0：样本观察侧边栏设计
 - P12-BE：如有真实用户需求再评估后端能力增强
 - P12-APP：本地 App 打包评估
+
+## P13-CREATION-A0 样本观察侧边栏设计审查
+
+### 背景
+
+P12 已归档完成，P13 开始从"生成音频"进入"观察样本、复用样本、沉淀方案"的创作工作流设计。
+
+### 本阶段目标
+
+本阶段只做样本观察侧边栏的现状审查和设计文档，不实现功能。
+
+### 修改文件
+
+- docs/P13_CREATION_SAMPLE_OBSERVATION_A0.md（新增）
+- docs/PROJECT_HEALTH_CHECK.md（追加本节）
+
+### 阶段边界
+
+- 不改业务代码
+- 不改后端 API
+- 不改数据库结构
+- 不调用真实 MiniMax
+- 不进入 P13-B 实现
+- 不引入 React / Vite / 动态加载
+- 不做 SaaS / 多用户
+
+### 阶段状态
+
+A0 设计文档已提交。A0-CHECK 负责修正文档中的字段级事实口径，完成后再进入 P13-CREATION-B0。
+
+### A0 结论
+
+- P13 可以启动
+- 第一版应采用 localStorage recent samples panel（200 条上限，text_preview 截断 100 字符）
+- 不应先做数据库样本库
+- 不应先做完整作品管理
+- 不应先改后端
+- 不应先做移动端
+
+### 后续阶段
+
+| 阶段 | 内容 |
+|---|---|
+| P13-CREATION-B0 | 最小实现方案设计（不写代码） |
+| P13-CREATION-B1 | 新增 sample_store.js 前端模块（localStorage 封装） |
+| P13-CREATION-B2 | 接入 workspace 单条生成结果 |
+| P13-CREATION-B3 | 接入 audition_records |
+| P13-CREATION-B4 | 新增 sidebar UI |
+| P13-CREATION-B5 | 接入 batch_longtext / batch_script 样本摘要 |
+| P13-CREATION-CHECK | 完整验收与回归 |
+
+## P13-CREATION-A0-CHECK：A0 文档事实核验与修正
+
+### 背景
+
+A0 文档已完成，但复核发现部分字段描述过于确定，需要与当前代码事实对齐后再进入 B0。
+
+### 修正内容
+
+- 修正 recent_job.js 不存在且不应复用语义的描述
+- 修正 workspace sample metadata 来源为"请求上下文 + 返回结果"组合口径
+- 修正 batch segment 字段为待 B0 核验
+- 修正 history 字段描述（补充前端实际使用字段）
+- 修正 batch_script 描述与 batch_longtext 保持一致
+- 增加 B0 字段级核验清单
+
+### 阶段边界
+
+- 只改文档
+- 不改业务代码
+- 不调用真实 MiniMax
+- 不进入 B0 实现
+
+### 阶段状态
+
+A0-CHECK 已完成，文档事实口径已修正，可以进入 P13-CREATION-B0。
+
+## P13-CREATION-A0-CHECK-CLOSE：A0 状态收口
+
+### 背景
+
+A0-CHECK 已完成，A0 文档事实口径已经修正，需要同步任务状态文档，正式进入 B0 前置状态。
+
+### 修改内容
+
+- `docs/agent/NEXT_TASKS.md` 当前阶段切换为 P13-CREATION-B0
+- `docs/agent/NEXT_TASKS.md` 标记 P13-CREATION-A0 与 A0-CHECK 完成
+- `docs/PROJECT_HEALTH_CHECK.md` 顶部摘要同步为 A0-CHECK 已完成
+- 明确当前下一阶段为 P13-CREATION-B0
+
+### 阶段边界
+
+- 只改文档
+- 不改业务代码
+- 不调用真实 MiniMax
+- 不进入 B0 设计正文
+
+### 阶段状态
+
+A0 / A0-CHECK 状态已收口，可以开始 P13-CREATION-B0。
+
+## P13-CREATION-B0 样本观察侧边栏最小实现方案设计
+
+### 背景
+
+A0 / A0-CHECK 已完成，当前进入最小实现方案设计阶段。B0 不写代码，只设计后续 B1-B5 的实现边界、字段来源、模块职责和测试策略。
+
+### 本阶段目标
+
+- 确定 sample_store.js 接口设计与 localStorage 策略
+- 逐场景确认 sample metadata 字段来源（精确到函数级别）
+- 确定 sample_sidebar.js 职责边界
+- 确定 UI 容器设计原则
+- 设计 B1-B5 实施顺序与测试策略
+
+### 修改文件
+
+- docs/P13_CREATION_SAMPLE_OBSERVATION_B0.md（新增）
+- docs/PROJECT_HEALTH_CHECK.md（追加本节）
+
+### 阶段边界
+
+- 不改业务代码
+- 不新增 JS 模块
+- 不改 index.html
+- 不改后端 API
+- 不改数据库结构
+- 不调用真实 MiniMax
+
+### 关键设计结论
+
+- sample_store.js：6 个方法（pushSample / getSamples / deleteSample / clearSamples / normalizeSample / trimSamples）
+- localStorage key：`voice_lab_recent_samples_v1`，上限 200 条
+- B1 先实现 sample_store.js，不接任何生成链路
+- B2 接 workspace（sync / async / stream server asset / variants）
+- B3 接 audition_records
+- B4 做 sidebar UI（新增 sample_sidebar.js + index.html 容器）
+- B5 接 batch（容量上限 20 条/批次）
+- history 不进入第一版 MVP
+
+### 阶段状态
+
+进行中，待 B0 文档完成后收口。
+
+## P13-CREATION-B1 sample_store.js 前端样本存储模块
+
+### 背景
+
+B0 已完成最小实现方案设计，B1 开始实现独立的 sample_store.js，只封装 localStorage 样本读写。
+
+### 本阶段目标
+
+新增 sample_store.js，提供 SampleStore 的 6 个方法（pushSample / getSamples / deleteSample / clearSamples / normalizeSample / trimSamples），为后续 workspace / audition / sidebar 接入做准备。
+
+### 修改文件
+
+- app/static/js/sample_store.js
+- tests/test_sample_store_static.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 阶段边界
+
+- 不改 index.html
+- 不接 UI
+- 不接生成链路
+- 不修改现有 app/static/js/*.js
+- 不改后端 API
+- 不改数据库结构
+- 不调用真实 MiniMax
+- 不读写 recentJobs
+- 不保存 blob URL
+
+### 测试
+
+- 24 项静态 + 行为测试全部通过
+- 静态契约：window.SampleStore、6 个方法、常量、blob URL 过滤、无 recentJobs 代码访问（正则检测）、无 fetch、无 DOM
+- 行为（Node.js）：localStorage 读写、200 条裁剪、text_preview 截断、malformed JSON 恢复、删除、清空、audio_format 覆盖、recentJobs 隔离、getSamples 排序验证、getSamples 裁剪验证
+
+### 阶段状态
+
+进行中，待测试通过后收口。
+
+## P13-CREATION-B1-CHECK-FIX：sample_store 契约修正
+
+### 背景
+
+B1 初版实现完成后复核发现 `getSamples` 未按 `created_at` 倒序返回，且测试文件中 Node skip 作用范围过大、`recentJobs` 静态断言大小写错误（被 JSDoc 注释误报）。
+
+### 修正内容
+
+- `getSamples()` 改为返回 `trimSamples(parseSamples(raw))`，确保每次读取都经过排序和容量裁剪
+- 修复 Node 行为测试 skip 范围：删除模块级 `pytestmark`，改为只装饰 `TestSampleStoreBehavior` 类
+- 修复 `test_no_recent_jobs` 静态断言：改用正则检查实际代码模式（`recentjobs[.` 或 `['recentjobs']`），避免被 JSDoc 注释误报
+- 新增 `test_get_samples_returns_created_at_desc_order`：验证乱序写入后 `getSamples()` 正确排序
+- 新增 `test_get_samples_trims_existing_storage_to_200`：验证 220 条数据写入后 `getSamples()` 裁剪到 200 条
+
+### 阶段边界
+
+- 不改 index.html
+- 不接 UI
+- 不接生成链路
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B1 契约修正完成，25 项测试全部通过，可以进入 B1-CLOSE。
+
+## P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强
+
+### 背景
+
+B1-CHECK-FIX 已修复核心契约，但复核发现两个测试覆盖缺口：recentJobs 静态检测未覆盖 getItem/setItem 形式；getSamples 裁剪测试通过 pushSample 写入，未直接验证已有 storage 脏数据。
+
+### 修正内容
+
+- 补强 recentJobs 静态检测：覆盖 localStorage.getItem/setItem('recentJobs')、safeGetItem/safeSetItem('recentJobs')、window.recentJobs、bracket subscript ['recentJobs']、recentJobs identifier deref
+- 修正 getSamples 裁剪测试：改为直接向 localStorage 写入 220 条 JSON，再验证 getSamples 返回 200 条
+- 新增 getSamples 不写回 localStorage 的行为测试：直接写入 2 条后调用 getSamples()，验证 raw storage 字符串未变化
+
+### 测试
+
+- 25 项测试全部通过（新增 1 项 getSamples 不写回测试）
+- recentJobs 覆盖：7 种真实代码访问模式全部被静态检测拦截
+
+### 阶段边界
+
+- 只改测试和文档
+- 不改 sample_store.js 本身
+- 不改 index.html
+- 不接 UI / 生成链路
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+测试覆盖补强完成，可以进入 B1-CLOSE。
+
+## P13-CREATION-B1-CLOSE：sample_store 阶段状态收口
+
+### 背景
+
+B1 已完成 sample_store.js 独立实现，并经过 B1-CHECK-FIX 与 B1-CHECK-FIX2 修正。sample_store 已具备后续 workspace / audition / sidebar 接入的最小稳定契约。
+
+### 收口内容
+
+- 标记 P13-CREATION-B1 完成
+- 标记 B1-CHECK-FIX 完成
+- 标记 B1-CHECK-FIX2 完成
+- 当前阶段推进到 P13-CREATION-B2
+- 明确 B2 目标是 workspace 生成结果接入 sample_store
+
+### B1 最终状态
+
+- `app/static/js/sample_store.js` 已新增
+- 暴露 `window.SampleStore`
+- 提供 `pushSample / getSamples / deleteSample / clearSamples / normalizeSample / trimSamples`
+- localStorage key 为 `voice_lab_recent_samples_v1`
+- 最大保存 200 条，按 `created_at` 倒序
+- `text_preview` 截断到 100 字符
+- 不保存 blob URL
+- 不读写 recentJobs
+- 不依赖 DOM
+- 不调用后端 API
+- 测试覆盖 25 项通过
+
+### 阶段边界
+
+- 只改文档
+- 不改 sample_store.js
+- 不改测试
+- 不改 index.html
+- 不接生成链路
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B1 已收口，可以开始 P13-CREATION-B2。
+
+## P13-CREATION-B2：workspace 生成结果接入 sample_store
+
+### 背景
+
+B1 完成了独立的 sample_store.js 模块（localStorage 封装），B2 开始将 workspace 生成链路（sync/async/stream/variants）的成功结果接入 sample_store，在本地保存最近生成成功的音频样本元数据。
+
+### 实现内容
+
+#### 新增辅助函数（index.html）
+
+- `buildAssetDownloadUrl(assetId)` — 构造 `/api/voice/assets/{id}/download`
+- `getSelectedProfileName()` — 从 `#profileSelect` 获取当前选中人设名称
+- `safePushWorkspaceSample(source, data, extra)` — fail-safe 封装，调用 `window.SampleStore.pushSample`
+
+#### 上下文保存（window._workspaceSampleContext）
+
+在 `handleGenerate` 中，async/stream 提交前将上下文保存到 `window._workspaceSampleContext`：
+
+```javascript
+window._workspaceSampleContext = {
+  text_preview: text.length > 100 ? text.substring(0, 100) + '…' : text,
+  profile_id: profileId,
+  profile_name: getSelectedProfileName(),
+  provider,
+  model: null,
+  job_id: data.job_id || null,  // async only
+  voice_id: null,
+  voice_name: null,
+};
+```
+
+voice_id/voice_name 从 `window._voiceBindMap` 回填（绑定表）。
+
+#### 生成结果接入点
+
+| 模式 | 调用位置 | source 标签 |
+|---|---|---|
+| sync | `renderResults` statusOk 分支 | `workspace_sync` |
+| variants | `renderResults` variants 分支（每项遍历） | `workspace_variant` |
+| async | `renderAsyncResult` success 分支 | `workspace_async` |
+| stream | `renderStreamResult` 完成时 | `workspace_stream` |
+
+#### safePushWorkspaceSample 字段填充
+
+- `source`：固定 source 标签（如 `workspace_sync`）
+- `job_id`：`extractJobId(data)` 或 `window._workspaceSampleContext.job_id`
+- `asset_id`：`extractAudioAssetId(data)`
+- `download_url`：`buildAssetDownloadUrl(assetId)`
+- `text_preview`：从 `window._workspaceSampleContext` 取
+- `profile_id / profile_name`：同上
+- `provider / model / voice_id / voice_name`：上下文 + `window._voiceBindMap` 回填
+- `duration_ms`：`data.duration_ms || data.audio_duration_ms`
+- `audio_format`：`data.audio_format || data.format || 'mp3'`
+- `status`：`data.status || 'completed'`
+- `tags`：`[source]`
+
+#### 错误处理
+
+`safePushWorkspaceSample` 整体被 `try/catch` 包裹，push 失败不影响生成流程。
+
+### 测试
+
+- 新增 `tests/test_sample_store_workspace_integration_static.py`：22 项静态契约测试
+  - script tag 存在性
+  - 三个 helper 函数存在性
+  - `safePushWorkspaceSample` fail-safe 特性
+  - `window._workspaceSampleContext` 在 stream/async 提交前保存
+  - 四种 source 的 `safePushWorkspaceSample` 调用存在
+  - text_preview 截断逻辑
+  - 不直接使用 localStorage
+- 既有 `tests/test_sample_store_static.py`：25 项测试全部通过
+
+### 阶段边界
+
+- 只改 `app/static/index.html`（新增 helper 函数 + 调用点）
+- 不改 `sample_store.js`
+- 不改任何后端 API
+- 不接 audition / batch / history / sidebar UI
+- 不调用真实 MiniMax（使用 E2E mock）
+
+### 阶段状态
+
+B2 已完成，47 项测试全部通过。进入 B2-CHECK 复核。
+
+## P13-CREATION-B2-CHECK-FIX：workspace sample_store 接入修正
+
+### 背景
+
+B2 初版实现完成后复核发现：
+- sync / variants 未保存当前生成上下文，导致 `safePushWorkspaceSample` 可能读取空或旧 context
+- voiceBindMap 查找逻辑在 `safePushWorkspaceSample` 中重复两段
+- `duration_ms` 未优先读取 `audio_asset.duration_ms`
+- `buildAssetDownloadUrl` 未对 assetId 进行 URI 编码
+- variants 传入 data 而非 data 的结构，`model` 信息丢失
+- B2 状态文档过早推进到 B3
+
+### 修正内容
+
+#### 新增统一 `buildWorkspaceSampleContext(options)` helper
+
+将 voiceBindMap 查找逻辑收拢到统一函数中，返回完整上下文对象。handleGenerate 中所有模式（sync/variants/async/stream）统一在发起请求前调用一次。
+
+#### `handleGenerate` 统一上下文保存
+
+在 `stopAsyncPolling()` 之后，所有分支之前，统一调用：
+
+```javascript
+window._workspaceSampleContext = buildWorkspaceSampleContext({
+  text: text,
+  profile_id: profileId,
+  provider: provider,
+  audio_format: audioFormat,
+});
+```
+
+async 模式在收到响应后，仅更新 `job_id`：
+
+```javascript
+window._workspaceSampleContext.job_id = data.job_id || null;
+```
+
+#### `safePushWorkspaceSample` 重写
+
+- `window.SampleStore` 不存在时直接 return null
+- 无 `assetId` 时直接 return null（优先使用 `extra.asset_id`）
+- `duration_ms` 优先级：`extra.duration_ms > data.audio_asset.duration_ms > data.duration_ms > data.audio_duration_ms > data.total_duration_ms`
+- `audio_format` 优先级：`extra.audio_format > ctx.audio_format > data.audio_asset.format > data.audio_format > data.format > 'mp3'`
+- `provider/model` 优先从 `data` 取，其次从 `ctx` 取
+- `return window.SampleStore.pushSample(sample)` 以支持返回值
+- `catch` 中使用 `console.warn` 并 return null
+
+#### `buildAssetDownloadUrl` 修正
+
+```javascript
+return '/api/voice/assets/' + encodeURIComponent(assetId) + '/download';
+```
+
+#### 四个调用点传入 extra 参数
+
+- **sync**: `safePushWorkspaceSample('workspace_sync', data, { asset_id: audio.id, duration_ms: audio.duration_ms || null })`
+- **variants**: `safePushWorkspaceSample('workspace_variant', v, { asset_id: v.audio_asset_id, duration_ms: v.duration_ms || null, job_id: extractJobId(data), model: v.model || data.model || null })`
+- **async**: `safePushWorkspaceSample('workspace_async', data, { asset_id: audio.id, duration_ms: audio.duration_ms || null, job_id: data.job_id || null })`
+- **stream**: `safePushWorkspaceSample('workspace_stream', completed, { asset_id: asset.id, duration_ms: asset.duration_ms || completed.total_duration_ms || null })`
+
+#### 文档状态修正
+
+- `NEXT_TASKS.md`：移除 B3 推进，当前阶段改回 B2-CHECK，修正重复的 P12-BE 行
+- `PROJECT_HEALTH_CHECK.md`：顶部摘要 B2 状态改为"待 B2-CHECK 复核"，追加 B2-CHECK-FIX 章节
+
+### 测试
+
+- `tests/test_sample_store_static.py`：25 项全部通过
+- `tests/test_sample_store_workspace_integration_static.py`：34 项静态契约测试全部通过（新增覆盖 extra 参数、encodeURIComponent、buildWorkspaceSampleContext 等）
+- 总计 59 项测试
+
+### 阶段边界
+
+- 只改 `app/static/index.html`、`tests/test_sample_store_workspace_integration_static.py`
+- 不改 `sample_store.js`
+- 不改 `tests/test_sample_store_static.py`
+- 不接 audition / batch / history / sidebar UI
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B2-CHECK-FIX 完成，等待 B2-CHECK 复核。
+
+## P13-CREATION-B2-CHECK-FIX2：workspace sample metadata model 来源修正
+
+### 背景
+
+B2-CHECK-FIX 复核后发现 variants 调用已传入 `extra.model`，但 `safePushWorkspaceSample` 未读取 `extra.model`，可能导致部分 `workspace_variant` sample 缺失父级 model 信息。
+
+### 修正内容
+
+- `safePushWorkspaceSample` 的 `model` 字段改为优先读取 `extra.model`：`model: extra.model || data?.model || ctx.model || null`
+- 补充静态测试 `test_safePushWorkspaceSample_uses_extra_model_first`，确保 `extra.model` 优先级最高
+- 补充静态测试 `test_variants_call_passes_extra_model`，确保 variants 调用传入 `model: v.model || data.model || null`
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不接 audition / batch / history
+- 不新增 sidebar UI
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B2-CHECK-FIX2 完成，进入 B2-CHECK。
+
+## P13-CREATION-B2-CHECK：workspace sample_store 接入复核
+
+### 背景
+
+B2 已完成 workspace sync / async / stream / variants 成功结果接入 sample_store，并经过 B2-CHECK-FIX 与 B2-CHECK-FIX2 修正。B2-CHECK 对实现进行全面复核。
+
+### 复核内容
+
+- **sample_store.js 加载顺序**：`index.html` 中 `<script src="/static/js/sample_store.js">` 在主 inline script 之前（行 1636），确保 `window.SampleStore` 可用 ✅
+- **workspace context 统一保存**：`handleGenerate()` 在所有模式分支（sync/variants/async/stream）之前统一调用 `buildWorkspaceSampleContext(...)` 保存上下文；async 模式在收到响应后仅更新 `job_id` ✅
+- **safePushWorkspaceSample fail-safe**：try/catch 包裹；`window.SampleStore` 不存在时 return null；`assetId` 不存在时 return null；catch 中只 console.warn 不 throw；return SampleStore.pushSample() ✅
+- **四个接入点**：
+  - `workspace_sync`：renderResults sync success 分支，`audio && audio.id` 时调用 ✅
+  - `workspace_variant`：renderResults variants 遍历，`v.audio_asset_id` 存在时调用 ✅
+  - `workspace_async`：renderAsyncResult success 分支，`audio && audio.id` 时调用 ✅
+  - `workspace_stream`：renderStreamResult，`asset && asset.id` 时调用 ✅
+- **字段来源正确**：
+  - `model: extra.model || data?.model || ctx.model` ✅
+  - `duration_ms: extra.duration_ms || audio_asset.duration_ms || ... || total_duration_ms` ✅
+  - `download_url: buildAssetDownloadUrl(assetId)`（使用 encodeURIComponent）✅
+- **stream blob 安全**：blobUrl 仅用于当前播放器和浏览器缓存下载；`safePushWorkspaceSample` 不接收 blobUrl；无 server asset 时不写入 sample ✅
+- **variants model 传递**：`extra.model` 优先，`v.model || data.model || null` 通过 extra 参数传入 ✅
+- **边界确认**：未接入 audition / batch / history / sidebar UI；未修改后端 API / 数据库结构 / sample_store.js ✅
+
+### 测试结果
+
+- `tests/test_sample_store_static.py`：25 项全部通过 ✅
+- `tests/test_sample_store_workspace_integration_static.py`：36 项全部通过 ✅
+
+结果：61 passed。
+
+### 阶段结论
+
+P13-CREATION-B2 复核通过，可以进入 B2-CLOSE。下一步只做状态收口，不进入 B3 实现。
+
+## P13-CREATION-B2-CLOSE：workspace sample_store 接入状态收口
+
+### 背景
+
+B2 已完成 workspace sync / async / stream / variants 成功结果接入 sample_store，并经过 B2-CHECK-FIX、B2-CHECK-FIX2 与 B2-CHECK 复核。
+
+### 收口内容
+
+- 标记 P13-CREATION-B2 完成
+- 标记 P13-CREATION-B2-CHECK-FIX 完成
+- 标记 P13-CREATION-B2-CHECK-FIX2 完成
+- 标记 P13-CREATION-B2-CHECK 完成
+- 当前阶段推进到 P13-CREATION-B3
+- 明确 B3 目标是 audition_records 接入 sample_store，不是 sidebar UI
+
+### B2 最终状态
+
+- workspace_sync 已接入 sample_store
+- workspace_variant 已接入 sample_store
+- workspace_async 已接入 sample_store
+- workspace_stream 已接入 sample_store
+- sample 写入失败不会影响生成流程
+- stream 不保存 blobUrl
+- 只保存 server asset 下载入口
+- 未接入 audition / batch / history / sidebar UI
+- 未修改后端 API / 数据库结构
+- 测试结果：61 passed
+
+### 阶段边界
+
+- 只改文档
+- 不改 index.html
+- 不改 sample_store.js
+- 不改测试
+- 不接 B3 功能
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B2 已收口，可以开始 P13-CREATION-B3。
+
+## P13-CREATION-B3：audition_records 接入 sample_store
+
+### 背景
+
+B2 已完成 workspace sync / async / stream / variants 接入 sample_store。B3 开始将 Voices tab 的试听成功记录接入 sample_store。
+
+### 本阶段目标
+
+试听生成成功后，在保持原有 `window._auditionRecords` 行为不变的前提下，将试听结果以 `source = audition` 写入 `SampleStore`。
+
+### 修改文件
+
+- `app/static/js/audition_records.js` — 新增 `window.safePushAuditionSample` helper
+- `app/static/index.html` — `handleGenerateAudition` 构造 `auditionRecord` 并调用 `safePushAuditionSample`
+- `tests/test_sample_store_audition_integration_static.py` — 25 项静态契约测试
+
+### 实现内容
+
+#### `window.safePushAuditionSample(record)` — audition_records.js
+
+fail-safe 封装，只通过 `window.SampleStore.pushSample` 写入：
+
+- `source: 'audition'`
+- `tags: ['audition']`
+- `job_id: null`
+- `asset_id: record.assetId || record.audioAssetId || null`
+- `download_url: audioUrl || null`（拒绝 blob: URL）
+- `text_preview: record.text || ''`
+- `profile_id / profile_name: null`
+- `provider / model / voice_id / voice_name: record 对应字段`
+- `duration_ms: record.durationMs || null`
+- `audio_format: record.audioFormat || 'mp3'`
+
+#### `handleGenerateAudition` 改造 — index.html
+
+在成功分支（`data.audio_asset && data.audio_asset.url`）中：
+
+```javascript
+const auditionRecord = {
+  voiceId, voiceName: voiceName || '',
+  provider, model,
+  text,
+  audioUrl: data.audio_asset.url,
+  assetId: data.audio_asset.id || null,
+  durationMs: data.audio_asset.duration_ms || null,
+  audioFormat: data.audio_asset.format || 'mp3',
+  timestamp: Date.now(),
+};
+window._auditionRecords.push(auditionRecord);
+window.safePushAuditionSample?.(auditionRecord);
+renderAuditionRecords();
+loadRuntimeStatus();
+```
+
+原有行为不变（试听记录渲染、状态刷新均保留）。
+
+### 接入范围
+
+- Voices tab audition success result
+- `window._auditionRecords`
+- `window.safePushAuditionSample`
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace 生成链路
+- 不接 batch_longtext / batch_script
+- 不接 history
+- 不新增 sample_sidebar.js
+- 不做 sidebar UI
+- 不修改后端 API
+- 不修改数据库结构
+- 不调用真实 MiniMax
+- sample 写入失败不得影响试听生成流程
+- 不保存 blob URL
+
+### 测试
+
+- `tests/test_sample_store_static.py`：25 项全部通过
+- `tests/test_sample_store_workspace_integration_static.py`：36 项全部通过
+- `tests/test_sample_store_audition_integration_static.py`：25 项全部通过
+
+结果：86 passed。
+
+### 阶段状态
+
+进行中，待测试通过后进入 B3-CHECK。
+
+## P13-CREATION-B3-CHECK：audition_records sample_store 接入复核
+
+### 背景
+
+B3 已完成 Voices tab audition 成功结果接入 sample_store。B3-CHECK 对实现进行复核，确认其不会影响原 audition_records 行为，也不会越界接入其他模块。
+
+### 复核内容
+
+- 确认 `window.safePushAuditionSample` 存在并具备 fail-safe 行为 ✅
+- 确认 `safePushAuditionSample` 只通过 `window.SampleStore.pushSample` 写入 sample ✅
+- 确认 `safePushAuditionSample` 不直接操作 localStorage ✅
+- 确认 `safePushAuditionSample` 不读写 recentJobs ✅
+- 确认 blob URL 不写入 sample ✅
+- 确认 `handleGenerateAudition` 只在试听成功且返回 `audio_asset.url` 时 push sample ✅
+- 确认原有 `window._auditionRecords.push(...)`、`renderAuditionRecords()`、`loadRuntimeStatus()` 行为保留 ✅
+- 确认未接 workspace / batch / history / sidebar UI ✅
+- 确认未修改后端 API / 数据库结构 / sample_store.js ✅
+- 确认测试通过 ✅
+- 确认 `profile_id / profile_name` 暂不强制写入 audition sample，后续如需与绑定关系强关联再补充 ✅
+
+### 测试结果
+
+- `tests/test_sample_store_static.py`：25 项全部通过 ✅
+- `tests/test_sample_store_workspace_integration_static.py`：36 项全部通过 ✅
+- `tests/test_sample_store_audition_integration_static.py`：25 项全部通过 ✅
+
+结果：86 passed。
+
+### 阶段结论
+
+P13-CREATION-B3 复核通过，可以进入 B3-CLOSE。下一步只做状态收口，不进入 B4 实现。
+
+## P13-HISTORY-PLAY-UX1：历史记录点击播放后自动开始播放
+
+### 背景
+
+History tab 中点击"播放"按钮后，当前只展开 audio 控件，用户仍需再次点击播放器内部三角按钮。实际体验上，"播放"按钮应直接开始播放音频。
+
+### 修正内容
+
+- 在 `toggleHistoryAudio` 展开播放器后、调用 `attachHistoryAudioEvents` 之后主动调用 `audioEl.play()`
+- 对 `play()` 返回的 Promise 做 `.catch` 处理
+- 如果浏览器阻止自动播放，显示轻量提示"浏览器阻止了自动播放，请点击播放器开始播放。"，不影响历史记录展示
+
+### 测试
+
+- `tests/test_history_play_static.py`：10 项静态契约测试全部通过 ✅
+- 既有测试：86 项全部通过 ✅
+
+结果：96 passed。
+
+### 阶段边界
+
+- 只改 history.js
+- 不改 index.html
+- 不改 sample_store.js
+- 不接 workspace / audition / batch / sidebar UI
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+P13-HISTORY-PLAY-UX1 完成。继续回到 P13-CREATION-B3-CLOSE。
+
+## P13-CREATION-B3-CLOSE：audition_records sample_store 接入状态收口
+
+### 背景
+
+B3 已完成 Voices tab audition 成功结果接入 sample_store，并经过 B3-CHECK 复核。
+
+### 收口内容
+
+- 标记 P13-CREATION-B3 完成
+- 标记 P13-CREATION-B3-CHECK 完成
+- 当前阶段推进到 P13-CREATION-B4
+- 明确 B4 目标是 sample_sidebar.js + index.html 容器 UI
+
+### B3 最终状态
+
+- audition_records 已接入 sample_store
+- `window.safePushAuditionSample` 已新增
+- audition sample source 为 `audition`
+- audition sample tags 为 `['audition']`
+- blob URL 不写入 sample
+- sample 写入失败不影响试听生成流程
+- 原有 `_auditionRecords` / `renderAuditionRecords()` / `loadRuntimeStatus()` 行为保留
+- 未接 workspace / batch / history / sidebar UI
+- 未修改后端 API / 数据库结构
+- 测试结果：86 passed
+- `profile_id / profile_name` 暂不强制写入 audition sample，后续如需与绑定关系强关联再补充
+
+### 阶段边界
+
+- 只改文档
+- 不改 audition_records.js
+- 不改 index.html
+- 不改 sample_store.js
+- 不改测试
+- 不接 B4 功能
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B3 已收口，可以开始 P13-CREATION-B4。
+
+## P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正
+
+### 背景
+
+B4 初版实现完成后复核发现 sidebar UI 存在若干契约问题：render 直接读取 localStorage 而非 SampleStore.getSamples，样本文本未做 HTML escape，清空缺少确认，未提供刷新按钮，播放未在 card 内展示 audio 控件，且未限制初版展示 20 条。
+
+### 修正内容
+
+- `render()` 改为通过 `SampleStore.getSamples()` 读取样本
+- 增加 HTML escape helper，避免样本文本直接进入 innerHTML
+- sidebar 增加 `sample-sidebar-card` 外层容器
+- 增加刷新按钮
+- 清空样本前增加 confirm
+- 初版只展示最近 20 条
+- `playSample(sampleId)` 改为按 sample_id 查找并在当前 sample card 内渲染 `<audio controls autoplay>`
+- 补强静态契约测试
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX 完成后，再进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正
+
+### 背景
+
+B4-CHECK-FIX 修复了 sidebar 读取、刷新、清空确认、20 条限制和卡片内播放等问题。继续复核发现 HTML attribute escape、下载按钮、provider/model/created_at 展示和任务状态仍需修正。
+
+### 修正内容
+
+- 新增 attribute escape helper `attr()`，避免将 `esc()` 直接用于 HTML attribute
+- `data-sample-id`、`data-id`、`title`、`<source src>`、下载 `href` 均使用 `attr()` escape
+- 修正 `sourceLabel` 处理顺序：raw source 先映射，展示时再 escape
+- sample card 补充 provider / model / created_at metadata 展示
+- sample card 增加下载按钮（`<a class="sample-btn-download">`），只使用 `sample.download_url`
+- 修正 NEXT_TASKS 当前阶段为 B4-CHECK
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX2 完成后，进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正
+
+### 背景
+
+B4-CHECK-FIX2 修复了 attribute escape、下载按钮和 metadata 展示。继续复核发现空状态缺少刷新按钮，且播放/下载 URL 只拒绝 blob URL，未显式拒绝 javascript/data 等危险 scheme。
+
+### 修正内容
+
+- 空状态 sidebar header 增加刷新按钮
+- 新增 `isSafeAudioUrl(url)` helper
+- 播放和下载按钮统一使用 `isSafeAudioUrl(downloadUrl)`
+- 拒绝 `blob:`、`javascript:`、`data:` URL
+- 允许 `/api/`、`http://`、`https://` URL
+- 补强静态契约测试
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX3 完成后，进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正
+
+### 背景
+
+B4-CHECK-FIX3 为空状态添加了刷新按钮，但 `render()` 在 `total === 0` 分支提前 return，导致 `bindActionEvents(root)` 从未被调用。刷新按钮点击无效。
+
+### 修正内容
+
+- 新增 `ensureActionEventsBound(root)` helper
+- `render()` 在获取 root 后立即调用，早于空状态判断
+- 空状态和非空状态都统一绑定事件，避免重复绑定
+- 删除非空路径末尾的冗余绑定调用
+- 补强静态契约测试
+
+### 阶段边界
+
+- 不改 index.html
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX4 完成后，进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK：sample sidebar UI 复核
+
+### 背景
+
+B4 已完成 sample_sidebar.js + index.html 容器 UI，实现最近样本观察面板。该阶段经过 B4-CHECK-FIX、B4-CHECK-FIX2、B4-CHECK-FIX3、B4-CHECK-FIX4 多轮修正后进入最终复核。
+
+### 复核内容
+
+- 确认 `sample_store.js` 先于 `sample_sidebar.js` 加载
+- 确认 Workspace 中存在 `sampleSidebarRoot` 容器
+- 确认 `window.SampleSidebar` 暴露 init / render / refresh / playSample / deleteSample / clearSamples / copyText / fillTextInput
+- 确认 sidebar 只通过 `SampleStore.getSamples()` 读取样本
+- 确认不直接读取 localStorage，不读写 recentJobs
+- 确认 HTML 文本使用 `esc()`，HTML attribute 使用 `attr()`
+- 确认播放 / 下载 URL 使用 `isSafeAudioUrl()`
+- 确认拒绝 blob / javascript / data URL
+- 确认空状态和非空状态都能响应刷新按钮
+- 确认清空前有 confirm
+- 确认初版最多展示最近 20 条
+- 确认 sample card 展示 source / text_preview / voice / profile / provider / model / created_at / duration
+- 确认播放在当前 card 内渲染 `<audio controls autoplay>`
+- 确认下载按钮只使用 sample.download_url
+- 确认复制文本和回填 #textInput 行为存在
+- 确认未接 batch_longtext / batch_script
+- 确认未接 history sample_store
+- 确认未修改后端 API / 数据库结构
+- 确认测试通过
+
+### 测试结果
+
+- `tests/test_sample_store_static.py`
+- `tests/test_sample_store_workspace_integration_static.py`
+- `tests/test_sample_store_audition_integration_static.py`
+- `tests/test_history_play_static.py`
+- `tests/test_sample_sidebar_static.py`
+
+结果：181 passed。
+
+### 阶段结论
+
+P13-CREATION-B4 复核通过，可以进入 B4-CLOSE。下一步只做状态收口，不进入 B5 实现。
+
+## P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口
+
+### 背景
+
+B4 已完成 `sample_sidebar.js + index.html` 容器 UI，实现最近样本观察面板，并经过 B4-CHECK-FIX、B4-CHECK-FIX2、B4-CHECK-FIX3、B4-CHECK-FIX4 与 B4-CHECK 复核。
+
+### 收口内容
+
+- 标记 P13-CREATION-B4 完成
+- 标记 B4-CHECK-FIX / FIX2 / FIX3 / FIX4 完成
+- 标记 B4-CHECK 完成
+- 当前阶段推进到 P13-CREATION-B5
+- 明确 B5 目标是 batch_longtext / batch_script samples 接入 sample_store，不是本次实现
+
+### B4 最终状态
+
+- 新增 `app/static/js/sample_sidebar.js`
+- Workspace 内新增 `sampleSidebarRoot` 容器
+- `sample_store.js` 先于 `sample_sidebar.js` 加载
+- `window.SampleSidebar` 暴露 init / render / refresh / playSample / deleteSample / clearSamples / copyText / fillTextInput
+- sidebar 只通过 `SampleStore.getSamples()` 读取样本
+- 不直接读取 localStorage
+- 不读写 recentJobs
+- HTML 文本使用 `esc()`
+- HTML attribute 使用 `attr()`
+- 播放 / 下载 URL 使用 `isSafeAudioUrl()`
+- 拒绝 blob / javascript / data URL
+- 空状态和非空状态均可刷新
+- 清空前有 confirm
+- 初版最多展示最近 20 条
+- sample card 展示 source / text_preview / voice / profile / provider / model / created_at / duration
+- 支持播放、下载、复制文本、回填、删除、清空
+- 未接 batch_longtext / batch_script
+- 未接 history sample_store
+- 未修改后端 API / 数据库结构
+- 测试结果：181 passed
+
+### 遗留项
+
+Workspace 主区域仍存在轻微视觉密度问题，已记录为后续 UI polish：
+
+`P13-UI-POLISH-LATER：Workspace compact spacing polish`
+
+该问题不阻塞 B4 收口。
+
+### 阶段边界
+
+- 只改文档
+- 不改 index.html
+- 不改 sample_sidebar.js
+- 不改 sample_store.js
+- 不改测试
+- 不接 B5 功能
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4 已收口，可以开始 P13-CREATION-B5。
+
+## P13-B4-REGRESSION-FIX1：修复 workspace layout 导致其他 tab 无法打开
+
+### 背景
+
+B4 完成 sample sidebar UI 后，发现页面只有「创作工作台」tab 可用，其他 tab 无法正常打开。根因为 B4 在 `index.html` 中修改 `workspace-layout / workspace-main` 结构时，`tab-workspace` 的闭合 `</div>` 被遗漏，导致 `tab-longtext / tab-script / tab-voices / tab-history / tab-advanced` 全部嵌套在 `tab-workspace` 内部，tab 切换逻辑无法找到对应 tab-content。
+
+### 修正内容
+
+- 在 `workspace-layout` 闭合 `</div>` 之后、`tab-longtext` 之前，新增 `</div>` 闭合 `tab-workspace`
+- 修复后 6 个 tab-content 全部为顶层兄弟节点
+- 补充 `tests/test_tab_layout_static.py` 静态回归测试（22 个测试用例）
+
+### 根因
+
+B4 初版实现中，`tab-workspace` 的闭合 `</div>` 被意外删除，导致 DOM 结构：
+
+```
+tab-workspace (unclosed)
+  workspace-layout
+    workspace-main
+    ...
+    aside#sampleSidebarRoot
+  </div>   ← workspace-layout 闭合
+  tab-longtext (INCORRECTLY nested inside tab-workspace)
+  tab-script
+  ...
+```
+
+### 阶段边界
+
+- 只改 index.html（1 个 `</div>`）
+- 不改 sample_store.js
+- 不改 sample_sidebar.js
+- 不改 workspace / audition sample 写入逻辑
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+- 不进入 B5
+
+### 测试结果
+
+- `tests/test_tab_layout_static.py` — 22 个测试，全部通过
+- 全量测试：203 passed（+22 tab layout tests）
+
+### 阶段状态
+
+回归已修复。重新评估是否进入 P13-CREATION-B5。
+
+## P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计
+
+### 背景
+
+B4 已完成 sample_sidebar UI + workspace/audition sample_store 接入。B5 目标是将 batch_longtext / batch_script 的生成结果接入 sample_store。本阶段（B5-A0）只做代码审查和文档设计，不实现 B5。
+
+### 审查范围
+
+- `batch_longtext.js`（P9 抽取）— mode='longtext' 提交
+- `batch_script.js`（P9 抽取）— mode='script' 提交
+- `index.html` 内的批处理轮询与渲染逻辑（`renderBatchStatus` / `renderBatchResultPlayer` / `pollBatchStatus` / `startBatchPoll` / `showBatchProgress`）
+- `sample_store.js` — 已有 `batch_id` / `segment_id` 字段
+
+### 关键代码定位
+
+**提交入口**：
+
+- `batch_longtext.js`：`batchLongtextSubmit` → `guardedJsonFetch('/api/voice/batch/submit', {mode:'longtext', ...})`
+- `batch_script.js`：`batchScriptSubmit` → `guardedJsonFetch('/api/voice/batch/submit', {mode:'script', script:lines, ...})`
+
+**batch_id 管理**：
+
+- 成功后 `data.batch_id` 存入 `_currentBatchId`
+- 轮询通过 `startBatchPoll(_currentBatchId)` 启动
+
+**轮询逻辑**（index.html，约 4738-5048 行）：
+
+- `pollBatchStatus(batchId)` — GET `/api/voice/batch/{batchId}/status`
+- 返回结构：`{batch_id, status, total_duration_ms, segments: [{index, status, text_preview, error_message, duration_ms, url, id}], merged_audio: {url, id}}`
+- `renderBatchStatus(batchId, data)` — 渲染 segments 列表
+- `renderBatchResultPlayer(batchId, data)` — 渲染 merged_audio 播放器（URL / asset_id / total_duration_ms）
+- `showBatchProgress(batchId)` — 显示进度模态
+
+**merge_audio 可用时机**：
+
+- `renderBatchResultPlayer` 在 batch status 返回 `merged_audio` 非空时调用
+- 此时 `data.merged_audio.url` 和 `data.merged_audio.id` 可用于写入 sample
+
+### sample_store 已有字段适配
+
+`sample_store.js` 的 `normalizeSample` 支持以下与 batch 相关的字段：
+
+- `batch_id` — batch 任务 ID
+- `segment_id` — segment 索引（对 merged audio 用 segment_id = null）
+- `job_id` — 保留（batch 场景为 null）
+- `source` — `'batch_longtext_merged'` 或 `'batch_script_merged'`
+- `download_url` — `merged_audio.url`
+- `asset_id` — `merged_audio.id`
+- `text_preview` — 取 segments[0].text_preview 或 '批量文本'
+- `duration_ms` — `total_duration_ms`
+- `profile_id / profile_name` — 提交时的 profile 信息
+- `provider / model / voice_id / voice_name` — 提交时的音色信息
+
+### 最小实现策略
+
+**新增函数**：`safePushBatchSample(source, data, extra)`
+
+fail-safe 封装，类似 `safePushAuditionSample`：
+
+```
+source: 'batch_longtext' | 'batch_script'
+batch_id: data.batch_id
+segment_id: null  （merged audio，不按 segment 保存）
+asset_id: data.merged_audio?.id || null
+download_url: data.merged_audio?.url  （拒绝 blob:，用 isSafeAudioUrl 把关）
+text_preview: data.segments?.[0]?.text_preview || '批量文本'
+profile_id / profile_name: extra.profileId || null, extra.profileName || null
+provider / model / voice_id / voice_name: extra.provider, extra.model, extra.voiceId, extra.voiceName
+duration_ms: data.total_duration_ms || null
+audio_format: null  （batch API 未返回 format）
+status: data.status || 'completed'
+tags: ['batch']
+```
+
+**接入点**：`renderBatchResultPlayer` 内，merged_audio 存在时调用
+
+前提条件：`data.merged_audio?.url && data.merged_audio?.id`
+
+**extra 参数来源**：
+
+- `batch_longtext.js`：当前绑定音色信息需从 DOM 或状态获取（需审计现有代码是否有可复用状态）
+- `batch_script.js`：同上
+
+**不接入范围（本次 B5 最小实现）**：
+
+- 不按 segment 粒度保存（segment 多对多，不适合 sidebar 观察场景）
+- 不改 batch_longtext.js / batch_script.js 内部逻辑
+- 不接 batch 轮询进度（sample_store 只存最终结果）
+
+### 阶段边界
+
+- 只做代码审查和文档设计
+- 不实现 B5
+- 不接 sample_store
+- 不改 index.html / JS
+- 不改测试
+- 不调用真实 MiniMax
+
+### source 命名修正
+
+B5-MVP1 只保存合并音频 merged audio。source 名称必须明确区分 merged 与后续可能新增的 segment：
+
+- `batch_longtext_merged` — 一次 batch_longtext 成功结果的合并音频
+- `batch_script_merged` — 一次 batch_script 成功结果的合并音频
+- 后续预留：`batch_longtext_segment` / `batch_script_segment`（B5-MVP1 不实现）
+
+### B5-MVP1 推荐策略
+
+一次 batch_longtext 成功结果 → 写入 1 条 `batch_longtext_merged` sample
+一次 batch_script 成功结果 → 写入 1 条 `batch_script_merged` sample
+
+**sample 字段**：
+
+```
+source: batch_longtext_merged / batch_script_merged
+job_id: batch_id（使用 batch_id 作为 job_id）
+batch_id: batch_id
+segment_id: null
+asset_id: merged_audio.id
+download_url: merged_audio.url（必须通过 isSafeAudioUrl 验证）
+text_preview: longtext 使用 batchText 前 100 字；script 使用前几行台词拼接前 100 字
+provider: selectedProvider
+model: selectedModel || null
+voice_id: selectedVoiceId
+voice_name: selectedVoiceName
+profile_id: selectedProfileId || null
+profile_name: selectedProfileName || null
+duration_ms: total_duration_ms || null
+audio_format: null
+status: 'completed'
+tags: ['batch', 'merged']
+```
+
+**写入前置条件**：
+
+```
+IF merged_audio.id 不存在 → 不写 sample
+IF merged_audio.url 不存在 → 不写 sample
+IF merged_audio.url 是 blob: → 不写 sample
+IF batch status !== 'completed' → 不写 sample
+```
+
+**接入点**：`renderBatchResultPlayer` 内，merged_audio 存在且可用时调用 `safePushBatchSample`。
+
+### A0 最终结论
+
+```
+B5-MVP1 只接 merged audio
+不按 segment 粒度保存
+不接轮询进度
+不保存失败段
+不保存 blob URL
+不修改 sample_store.js（schema 已支持）
+不修改 sample_sidebar.js（除非后续需要补 sourceLabel）
+不修改后端 API
+不修改数据库
+```
+
+### 独立设计文档
+
+完整设计文档：`docs/P13_CREATION_SAMPLE_OBSERVATION_B5_A0.md`
+
+包含：batch_longtext/batch_script 代码路径、字段核验、merged/segment 字段分析、策略候选、B5-MVP1 详细字段定义、B5 实现边界、B5 测试计划。
+
+### 阶段边界
+
+- 只做代码审查和文档设计
+- 不实现 B5
+- 不接 sample_store
+- 不改 index.html / JS
+- 不改测试
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-A0 设计文档已完成，可以开始 P13-CREATION-B5-MVP1。
+
+## P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检
+
+### 背景
+
+B4 引入 sample sidebar UI 后曾出现 tab-workspace 闭合结构缺失，导致其他 tab 无法打开。进入 B5 前，需要对已有功能做一次集中回归自检，确认 P13-B1 到 B4 没有破坏基础功能。
+
+### 自检范围
+
+- Tab 导航（6 个 tab 存在且互为兄弟节点）
+- Workspace 输入与生成入口（textInput / batchText / auditionText 限制）
+- 长文本 batch 表单（14 项 DOM id）
+- 剧本 batch 表单（11 项 DOM id）
+- Audition 试听（6 项 DOM id + sample 集成）
+- History 历史模块（6 项 window exports + play + delete URL）
+- sample sidebar 隔离（7 项隔离检查）
+- localStorage 隔离（recentJobs 不被 sample_store 访问）
+- workspace sample 接入隔离（stream / variants / async 写保护）
+
+### 测试结果
+
+- `tests/test_existing_function_regression_static.py` — 92 项新增回归测试，全部通过
+- 既有测试：203 项，全部通过
+- **总计：295 项测试，全部通过**
+
+### 回归问题
+
+无。
+
+### 手动验收清单（待人工验证）
+
+- [ ] 打开页面，Console 无红色错误
+- [ ] 逐个点击 6 个 tab，内容均显示
+- [ ] Workspace 输入 100 字，字数统计正常
+- [ ] Workspace 粘贴超过 9500 字，输入受限
+- [ ] 长文本 tab 可输入，batchText 50000 限制存在
+- [ ] 剧本 tab 可添加 / 删除台词行
+- [ ] 音色 tab 可打开 audition 面板
+- [ ] History tab 可加载列表
+- [ ] History 播放按钮点击后自动播放
+- [ ] sample sidebar 只在 Workspace 出现
+- [ ] sample sidebar 刷新 / 清空 / 删除按钮存在
+- [ ] 切换 tab 后页面不报错
+
+### 阶段边界
+
+- 不实现 B5
+- 不调用真实 MiniMax
+- 不改后端 API / 数据库
+- 不改 index.html / JS / sample_store.js / sample_sidebar.js / history.js
+- 发现问题先记录，不扩大修复范围
+
+### 独立文档
+
+完整自检报告：`docs/P13_PRE_B5_REGRESSION_CHECK.md`
+
+### 阶段状态
+
+P13-PRE-B5-REGRESSION-CHECK 自检通过，建议进入 P13-CREATION-B5-MVP1。
+
+## P13-CREATION-B5-A0-CODE-CHECK-FIX：batch A0 文档代码事实校验修正
+
+### 背景
+
+B5-A0 初版文档完成后，经真实代码复核发现多处字段级描述与当前代码不一致（DOM id 错误、payload 字段错误、函数签名错误、status 口径错误、metadata 假设错误）。为避免 B5-MVP1 按错误字段实现，本阶段以代码为唯一事实源修正文档。
+
+### 修正内容（14 项）
+
+1. **longtext DOM id**：修正 `batchLongtextText` → `#batchText`
+2. **longtext payload 字段**：补全 `segment_strategy` / `max_segment_chars` / `silence_between_ms` / `output_format: 'hex'` / `params` / `need_subtitle` / `confirm_cost: false`
+3. **longtext voice_id/model 假设错误**：删除不存在的 `selectedVoiceId` / `selectedVoiceName` / `selectedModel` / `selectedProfileName` 假设
+4. **script 数据来源**：修正 `_scriptRows` + `scriptText_{id}` + `scriptProfile_{id}`（不是 `textarea.split('\n')`）
+5. **script payload 字段**：补全 per-row `role` / `text` / `profile_id` / `params`，无全局 voice/model
+6. **renderBatchResultPlayer 签名**：修正 `(batchId, data)` → `(data, targetPanelId)`
+7. **pollBatchStatus 签名**：补全 `targetPanelId` 参数
+8. **renderBatchStatus 签名**：补全 `targetPanelId` 参数
+9. **startBatchPoll 签名**：补全 `targetPanelId` 参数
+10. **BatchStatus 口径**：修正 `completed` → `pending/running/success/partial/failed`（无 completed）
+11. **播放 URL vs 下载 URL**：拆分为 `audio.src = merged_audio.url`（播放器）和 batch download API（下载）
+12. **download_url 策略**：明确 batch_id 优先 → merged_audio.id → merged_audio.url
+13. **merged_audio 出现时机**：修正为 `status === 'success'` 时有值，`partial` 时可能有
+14. **script profile_id**：修正为 per-row `scriptProfile_{id}`（不是全局 `selectedProfileName`）
+
+### 关键结论
+
+- 当前 batch_longtext / batch_script 代码**无 voice_id / voice_name / model / profile_name 字段**
+- B5-MVP1 不得伪造这些字段，应写 `null`
+- BatchStatus 取值：`pending` / `running` / `success` / `partial` / `failed`
+- B5-MVP1 只在 `status === 'success'` 且 `merged_audio.id` / `batch_id` 存在时写 sample
+- 独立设计文档：`docs/P13_CREATION_SAMPLE_OBSERVATION_B5_A0.md`
+
+### 阶段边界
+
+- 只改文档
+- 不实现 B5
+- 不改 index.html / JS / tests
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-A0-CODE-CHECK-FIX 完成，可以开始 P13-CREATION-B5-MVP1。
+
+## P13-CREATION-B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧
+
+### 背景
+
+B5-A0-CODE-CHECK-FIX 已将文档与真实代码对齐。继续复核发现文档内部仍存在两个不一致：① B5-MVP1 "只在 success 写 sample"未写入硬前置条件；② download_url fallback 策略与 data.batch_id 必填条件冲突。
+
+### 修正内容
+
+1. **明确 `data.status !== 'success'` 不写 sample** — 补充 partial / failed / running / pending 均不写
+2. **明确 `data.batch_id` 是 B5-MVP1 必填** — batch_id 缺失则不写 sample
+3. **明确 `download_url` 固定使用 `/api/voice/batch/{batch_id}/download`** — B5-MVP1 不使用 asset download fallback
+4. **明确 B5-MVP1 不使用 `merged_audio.url` 作为持久化 `download_url`**
+5. **补充测试计划** — 新增 success 条件测试、download_url 固定测试、partial 不保存测试
+6. **新增问题处理表项** — 第 15 项（success 前置条件缺失）、第 16 项（download_url fallback 与 batch_id 必填冲突）
+
+### 阶段边界
+
+- 只改文档
+- 不实现 B5
+- 不改 index.html / JS / tests
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-A0-CODE-CHECK-FIX2 完成，可以开始 P13-CREATION-B5-MVP1。
+
+## P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store
+
+### 背景
+
+B5-A0-CODE-CHECK-FIX2 已明确 B5-MVP1 最终实现口径：只在 `data.status === 'success'` 且 `data.batch_id` 存在时写 merged audio sample；`download_url` 固定使用 `/api/voice/batch/{batch_id}/download`。B5-MVP1 只接 batch_longtext / batch_script 的 merged audio，不接 segment，不接 partial，不接 history。
+
+### 实现内容
+
+#### 1. batch_longtext.js — 保存 batch sample context
+
+submit 成功后保存 `window._batchSampleContextById[data.batch_id]`，包含 source / text_preview / provider / profile_id / audio_format / model:null / voice_id:null / voice_name:null。
+
+#### 2. batch_script.js — 保存 batch sample context
+
+submit 成功后保存 `window._batchSampleContextById[data.batch_id]`，包含 getSingleProfileId（多行 profile 不一致时返回 null）/ buildScriptTextPreview（拼接 role + text）/ source / provider / profile_id / audio_format / model:null / voice_id:null / voice_name:null。
+
+#### 3. index.html — isSafeBatchAudioUrl + safePushBatchSample
+
+新增 `isSafeBatchAudioUrl(url)`：拒绝 blob: / javascript: / data:；允许 /api/ / http:// / https://。
+
+新增 `safePushBatchSample(source, data, extra)`：
+- fail-safe try/catch
+- `data.status !== 'success'` → return null
+- `data.batch_id` 缺失 → return null
+- `merged_audio.id` 缺失 → return null
+- `merged_audio.url` 不安全 → return null
+- 防重复写入 `_batchSamplePushedByKey`
+- `download_url` 固定 `/api/voice/batch/{batch_id}/download`
+- `segment_id: null`，`tags: ['batch', 'merged']`，`model/voice_id/voice_name: null`
+- 写入后调用 `SampleSidebar.refresh()`
+
+#### 4. renderBatchResultPlayer — 接入 sample push
+
+在 `renderBatchResultPlayer(data, targetPanelId)` 中，确认 merged_audio 存在后：
+- 根据 `targetPanelId === 'batchScriptProgressPanel'` 判断 source
+- 从 `_batchSampleContextById[data.batch_id]` 获取 extra
+- 调用 `safePushBatchSample`
+
+#### 5. sample_sidebar.js — sourceLabel 新增
+
+新增 `batch_longtext_merged: '长文合并'` / `batch_script_merged: '剧本合并'` / `batch_longtext_segment` / `batch_script_segment`（预留）。
+
+### 测试结果
+
+- `tests/test_sample_store_batch_integration_static.py` — 68 项新增测试，全部通过
+- 全量测试：363 项，全部通过
+
+### 阶段边界
+
+- 不接 segment samples
+- 不保存 partial / failed / running / pending
+- 不保存 blob / javascript / data URL
+- 不伪造 voice_id / voice_name / model
+- 不修改 sample_store.js
+- 不修改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-MVP1 完成，待 B5-CHECK 复核。
+
+## P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正
+
+### 背景
+
+B5-MVP1 实现后复核发现两个小问题：`docs/agent/NEXT_TASKS.md` 仍停留在 B5-MVP1，未切换到 B5-CHECK；`safePushBatchSample(source, data, extra)` 未给 `extra` 设置默认 `{}`，虽当前调用路径传入了 fallback object，但 helper 契约不够稳。
+
+### 修正内容
+
+- `safePushBatchSample(source, data, extra)` 改为 `safePushBatchSample(source, data, extra = {})`
+- 补充静态契约测试 `test_extra_has_default_empty_object`
+- `NEXT_TASKS.md` 当前阶段切换到 P13-CREATION-B5-CHECK
+- 标记 B5-MVP1 已完成
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 batch submit context
+- 不改 sample_sidebar sourceLabel
+- 不接 segment samples
+- 不接 history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-MVP1-CHECK-FIX1 完成后，进入 B5-CHECK。
+
+## P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核
+
+### 复核范围
+
+batch merged audio 接入 sample_store 的实现复核，覆盖以下文件：
+
+- `app/static/index.html`（`isSafeBatchAudioUrl`、`safePushBatchSample`、`renderBatchResultPlayer` 集成）
+- `app/static/js/batch_longtext.js`（`_batchSampleContextById` 保存）
+- `app/static/js/batch_script.js`（`_batchSampleContextById` 保存、`getSingleProfileId`、`buildScriptTextPreview`）
+- `app/static/js/sample_sidebar.js`（`sourceLabel` 标签）
+- `tests/test_sample_store_batch_integration_static.py`（新增 69 个静态契约测试）
+- `tests/test_sample_sidebar_static.py`（2 个测试更新）
+- `tests/test_existing_function_regression_static.py`（4 个测试更新）
+
+### 复核结果：22/22 通过
+
+#### isSafeBatchAudioUrl（6 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 函数存在于 index.html | ✅ |
+| 2 | 拒绝 `blob:` URL | ✅ |
+| 3 | 拒绝 `javascript:` URL | ✅ |
+| 4 | 拒绝 `data:` URL | ✅ |
+| 5 | 允许 `/api/` 路径 | ✅ |
+| 6 | 允许 `http://` 和 `https://` | ✅ |
+
+#### safePushBatchSample 契约（16 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 函数存在于 index.html | ✅ |
+| 2 | `extra = {}` 默认空对象参数 | ✅ |
+| 3 | try/catch fail-safe 结构 | ✅ |
+| 4 | 调用 `SampleStore.pushSample` | ✅ |
+| 5 | 无直接 localStorage 读写 | ✅ |
+| 6 | 拒绝 `data.status !== 'success'` | ✅ |
+| 7 | 拒绝缺失 `batch_id` | ✅ |
+| 8 | 拒绝缺失 `merged_audio.id` | ✅ |
+| 9 | 调用 `isSafeBatchAudioUrl` 校验 URL | ✅ |
+| 10 | `download_url` 使用 batch API（`/api/voice/batch/{id}/download`） | ✅ |
+| 11 | `download_url` 非 `merged_audio.url` | ✅ |
+| 12 | `download_url` 无 `/api/voice/assets/` 回退 | ✅ |
+| 13 | `source` 来自 `renderBatchResultPlayer` 传入 | ✅ |
+| 14 | `segment_id: null` | ✅ |
+| 15 | `model: null`、`voice_id: null`、`voice_name: null` | ✅ |
+| 16 | 标签含 `'batch'` 和 `'merged'` | ✅ |
+
+#### 上下文保存（longtext + script 各 9 项）
+
+| # | 检查项 | longtext | script |
+|---|--------|----------|--------|
+| 1 | `_batchSampleContextById` 存在 | ✅ | ✅ |
+| 2 | `source: 'batch_longtext_merged'` / `'batch_script_merged'` | ✅ | ✅ |
+| 3 | `text_preview` 保存 | ✅（submit text）| ✅（buildScriptTextPreview）|
+| 4 | `provider` 保存 | ✅ | ✅ |
+| 5 | `profile_id` 保存（可 null）| ✅ | ✅ |
+| 6 | `profile_name: null` | ✅ | ✅ |
+| 7 | `model: null` | ✅ | ✅ |
+| 8 | `voice_id: null` | ✅ | ✅ |
+| 9 | `audio_format` 保存 | ✅ | ✅ |
+
+#### renderBatchResultPlayer 集成（4 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 调用 `safePushBatchSample` | ✅ |
+| 2 | `source` 由 `targetPanelId` 决定（`batchScriptProgressPanel` → `batch_script_merged`）| ✅ |
+| 3 | 从 `_batchSampleContextById[data.batch_id]` 读取 extra | ✅ |
+| 4 | `safePushBatchSample` 在 `merged_audio` 检查之后调用 | ✅ |
+
+#### sourceLabel 标签（4 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | `batch_longtext_merged: '长文合并'` | ✅ |
+| 2 | `batch_script_merged: '剧本合并'` | ✅ |
+| 3 | `batch_longtext_segment` 预留 | ✅ |
+| 4 | `batch_script_segment` 预留 | ✅ |
+
+#### 负面清单（7 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | `safePushBatchSample` 不在 sample_sidebar.js | ✅ |
+| 2 | `batch_longtext_merged` 不在 sidebar render | ✅ |
+| 3 | `batch_script_merged` 不在 sidebar render | ✅ |
+| 4 | sample_store.js 未修改（无 batch 相关代码）| ✅ |
+| 5 | 无 segment 级别样本推送 | ✅ |
+| 6 | 无 history sample_store 集成 | ✅ |
+| 7 | 无真实 MiniMax API 调用 | ✅ |
+
+### 测试覆盖
+
+- `test_sample_store_batch_integration_static.py`：69 个测试
+- `test_sample_sidebar_static.py`：批量相关 2 个测试更新
+- `test_existing_function_regression_static.py`：批量相关 4 个测试更新
+- 回归覆盖：92 个测试（`test_existing_function_regression_static.py`）
+- 总测试规模：364 个 pytest passed
+
+### 阶段状态
+
+B5-CHECK 复核通过，批量合并音频样本存储接入完成。
+
+下一阶段：`P13-CREATION-B5-CLOSE`（阶段收口文档更新）
+
+## P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口
+
+### 背景
+
+B5 已完成 batch_longtext / batch_script 的 merged audio 接入 sample_store，并经过 B5-A0、B5-A0-CODE-CHECK-FIX、B5-A0-CODE-CHECK-FIX2、B5-MVP1、B5-MVP1-CHECK-FIX1、B5-CHECK 多轮核验。
+
+### 收口内容
+
+- 标记 P13-CREATION-B5-A0 完成
+- 标记 P13-CREATION-B5-A0-CODE-CHECK-FIX 完成
+- 标记 P13-CREATION-B5-A0-CODE-CHECK-FIX2 完成
+- 标记 P13-CREATION-B5-MVP1 完成
+- 标记 P13-CREATION-B5-MVP1-CHECK-FIX1 完成
+- 标记 P13-CREATION-B5-CHECK 完成
+- 当前阶段推进到 P13-FINAL-CHECK
+
+### B5 最终状态
+
+- batch_longtext submit 成功后保存 `_batchSampleContextById[data.batch_id]`
+- batch_script submit 成功后保存 `_batchSampleContextById[data.batch_id]`
+- `safePushBatchSample(source, data, extra = {})` 已实现
+- 只在 `data.status === 'success'` 写入 sample
+- partial / failed / running / pending 均不写入
+- `data.batch_id` 缺失不写入
+- `merged_audio.id` 缺失不写入
+- `merged_audio.url` 不安全不写入
+- 拒绝 blob / javascript / data URL
+- `download_url` 固定使用 `/api/voice/batch/{batch_id}/download`
+- 不使用 asset download fallback
+- 不使用 `merged_audio.url` 作为 sample download_url
+- `batch_longtext_merged` / `batch_script_merged` source 已接入
+- sample_sidebar sourceLabel 已补充 batch merged label
+- `sample_store.js` 未修改
+- 后端 API / 数据库未修改
+- 测试结果：364 passed
+
+### 产品边界
+
+当前 SampleSidebar 是统一最近样本观察面板，不是跨 tab 配置恢复系统。
+
+B5-MVP1 只将 batch merged audio 写入统一 SampleStore：
+
+- `batch_longtext_merged`
+- `batch_script_merged`
+
+当前不支持：
+
+- 长文本 tab 独立侧边栏
+- 剧本 tab 独立侧边栏
+- 一键恢复长文本完整配置
+- 一键恢复剧本完整角色行与参数
+- 保存 segment samples
+- 保存 partial batch result
+
+如果后续要支持长文本 / 剧本配置恢复，应单独设计：
+
+`P14：Creation Context Restore`
+
+不要混入 B5。
+
+### 遗留项
+
+- `P13-HISTORY-SECURITY-FIX1`：History textSnippet escape 安全债
+- `P13-UI-POLISH-LATER`：Workspace spacing 与 sample sidebar button visual consistency
+- `P14-CREATION-CONTEXT-RESTORE`：跨 tab 配置恢复能力评估
+
+### 阶段边界
+
+- 只改文档
+- 不改 index.html
+- 不改 JS
+- 不改测试
+- 不接 segment samples
+- 不接 history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5 已收口。下一阶段进入 P13-FINAL-CHECK。
+
+## P13-FINAL-CHECK：P13 最近样本系统最终验收
+
+### 背景
+
+P13 已完成最近样本系统主线：sample_store.js、workspace 接入、audition 接入、sample_sidebar UI、batch merged audio 接入。本阶段对 P13 全链路做最终验收。
+
+### 验收范围
+
+- `sample_store.js`
+- workspace samples
+- audition samples
+- batch merged samples
+- sample_sidebar UI
+- tab layout 回归
+- existing function regression
+- P13 产品边界
+- P13 遗留项
+
+### 验收结果
+
+- SampleStore 契约通过
+- Workspace sample 接入通过
+- Audition sample 接入通过
+- Batch merged sample 接入通过
+- SampleSidebar 展示与操作契约通过
+- Tab layout 回归测试通过
+- Existing function regression 测试通过
+- 未发现 P13 主线阻塞问题
+
+### 测试结果
+
+结果：364 passed。
+
+### 产品边界确认
+
+当前 SampleSidebar 是统一最近样本观察面板，不是跨 tab 配置恢复系统。
+
+当前支持：
+
+- workspace sample（sync / async / stream / variant）
+- audition sample
+- batch_longtext_merged sample
+- batch_script_merged sample
+
+当前不支持：
+
+- 长文本 tab 独立侧边栏
+- 剧本 tab 独立侧边栏
+- 一键恢复长文本完整配置
+- 一键恢复剧本完整角色行与参数
+- segment samples
+- partial batch result samples
+- history sample_store
+- 后端 sample library
+- 多用户 / SaaS
+
+### 遗留项
+
+- `P13-HISTORY-SECURITY-FIX1`：History textSnippet escape 安全债
+- `P13-UI-POLISH-LATER`：Workspace spacing 与 sample sidebar button visual consistency
+- `P14-CREATION-CONTEXT-RESTORE`：跨 tab 配置恢复能力评估
+
+### 阶段状态
+
+P13-FINAL-CHECK 通过，可以进入 P13-CLOSE / P13-ARCHIVE。
+
+## P13-CLOSE：P13 最近样本系统阶段收口归档
+
+### 背景
+
+P13 已完成最近样本系统主线，并通过 FINAL-CHECK。该阶段目标是将 workspace / audition / batch merged audio 的生成结果统一沉淀到 SampleStore，并通过 SampleSidebar 进行观察、播放、下载、复制、回填、删除等轻量操作。
+
+### 已完成主线
+
+- B1：`sample_store.js` 前端样本存储模块
+- B2：workspace sync / async / stream / variants 接入 sample_store
+- B3：audition_records 接入 sample_store
+- B4：sample_sidebar UI
+- B4 回归修复：tab workspace DOM 闭合结构修复
+- B5-A0：batch sample_store 接入字段核验与方案设计
+- B5-A0-CODE-CHECK-FIX：batch 文档代码事实校验修正
+- B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧
+- B5-MVP1：batch merged audio 接入 sample_store
+- B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正
+- B5-CHECK：batch merged audio 接入复核
+- B5-CLOSE：batch merged audio 阶段收口
+- P13-FINAL-CHECK：最终验收
+
+### 最终能力
+
+当前 P13 支持以下样本来源：
+
+- `workspace_sync`
+- `workspace_async`
+- `workspace_stream`
+- `workspace_variant`
+- `audition`
+- `batch_longtext_merged`
+- `batch_script_merged`
+
+统一写入：
+
+- `voice_lab_recent_samples_v1`
+
+统一展示：
+
+- `SampleSidebar`
+
+### 核心约束
+
+- SampleStore 上限 200 条
+- Sidebar 展示最近 20 条
+- 不保存 blob URL
+- 不直接读写 recentJobs
+- 不接 history sample_store
+- 不接 segment samples
+- batch 只保存 `success` 状态的 merged audio
+- batch sample 的 `download_url` 固定使用 `/api/voice/batch/{batch_id}/download`
+- 不修改后端 API / 数据库
+- 不做多用户 / SaaS
+
+### 产品边界
+
+SampleSidebar 是统一最近样本观察面板，不是跨 tab 配置恢复系统。
+
+当前不支持：
+
+- 长文本 tab 独立侧边栏
+- 剧本 tab 独立侧边栏
+- 一键恢复长文本完整配置
+- 一键恢复剧本完整角色行与参数
+- 完整后端 sample library
+- 多浏览器 / 多用户同步
+
+### 测试结果
+
+最终测试结果：364 passed。
+
+### 遗留项
+
+- `P13-HISTORY-SECURITY-FIX1`：History textSnippet escape 安全债
+- `P13-UI-POLISH-LATER`：Workspace spacing 与 sample sidebar button visual consistency
+- `P14-CREATION-CONTEXT-RESTORE`：跨 tab 配置恢复能力评估
+
+### 阶段状态
+
+P13 最近样本系统已完成并归档。
+
+## P14-PRODUCT-A0：样本复用与配置恢复产品方案审查
+
+### 背景
+
+P13 最近样本系统已归档。P13 将 workspace / audition / batch merged audio 统一沉淀到 SampleStore，并通过 SampleSidebar 进行轻量观察。但归档后确认：长文本和剧本更接近真实内容生产入口，当前 SampleSidebar 只作为观察面板还不足以支撑真实生产复用。
+
+### 核心结论
+
+- Workspace 更适合快速试听 / 单句生成 / 音色测试 / 多版本对比
+- 长文本是真实长内容生产入口
+- 剧本是真实多角色内容生产入口
+- 最近样本侧边栏应从"观察面板"升级为"样本复用入口"
+- 侧边栏卡片只展示短预览，完整文本 / 剧本通过详情弹层查看
+- 长文本样本应支持一键回填到长文本 tab
+- 剧本样本应支持一键回填到剧本 tab
+- 不应把完整长文本 / 完整剧本直接塞进 SampleStore（撑爆 localStorage）
+- 应设计独立 ContextStore 保存可恢复上下文（与 SampleStore 解耦）
+- 全局 SampleSidebar 可见性（各 tab 共享侧边栏）需要在后续阶段单独设计
+
+### 产品边界（新增）
+
+P14-A0 不做：
+
+- 直接修改 SampleStore 保存完整长文本
+- 直接实现配置恢复（无 ContextStore 设计会乱）
+- 三套独立侧边栏实现
+- segment samples
+- history sample_store
+- 后端 sample library
+- 多用户 / SaaS
+
+### 后续建议
+
+| 阶段 | 内容 | 优先级 |
+|------|------|--------|
+| P14-LONGTEXT-UX-B0 | 长文本字数 / 消耗 / 分段策略提示方案设计 | 优先级 1 |
+| P14-CONTEXT-B0 | ContextStore 数据结构设计 | 优先级 2 |
+| P14-PRODUCT-B1 | 侧边栏预览与详情弹层设计 | 优先级 3 |
+| P14-CONTEXT-B1 | 长文本 context 保存与回填 | 优先级 4 |
+| P14-CONTEXT-B2 | 剧本 context 保存与回填 | 优先级 5 |
+| P14-PRODUCT-B0 | 全局 SampleSidebar 可见性方案设计 | 优先级 6 |
+
+### 阶段状态
+
+P14-PRODUCT-A0 完成。
+
+## P14-PRODUCT-A0-FIX1：补充长文本生产入口可用性方向
+
+### 背景
+
+P14-PRODUCT-A0 已明确长文本和剧本是主生产入口，并将 SampleSidebar 从观察面板升级为样本复用入口。继续产品复核发现，长文本页面本身还存在基础可用性问题：缺少字数提示、消耗/分段预估，以及分段策略解释。
+
+### 补充结论
+
+- 长文本输入区应显示当前字数 / 50000 字
+- 长文本提交前应显示预计消耗字数
+- 长文本提交前应显示预计分段数量
+- 分段策略需要动态 helper text
+- "自动"策略应明确为"自动合并短段落"，不是每个自然段单独生成
+- 该问题属于主生产路径可用性问题，不是普通 UI polish
+- 长文本生产入口可用性优先于 ContextStore 实现
+
+### 后续建议
+
+| 阶段 | 内容 | 优先级 |
+|------|------|--------|
+| P14-LONGTEXT-UX-B0 | 长文本字数 / 消耗 / 分段策略提示方案设计 | 优先级 1 |
+| P14-LONGTEXT-UX-B1 | 实现长文本字数统计、预计分段、策略说明 | P14-LONGTEXT-UX-B0 完成 |
+| P14-CONTEXT-B0 | ContextStore 数据结构设计 | 优先级 2 |
+| P14-PRODUCT-B1 | 侧边栏预览与详情弹层设计 | 优先级 3 |
+| P14-CONTEXT-B1 | 长文本 context 保存与回填 | 优先级 4 |
+| P14-CONTEXT-B2 | 剧本 context 保存与回填 | 优先级 5 |
+| P14-PRODUCT-B0 | 全局 SampleSidebar 可见性方案设计 | 优先级 6 |
+
+### 阶段状态
+
+P14-PRODUCT-A0-FIX1 完成。
+
+## P14-PRODUCT-A0-FIX2：文档章节编号修正
+
+修正 `docs/P14_PRODUCT_A0_SAMPLE_REUSE_AND_RESTORE.md` 中 A0 结论章节编号重复问题。无产品结论变化，无代码变更。
+
+## P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计
+
+### 背景
+
+长文本是真实内容生产入口之一。当前长文本页面缺少字数提示、预计消耗、预计分段数量和清晰的分段策略说明，导致用户难以理解"自动分段"可能最终只有 1 段。
+
+### 代码事实核验
+
+- `#batchText maxlength="50000"`
+- `#batchStrategy` 值：`auto` / `paragraph` / `sentence` / `line`
+- `#batchMaxChars` 默认 2000，min 100，max 5000，step 100
+- submit payload：`segment_strategy`、`max_segment_chars` 与 UI 一一对应
+- 后端 schema：`Literal["auto", "paragraph", "sentence", "line"]`，`max_segment_chars` 范围 100～5000
+
+### 设计结论
+
+- 在 `#batchText` 附近显示当前字数 / 50000 字
+- 显示预计消耗字数（仅数字，不显示金额，不承诺计费）
+- 显示预计分段数量（前端估算，说明以后端结果为准）
+- 四种策略增加动态 helper text
+- "auto" 策略说明为何可能只有 1 段
+- 开启字幕时追加耗时提示
+- B0 只写设计文档，不实现代码
+
+### 阶段边界
+
+- 只做设计
+- 不改 index.html / JS / tests
+- 不调用真实 MiniMax
+- 不改 batch submit payload
+- 不改后端分段逻辑
+
+### 阶段状态
+
+P14-LONGTEXT-UX-B0 完成，建议进入 B1 实现。
+
+## P14-LONGTEXT-UX-B1：长文本字数统计、预计分段、策略说明
+
+### 背景
+
+P14-LONGTEXT-UX-B0 已完成设计。B1 在长文本页面实现生成前提示，帮助用户理解当前字数、预计消耗、预计分段数量和分段策略差异。
+
+### 实现内容
+
+- 新增长文本提示区 `#batchLongtextHints`
+- 新增当前字数提示（`#batchTextCount`，`/ 50000 字`）
+- 新增预计消耗字数提示（`#batchEstimatedCost`）
+- 新增预计分段数量提示（`#batchEstimatedSegments`）
+- 新增分段策略动态 helper text（`#batchStrategyHint`）
+- 新增字幕耗时提示（`#batchSubtitleHint`）
+- 新增 `estimateBatchSegments()` 前端估算（auto/paragraph/sentence/line 四种策略）
+- 新增事件绑定 `bindBatchLongtextHints()`
+- 新增长文本 UX 静态 / 行为测试（49 个测试）
+
+### 新增函数
+
+- `getBatchTextValue()` / `getBatchMaxCharsValue()` / `getBatchStrategyValue()`
+- `countBatchTextChars(text)`
+- `estimateBatchSegments(text, strategy, maxChars)`
+- `getBatchStrategyHint(strategy, estimatedSegments)`
+- `updateBatchLongtextHints()`
+- `bindBatchLongtextHints()`（含 `_batchLongtextHintsBound` 防重复绑定）
+
+### 阶段边界
+
+- 不改 batch submit payload
+- 不改后端分段逻辑
+- 不调用真实 MiniMax
+- 不接 ContextStore
+- 不改 SampleStore / SampleSidebar
+- 不做配置恢复
+
+### 测试结果
+
+413 passed（含新增 49 个测试）
+
+### 阶段状态
+
+B1 完成，待 B1-CHECK 复核。
+
+## P14-LONGTEXT-UX-B0-FIX1：补充剧本生产入口统计提示方向
+
+### 背景
+
+P14-LONGTEXT-UX-B0 已完成长文本生产入口的字数 / 消耗 / 分段策略提示设计。继续产品复核发现，剧本同样是主生产入口，也需要生成前统计提示，但统计维度与长文本不同。
+
+### 补充结论
+
+- 剧本页需要总行数、有效台词行数、空行数、总字数、预计消耗提示
+- 剧本页需要角色数、profile 数、未选择 profile 行数提示
+- 剧本页需要预计生成段数提示
+- 剧本页需要字幕耗时提示
+- 剧本统计不应强行并入 P14-LONGTEXT-UX-B1，应单独设计 P14-SCRIPT-UX-B0/B1
+
+### 剧本与长文本统计差异
+
+| 维度 | 长文本 | 剧本 |
+|------|--------|------|
+| 字数 | 当前字数 | 总字数 |
+| 分段 | 预计分段数 | 预计生成段数（=有效行数）|
+| 策略 | 分段策略说明 | - |
+| 角色 | - | 角色数 |
+| profile | - | profile 完整性、未选音色行数 |
+| 行数 | - | 总行数 / 有效行数 / 空行数 |
+
+### 后续建议
+
+- P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计
+- P14-SCRIPT-UX-B1：实现剧本统计与提示
+
+### 阶段状态
+
+P14-LONGTEXT-UX-B0-FIX1 完成。
+
+## P14-LONGTEXT-UX-B1-CHECK：长文本 UX hints 实现复核
+
+### 背景
+
+P14-LONGTEXT-UX-B1 已实现长文本字数统计、预计消耗、预计分段、策略 helper text 和字幕耗时提示。本阶段对实现进行复核。
+
+### 复核结果
+
+- 确认长文本提示区 DOM 存在（`#batchLongtextHints` 等 7 个元素）
+- 确认字数统计显示 `N / 50000 字`
+- 确认预计消耗仅显示字数，无金额符号
+- 确认预计分段支持 auto / paragraph / sentence / line 四种策略
+- 确认 auto 策略会提示"合并短段落"，可解释为什么短文本最终只有 1 段
+- 确认分段策略 helper text 动态更新
+- 确认字幕耗时提示随 `#batchNeedSubtitle` 更新
+- 确认不调用 fetch / guardedJsonFetch / MiniMax
+- 确认不修改 batch submit payload
+- 确认不修改后端分段逻辑
+- 确认不修改 SampleStore / SampleSidebar
+- 确认未实现剧本统计，该方向已记录为 P14-SCRIPT-UX-B0/B1
+
+### 测试结果
+
+结果：413 passed。
+
+### 阶段状态
+
+P14-LONGTEXT-UX-B1-CHECK 通过。建议进入 P14-LONGTEXT-UX-B1-CLOSE，或在不收口的情况下进入 P14-SCRIPT-UX-B0。
+
+## P14-LONGTEXT-UX-B1-CLOSE：长文本 UX hints 阶段收口
+
+### 背景
+
+P14-LONGTEXT-UX-B1 已实现并通过复核。该阶段聚焦长文本主生产入口的基础可用性，解决用户在生成前无法理解字数、消耗、分段数量和分段策略的问题。
+
+### 已完成能力
+
+- 当前字数提示：`N / 50000 字`
+- 预计消耗提示：`预计消耗：N 字`
+- 预计分段提示：支持 `auto` / `paragraph` / `sentence` / `line`
+- 分段策略动态 helper text
+- 自动策略说明：会合并短段落，短文本可能最终只有 1 段
+- 字幕耗时提示：开启字幕时显示"已开启字幕，生成耗时可能增加。"
+- warning 阈值：40000 / 47500
+- 防重复事件绑定
+- 新增 49 项测试
+
+### 阶段边界
+
+- 未修改 batch submit payload
+- 未修改后端分段逻辑
+- 未调用真实 MiniMax
+- 未修改 SampleStore / SampleSidebar
+- 未实现剧本统计
+- 未接 ContextStore
+- 未做配置恢复
+
+### 测试结果
+
+结果：413 passed。
+
+### 后续
+
+剧本同样是主生产入口，但统计维度不同。后续进入：
+
+- `P14-SCRIPT-UX-B0`：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计
+- `P14-SCRIPT-UX-B1`：实现剧本统计与提示
+
+### 阶段状态
+
+P14-LONGTEXT-UX-B1 已完成并收口。
+
+## P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计
+
+### 背景
+
+长文本 UX hints 已完成并收口。剧本同样是主生产入口，但它是结构化行数据，用户在提交前需要理解行数、字数、角色分布、profile / 音色完整性和预计生成段数。
+
+### 代码事实核验
+
+- `_scriptRows` 结构：`[{id, role, text, profileId}]`
+- DOM ids：`scriptLine_{id}`, `scriptRole_{id}`, `scriptText_{id}`, `scriptProfile_{id}`
+- 提交时过滤：`text.trim()` 非空才进入 payload
+- `role` 可为空，`profile_id` 可为空（但提交前前端 validation 会拦截）
+- 后端 `script: list[ScriptLine]` 约束：每行 `text` min_length=1，数组长度 1~200
+- `#batchScriptNeedSubtitle` checkbox 默认 checked
+- 当前剧本 Tab 无任何统计提示区
+- `MAX_SCRIPT_LINES = 200`
+
+### 设计结论
+
+- 显示总行数 / 有效台词行数 / 空文本行数（可推导）
+- 显示总字数 / 预计消耗字数
+- 显示预计生成段数（= 有效台词行数）
+- 显示角色数与角色列表（role.trim() 非空去重）
+- 空 role 行单独提示"未填写角色名"
+- 显示涉及音色数（profileId 非空去重）
+- 显示未选择音色的行数
+- 勾选字幕时显示生成耗时提示
+- 剧本统计只作为前端提示，不参与提交逻辑
+
+### 阶段边界
+
+- 只做设计，不改 index.html / JS / tests
+- 不改 `_scriptRows` 结构
+- 不改 batch_script.js
+- 不改 submit payload
+- 不改后端逻辑
+- 不调用真实 MiniMax
+- 不接 ContextStore
+- 不做配置恢复
+
+### 阶段状态
+
+P14-SCRIPT-UX-B0 完成，建议进入 B1 实现。
+
+## P14-SCRIPT-UX-B1：剧本行数 / 字数 / 角色 / 音色完整性提示
+
+### 背景
+
+P14-SCRIPT-UX-B0 已完成设计。B1 在剧本页面实现生成前提示，帮助用户理解当前剧本行数、有效台词、总字数、预计生成段数、角色分布和音色完整性。
+
+### 实现内容
+
+- 新增剧本提示区 `#batchScriptHints`
+- 新增总行数 / 有效台词行数提示
+- 新增总字数 / 预计消耗提示
+- 新增预计生成段数提示
+- 新增角色统计提示（role.trim() 非空去重，最多显示 3 个）
+- 新增未填写角色名 warning
+- 新增涉及音色数提示
+- 新增未选择音色 warning
+- 新增字幕耗时提示
+- 新增 `collectScriptStats()` 前端统计
+- 新增事件绑定 `bindBatchScriptHints()`
+- 新增 `addScriptLine` / `removeScriptLine` 末尾调用 `updateBatchScriptHints()`
+- 新增 54 项静态测试
+
+### 阶段边界
+
+- 不改 `_scriptRows` 结构
+- 不改 batch_script.js
+- 不改剧本 submit payload
+- 不改后端逻辑
+- 不调用真实 MiniMax
+- 不接 ContextStore
+- 不做剧本回填
+- 不做配置恢复
+
+### 测试结果
+
+结果：467 passed（新增 54 项脚本提示测试）。
+
+### 阶段状态
+
+B1 完成，待 B1-CHECK 复核。
+
+## P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核
+
+### 背景
+
+P14-SCRIPT-UX-B1 已实现剧本行数、有效台词、字数、预计生成段数、角色统计、音色完整性和字幕耗时提示。本阶段对实现进行复核。
+
+### 复核结果
+
+- 确认剧本提示区 DOM 存在（`#batchScriptHints` 及 8 个子元素）
+- 确认总行数 / 有效台词行数统计正确（`_scriptRows.length`，`text.trim()` 非空）
+- 确认空文本行不计入有效行数、预计生成段数和预计消耗
+- 确认总字数统计只统计有效台词行 `text.trim().length` 之和
+- 确认预计生成段数等于有效台词行数
+- 确认角色统计基于有效台词行 role 去重（`Object.keys(roleSet)`）
+- 确认未填写角色名 warning 生效（`emptyRoleRows > 0` 时显示）
+- 确认涉及音色数基于有效台词行 profileId 去重（`Object.keys(profileSet)`）
+- 确认未选择音色 warning 生效（`missingProfileRows > 0` 时显示）
+- 确认字幕耗时提示随 `#batchScriptNeedSubtitle` change 更新
+- 确认不调用 fetch / guardedJsonFetch / MiniMax
+- 确认不修改 `_scriptRows` 结构
+- 确认不修改 batch_script.js
+- 确认不修改剧本 submit payload
+- 确认不修改后端逻辑
+- 确认不修改 SampleStore / SampleSidebar
+- 确认未接 ContextStore / 回填
+- 确认 `addScriptLine` / `removeScriptLine` 末尾调用 `updateBatchScriptHints()`
+- 确认 `bindBatchScriptHints()` 防重复绑定
+
+### 非阻塞观察
+
+当前字数提示显示为 `约 N 字`，预计消耗与总字数等价。后续如需更明确表达消耗，可考虑改为 `约 N 字｜预计消耗：N 字`，但不阻塞 B1-CHECK。
+
+### 测试结果
+
+结果：467 passed。
+
+### 阶段状态
+
+P14-SCRIPT-UX-B1-CHECK 通过，建议进入 P14-SCRIPT-UX-B1-CLOSE。
+
+## P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口
+
+### 背景
+
+P14-SCRIPT-UX-B1 已实现并通过复核。该阶段聚焦剧本主生产入口的基础可用性，解决用户在生成前无法理解行数、有效台词、字数、预计生成段数、角色分布和音色完整性的问题。
+
+### 已完成能力
+
+- 剧本提示区 `#batchScriptHints`
+- 总行数 / 有效台词行数统计
+- 空文本行过滤逻辑提示
+- 总字数统计
+- 预计生成段数提示
+- 角色统计与角色列表
+- 未填写角色名 warning
+- 涉及音色数提示
+- 未选择音色 warning
+- 字幕耗时提示
+- `collectScriptStats()` 前端统计
+- `bindBatchScriptHints()` 事件绑定
+- `addScriptLine` / `removeScriptLine` 后自动刷新提示
+- 新增 54 项测试
+
+### 阶段边界
+
+- 未修改 `_scriptRows` 结构
+- 未修改 batch_script.js
+- 未修改剧本 submit payload
+- 未修改后端逻辑
+- 未调用真实 MiniMax
+- 未修改 SampleStore / SampleSidebar
+- 未接 ContextStore
+- 未做剧本回填
+- 未做配置恢复
+
+### 测试结果
+
+结果：467 passed。
+
+### 非阻塞观察
+
+当前字数提示显示为 `约 N 字`，预计消耗与总字数等价。后续如需更明确表达消耗，可考虑改为 `约 N 字｜预计消耗：N 字`。
+
+### 后续
+
+长文本与剧本两个主生产入口的生成前提示能力已完成。下一阶段可以选择：
+
+- `P14-CONTEXT-B0`：ContextStore 可恢复上下文设计
+- `P14-PRODUCT-B0`：全局 SampleSidebar 可见性方案设计
+
+### 阶段状态
+
+P14-SCRIPT-UX-B1 已完成并收口。
+
+## P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计
+
+### 背景
+
+P13 已完成最近样本系统（SampleStore + SampleSidebar），P14 已完成长文本和剧本主生产入口的生成前提示。下一阶段需要支持样本复用：查看完整文本 / 剧本内容，并一键回填到对应生产入口。
+
+### 代码事实核验
+
+- SampleStore `text_preview` 硬编码 100 字符截断（`TEXT_PREVIEW_MAX = 100`）
+- `_batchSampleContextById` 是内存变量，页面刷新丢失
+- `batch_longtext.js` 当前保存 `text_preview = text`（完整文本），无 `context_id` 链接
+- `batch_script.js` 当前保存 `text_preview = buildScriptTextPreview(lines)`，无完整 lines 结构
+- SampleSidebar `fillTextInput` 只写 `#textInput`，不支持长文本 / 剧本回填
+- localStorage 上限约 5～10MB，长文本 full_text 最多 ~100KB/条
+
+### 设计结论
+
+- ContextStore 使用独立 key `voice_lab_sample_context_v1`
+- SampleStore.sample.context_id = sample.sample_id（v1 简化关联）
+- ContextStore 最多 50 条，按 created_at LRU 淘汰
+- longtext context 保存 `full_text` + 生成参数
+- script context 保存 `lines`（有效台词行）+ 生成参数
+- context 缺失时播放/下载/复制仍可用，详情/回填置灰
+- 回填只恢复编辑状态，不自动生成
+
+### 阶段边界
+
+- 只做设计，不改 index.html / JS / tests
+- 不实现 ContextStore
+- 不实现详情弹层
+- 不实现一键回填
+- 不修改 SampleStore / SampleSidebar
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+P14-CONTEXT-B0 完成，建议进入 P14-CONTEXT-B1（实现 context_store.js 基础模块）。
+
+## P14-CONTEXT-B1：context_store.js 基础模块实现
+
+### 背景
+
+P14-CONTEXT-B0 已完成 ContextStore 设计。本阶段新增独立前端存储模块 `context_store.js`，为后续长文本 / 剧本详情查看和一键回填提供基础能力。
+
+### 实现内容
+
+- 新增 `app/static/js/context_store.js`
+- 新增 localStorage key `voice_lab_sample_context_v1`
+- 新增 `{version, contexts}` 存储结构（兼容 legacy flat array）
+- 新增 `pushContext`、`getContext`、`getContexts`、`deleteContext`、`clearContexts`、`normalizeContext`、`trimContexts`
+- longtext context 规范化：full_text 截断 50000、字段 clamp、strategy/output_format/audio_format fallback
+- script context 规范化：lines 过滤空 text、200 行上限、silence clamp
+- 50 条上限与 created_at 倒序 LRU 淘汰
+- fail-safe localStorage 读写（QuotaExceededError 不抛错）
+- 新增 39 项测试
+
+### 阶段边界
+
+- 未接入生成链路
+- 未修改 SampleStore / SampleSidebar
+- 未修改 index.html
+- 未实现详情弹层
+- 未实现一键回填
+- 未调用真实 MiniMax
+
+### 测试结果
+
+结果：506 passed（新增 39 项 context_store 测试）。
+
+### 阶段状态
+
+B1 完成，待 B1-CHECK 复核。
+
+## P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核
+
+### 背景
+
+P14-CONTEXT-B1 已新增独立前端存储模块 `context_store.js`。本阶段复核其 API、存储格式、longtext/script normalize、LRU、fail-safe 和边界隔离。
+
+### 复核结果
+
+- 确认 `context_store.js` 为独立 IIFE 模块，`'use strict'`
+- 确认暴露 `window.ContextStore` 7 个方法
+- 确认使用 `voice_lab_sample_context_v1`
+- 确认使用 `{version, contexts}` 存储格式并兼容 legacy flat array
+- 确认支持 longtext context normalize（full_text 截断、字段 clamp、strategy/output_format/audio_format fallback）
+- 确认支持 script context normalize（lines 过滤空 text、200 行上限、silence clamp 0-3000）
+- 确认支持 50 条上限与 created_at 倒序 LRU 淘汰
+- 确认 pushContext 同 id 替换旧记录，不重复插入
+- 确认 localStorage / QuotaExceededError fail-safe
+- 确认 context_id 优先 input.context_id > sample_id > generateId()
+- 确认 generateId 纯前端，不调用后端
+- 确认未修改 SampleStore / SampleSidebar / index.html / batch 脚本
+- 确认未接入生成链路
+- 确认未调用真实 MiniMax
+
+### 非阻塞观察
+
+1. **`max_segment_chars` NaN fallback 值**：B0 设计文档写 default 2000，但实现 `isNaN → 100`。B0 文档只明确 ge=100/le=5000 约束，未明确定义 NaN fallback。实现取下限 100 是合理解读，不阻塞。
+2. **unknown type 处理**：B0 说"校正 type"但未明确归一为 'unknown'，实现保持原值传入，不算错。
+3. **`deleteContext` 注释错误**：`deleteContext` JSDoc 注释写"does not persist"，但代码实际会持久化。这是注释 bug，不影响行为。
+
+### 测试结果
+
+结果：506 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B1-CHECK 完成，建议进入 P14-CONTEXT-B1-CLOSE。
+
+## P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复
+
+### 背景
+
+P14-CONTEXT-B1-CHECK 发现三个观察点。其中 `max_segment_chars` 缺失 / NaN 时 fallback 到 100 会导致后续长文本回填时分段上限异常偏小；`deleteContext` 注释与实际持久化行为不一致。两者在 B1-CLOSE 前修复。
+
+### 修复内容
+
+- `max_segment_chars` 缺失 / NaN / 非数字时默认 2000
+- `max_segment_chars < 100` 时 clamp 到 100
+- `max_segment_chars > 5000` 时 clamp 到 5000
+- 修正 `deleteContext` JSDoc，描述实际持久化行为
+- 补充 4 项对应测试
+
+### 未修复项说明
+
+- unknown type 仍保持原值传入。该行为不影响 longtext / script 主路径，暂不阻塞。
+
+### 阶段边界
+
+- 未接入生成链路
+- 未修改 SampleStore / SampleSidebar
+- 未修改 index.html / batch 脚本
+- 未实现详情弹层
+- 未实现一键回填
+- 未调用真实 MiniMax
+
+### 测试结果
+
+结果：510 passed（+4 修复项测试）。
+
+### 阶段状态
+
+P14-CONTEXT-B1-CHECK-FIX1 完成，建议进入 P14-CONTEXT-B1-CLOSE。
+
+## P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口
+
+### 背景
+
+P14-CONTEXT-B1 已新增独立前端存储模块 `context_store.js`，并经 B1-CHECK 与 B1-CHECK-FIX1 修正完成。本阶段正式收口 ContextStore 基础模块。
+
+### 最终能力
+
+- 新增 `app/static/js/context_store.js`
+- 暴露 `window.ContextStore`
+- 支持 7 个方法：`pushContext`、`getContext`、`getContexts`、`deleteContext`、`clearContexts`、`normalizeContext`、`trimContexts`
+- localStorage key：`voice_lab_sample_context_v1`
+- `{ version, contexts }` 存储格式，兼容 legacy flat array
+- 支持 longtext context normalize
+- 支持 script context normalize
+- 50 条上限与 created_at 倒序 LRU
+- localStorage / QuotaExceededError fail-safe
+- `max_segment_chars` 缺失 / NaN 默认 2000
+- `deleteContext` 注释与实际持久化行为一致
+
+### 阶段边界
+
+- 未接入生成链路
+- 未加载到 `index.html`
+- 未修改 SampleStore
+- 未修改 SampleSidebar
+- 未实现详情弹层
+- 未实现长文本回填
+- 未实现剧本回填
+- 未调用真实 MiniMax
+
+### 已知后续前置
+
+进入 `P14-CONTEXT-B2` 前必须处理：
+
+1. `SampleStore.normalizeSample` 当前尚未保留 `context_id`
+2. `index.html` 当前尚未加载 `context_store.js`
+3. `SampleSidebar` 当前尚无详情 / 回填能力
+
+### 测试结果
+
+结果：510 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B1 已完成并收口。
+
+## P14-CONTEXT-B2：长文本 context 保存与详情查看实现
+
+### 背景
+
+P14-CONTEXT-B2-A0 已完成长文本 context 保存与详情查看接入前置审查。本阶段实现长文本 batch context 保存、SampleStore context_id 关联、SampleSidebar 长文本详情查看。
+
+### 实现内容
+
+- `index.html` 新增 `<script src="/static/js/context_store.js">`，位于 `sample_store.js` 之后、`sample_sidebar.js` 之前
+- `SampleStore.normalizeSample` 增加 `context_id` 字段（`input.context_id != null ? String(input.context_id) : null`）
+- `batch_longtext.js` 提交成功后调用 `ContextStore.pushContext()`，使用 `batch_id` 作为 `context_id`
+- `ContextStore.pushContext` 调用包含完整 longtext 字段：`type`、`source`、`full_text`、`provider`、`profile_id`、`segment_strategy`、`max_segment_chars`、`silence_between_ms`、`output_format`、`audio_format`、`need_subtitle`、`params`、`batch_id`
+- `ContextStore.pushContext` 调用包含 try/catch fail-safe，写入失败不阻塞提交流程
+- `context_id` 同步写入 `_batchSampleContextById[data.batch_id].context_id`，供 `safePushBatchSample` 使用
+- `safePushBatchSample` 透传 `extra.context_id` 到 `SampleStore.pushSample`
+- `SampleSidebar` 卡片在 `sample.context_id` 存在时增加详情按钮（ⓘ）
+- `SampleSidebar` 新增 `showSampleDetail(sampleId)` 函数，暴露在 `window.SampleSidebar.showSampleDetail`
+- `showSampleDetail` 调用 `ContextStore.getContext(context_id)` 获取完整 context
+- 详情面板渲染：`source`、`created_at`、`provider`、`profile_id`、字数、`full_text`
+- `full_text` 使用 `white-space: pre-wrap` 保留换行，`max-height: 300px; overflow-y: auto` 滚动
+- 所有展示文本使用 `esc()` HTML 转义
+- context 不存在时显示"完整上下文不可用"提示
+- 详情面板包含关闭按钮
+
+### 测试结果
+
+结果：570 passed（含新增集成测试）。
+
+### 阶段边界
+
+- 未实现长文本一键回填
+- 未实现剧本 context
+- 未实现剧本回填
+- 未修改后端 API
+- 未修改数据库
+- 未调用真实 MiniMax
+- 未修改 batch submit payload
+
+### 阶段状态
+
+P14-CONTEXT-B2 完成，待 B2-CHECK 复核。
+
+## P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核
+
+### 背景
+
+P14-CONTEXT-B2 已实现长文本 context 保存、SampleStore context_id 关联、SampleSidebar 长文本详情查看。本阶段对实现进行复核。
+
+### 复核结果
+
+- 确认 `context_store.js` 已加载到 `index.html`（位于 `sample_store.js` 之后、`sample_sidebar.js` 之前）
+- 确认 `window.SampleSidebar.init()` 在脚本加载后调用，不受影响
+- 确认 `SampleStore.normalizeSample` 包含 `context_id: input.context_id != null ? String(input.context_id) : null`
+- 确认 `sample_store.js` 不引用 ContextStore（轻量索引隔离）
+- 确认 `batch_longtext.js` 在 `resp.ok` 且 `data.batch_id` 存在后才调用 `ContextStore.pushContext()`
+- 确认 `context_id = data.batch_id`（一一对应，v1 简化策略）
+- 确认 `_batchSampleContextById[data.batch_id].context_id` 在 polling 前已写入
+- 确认 `ContextStore.pushContext` 调用有 try/catch fail-safe，写入失败不阻塞 `showBatchProgress` / `startBatchPoll`
+- 确认 `guardedJsonFetch` payload 未被修改（mode: 'longtext' 仍正确）
+- 确认 `safePushBatchSample` 仅增加 `context_id: extra.context_id || null`，未修改其他字段
+- 确认 `sample_store.js` 未引用 ContextStore
+- 确认 SampleSidebar 详情按钮仅在 `sample.context_id` 存在时显示（`if (sample.context_id)`）
+- 确认 `showSampleDetail()` 通过 `SampleStore.getSamples()` 查找 sample
+- 确认 `showSampleDetail()` 通过 `ContextStore.getContext(contextId)` 读取 context
+- 确认 context 不存在时显示"完整上下文不可用"而非报错
+- 确认 `full_text` 使用 `esc()` HTML 转义后渲染
+- 确认详情面板使用 `white-space: pre-wrap` + `max-height: 300px` + `overflow-y: auto`
+- 确认所有展示字段（source / created_at / provider / profile_id / charCount）均通过 `esc()` 转义
+- 确认 `showSampleDetail()` 不调用 fetch、SampleStore.pushSample、ContextStore.pushContext、fillTextInput
+- 确认旧样本没有 context_id 时不影响播放 / 下载 / 复制 / 删除
+- 确认未实现一键回填
+- 确认未接剧本 context
+- 确认未修改 batch submit payload
+- 确认未调用真实 MiniMax
+
+### 测试结果
+
+结果：570 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B2-CHECK 通过，建议进入 P14-CONTEXT-B2-CLOSE。
+
+## P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口
+
+### 背景
+
+P14-CONTEXT-B2 已实现长文本 context 保存与详情查看，P14-CONTEXT-B2-CHECK 已通过复核。本阶段正式收口。
+
+### 最终能力确认
+
+- `context_store.js` 已按 `sample_store.js` → `context_store.js` → `sample_sidebar.js` 顺序加载
+- `batch_longtext.js` 提交成功后保存 longtext context
+- `context_id = batch_id`（一一对应，v1 简化策略）
+- `_batchSampleContextById[data.batch_id].context_id` 在 polling 前写入
+- `safePushBatchSample` 已透传 `context_id`
+- `SampleStore.normalizeSample` 支持 `context_id`
+- SampleSidebar 支持详情按钮（ⓘ）和详情面板
+- 详情面板展示 `full_text`，使用 `esc()` HTML 转义，`white-space: pre-wrap`，`max-height: 300px`，`overflow-y: auto`
+- 旧样本无 `context_id` 时不影响播放 / 下载 / 复制 / 删除
+- ContextStore 写入失败不阻塞 batch 提交流程
+
+### 阶段边界
+
+- 未实现长文本一键回填
+- 未实现剧本 context
+- 未实现剧本回填
+- 未修改后端 API
+- 未修改数据库
+- 未修改 batch submit payload
+- 未调用真实 MiniMax
+- 未进入 SaaS / 多用户 / 移动端 H5
+
+### 测试结果
+
+结果：570 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B2 已完成并收口。
+
+## P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计
+
+### 背景
+
+P14-CONTEXT-B2 已实现长文本 context 保存与详情查看，SampleSidebar 当前有 6 个平铺按钮（播放、下载、详情、复制文本、填入工作台、删除）。后续 P14-CONTEXT-B3 将增加长文本一键回填按钮，不先设计按钮显示策略会导致操作区拥挤。本阶段只做设计审查，不实现代码。
+
+### 审查结论
+
+**当前按钮事实**：
+
+| 按钮 | 显示条件 | 触发 |
+|------|---------|------|
+| 播放 ▶ | `isSafeAudioUrl(download_url)` | `playSample(sampleId)` |
+| 下载 ⇩ | 同播放条件 | `<a download>` |
+| 详情 ⓘ | `sample.context_id` 存在 | `showSampleDetail(sampleId)` |
+| 复制文本 ⎘ | 无条件 | `copyText(text)` |
+| 填入工作台 ↓ | 无条件 | `fillTextInput(text)` → `#textInput` |
+| 删除 ✕ | 无条件 | `deleteSample(sampleId)` |
+
+**问题识别**：
+- 6 个平铺按钮已达上限，B3 增加回填会到 7 个，无法接受
+- 复制 / 填入语义重叠，填入对 longtext/script 样本无意义
+- 删除与其他操作视觉权重相同，危险操作未降权
+- 移动端 / 窄屏下按钮可用性下降
+
+### 推荐方案
+
+**v1 按钮分层 + 详情面板内回填**：
+
+1. **平铺按钮上限 4 个**：播放、详情、下载、"更多"
+2. **"更多"菜单**收纳：复制文本、填入工作台、删除
+3. **回填不新增平铺按钮**：B3/C2 的回填放在详情面板底部
+4. **填入工作台**对 longtext/script 样本不显示（无意义）
+5. **删除**在更多菜单内，视觉低权重
+
+### 后续阶段
+
+- `P14-SIDEBAR-ACTIONS-B1`：侧边栏按钮分层与更多菜单实现
+- `P14-CONTEXT-B3`：长文本一键回填（详情面板内）
+- `P14-CONTEXT-C1-A0`：剧本 context 前置审查
+
+### 阶段状态
+
+P14-SIDEBAR-ACTIONS-A0 完成，建议进入 P14-SIDEBAR-ACTIONS-B1。
+
+## P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现
+
+### 背景
+
+P14-SIDEBAR-ACTIONS-A0 已完成按钮显示策略设计，推荐方案为：平铺按钮上限 4 个（播放、详情、下载、更多），低频操作收入更多菜单。本阶段实现该方案。
+
+### 实现内容
+
+- `sample_sidebar.js` 新增 `canShowFill(source)` 函数，`batch_longtext_*` / `batch_script_*` 类型返回 `false`
+- `buildCard` 重构按钮区：平铺按钮 = 播放 + 下载 + 详情 + 更多（最多 4 个）
+- 更多菜单包含：复制文本、填入工作台（仅 workspace/audition）、删除
+- `bindActionEvents` 新增：更多按钮切换、菜单项点击（复制/填入/删除）、菜单外点击关闭
+- 删除菜单项增加 `window.confirm('确定删除该样本？')` 确认
+- `init` 新增 `document` 级点击监听，关闭已打开的更多菜单
+- CSS 新增：`.sample-more-wrap`、`.sample-more-menu`（`display:none`，`open` 时 `display:block`）、`.sample-menu-item`、`.sample-menu-item.danger`
+- 填入工作台对 longtext/script 样本不显示
+
+### 测试结果
+
+结果：589 passed。
+
+### 阶段边界
+
+- 未实现 B3 回填（详情面板内恢复按钮）
+- 未修改播放/下载/详情/复制/填入/删除核心逻辑
+- 未调用后端 / MiniMax
+
+### 阶段状态
+
+P14-SIDEBAR-ACTIONS-B1 完成。
+
+## P14-CONTEXT-B3：长文本一键回填
+
+### 背景
+
+P14-SIDEBAR-ACTIONS-B1 已完成侧边栏按钮分层与更多菜单实现。P14-CONTEXT-B3 在此基础上，在 SampleSidebar 详情面板中为 longtext context 增加"恢复到长文本"按钮，用户点击后切换到长文本 Tab 并恢复上次生成时的表单字段，但不自动提交任务。
+
+### 实现内容
+
+- `sample_sidebar.js` 新增 helper 函数：
+  - `dispatchInputChange(el)` — 触发 input + change 事件
+  - `setValueIfPresent(id, value)` — 安全设置 DOM value
+  - `setCheckedIfPresent(id, value)` — 安全设置 DOM checked
+  - `switchToLongtextTab()` — 切换到 data-tab="longtext" tab
+  - `applyLongtextContextToForm(context)` — 恢复表单字段
+  - `restoreLongtextContext(context)` — 主入口，校验 type 后切换 tab + 延迟填充
+- `showSampleDetail` 修改：当 `context.type === 'longtext'` 时，在详情面板底部增加"恢复到长文本"按钮，按钮使用 `data-context-id`（attr() escape），full_text 不进入 data-* 属性
+- `bindActionEvents` 新增：`.sample-detail-restore-btn` 点击事件，从 `ContextStore.getContext(contextId)` 读取 context，调用 `restoreLongtextContext(ctx)`
+
+### 恢复字段列表
+
+| 表单字段 | context 字段 |
+|----------|-------------|
+| #batchText | full_text |
+| #batchProvider | provider |
+| #batchProfile | profile_id |
+| #batchStrategy | segment_strategy |
+| #batchMaxChars | max_segment_chars |
+| #batchSilence | silence_between_ms |
+| #batchOutputFormat | audio_format |
+| #batchNeedSubtitle.checked | need_subtitle |
+| #batchSpeed | params.speed |
+| #batchVol | params.vol |
+| #batchPitch | params.pitch |
+| #batchEmotion | params.emotion |
+
+### 安全边界
+
+- 不调用 fetch / guardedJsonFetch
+- 不调用 handleBatchLongtextSubmit
+- 不调用 MiniMax
+- 不写 ContextStore / SampleStore
+- 不修改 batch submit payload
+- 不自动提交批量任务
+- 不实现剧本回填
+
+### 测试结果
+
+589 passed + 新增 35 个 restore 测试。
+
+### 阶段状态
+
+P14-CONTEXT-B3 完成。
+
+## P14-CONTEXT-B3-CHECK：长文本一键回填复核
+
+### 复核范围
+
+本次复核覆盖 `sample_sidebar.js` B3 实现的所有代码事实、测试覆盖和阶段边界。
+
+### 复核结果
+
+**通过。所有核心要求满足。**
+
+#### 5.1 恢复按钮显示条件 ✅
+
+- `showSampleDetail` 在 `context.type === 'longtext'` 时渲染 `.sample-detail-restore-btn` 按钮（line 695）
+- 按钮使用 `data-context-id`，属性值通过 `attr()` 转义（line 696）
+- 不存在 `data-full-text` 或其他 full_text 进入 data-* 属性
+- workspace / audition / batch_script_merged / 无 context_id 旧样本均不显示恢复按钮
+
+#### 5.2 showSampleDetail 边界 ✅
+
+- 不直接写 batchText / batchProfile / 任何表单字段
+- 不调用 fillTextInput / handleBatchLongtextSubmit / fetch / guardedJsonFetch / MiniMax
+- 不写 ContextStore / SampleStore
+
+#### 5.3 恢复事件绑定 ✅
+
+- `bindActionEvents` 处理 `.sample-detail-restore-btn` 点击（line 401）
+- 从 `data-context-id` 读取 context_id，通过 `ContextStore.getContext(contextId)` 重新读取（line 407）
+- 调用 `restoreLongtextContext(ctx)`
+- 不把完整 context JSON 放入 DOM attribute
+
+#### 5.4 restoreLongtextContext ✅
+
+- 存在（line 593）
+- 校验 `context.type !== 'longtext'`（line 594）
+- 调用 `switchToLongtextTab()`（line 595）
+- 延迟调用 `applyLongtextContextToForm(context)`（line 596）
+- 不调用 fetch / guardedJsonFetch / handleBatchLongtextSubmit / MiniMax / ContextStore.pushContext / SampleStore
+
+#### 5.5 applyLongtextContextToForm ✅
+
+- 存在（line 574）
+- 安全读取 `context.params || {}`（line 576）
+- 恢复字段完整：batchText, batchProvider, batchProfile, batchStrategy, batchMaxChars, batchSilence, batchOutputFormat, batchNeedSubtitle.checked, batchSpeed, batchVol, batchPitch, batchEmotion
+- 不写 `output_format`
+- 不提交任务
+
+#### 5.6 事件触发 ✅
+
+- `dispatchInputChange(el)` 触发 input + change（line 528）
+- `setValueIfPresent` 和 `setCheckedIfPresent` 均调用 `dispatchInputChange`
+
+#### 5.7 切换长文本 Tab ✅
+
+- 目标 `.tab-btn[data-tab="longtext"]`（line 555）
+- 优先调用 `btn.click()`（line 557）
+- Fallback 手动切换 active class（line 561-569）
+
+### 非阻塞观察项
+
+- **B3-OBS-001**：`batchProfile` 仅单次 `setTimeout(..., 0)` 恢复，如果 `populateProfileSelect` 在 tab click 后异步加载并覆盖 select，则 profile_id 恢复可能失效；建议 B3-FIX1 验证真实 UI 并考虑二次延迟或重试。
+- **B3-OBS-002**：恢复成功后无 toast/hint，详情面板未关闭，用户可能不清楚恢复是否成功；建议 B3-FIX1 补充轻量反馈（toast 或关闭详情面板）。
+- **B3-OBS-003**：全量测试存在 1 个 E2E 404 资源错误（`test_voice_import_clone_mock_success`），与 B3 修改完全无关（该测试是 voice import/clone，sample_sidebar.js 未改动相关逻辑），非本次引入。
+
+### 测试结果
+
+- 目标测试：196 passed（test_sample_sidebar_static.py + test_context_store_longtext_integration_static.py）
+- 回归测试：92 passed（test_existing_function_regression_static.py）
+- 全量测试：1255 passed, 7 skipped, 1 E2E error（E2E error 为 voice import clone 资源 404，与 B3 无关）
+
+### 阶段状态
+
+P14-CONTEXT-B3-CHECK 通过。
+
+## P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查
+
+### 背景
+
+P14-CONTEXT-B3 已完成长文本 context 的保存与一键回填。P14-CONTEXT-C1-A0 在此基础上审查剧本（script）context 的保存与详情查看前置条件，评估 C1 实现阶段的可行性和风险。
+
+### 当前代码事实
+
+**batch_script.js 现状：**
+- `handleBatchScriptSubmit` 在 `resp.ok` 后创建 `_batchSampleContextById[data.batch_id]`
+- 当前未调用 `ContextStore.pushContext()`
+- 提交成功后调用 `showBatchProgress` / `startBatchPoll` / `loadRuntimeStatus`
+
+**ContextStore 现状：**
+- `normalizeScriptContext` 已支持：`lines[]`、`provider`、`silence_between_ms`、`output_format`、`audio_format`、`need_subtitle`
+- `MAX_SCRIPT_LINES = 200`
+- 行级 `params` 固定为空对象（当前 script UI 无行级 params 输入，不阻塞 C1）
+
+**sample_store.js 现状：**
+- `normalizeSample` 支持 `context_id`
+- `safePushBatchSample` 已通过 `extra.context_id` 透传，无需修改
+
+**SampleSidebar 现状：**
+- `showSampleDetail` 可读取 `ContextStore.getContext(contextId)`
+- 当前无 `context.type === 'script'` 的 lines 渲染逻辑
+
+### C1 建议保存字段
+
+| 字段 | 来源 |
+|------|------|
+| `context_id` | `data.batch_id` |
+| `type` | `'script'` |
+| `source` | `'batch_script_merged'` |
+| `lines` | 当前提交的 lines |
+| `provider` | `#batchScriptProvider.value` |
+| `silence_between_ms` | `#batchScriptSilence.value` |
+| `output_format` | `'hex'`（固定） |
+| `audio_format` | `#batchScriptOutputFormat.value` |
+| `need_subtitle` | `#batchScriptNeedSubtitle.checked` |
+| `batch_id` | `data.batch_id` |
+
+### C1 建议保存位置
+
+参考 longtext B2 模式：在 `batch_script.js` 的 `resp.ok` 块中，`showBatchProgress` 调用前增加 `ContextStore.pushContext`，try/catch fail-safe。
+
+### C1 不修改范围
+
+- 不修改 batch submit payload
+- 不修改 `ContextStore` schema
+- 不修改 `SampleStore` schema
+- 不实现剧本回填（C2）
+- 不调用真实 MiniMax
+
+### A0 结论
+
+**P14-CONTEXT-C1 可以进入实现阶段。** 详细设计见 `docs/P14_CONTEXT_C1_A0_SCRIPT_CONTEXT_AUDIT.md`。
+
+### 阶段状态
+
+P14-CONTEXT-C1-A0 完成，建议进入 P14-CONTEXT-C1。
+
+## P14-CONTEXT-C1：剧本 context 保存与详情查看实现
+
+### 背景
+
+P14-CONTEXT-C1-A0 审查结论确认 batch_script.js 已具备接入条件，ContextStore 已支持 script normalize，SampleStore context_id 透传已就绪。本阶段实现剧本 context 保存与详情查看。
+
+### 实现内容
+
+**batch_script.js：**
+- 在 `handleBatchScriptSubmit` 成功后、polling 前增加 `ContextStore.pushContext` 调用
+- 保存字段：`context_id=data.batch_id`、`type='script'`、`source='batch_script_merged'`、`lines`、`provider`、`silence_between_ms`、`output_format='hex'`、`audio_format`、`need_subtitle`、`batch_id`
+- `context_id = data.batch_id` 回填到 `_batchSampleContextById[data.batch_id]`
+- try/catch fail-safe，不阻塞 batch 生成
+
+**sample_sidebar.js：**
+- 新增 `renderScriptLinesDetail(context)` helper，渲染 script lines 详情
+- `showSampleDetail` 增加 `context.type === 'script'` 分支，调用 `renderScriptLinesDetail`
+- script 详情展示：来源、行数、Provider、音频格式、字幕、段间静音、台词列表
+- 每行展示：行号、角色、台词文本、profile_id
+- `context.type === 'script'` 不显示恢复按钮
+- 所有展示文本使用 `esc()` 转义
+
+**index.html CSS：**
+- 新增 `.sample-detail-actions`、`.sample-detail-restore-btn` 样式
+- 新增 `.sample-detail-lines-wrap`、`.sample-detail-script-line` 及其子元素样式
+
+### 测试结果
+
+- 目标测试：199 passed（test_sample_sidebar_static.py + test_context_store_script_integration_static.py）
+- 回归测试：161 passed
+- B3 相关回归：199 + 161 = 360 passed
+
+### 阶段边界
+
+- 不实现剧本回填（C2）
+- 不修改 submit payload
+- 不修改 ContextStore / SampleStore schema
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+P14-CONTEXT-C1 完成。
+
+## P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核
+
+### 背景
+
+P14-CONTEXT-C1 已实现剧本 context 保存与 SampleSidebar 详情查看。本阶段对实现进行复核。
+
+### 复核结果
+
+**通过项：**
+- 确认 `batch_script.js` 在 `resp.ok` 且 `data.batch_id` 存在后调用 `ContextStore.pushContext`
+- 确认保存字段完整：`context_id`、`type='script'`、`source='batch_script_merged'`、`lines`、`provider`、`silence_between_ms`、`output_format='hex'`、`audio_format`、`need_subtitle`、`batch_id`
+- 确认 `context_id = data.batch_id` 且回填到 `_batchSampleContextById[data.batch_id]`
+- 确认写入发生在 `showBatchProgress` 和 `startBatchPoll` 之前
+- 确认 try/catch fail-safe，catch 不 throw、不显示失败、不阻塞 batch 生成
+- 确认 submit payload 未改变（mode: 'script' / script / provider / silence_between_ms / output_format: 'hex' / audio_format / need_subtitle / confirm_cost: false）
+- 确认 ContextStore / SampleStore schema 未修改
+- 确认 `renderScriptLinesDetail(context)` 存在且被 `showSampleDetail` 调用
+- 确认 script 详情展示行数、provider、audio_format、need_subtitle、silence_between_ms
+- 确认每行展示：行号、角色、台词文本、profile_id，均使用 `esc()` 转义
+- 确认 `context.type === 'script'` 不显示"恢复到长文本"按钮
+- 确认 `context.type === 'script'` 不调用 restoreLongtextContext / fillTextInput / addScriptLine / removeScriptLine
+- 确认 longtext 详情和恢复未破坏
+- 确认旧样本无 context_id 时不影响播放/下载/复制/删除
+- 确认 CSS 新增 `.sample-detail-actions`、`.sample-detail-restore-btn`、`.sample-detail-lines-wrap`、`.sample-detail-script-line` 及其子元素样式
+
+**阻塞问题（C1-FIX1）：**
+- `showSampleDetail` script 分支（lines 716-727）中，`renderScriptLinesDetail` 返回的 HTML 片段包含 `<div class="sample-detail-text-label">` 和 `<div class="sample-detail-lines-wrap">`，但这些元素被拼入未关闭的 `<div class="sample-detail-meta">` 内部。`sample-detail-meta` 的 closing `</div>` 从未出现，导致 `text-label` 和 `lines-wrap` 在语义上属于 meta div 的子元素而非其兄弟元素。
+- 对比 longtext 分支（lines 676-707）：显式在 `panel.innerHTML +=` 中放置 `</div>`（line 703）再添加 `sample-detail-text-label` 和 `sample-detail-text-wrap`。
+- script 分支缺少这一 `</div>`，且 `renderScriptLinesDetail` 返回的文本标签和行列表被放在 meta div 内部，而非作为 meta 的兄弟元素。
+- 这导致 CSS 样式可能因选择器 `.sample-detail-meta > .sample-detail-text-label` 而失效（如果后续引入这类选择器），且 HTML 结构不合规范。
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：202 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 非阻塞观察项
+
+- C1-OBS-001：用户已反馈更多菜单收纳不方便；建议 C1-FIX1 后优先进入 P14-SIDEBAR-ACTIONS-B1-UXFIX1，再进入 C2。
+
+### 阶段状态
+
+P14-CONTEXT-C1-CHECK 发现阻塞问题（script detail panel HTML 结构），建议进入 **P14-CONTEXT-C1-FIX1**。
+
+## P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构
+
+### 背景
+
+P14-CONTEXT-C1-CHECK 发现 `showSampleDetail` 的 script 分支中 `.sample-detail-meta` div 未正确关闭，导致 `sample-detail-text-label` 和 `sample-detail-lines-wrap` 在 HTML 语义上成为 meta 的子元素而非兄弟元素。本阶段修复该结构问题。
+
+### 修复内容
+
+**sample_sidebar.js：**
+- 在 `showSampleDetail` 的 script 分支中，于 `panel.innerHTML += ... + scriptDetailHtml` 拼接前添加 `'</div>'`，正确关闭 `.sample-detail-meta` div
+- 修复后结构：`.sample-detail-meta` 仅含元信息行，`sample-detail-text-label` 和 `sample-detail-lines-wrap` 作为 meta 的兄弟节点
+
+**tests/test_context_store_script_integration_static.py：**
+- 新增 `test_showSampleDetail_script_branch_closes_meta_div_before_lines`，验证 script 分支中 `panel.innerHTML +=` 块内 `'` + `</div>'` 出现在 `scriptDetailHtml` 之前，防止 meta div 未关闭的回归
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：203 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 阶段边界
+
+- 仅修复 HTML 结构，不实现剧本回填
+- 不修改 ContextStore / SampleStore schema
+- 不修改 batch submit payload
+- 不调用后端 API / MiniMax
+
+### 阶段状态
+
+P14-CONTEXT-C1-FIX1 完成，建议进入 **P14-CONTEXT-C1-FIX1-CHECK**。
+
+## P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核
+
+### 背景
+
+P14-CONTEXT-C1-FIX1 已在 `showSampleDetail` 的 script 分支中补充 `'</div>'` 关闭 meta div。本阶段对修复进行复核。
+
+### 复核结果
+
+- 确认 `sample_sidebar.js` line 727 存在 `'</div>'`，位于 `panel.innerHTML +=` 拼接末尾、`scriptDetailHtml`（line 728）之前
+- 确认修复后 `.sample-detail-meta` 在 script 分支中正确关闭
+- 确认 `sample-detail-text-label` 和 `sample-detail-lines-wrap` 作为 meta div 的兄弟节点渲染
+- 确认 script 详情内容不变（来源/创建时间/行数/Provider/音频格式/字幕/段间静音/台词列表）
+- 确认每行展示：行号、role、text、profile_id，均使用 `esc()` 转义
+- 确认 `renderScriptLinesDetail(context)` 仍存在且逻辑未变
+- 确认 longtext 详情和恢复未受影响（longtext 分支结构完全未改）
+- 确认 script 详情仍不显示恢复按钮、不做回填
+- 确认平铺按钮 UXFIX1 未回退（copy/fill/delete 为平铺按钮，无更多菜单）
+- 确认 C1 保存链路未受影响（batch_script.js 未修改）
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py + test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：364 passed
+
+### 阶段状态
+
+P14-CONTEXT-C1-FIX1-CHECK 通过，建议进入 **P14-CONTEXT-C2**。
+
+## P14-CONTEXT-C2：剧本一键回填
+
+### 背景
+
+P14-CONTEXT-C1 已实现剧本 context 保存和详情展示。本阶段在 script 详情面板中增加"恢复到剧本"按钮，实现剧本 context 一键回填到剧本 Tab 表单。
+
+### 实现内容
+
+**sample_sidebar.js：**
+- `showSampleDetail` 的 script 分支底部增加 `sample-detail-restore-script-btn` 按钮，使用 `data-context-id` 属性
+- 新增 `switchToScriptBatchMode()`：切换到剧本 Tab（点击 `.tab-btn[data-tab="script"]`）
+- 新增 `clearScriptLinesForRestore()`：清空当前剧本行 DOM 和 `_scriptRows` / `_scriptLineCount`
+- 新增 `applyScriptContextToForm(context)`：恢复 provider / silence_between_ms / audio_format / need_subtitle全局字段；清空并逐行恢复 `context.lines`（调用 `addScriptLine`）；profile_id 延迟二次设置；触发 input/change 事件
+- 新增 `restoreScriptContext(context)`：校验 `context.type === 'script'`；调用 `switchToScriptBatchMode`；延迟调用 `applyScriptContextToForm`；聚焦第一行台词；显示成功 toast；关闭详情面板
+- 事件绑定：`.sample-detail-restore-script-btn` click handler 通过 `ContextStore.getContext` 重新读取 context 后调用 `restoreScriptContext`
+
+**index.html CSS：**
+- 新增 `.sample-detail-restore-script-btn` 样式（绿色主题，与 longtext 的蓝色主题区分）
+
+### 字段恢复映射
+
+全局字段：provider → `#batchScriptProvider`，silence_between_ms → `#batchScriptSilence`，audio_format → `#batchScriptOutputFormat`，need_subtitle → `#batchScriptNeedSubtitle.checked`
+
+剧本行：`context.lines[].role` → `#scriptRole_${id}`，`context.lines[].text` → `#scriptText_${id}`，`context.lines[].profile_id` → `#scriptProfile_${id}`（延迟二次设置）
+
+不恢复：output_format（固定 'hex'）、params（行级参数当前 UI 无输入）、batch_id
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：219 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 阶段边界
+
+- 仅在 script 详情面板增加恢复按钮，不在卡片平铺区增加
+- 不自动提交剧本任务
+- 不调用后端 API / MiniMax
+- 不修改 ContextStore / SampleStore schema
+- 不修改 batch submit payload
+- 不修改 longtext 恢复逻辑
+- 不回退平铺按钮 UXFIX1
+
+### 阶段状态
+
+P14-CONTEXT-C2 完成，建议进入 **P14-CONTEXT-C2-CHECK**。
+
+## P14-CONTEXT-C2-CHECK：剧本一键回填复核
+
+### 背景
+
+P14-CONTEXT-C2 已实现剧本一键回填。本阶段对实现进行复核。
+
+### 复核结果
+
+**阻塞问题（C2-FIX1）：**
+- `switchToScriptBatchMode()` 只执行 `.tab-btn[data-tab="script"].click()`，激活 `#tab-script` 标签页
+- 但 `#tab-script` 内部有两个子面板 `batchLongtextPanel`（长文本子模式）和 `batchScriptPanel`（剧本子模式），由 `input[name="batchMode"]:checked` 控制
+- `switchToScriptBatchMode()` 未设置 `input[name="batchMode"][value="script"].checked = true`，也未触发 change 事件
+- 如果用户之前停留在长文本次面板（batchMode=longtext），点击恢复后只会激活剧本标签页，但 `batchLongtextPanel` 仍显示，`batchScriptPanel` 仍被隐藏
+
+### 阶段状态
+
+P14-CONTEXT-C2-CHECK 发现阻塞问题，建议进入 **P14-CONTEXT-C2-FIX1**。
+
+## P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板
+
+### 背景
+
+C2-CHECK 发现 `switchToScriptBatchMode()` 只切换外层 script tab，未设置 `input[name="batchMode"][value="script"]`，导致恢复后仍可能显示长文本次面板。本阶段修复该问题。
+
+### 修复内容
+
+**sample_sidebar.js：**
+- 重构 `switchToScriptBatchMode()`：无论 tab click 是否成功，都继续设置 batch mode radio
+- 增加 `input[name="batchMode"][value="script"].checked = true` 设置
+- 增加 `change` 事件触发
+- 增加 `batchScriptPanel.style.display = ''` 和 `batchLongtextPanel.style.display = 'none'` fallback
+- 移除 click 后的 `return`，确保 radio 设置逻辑总是执行
+
+**tests/test_context_store_script_integration_static.py：**
+- 新增 `test_switchToScriptBatchMode_sets_batch_mode_radio`：验证设置 `scriptRadio.checked = true`
+- 新增 `test_switchToScriptBatchMode_triggers_change_event`：验证触发 change 事件
+- 新增 `test_switchToScriptBatchMode_shows_batch_script_panel`：验证显示 `batchScriptPanel` 并隐藏 `batchLongtextPanel`
+- 新增 `test_switchToScriptBatchMode_no_early_return_after_click`：防止 `btn.click()` 后 `return` 导致 batch mode 设置被跳过
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：223 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX1 完成，建议进入 **P14-CONTEXT-C2-FIX1-CHECK**。
+
+## P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核
+
+### 背景
+
+P14-CONTEXT-C2-FIX1 修复了 `switchToScriptBatchMode()` 中 `btn.click()` 后 early return 和未设置 batchMode=script 的问题。本阶段对修复进行复核。
+
+### 复核结果
+
+- 确认 `switchToScriptBatchMode()` 不再在 `btn.click()` 后 early return（line 639 无 return）
+- 确认设置 `input[name="batchMode"][value="script"].checked = true`（line 653-655）
+- 确认触发 `change` 事件（line 658，`bubbles: true`）
+- 确认 fallback 显示 `batchScriptPanel`（line 666）
+- 确认 fallback 隐藏 `batchLongtextPanel`（line 667）
+- 确认恢复字段逻辑未变（provider/silence/audio_format/need_subtitle/lines role/text/profile_id）
+- 确认 `restoreScriptContext` 仍正确调用 `switchToScriptBatchMode` + `applyScriptContextToForm`
+- 确认 longtext 恢复未受影响（`switchToLongtextTab`/`restoreLongtextContext`/`applyLongtextContextToForm` 未改动）
+- 确认平铺按钮 UXFIX1 未回退（copy/fill/delete 仍平铺，无更多菜单）
+- 确认未调用后端 API / MiniMax
+- 确认未修改 Store schema / submit payload
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：223 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX1-CHECK 通过，建议进入 **P14-CONTEXT-C2-CLOSE**。
+
+## P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口
+
+### 收口结论
+
+**P14 context restore 闭环阶段可以收口。**
+
+Voice Lab 当前已具备 "最近样本记录 → 上下文详情查看 → 长文本一键恢复 → 剧本一键恢复 → 用户继续编辑再生成" 的完整创作闭环基础能力。
+
+### P14 最终能力确认
+
+**SampleSidebar（平铺按钮策略）：**
+- 播放 / 下载 / 详情 / 复制 / 填入 / 删除平铺按钮
+- 无更多菜单
+- canShowFill 控制"填入工作台"显示
+- batch_longtext_* / batch_script_* 不显示"填入工作台"
+- 有 context_id 显示详情按钮
+
+**Longtext 闭环：**
+- batch_longtext.js 提交成功后保存 longtext context
+- context_id = batch_id 回填到 _batchSampleContextById
+- safePushBatchSample 将 context_id 写入 SampleStore
+- SampleSidebar 详情展示 full_text
+- "恢复到长文本"按钮切换到长文本 Tab 并恢复所有字段
+- 不自动提交
+
+**Script 闭环：**
+- batch_script.js 提交成功后保存 script context
+- context_id = batch_id 回填到 _batchSampleContextById
+- safePushBatchSample 将 context_id 写入 SampleStore
+- SampleSidebar 详情展示 lines（行号/role/text/profile_id）
+- "恢复到剧本"按钮切换到 script tab + batchMode=script + 显示 batchScriptPanel + 清空并恢复剧本行
+- 不自动提交
+
+**ContextStore / SampleStore 边界：**
+- ContextStore 保存完整上下文（localStorage），SampleStore 只保存轻量索引
+- context_id = batch_id 一对一策略
+- 保存失败 fail-safe，不阻塞 batch 生成
+- 不保存音频 blob / base64 / hex
+- 本地单用户，不承诺 SaaS 多用户一致性
+
+### 已修复关键问题
+
+1. **B1 更多菜单 UX**：`P14-SIDEBAR-ACTIONS-B1-UXFIX1` 恢复平铺按钮
+2. **C1 Script Detail HTML 结构**：`P14-CONTEXT-C1-FIX1` 补充 meta div 关闭标签
+3. **C2 剧本恢复子面板切换**：`P14-CONTEXT-C2-FIX1` 重构 switchToScriptBatchMode，设置 batchMode=script
+
+### 已知非阻塞观察项
+
+- B3-OBS-001：batchProfile 异步覆盖风险（不阻塞）
+- B3-OBS-002：长文本恢复反馈可进一步优化（不阻塞）
+- E2E 404：voice import clone 资源问题，与 P14 无关
+- Product OBS：SampleSidebar 不过滤，后续可做 P14-PRODUCT-B0
+
+### 测试结果
+
+- P14-CONTEXT-C2-FIX1-CHECK：384 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-CLOSE 完成，P14 context restore 闭环阶段正式收口。详细结论见 `docs/P14_CONTEXT_RESTORE_CLOSE.md`。
+
+## P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置
+
+### 问题
+
+`showSampleDetail` 将详情面板通过 `root.appendChild(panel)` 插入到 sidebar root 末尾。在 `.sample-sidebar-list` 滚动容器内，这意味着面板被追加到滚动区域最底部，超出了当前可视窗口，用户看不到。
+
+### 修复方案
+
+在 `sample_sidebar.js` 中新增两个 helper：
+
+- `findSampleCard(root, sampleId)`：在 sidebar root 下查找 `data-sample-id` 匹配的 `.sample-card` 元素
+- `insertDetailPanel(root, sampleId, panel)`：调用 `card.nextSibling`（`insertBefore`）将面板插入到卡片后面，而非追加到 root 末尾
+
+```javascript
+function findSampleCard(root, sampleId) {
+  if (!root || !sampleId) return null;
+  var cards = root.querySelectorAll ? root.querySelectorAll('.sample-card') : [];
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].getAttribute && cards[i].getAttribute('data-sample-id') === sampleId) {
+      return cards[i];
+    }
+  }
+  return null;
+}
+
+function insertDetailPanel(root, sampleId, panel) {
+  var card = findSampleCard(root, sampleId);
+  if (card && card.parentNode) {
+    card.parentNode.insertBefore(panel, card.nextSibling);
+    if (typeof panel.scrollIntoView === 'function') {
+      try {
+        panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch (e) {}
+    }
+    return;
+  }
+  root.appendChild(panel);
+}
+```
+
+`showSampleDetail` 两个分支（no-context 快捷详情 + 有 context 详情面板）均改为调用 `insertDetailPanel(root, sampleId, panel)`。
+
+### 测试结果
+
+- `test_findSampleCard_function_exists`
+- `test_insertDetailPanel_function_exists`
+- `test_insertDetailPanel_uses_insertBefore`
+- `test_showSampleDetail_calls_insertDetailPanel`
+- `test_switchToScriptBatchMode_no_early_return_after_click`
+- 合计：`test_sample_sidebar_static.py + test_context_store_script_integration_static.py` 227 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX2 完成。
+
+## P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切
+
+### 问题
+
+FIX2 将详情面板从 `root.appendChild` 改为 `insertBefore` 插入到卡片下方，但用户反馈面板仍不可见——实际表现为卡片下方出现空白区域但内容不可见。截图确认详情面板已插入，但高度异常（被压缩为一条窄线），内容被 `overflow: hidden` 裁切。
+
+### 根因
+
+`.sample-sidebar-list` 为 `display: flex; flex-direction: column`，详情面板作为 flex item 默认 `flex-shrink: 1`（可压缩），在滚动区域高度紧张时被压缩，加上 `overflow: hidden` 导致内容不可见。
+
+### 修复
+
+在 `index.html` CSS 中为 `.sample-card` 和 `.sample-detail-panel` 增加 `flex: 0 0 auto`，禁止 flex 压缩：
+
+```css
+.sample-card {
+  /* ...existing props... */
+  flex: 0 0 auto;
+}
+
+.sample-detail-panel {
+  /* ...existing props... */
+  flex: 0 0 auto;
+}
+```
+
+### 测试结果
+
+- `test_sample_card_has_flex_zero_zero_auto`
+- `test_sample_detail_panel_has_flex_zero_zero_auto`
+- `test_sample_sidebar_list_is_flex_column`
+- `test_sample_detail_panel_still_has_overflow_hidden`
+- `test_no_more_menu_css`
+- 合计：`test_sample_sidebar_static.py` 164 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX3 完成。
+
+## P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核
+
+### 复核结论
+
+**通过**。
+
+### CSS 修复确认
+
+- `.sample-card` 已设置 `flex: 0 0 auto`（index.html line 973）✓
+- `.sample-detail-panel` 已设置 `flex: 0 0 auto`（index.html line 1060）✓
+- `.sample-sidebar-list` 保持 `display: flex; flex-direction: column; overflow-y: auto` ✓
+- 无 `.sample-more-menu` / `.sample-btn-more` CSS ✓
+
+### 浏览器手工验证结果
+
+- 长文本详情面板可正常展开 ✓
+- 剧本详情面板可正常展开 ✓
+- 不再出现只显示空白条的问题 ✓
+- 恢复按钮可用 ✓
+
+### 回归确认
+
+- 长文本恢复未受影响 ✓
+- 剧本恢复未受影响 ✓
+- 平铺按钮未受影响 ✓
+- 未调用后端 API / MiniMax ✓
+- 未修改 ContextStore / SampleStore 结构 ✓
+- 未修改 batch submit payload ✓
+
+### 测试结果
+
+- `test_sample_sidebar_static.py`：164 passed
+- `test_context_store_script_integration_static.py + test_existing_function_regression_static.py`：160 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX3-CHECK 通过。P14 context restore 闭环修复全部完成，当前阶段推进到 P14-PRODUCT-B0。
+
+## P14-PRODUCT-B0-SKIP：确认 SampleSidebar 常驻并跳过可见性/过滤设计
+
+### 决策结论
+
+**SampleSidebar 当前保持常驻。暂不做隐藏。暂不做折叠。暂不做按 Tab 过滤。继续保留全局最近样本策略。**
+
+### 原因
+
+- SampleSidebar 是 P14 context restore 闭环的核心入口，不是辅助装饰
+- 隐藏或过滤会增加到达恢复入口的步骤，与"一键恢复"目标冲突
+- 当前产品是本地单用户工作台，常驻不带来额外风险
+- 增加可见性状态会提高 UI 复杂度，当前阶段收益有限
+
+### 策略
+
+| 策略 | 当前状态 |
+|---|---|
+| 位置 | 右侧常驻 |
+| 隐藏 | 不做 |
+| 折叠 | 不做 |
+| 按 Tab 过滤 | 不做（全局最近样本） |
+| 跨 Tab storage event 刷新 | 保留 |
+
+### 后续方向
+
+进入 P15-STATS-A0：后期统计能力设计（只设计不实现）。
+
+### 阶段状态
+
+P14-PRODUCT-B0-SKIP 完成。
+
+
+

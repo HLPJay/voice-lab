@@ -388,6 +388,13 @@
       var statusEl = audioRow.querySelector('.history-audio-status');
       if (audioEl && statusEl) {
         attachHistoryAudioEvents(audioEl, statusEl, assetId);
+        var playPromise = audioEl.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(function () {
+            statusEl.textContent = '浏览器阻止了自动播放，请点击播放器开始播放。';
+            statusEl.className = 'history-audio-status muted';
+          });
+        }
       }
     }
   };

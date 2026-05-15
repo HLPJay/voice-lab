@@ -50,4 +50,38 @@
     window._auditionRecords = [];
     window.renderAuditionRecords();
   };
+
+  // ── safe audition sample push ─────────────────────────────────
+  window.safePushAuditionSample = function (record) {
+    try {
+      if (!window.SampleStore || typeof window.SampleStore.pushSample !== 'function') return null;
+      if (!record || typeof record !== 'object') return null;
+
+      var audioUrl = record.audioUrl || record.downloadUrl || null;
+      if (audioUrl && String(audioUrl).startsWith('blob:')) return null;
+
+      var assetId = record.assetId || record.audioAssetId || null;
+
+      return window.SampleStore.pushSample({
+        source: 'audition',
+        job_id: null,
+        asset_id: assetId,
+        download_url: audioUrl || null,
+        text_preview: record.text || '',
+        profile_id: record.profileId || null,
+        profile_name: record.profileName || null,
+        provider: record.provider || null,
+        model: record.model || null,
+        voice_id: record.voiceId || null,
+        voice_name: record.voiceName || null,
+        duration_ms: record.durationMs || null,
+        audio_format: record.audioFormat || 'mp3',
+        status: 'completed',
+        tags: ['audition'],
+      });
+    } catch (err) {
+      console.warn('push audition sample failed', err);
+      return null;
+    }
+  };
 })();
