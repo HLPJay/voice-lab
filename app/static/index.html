@@ -455,6 +455,19 @@
     color: #2d3748;
   }
 
+  .mode-hint {
+    font-size: 0.78rem;
+    color: #718096;
+    padding: 4px 0 0 0;
+    line-height: 1.5;
+    min-height: 18px;
+  }
+
+  .mode-hint.async-warn {
+    color: #c05621;
+    font-weight: 500;
+  }
+
   input[type="checkbox"] {
     width: 16px;
     height: 16px;
@@ -971,6 +984,7 @@
             <label for="variantCount">版本数量（1-5）</label>
             <input type="number" id="variantCount" min="1" max="5" value="3">
           </div>
+          <div class="mode-hint" id="generationModeHint"></div>
         </div>
         <div class="form-group full-width" id="subtitleRow">
           <div class="checkbox-row">
@@ -1885,7 +1899,24 @@
     const mode = document.querySelector('input[name="genMode"]:checked').value;
     variantCountRow.classList.toggle('visible', mode === 'variants');
     document.getElementById('subtitleRow').style.display = mode === 'stream' ? 'none' : '';
+    updateGenerationModeHint(mode);
   }));
+
+  function updateGenerationModeHint(mode) {
+    const hint = document.getElementById('generationModeHint');
+    if (!hint) return;
+    const hints = {
+      single: '适合短文案、普通旁白，推荐默认使用',
+      async: '适合较长或耗时任务，可能需要等待；短文本不建议优先使用',
+      stream: '适合观察实时返回效果',
+      variants: '适合比较不同参数或风格'
+    };
+    if (hints[mode]) {
+      hint.textContent = hints[mode];
+      hint.className = 'mode-hint' + (mode === 'async' ? ' async-warn' : '');
+    }
+  }
+  updateGenerationModeHint(document.querySelector('input[name="genMode"]:checked')?.value || 'single');
 
   // Load profiles into cache and populate all profile selects
   function populateAllProfiles() {
