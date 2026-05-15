@@ -4257,3 +4257,33 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 18 passed in 59.4
 - **先提取共享 helper 为 window 入口**：再迁移业务函数。
 - **建议拆分迁移**：voice_clone.js（第一步）→ voice_import.js（第二步）→ voice_design.js（第三步），不建议一个 voice_clone_design.js 全量迁移。
 - **voice list 和 audition workstation 暂不迁移**：这两个模块依赖复杂，建议独立审查。
+
+---
+
+## P9-FE1-G1：补声音克隆 insufficient balance 错误展示 E2E
+
+**时间：** 2026-05-15
+
+**问题：** clone/design/import 当前缺少 E2E，声音克隆曾真实返回 `insufficient balance`，需要自动化测试保护错误展示链路。
+
+**修复：** 新增 `test_voice_clone_error_insufficient_balance_is_displayed`，验证 `POST /api/voice/clone/create` 返回 `PROVIDER_ERROR` + `detail: "insufficient balance"` 时，前端展示余额不足提示。
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py::test_voice_clone_error_insufficient_balance_is_displayed -v  # 1 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 19 passed
+```
+
+**mock 方案：**
+- 拦截 `GET /api/voice/capabilities`，返回 `mock` provider + `voice_clone.supported: true`，确保 cloneBtn 可点
+- 拦截 `POST /api/voice/clone/create`（regex pattern），返回 HTTP 400 + `{"error": {"code": "PROVIDER_ERROR", "detail": "insufficient balance", ...}}`
+- 使用 `provider=mock` 绕过 `guardedJsonFetch` highRisk confirm 对话框
+- 使用 `page.evaluate("document.getElementById('cloneBtn').click()")` 触发 onclick（因 `handleCloneVoice` 为局部函数，非 window 入口）
+
+**页面展示：** `friendlyErrorMessage` 识别 insufficient balance 关键字，返回中文提示"余额不足"和切换 mock 的建议。
+
+**测试结果：** 19 passed in 63.17s。
+
+**未改关键链路：** 未改后端 API、Provider Adapter、Capability Registry、CapabilityValidator、生成链路、数据库、资产清理链路。测试 fixture `console_errors` 新增对 "400" 的允许规则（来自 E2E mock 拦截的预期 400 响应）。
+
+**下一步建议：** 补 `test_voice_design_mock_submit_success`（验证设计成功 + demo audio 展示），再迁移 `voice_clone.js`。

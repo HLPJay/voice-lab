@@ -12,6 +12,7 @@ Tests cover:
 """
 
 import json
+import re
 import pytest
 
 
@@ -30,11 +31,12 @@ def console_errors(page):
     page.on("console", on_console)
     page.on("pageerror", on_page_error)
     yield errors
-    # Allow known harmless issues: favicon 404, expected 500 API errors (from route intercepts)
+    # Allow known harmless issues: favicon 404, expected 500 API errors, expected 400 from mock intercepts
     critical = [
         e for e in errors
         if "favicon" not in e.lower()
         and "500" not in e
+        and "400" not in e
         and "Internal Server Error" not in e
     ]
     assert not critical, f"Console errors detected: {critical}"
@@ -799,3 +801,96 @@ def test_batch_script_mock_submit_success_starts_progress(
 
     # Clean up: stop any batch poll timer left behind
     page.evaluate("window.stopBatchPoll && window.stopBatchPoll()")
+
+
+# ── Test 19: Voice clone insufficient balance error display ────────────────────
+
+def test_voice_clone_error_insufficient_balance_is_displayed(
+    page, e2e_base_url, console_errors
+):
+    """Intercept clone/create to return insufficient balance error; verify detail is displayed."""
+
+    clone_called = {}
+
+    # Mock capabilities so mock provider advertises voice_clone support
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "voice_clone": {
+                        "supported": True,
+                        "preview_text_max": 1000,
+                        "voice_id": {"min_length": 8, "max_length": 256}
+                    }
+                }]
+            }),
+        )
+
+    # Mock clone/create to return insufficient balance error
+    def handle_clone_create(route):
+        clone_called["yes"] = True
+        route.fulfill(
+            status=400,
+            content_type="application/json",
+            body=json.dumps({
+                "error": {
+                    "code": "PROVIDER_ERROR",
+                    "message": "MiniMax voice clone failed",
+                    "detail": "insufficient balance",
+                    "job_id": None
+                }
+            }),
+        )
+
+    # Register routes BEFORE navigation
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    # Use full URL with port to ensure exact match
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/clone/create.*"), handle_clone_create)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Wait for capabilities to be loaded and applied
+    page.wait_for_timeout(1000)
+
+    # Navigate to Advanced tab (contains clone subtab)
+    page.locator('button.tab-btn[data-tab="advanced"]').click()
+    page.wait_for_selector("#tab-advanced", state="attached", timeout=10000)
+
+    # Clone subtab is active by default; confirm clone form elements exist
+    page.wait_for_selector("#cloneProvider", state="attached", timeout=5000)
+    page.wait_for_selector("#cloneVoiceId", state="attached", timeout=5000)
+    page.wait_for_selector("#cloneFileId", state="attached", timeout=5000)
+
+    # Set provider to mock (bypasses highRisk confirm) and fill valid clone form
+    page.evaluate(""" () => {
+        document.getElementById('cloneProvider').value = 'mock';
+        // Trigger change so capability re-applies
+        document.getElementById('cloneProvider').dispatchEvent(new Event('change'));
+    } """)
+
+    # Fill required fields; use valid voice_id pattern (min 8 chars, starts with letter)
+    page.locator("#cloneVoiceId").fill("e2e_clone_voice_001")
+    page.locator("#cloneFileId").fill("123456")
+    # previewText and model already have default values; ensure model is set
+    page.locator("#cloneModel").fill("speech-2.8-hd")
+
+    # Verify clone button is enabled before clicking
+    clone_btn_disabled = page.locator("#cloneBtn").get_attribute("disabled")
+    assert not clone_btn_disabled, "cloneBtn should be enabled with valid inputs and mock capability"
+
+    # Click clone via JS click() to ensure the onclick handler fires
+    page.evaluate("document.getElementById('cloneBtn').click()")
+    page.wait_for_timeout(1500)
+
+    # Verify API was called
+    assert clone_called.get("yes"), f"clone/create should have been called: {clone_called}"
+
+    # Verify insufficient balance detail is displayed in cloneResult
+    result_html = page.locator("#cloneResult").inner_html()
+    assert "insufficient balance" in result_html or "余额不足" in result_html, (
+        f"Expected 'insufficient balance' or '余额不足' in cloneResult, got: {result_html}"
+    )
