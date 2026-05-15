@@ -73,6 +73,24 @@
 
       var data = await resp.json();
       _currentBatchId = data.batch_id;
+
+      // Save batch sample context for later sample_store write
+      if (data && data.batch_id) {
+        if (!window._batchSampleContextById) window._batchSampleContextById = {};
+        window._batchSampleContextById[data.batch_id] = {
+          source: 'batch_longtext_merged',
+          mode: 'longtext',
+          text_preview: text,
+          provider: provider,
+          profile_id: profileId || null,
+          profile_name: null,
+          audio_format: outputFormat || null,
+          model: null,
+          voice_id: null,
+          voice_name: null,
+        };
+      }
+
       showBatchProgress(data.batch_id);
       startBatchPoll(data.batch_id);
       loadRuntimeStatus();

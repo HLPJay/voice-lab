@@ -113,6 +113,10 @@
       workspace_stream: '流式',
       workspace_variant: '多版本',
       audition: '试听',
+      batch_longtext_merged: '长文合并',
+      batch_script_merged: '剧本合并',
+      batch_longtext_segment: '长文分段',
+      batch_script_segment: '剧本分段',
     };
     return map[source] || esc(source) || '';
   }

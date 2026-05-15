@@ -467,13 +467,18 @@ class TestNoApiCalls:
 # ── no unwanted references ───────────────────────────────────────────────────
 
 class TestNoUnwantedReferences:
-    def test_no_batch_longtext(self):
+    def test_no_batch_longtext_function_references(self):
+        """sidebar must not call batch_longtext functions, but sourceLabel entries are allowed."""
         c = read()
-        assert 'batch_longtext' not in c and 'batchLongtext' not in c
+        # sourceLabel map entries are allowed
+        assert 'safePushBatchSample' not in c
+        assert '_batchSampleContextById' not in c
 
-    def test_no_batch_script(self):
+    def test_no_batch_script_function_references(self):
+        """sidebar must not call batch_script functions, but sourceLabel entries are allowed."""
         c = read()
-        assert 'batch_script' not in c and 'batchScript' not in c
+        assert 'safePushBatchSample' not in c
+        assert '_batchSampleContextById' not in c
 
     def test_no_safePushWorkspaceSample(self):
         c = read()

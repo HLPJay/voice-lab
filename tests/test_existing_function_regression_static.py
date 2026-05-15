@@ -435,13 +435,17 @@ class TestSidebarIsolation:
         s = read_sidebar()
         assert 'guardedJsonFetch' not in s
 
-    def test_no_batch_longtext_in_sidebar(self):
+    def test_no_batch_longtext_function_in_sidebar(self):
+        """sidebar must not call batch_longtext functions, but sourceLabel entries are allowed."""
         s = read_sidebar()
-        assert 'batch_longtext' not in s and 'batchLongtext' not in s
+        assert 'safePushBatchSample' not in s
+        assert '_batchSampleContextById' not in s
 
-    def test_no_batch_script_in_sidebar(self):
+    def test_no_batch_script_function_in_sidebar(self):
+        """sidebar must not call batch_script functions, but sourceLabel entries are allowed."""
         s = read_sidebar()
-        assert 'batch_script' not in s and 'batchScript' not in s
+        assert 'safePushBatchSample' not in s
+        assert '_batchSampleContextById' not in s
 
     def test_no_history_sample_in_sidebar(self):
         s = read_sidebar()

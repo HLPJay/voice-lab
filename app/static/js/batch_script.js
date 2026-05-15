@@ -28,6 +28,30 @@
       .replace(/'/g, '&#39;');
   }
 
+  function getSingleProfileId(lines) {
+    var ids = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line && line.profile_id) {
+        if (ids.indexOf(line.profile_id) === -1) ids.push(line.profile_id);
+      }
+    }
+    return ids.length === 1 ? ids[0] : null;
+  }
+
+  function buildScriptTextPreview(lines) {
+    var parts = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!line) continue;
+      var role = line.role ? String(line.role).trim() : '';
+      var text = line.text ? String(line.text).trim() : '';
+      if (!text) continue;
+      parts.push(role ? role + '：' + text : text);
+    }
+    return parts.join('\n');
+  }
+
   window.handleBatchScriptSubmit = async function() {
     // Sync DOM values into _scriptRows state before collecting
     document.querySelectorAll('[id^="scriptLine_"]').forEach(function(row) {
@@ -124,6 +148,23 @@
 
       var data = await resp.json();
       _currentBatchId = data.batch_id;
+
+      // Save batch sample context for later sample_store write
+      if (data && data.batch_id) {
+        if (!window._batchSampleContextById) window._batchSampleContextById = {};
+        window._batchSampleContextById[data.batch_id] = {
+          source: 'batch_script_merged',
+          mode: 'script',
+          text_preview: buildScriptTextPreview(lines),
+          provider: provider,
+          profile_id: getSingleProfileId(lines),
+          profile_name: null,
+          audio_format: outputFormat || null,
+          model: null,
+          voice_id: null,
+          voice_name: null,
+        };
+      }
 
       // Show success inline — stay on script tab
       showResult('<div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#276749">' +

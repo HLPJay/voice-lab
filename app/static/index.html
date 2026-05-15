@@ -4735,6 +4735,61 @@ function handleStopAsyncPolling() {
   // handleBatchScriptSubmit — moved to /static/js/batch_script.js
   // (button onclick="handleBatchScriptSubmit()" still resolves via window lookup)
 
+  function isSafeBatchAudioUrl(url) {
+    if (!url) return false;
+    const s = String(url).trim().toLowerCase();
+    if (s.indexOf('blob:') === 0) return false;
+    if (s.indexOf('javascript:') === 0) return false;
+    if (s.indexOf('data:') === 0) return false;
+    return s.indexOf('/api/') === 0 ||
+           s.indexOf('http://') === 0 ||
+           s.indexOf('https://') === 0;
+  }
+
+  function safePushBatchSample(source, data, extra) {
+    try {
+      if (!window.SampleStore || typeof window.SampleStore.pushSample !== 'function') return null;
+      if (!data || data.status !== 'success') return null;
+      if (!data.batch_id) return null;
+      const audio = data.merged_audio || {};
+      if (!audio.id) return null;
+      if (!isSafeBatchAudioUrl(audio.url)) return null;
+      const batchId = data.batch_id;
+      const pushKey = batchId + ':' + source;
+      if (!window._batchSamplePushedByKey) window._batchSamplePushedByKey = {};
+      if (window._batchSamplePushedByKey[pushKey]) return null;
+      const downloadUrl = '/api/voice/batch/' + encodeURIComponent(batchId) + '/download';
+      const firstSegmentText = (data.segments && data.segments[0]) ? data.segments[0].text_preview : '';
+      const textPreview = extra.text_preview || firstSegmentText || '批量文本';
+      const sample = window.SampleStore.pushSample({
+        source: source,
+        job_id: batchId,
+        batch_id: batchId,
+        segment_id: null,
+        asset_id: audio.id,
+        download_url: downloadUrl,
+        text_preview: textPreview,
+        provider: extra.provider || null,
+        model: null,
+        voice_id: null,
+        voice_name: null,
+        profile_id: extra.profile_id || null,
+        profile_name: null,
+        duration_ms: data.total_duration_ms || null,
+        audio_format: extra.audio_format || null,
+        status: 'completed',
+        tags: ['batch', 'merged'],
+      });
+      window._batchSamplePushedByKey[pushKey] = true;
+      if (window.SampleSidebar && typeof window.SampleSidebar.refresh === 'function') {
+        window.SampleSidebar.refresh();
+      }
+      return sample;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function showBatchProgress(batchId, targetPanelId = 'batchProgressPanel') {
     const panel = document.getElementById(targetPanelId);
     if (panel) panel.style.display = '';
@@ -4814,6 +4869,15 @@ function handleStopAsyncPolling() {
       return;
     }
     playerDiv.style.display = '';
+
+    // Push batch merged audio to sample_store
+    const batchSource = targetPanelId === 'batchScriptProgressPanel'
+      ? 'batch_script_merged'
+      : 'batch_longtext_merged';
+    const batchExtra = (window._batchSampleContextById && data.batch_id)
+      ? (window._batchSampleContextById[data.batch_id] || {})
+      : {};
+    safePushBatchSample(batchSource, data, batchExtra);
 
     // Only initialize player DOM once per batch
     if (window._batchPlayerInitialized !== `${data.batch_id}-${targetPanelId}`) {
