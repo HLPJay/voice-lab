@@ -1071,3 +1071,125 @@ def test_voice_clone_module_is_loaded_and_exports_available(
 
     for name, is_fn in exports_ok.items():
         assert is_fn, "window.%s should be a function" % name
+
+
+# ── Test 23: Voice clone mock submit success ─────────────────────────────────────
+
+def test_voice_clone_mock_submit_success(
+    page, e2e_base_url, console_errors
+):
+    """Mock clone/create to return success; verify clone success result, audio player, quick bind/preview panels, and button restore."""
+
+    clone_called = {}
+
+    # Mock capabilities so mock provider advertises voice_clone support
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "voice_clone": {
+                        "supported": True,
+                        "preview_text_max": 1000,
+                        "voice_id": {"min_length": 8, "max_length": 256}
+                    }
+                }]
+            }),
+        )
+
+    # Mock clone/create to return success
+    def handle_clone_create(route):
+        clone_called["yes"] = True
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "voice_id": "e2e_clone_voice_success_001",
+                "message": "声音克隆成功创建",
+                "demo_audio_url": "/static/e2e-clone-demo.mp3"
+            }),
+        )
+
+    # Mock provider-voices (called by handleListVoices(true) after clone success)
+    def handle_provider_voices(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"voices": [], "total": 0}),
+        )
+
+    # Register routes BEFORE navigation
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/clone/create.*"), handle_clone_create)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/provider-voices.*"), handle_provider_voices)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Wait for capabilities to be loaded
+    page.wait_for_timeout(1000)
+
+    # Navigate to Advanced tab (contains clone subtab)
+    page.locator('button.tab-btn[data-tab="advanced"]').click()
+    page.wait_for_selector("#tab-advanced", state="attached", timeout=10000)
+
+    # Clone subtab is active by default; confirm clone form elements exist
+    page.wait_for_selector("#cloneProvider", state="attached", timeout=5000)
+    page.wait_for_selector("#cloneVoiceId", state="attached", timeout=5000)
+    page.wait_for_selector("#cloneFileId", state="attached", timeout=5000)
+    page.wait_for_selector("#cloneBtn", state="attached", timeout=5000)
+    page.wait_for_selector("#cloneResult", state="attached", timeout=5000)
+
+    # Set provider to mock (bypasses highRisk confirm) and fill valid clone form
+    page.evaluate(""" () => {
+        document.getElementById('cloneProvider').value = 'mock';
+        document.getElementById('cloneProvider').dispatchEvent(new Event('change'));
+    } """)
+
+    # Fill required fields; use valid voice_id pattern (min 8 chars, starts with letter)
+    page.locator("#cloneVoiceId").fill("e2e_clone_voice_success_001")
+    page.locator("#cloneFileId").fill("123456")
+    page.locator("#cloneModel").fill("speech-2.8-hd")
+    page.locator("#clonePreviewText").fill("这是一段克隆成功E2E试听文本")
+
+    # Verify clone button is enabled before clicking
+    clone_btn_disabled = page.locator("#cloneBtn").get_attribute("disabled")
+    assert not clone_btn_disabled, "cloneBtn should be enabled with valid inputs and mock capability"
+
+    # Click clone via JS click() to ensure the onclick handler fires
+    page.evaluate("document.getElementById('cloneBtn').click()")
+    page.wait_for_timeout(2000)
+
+    # Verify API was called
+    assert clone_called.get("yes"), f"clone/create should have been called: {clone_called}"
+
+    # Verify success message and voice_id appear in cloneResult
+    result_html = page.locator("#cloneResult").inner_html()
+    assert "克隆成功" in result_html, (
+        f"Expected '克隆成功' in cloneResult, got: {result_html}"
+    )
+    assert "e2e_clone_voice_success_001" in result_html, (
+        f"Expected voice_id 'e2e_clone_voice_success_001' in cloneResult, got: {result_html}"
+    )
+
+    # Verify demo audio player is rendered
+    audio_player = page.locator("#cloneResult audio.audio-player")
+    assert audio_player.count() > 0, f"Expected audio player in cloneResult, got: {result_html}"
+    source_tag = page.locator('#cloneResult source[src="/static/e2e-clone-demo.mp3"]')
+    assert source_tag.count() > 0, f"Expected source tag with demo_audio_url, got: {result_html}"
+
+    # Verify quick bind panel appears
+    assert page.locator("#cloneProfileWrap").count() > 0, "Quick bind profile wrap should exist"
+    assert page.locator("#cloneBindBtn").count() > 0, "Quick bind button should exist"
+    assert page.locator("#cloneBindModel").count() > 0, "Quick bind model select should exist"
+
+    # Verify quick preview panel appears
+    assert page.locator("#cloneQuickText").count() > 0, "Quick preview text input should exist"
+    assert page.locator("#cloneQuickBtn").count() > 0, "Quick preview button should exist"
+    assert page.locator("#cloneQuickResult").count() > 0, "Quick preview result should exist"
+
+    # Verify button text is restored
+    btn_text = page.locator("#cloneBtn").text_content()
+    assert "克隆" in btn_text, f"cloneBtn should be restored to '克隆', got: {btn_text}"

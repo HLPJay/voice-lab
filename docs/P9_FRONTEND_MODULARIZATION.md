@@ -648,7 +648,7 @@ inline script             ← index.html 第 1593 行开始
 
 ### 当前 E2E 覆盖数量
 
-**22 个 E2E**（tests/e2e/test_frontend_capabilities.py）
+**23 个 E2E**（tests/e2e/test_frontend_capabilities.py）
 
 重点覆盖链路：
 - Provider capability 加载 / 切换 / 失败降级
@@ -659,6 +659,7 @@ inline script             ← index.html 第 1593 行开始
 - 剧本批量 mock 提交成功 + 进度面板 + 按钮恢复
 - 长文本批量 mock 提交成功 + 进度面板 + 按钮恢复
 - 声音克隆 insufficient balance 错误展示
+- 声音克隆 mock submit success + audio player + quick bind/preview 面板 + 按钮恢复
 - 声音设计 mock submit success
 - voice helper window exports
 - voice_clone.js 模块加载 + 4 个 window 函数导出
@@ -1015,7 +1016,9 @@ inline script             ← index.html 第 1593 行开始
 
 **P9-FE1-G4 已完成 ✅：** `app/static/js/voice_clone.js` 已抽离，IIFE 包装，4 个函数（handleUploadAudio / handleCloneAutoId / updateCloneBtnState / handleCloneVoice）全部 export 为 `window.*`；index.html 移除迁移函数体，保留原 onclick 属性；`batch_script.js` 后新增 script 标签引入；补回 `isValidVoiceId` standalone 实现；E2E `test_voice_clone_module_is_loaded_and_exports_available` 新增，22 passed。
 
-**下一步：** voice_clone.js 抽离完成，22 E2E passed。可进入 `voice_import.js` / `voice_design.js` 抽离。
+**P9-FE1-G4-FIX 已完成 ✅：** 新增 `test_voice_clone_mock_submit_success` E2E，mock clone/create 返回成功 + demo_audio_url，验证成功文案、voice_id、audio 标签、快速绑定面板、快速试听面板、按钮恢复；mock provider-voices 避免 handleListVoices 产生真实请求；23 passed。
+
+**下一步：** voice_clone.js 成功链路 E2E 已补齐，23 E2E passed。可进入 voice_import.js 边界审查和前置 E2E（import 链路仍待补充）。
 
 **建议暂缓的原因：**
 1. 没有任何 voice clone/design/import 相关 E2E，贸然迁移无法验证正确性（已改善：clone E2E 已建立）
@@ -1024,6 +1027,6 @@ inline script             ← index.html 第 1593 行开始
 4. `hexToBlobUrl` 等共享 utility 需要先提取（已解决）
 
 **下一步行动：**
-1. **先补 E2E**：`test_voice_clone_error_insufficient_balance`、`test_voice_design_mock_submit_success`（高优先级）
-2. **再提取 helper**：将 `bindVoiceToProfile`、`renderInlineCreateProfile`、`populateProfileSelect`、`hexToBlobUrl` 暴露为 window 入口
-3. **最后迁移业务函数**：voice_clone.js → voice_import.js → voice_design.js
+1. **已完成**：voice clone/error + voice design/success + helper window exports + voice_clone.js 抽离 + clone success E2E
+2. **下一步**：voice_import.js 边界审查 + 前置 E2E
+3. **后续迁移**：voice_import.js → voice_design.js

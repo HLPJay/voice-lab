@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-G4：
+截至 P9-FE1-G4-FIX：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4370,3 +4370,32 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 22 pas
 **未改关键链路：** 未迁移 import/design 业务函数、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
 
 **下一步建议：** voice_clone.js 抽离完成，E2E 22 passed。可进入 voice_import.js / voice_design.js 抽离。
+
+## P9-FE1-G4-FIX：补 voice clone mock success E2E
+
+**时间：** 2026-05-15
+
+**问题：** G4 已抽离 voice_clone.js，但仅验证模块加载和 insufficient balance 错误展示，缺少 clone 成功链路 E2E。
+
+**修复：**
+- 新增 `test_voice_clone_mock_submit_success` E2E，mock `/api/voice/capabilities`（voice_clone.supported=true）、mock `/api/voice/clone/create`（返回成功 voice_id + demo_audio_url）、mock `/api/voice/provider-voices`（handleListVoices 触发）。
+- 填写 clone 表单（provider=mock、voice_id、file_id、model、previewText）。
+- 点击 #cloneBtn，验证 clone/create 被调用。
+- 断言 #cloneResult 包含"克隆成功"、voice_id、audio 标签、source[demo_audio_url]。
+- 断言快速绑定面板（cloneProfileWrap / cloneBindBtn / cloneBindModel）存在。
+- 断言快速试听面板（cloneQuickText / cloneQuickBtn / cloneQuickResult）存在。
+- 断言按钮恢复为"克隆"。
+- 页面无 TypeError / ReferenceError。
+- 不调用真实 MiniMax、不上传音频、不播放音频、不触发快速绑定/试听。
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "clone"  # 3 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 23 passed
+```
+
+**测试结果：** 23 passed in 75.31s。
+
+**未改关键链路：** 未迁移 import/design 业务函数、未改 app/static/js/provider_capabilities.js、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
+
+**下一步建议：** voice_clone.js 成功链路 E2E 已补齐，23 E2E passed。可进入 voice_import.js 边界审查和前置 E2E。
