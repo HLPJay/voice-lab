@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P14-CONTEXT-B2-A0：长文本 context 保存与详情查看接入前置审查**
+**P14-CONTEXT-B2-A0：长文本 context 保存与详情查看接入前置审查** ✅
 
 ## 已完成（续）
 
@@ -31,6 +31,7 @@
 - P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核 ✅
 - P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复 ✅
 - P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口 ✅
+- P14-CONTEXT-B2-A0：长文本 context 保存与详情查看接入前置审查 ✅
 
 ## 已完成
 
