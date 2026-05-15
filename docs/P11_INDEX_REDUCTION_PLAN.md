@@ -295,3 +295,150 @@ P9-FE2-A0 说"error_helpers.js 迁移成本大，拆分收益有限"和"profile_
 | 未改 handleGenerate / batch payload / 后端 API / shared batch state | ✅ |
 | targeted E2E（4）：voice_binding_hint + quick_bind：4 passed | ✅ |
 - 其它模块（voice_list、script_lines、error_helpers、batch_shared）当前阶段不应动
+
+---
+
+## P11-FE-REDUCE-A2-A0：recent_job 模块抽离边界审查
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不迁移代码
+
+---
+
+### A2 审查范围
+
+P8-5 最近任务恢复相关函数：
+
+| 函数 | 行 | 职责 |
+|---|---|---|
+| `RECENT_JOB_STORAGE_KEY` | 1943 | localStorage key 常量 |
+| `safeTextPreview` | 1945 | 文本截断辅助 |
+| `extractJobId` | 1951 | 从 API 响应提取 job_id |
+| `extractAudioAssetId` | 1955 | 从 API 响应提取 audio_asset_id |
+| `buildRecentJobPayload` | 1962 | 构建 localStorage payload |
+| `saveRecentJob` | 1979 | 保存到 localStorage + 调用 renderRecentJobRestore |
+| `loadRecentJob` | 1990 | 从 localStorage 加载 |
+| `clearRecentJob` | 2007 | 从 localStorage 清除 + 调用 renderRecentJobRestore |
+| `renderRecentJobRestore` | 2016 | 渲染最近任务卡片 DOM |
+| `restoreRecentJob` | 2046 | 调用 jobs API + 调用 renderRecoveredJob |
+| `renderRecoveredJob` | 2072 | 渲染恢复后的任务结果卡片 |
+
+---
+
+### 依赖分析
+
+#### saveRecentJob / loadRecentJob / clearRecentJob / buildRecentJobPayload
+
+**特征：**
+- 纯 localStorage 操作 + 纯数据转换
+- 无 DOM 依赖（除 `renderRecentJobRestore` 调用外）
+- 无 API 调用
+- `buildRecentJobPayload` 只调用 `extractJobId`、`extractAudioAssetId`、`safeTextPreview`
+
+**可迁移性：可迁移，风险低**
+
+`saveRecentJob` 被以下位置调用（均在 index.html inline script 中）：
+- `restoreRecentJob()` — line 2059
+- `handleGenerate` — line 2659, 2662
+- `startStreamGenerate` — line 2749
+- `startAsyncPolling` — line 2902
+
+抽离后需要这些调用点使用 `window.saveRecentJob(...)` 或保持 `saveRecentJob(...)`（通过 window 引用）。
+
+#### renderRecentJobRestore
+
+**依赖：**
+- `loadRecentJob()` — 可随模块迁移
+- `formatLocalDateTime()` — index.html 中的共享 helper（被多处使用）
+- `esc()` — index.html 中的共享 helper
+
+**问题：**
+- 依赖 index.html 中的共享 helper，无法独立迁移
+- 渲染 DOM 到 `#recentJobRestore`
+
+**可迁移性：暂不迁移**
+
+#### restoreRecentJob
+
+**依赖：**
+- `loadRecentJob()` — 可随模块迁移
+- `apiJson()` — index.html 中的共享 API helper（被多处使用）
+- `renderApiError()` — index.html 中的 shared error helper
+- `renderRecoveredJob()` — 见下
+
+**可迁移性：暂不迁移**
+
+#### renderRecoveredJob
+
+**依赖：**
+- `extractAudioAssetId()` — 可随模块迁移
+- `esc()` — index.html 共享 helper
+- `safeTextPreview()` — 可随模块迁移
+- `statusLabel()` — index.html 共享 helper
+- `resultSectionLabel()` — index.html 共享 helper
+- `audioPlayerHtml()` — index.html 共享 helper
+- `timelineTable()` — index.html 共享 helper
+- `resultStatusHintHtml()` — index.html 共享 helper
+
+**问题：**
+- 依赖大量 index.html 共享 helper，无法独立迁移
+- 渲染 DOM 到 `#resultsArea`
+
+**可迁移性：暂不迁移**
+
+---
+
+### 抽离方案分析
+
+#### 方案 A：只迁移 localStorage 核心（低风险）
+
+**迁移：**
+- `RECENT_JOB_STORAGE_KEY`
+- `extractJobId`
+- `extractAudioAssetId`
+- `safeTextPreview`
+- `buildRecentJobPayload`
+- `saveRecentJob`
+- `loadRecentJob`
+- `clearRecentJob`
+
+**保留在 index.html：**
+- `renderRecentJobRestore`（依赖 `formatLocalDateTime`、`esc`）
+- `restoreRecentJob`（依赖 `apiJson`、`renderApiError`）
+- `renderRecoveredJob`（依赖多个共享 helper）
+
+**问题：**
+- `saveRecentJob` 被多处调用，抽离后 index.html 内仍需调用 `window.saveRecentJob`
+- `renderRecentJobRestore` 和 `restoreRecentJob` 继续留在 index.html，逻辑分散
+- 节省约 40 行，但引入模块边界复杂度
+
+**结论：不值得，收益太小**
+
+#### 方案 B：不迁移（现状）
+
+**理由：**
+1. **E2E 零覆盖**：无任何 E2E 测试 recent job restore，迁移风险无测试网保护
+2. **高度耦合**：三个 render 函数依赖大量 index.html 共享 helper，强行迁移破坏内聚性
+3. **节省有限**：只迁移 localStorage 核心 + 提取工具，约 40 行，收益小
+4. **调用分散**：`saveRecentJob` 在 5 处被调用（handleGenerate/stream/async 链路），每处都需要改为 window 调用
+
+**结论：暂不迁移，维持现状**
+
+---
+
+### A2-A0 审查结论
+
+**不建议迁移 recent_jobRestore 相关函数到独立模块。**
+
+| 原因 | 说明 |
+|---|---|
+| E2E 零覆盖 | 无任何 E2E 测试 recent job restore，迁移无保护 |
+| 高度耦合 | render 函数依赖多个 index.html 共享 helper，无法独立迁移 |
+| 收益有限 | localStorage 核心仅 40 行，迁移收益小 |
+| 分散调用 | saveRecentJob 在 5 处被调用，引入 window 调用复杂度 |
+
+**建议：**
+- 后续如需迁移，先补 recent job restore E2E
+- 优先确保 P11 其它更高价值任务完成
+- batch_shared 状态管理设计、P11 后端能力增强优先于 recent_job 模块化

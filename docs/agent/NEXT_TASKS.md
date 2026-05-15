@@ -37,6 +37,7 @@
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
 | P11-FE-REDUCE-B1 | index.html 瘦身（product_hints.js 已抽出） | ✅ 已验证 |
+| P11-FE-REDUCE-A2 | recent_job 模块抽离（审查结论：不迁移） | ✅ 不建议 |
 | P11-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12 | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P11-FE-REDUCE-A1-CHECK（product_hints.js 验证通过）：
+截至 P11-FE-REDUCE-A2-A0（recent_job 模块抽离审查完成，结论：不迁移）：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
