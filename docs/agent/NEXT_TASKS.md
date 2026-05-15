@@ -24,6 +24,7 @@
 - P11-FE-REDUCE-A1-CHECK：product_hints.js 验证 ✅
 - P11-FE-REDUCE-A2-A0：recent_job 模块审查（结论：不迁移） ✅
 - P11-FE-REDUCE-CHECK：index.html 瘦身收口 ✅
+- P12-USAGE-FIX1：workspace binding hint 与 #bindingStatus 同步修复 ✅
 
 ## Next
 

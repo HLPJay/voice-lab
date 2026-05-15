@@ -3228,10 +3228,31 @@ function handleStopAsyncPolling() {
         const b = matched[0];
         statusEl.className = 'binding-status-inline bound';
         statusEl.textContent = `✓ 已绑定: ${b.provider_voice_id} (${b.model})`;
+        // Sync binding into _voiceBindMap so product_hints.js can read it
+        if (!window._voiceBindMap) window._voiceBindMap = {};
+        // Remove stale binding for this profile+provider
+        for (const vid in window._voiceBindMap) {
+          window._voiceBindMap[vid] = (window._voiceBindMap[vid] || []).filter(
+            bb => !(bb.profile_id === profileId && bb.provider === provider)
+          );
+        }
+        // Add current available binding
+        const voiceId = b.provider_voice_id;
+        if (!window._voiceBindMap[voiceId]) window._voiceBindMap[voiceId] = [];
+        window._voiceBindMap[voiceId].push({profile_id: profileId, provider: provider, model: b.model, status: 'available'});
       } else {
         statusEl.className = 'binding-status-inline unbound';
-        statusEl.textContent = `✗ ${provider} 下无可用绑定，请到「绑定管理」创建`;
+        statusEl.textContent = `✕ ${provider} 下无可用绑定，请到「绑定管理」创建`;
+        // Remove stale binding for this profile+provider from _voiceBindMap
+        if (window._voiceBindMap) {
+          for (const vid in window._voiceBindMap) {
+            window._voiceBindMap[vid] = (window._voiceBindMap[vid] || []).filter(
+              bb => !(bb.profile_id === profileId && bb.provider === provider)
+            );
+          }
+        }
       }
+      window.updateWorkspaceVoiceBindingHint?.();
     } catch (e) {
       statusEl.className = 'binding-status-inline error';
       statusEl.textContent = '绑定状态检查失败';

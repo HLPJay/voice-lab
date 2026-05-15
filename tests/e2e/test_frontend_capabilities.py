@@ -1709,3 +1709,139 @@ def test_batch_script_line_voice_binding_hint_switches_to_voices(
     active_tab = page.locator(".tab-btn.active")
     active_tab_name = active_tab.get_attribute("data-tab")
     assert active_tab_name == "voices", f"Active tab should be 'voices' after clicking '去选择音色', got: {active_tab_name}"
+
+
+# ── Test 30: checkBindingStatus syncs _voiceBindMap when binding exists ─
+
+def test_workspace_binding_hint_syncs_after_check_binding_status(
+    page, e2e_base_url, console_errors
+):
+    """Verify checkBindingStatus() syncs the API binding into _voiceBindMap when switching back to workspace.
+
+    The fix ensures that when checkBindingStatus() fetches bindings from the API,
+    it also writes them into window._voiceBindMap so product_hints.js can read them.
+    This prevents the workspace voice binding hint from showing '尚未绑定' while
+    #bindingStatus shows '已绑定' due to data inconsistency.
+    """
+
+    # Mock profiles
+    def handle_profiles(route):
+        route.fulfill(
+            status=200,
+            content_type='application/json',
+            body=json.dumps([
+                {'id': 'e2e_profile_001', 'name': 'E2E 测试人设'}
+            ]),
+        )
+
+    # Mock capabilities
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type='application/json',
+            body=json.dumps({
+                'providers': [{
+                    'provider': 'mock',
+                    't2a': {'supported': True}
+                }]
+            }),
+        )
+
+    # Mock bindings GET (returns a real binding)
+    def handle_bindings(route):
+        route.fulfill(
+            status=200,
+            content_type='application/json',
+            body=json.dumps([
+                {
+                    'id': 'binding_001',
+                    'profile_id': 'e2e_profile_001',
+                    'provider': 'mock',
+                    'model': 'speech-2.8-hd',
+                    'provider_voice_id': 'e2e_voice_001',
+                    'status': 'available',
+                    'priority': 1
+                }
+            ]),
+        )
+
+    # Mock provider-voices so voice table renders
+    def handle_provider_voices(route):
+        route.fulfill(
+            status=200,
+            content_type='application/json',
+            body=json.dumps({
+                'voices': [{
+                    'provider_voice_id': 'e2e_voice_001',
+                    'name': 'E2E 测试音色',
+                    'voice_type': 'female',
+                    'provider': 'mock'
+                }]
+            }),
+        )
+
+    page.route('**/api/voice/profiles', handle_profiles)
+    page.route('**/api/voice/capabilities', handle_capabilities)
+    page.route(re.compile(r'http://127\.0\.0\.1:\d+/api/voice/profiles/e2e_profile_001/bindings.*'), handle_bindings)
+    page.route('**/api/voice/provider-voices*', handle_provider_voices)
+
+    page.goto(e2e_base_url + '/static/index.html', wait_until='load', timeout=30000)
+    page.wait_for_selector('#providerSelect', state='attached', timeout=10000)
+    page.wait_for_timeout(500)
+
+    # Switch to voices tab
+    voices_tab = page.locator('.tab-btn[data-tab="voices"]')
+    voices_tab.click()
+    page.wait_for_selector('#tab-voices', state='attached', timeout=10000)
+    page.wait_for_timeout(500)
+
+    # Click 查询音色 to load voices (mock provider is default)
+    list_btn = page.locator('#listVoicesBtn')
+    assert list_btn.count() == 1, '#listVoicesBtn should exist'
+    list_btn.click()
+    page.wait_for_timeout(2000)
+
+    # _voiceBindMap should now be populated by handleListVoices
+    map_after_voices = page.evaluate('window._voiceBindMap')
+    assert map_after_voices is not None, 'handleListVoices should populate _voiceBindMap'
+    assert 'e2e_voice_001' in map_after_voices, (
+        "Expected 'e2e_voice_001' in _voiceBindMap after voices tab load"
+    )
+
+    # Switch back to workspace tab - this triggers checkBindingStatus
+    workspace_tab = page.locator('.tab-btn[data-tab="workspace"]')
+    workspace_tab.click()
+    page.wait_for_selector('#tab-workspace', state='attached', timeout=10000)
+    page.wait_for_timeout(1500)
+
+    # Debug: check what values checkBindingStatus sees
+    debug = page.evaluate('() => ({'
+        'profileVal: document.getElementById("profileSelect")?.value,'
+        'providerVal: document.getElementById("providerSelect")?.value,'
+        'bindingStatus: document.getElementById("bindingStatus")?.textContent,'
+        'voiceBindMap: window._voiceBindMap,'
+        '})')
+    print('DEBUG:', debug)
+
+    # Verify #bindingStatus shows the bound voice
+    binding_status = page.locator('#bindingStatus')
+    assert binding_status.count() == 1, '#bindingStatus should exist'
+    binding_status_text = binding_status.text_content()
+    assert 'e2e_voice_001' in binding_status_text or '已绑定' in binding_status_text, (
+        'Expected #bindingStatus to show bound voice'
+    )
+
+    # Verify workspace hint also shows the bound voice (not '尚未绑定')
+    hint_el = page.locator('#workspaceVoiceBindingHint')
+    assert hint_el.count() == 1, 'workspaceVoiceBindingHint should exist'
+    hint_html = hint_el.inner_html()
+    assert '尚未绑定音色' not in hint_html, (
+        'Hint should NOT show 尚未绑定 when voice is bound'
+    )
+    assert ('e2e_voice_001' in hint_html or '当前音色' in hint_html or '已绑定' in hint_html), (
+        'Hint should show binding info'
+    )
+
+
+
+
