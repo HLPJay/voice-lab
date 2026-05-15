@@ -67,7 +67,9 @@
 * P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构已完成 ✅
 * P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核已完成 ✅
 * P14-CONTEXT-C2：剧本一键回填已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C2-CHECK
+* P14-CONTEXT-C2-CHECK：剧本一键回填复核已完成 ✅（发现阻塞问题）
+* P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板已完成 ✅
+* 当前下一阶段：P14-CONTEXT-C2-FIX1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8313,6 +8315,53 @@ P14-CONTEXT-C1 已实现剧本 context 保存和详情展示。本阶段在 scri
 
 P14-CONTEXT-C2 完成，建议进入 **P14-CONTEXT-C2-CHECK**。
 
+## P14-CONTEXT-C2-CHECK：剧本一键回填复核
+
+### 背景
+
+P14-CONTEXT-C2 已实现剧本一键回填。本阶段对实现进行复核。
+
+### 复核结果
+
+**阻塞问题（C2-FIX1）：**
+- `switchToScriptBatchMode()` 只执行 `.tab-btn[data-tab="script"].click()`，激活 `#tab-script` 标签页
+- 但 `#tab-script` 内部有两个子面板 `batchLongtextPanel`（长文本子模式）和 `batchScriptPanel`（剧本子模式），由 `input[name="batchMode"]:checked` 控制
+- `switchToScriptBatchMode()` 未设置 `input[name="batchMode"][value="script"].checked = true`，也未触发 change 事件
+- 如果用户之前停留在长文本次面板（batchMode=longtext），点击恢复后只会激活剧本标签页，但 `batchLongtextPanel` 仍显示，`batchScriptPanel` 仍被隐藏
+
+### 阶段状态
+
+P14-CONTEXT-C2-CHECK 发现阻塞问题，建议进入 **P14-CONTEXT-C2-FIX1**。
+
+## P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板
+
+### 背景
+
+C2-CHECK 发现 `switchToScriptBatchMode()` 只切换外层 script tab，未设置 `input[name="batchMode"][value="script"]`，导致恢复后仍可能显示长文本次面板。本阶段修复该问题。
+
+### 修复内容
+
+**sample_sidebar.js：**
+- 重构 `switchToScriptBatchMode()`：无论 tab click 是否成功，都继续设置 batch mode radio
+- 增加 `input[name="batchMode"][value="script"].checked = true` 设置
+- 增加 `change` 事件触发
+- 增加 `batchScriptPanel.style.display = ''` 和 `batchLongtextPanel.style.display = 'none'` fallback
+- 移除 click 后的 `return`，确保 radio 设置逻辑总是执行
+
+**tests/test_context_store_script_integration_static.py：**
+- 新增 `test_switchToScriptBatchMode_sets_batch_mode_radio`：验证设置 `scriptRadio.checked = true`
+- 新增 `test_switchToScriptBatchMode_triggers_change_event`：验证触发 change 事件
+- 新增 `test_switchToScriptBatchMode_shows_batch_script_panel`：验证显示 `batchScriptPanel` 并隐藏 `batchLongtextPanel`
+- 新增 `test_switchToScriptBatchMode_no_early_return_after_click`：防止 `btn.click()` 后 `return` 导致 batch mode 设置被跳过
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：223 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX1 完成，建议进入 **P14-CONTEXT-C2-FIX1-CHECK**。
 
 
 

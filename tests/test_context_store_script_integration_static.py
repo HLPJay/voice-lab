@@ -811,6 +811,103 @@ class TestSampleSidebarScriptDetail:
         assert 'function switchToScriptBatchMode' in content, \
             'switchToScriptBatchMode function must exist'
 
+    def test_switchToScriptBatchMode_sets_batch_mode_radio(self):
+        """switchToScriptBatchMode must set input[name="batchMode"][value="script"].checked = true."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function switchToScriptBatchMode'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'input[name="batchMode"][value="script"]' in func_body, \
+            'switchToScriptBatchMode must reference input[name="batchMode"][value="script"]'
+        assert 'scriptRadio.checked = true' in func_body, \
+            'switchToScriptBatchMode must set scriptRadio.checked = true'
+
+    def test_switchToScriptBatchMode_triggers_change_event(self):
+        """switchToScriptBatchMode must trigger change event on the batch mode radio."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function switchToScriptBatchMode'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'change' in func_body.lower(), \
+            'switchToScriptBatchMode must dispatch change event'
+
+    def test_switchToScriptBatchMode_shows_batch_script_panel(self):
+        """switchToScriptBatchMode must show batchScriptPanel and hide batchLongtextPanel."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function switchToScriptBatchMode'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'batchScriptPanel' in func_body, \
+            'switchToScriptBatchMode must reference batchScriptPanel'
+        assert 'batchLongtextPanel' in func_body, \
+            'switchToScriptBatchMode must reference batchLongtextPanel'
+        # Check that batchScriptPanel is set to display: '' (visible)
+        assert "scriptPanel.style.display = ''" in func_body or 'scriptPanel.style.display=""' in func_body, \
+            'switchToScriptBatchMode must set batchScriptPanel.style.display = ""'
+        # Check that batchLongtextPanel is set to display: 'none' (hidden)
+        assert "longtextPanel.style.display = 'none'" in func_body or 'longtextPanel.style.display="none"' in func_body, \
+            'switchToScriptBatchMode must set batchLongtextPanel.style.display = "none"'
+
+    def test_switchToScriptBatchMode_no_early_return_after_click(self):
+        """switchToScriptBatchMode must not return early after btn.click(), must continue to set batch mode."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function switchToScriptBatchMode'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        # After btn.click() there must NOT be an immediate return that bypasses batch mode switching
+        # Find the btn.click pattern
+        click_idx = func_body.find('.click()')
+        if click_idx >= 0:
+            # After .click() there should not be a bare 'return;' before batchMode code
+            after_click = func_body[click_idx:]
+            # Check if there's a return statement before batchMode code
+            batch_mode_idx = after_click.find('batchMode')
+            return_idx = after_click.find('return')
+            if batch_mode_idx >= 0 and return_idx >= 0:
+                assert return_idx > batch_mode_idx or return_idx == -1, \
+                    'switchToScriptBatchMode must not return before setting batch mode after btn.click()'
+            # Also check: the click block should not end with just 'return;'
+            # i.e., the function should continue past the click
+            lines_after_click = after_click[:100]
+            assert not lines_after_click.strip().endswith('return;'), \
+                'switchToScriptBatchMode must not return immediately after btn.click()'
+
     def test_longtext_restore_button_still_exists(self):
         """longtext restore button must still exist (not removed by C2)."""
         content = read(SAMPLE_SIDEBAR_PATH)

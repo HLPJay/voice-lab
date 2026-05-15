@@ -634,20 +634,37 @@
 
   function switchToScriptBatchMode() {
     var btn = document.querySelector('.tab-btn[data-tab="script"]');
+
     if (btn && typeof btn.click === 'function') {
       btn.click();
-      return;
+    } else {
+      document.querySelectorAll('.tab-btn[data-tab]').forEach(function (b) {
+        b.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-content').forEach(function (c) {
+        c.classList.remove('active');
+      });
+      if (btn) btn.classList.add('active');
+      var panel = document.getElementById('tab-script');
+      if (panel) panel.classList.add('active');
     }
-    // Fallback: manual class toggle
-    document.querySelectorAll('.tab-btn[data-tab]').forEach(function (b) {
-      b.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-content').forEach(function (c) {
-      c.classList.remove('active');
-    });
-    if (btn) btn.classList.add('active');
-    var panel = document.getElementById('tab-script');
-    if (panel) panel.classList.add('active');
+
+    // Set batch mode to script (inner sub-panel switching)
+    var scriptRadio = document.querySelector('input[name="batchMode"][value="script"]');
+    if (scriptRadio) {
+      scriptRadio.checked = true;
+      try {
+        if (typeof Event === 'function') {
+          scriptRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      } catch (e) {}
+    }
+
+    // Ensure correct sub-panels are visible
+    var scriptPanel = document.getElementById('batchScriptPanel');
+    var longtextPanel = document.getElementById('batchLongtextPanel');
+    if (scriptPanel) scriptPanel.style.display = '';
+    if (longtextPanel) longtextPanel.style.display = 'none';
   }
 
   // ── helper: clear script lines for restore ───────────────────────────
