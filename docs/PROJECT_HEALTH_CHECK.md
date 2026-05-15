@@ -56,7 +56,8 @@
 * P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核已完成 ✅
 * P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口已完成 ✅
 * P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计已完成 ✅
-* 当前下一阶段：P14-SIDEBAR-ACTIONS-B1
+* P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现已完成 ✅
+* 当前下一阶段：P14-CONTEXT-B3
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7892,4 +7893,36 @@ P14-CONTEXT-B2 已实现长文本 context 保存与详情查看，SampleSidebar 
 ### 阶段状态
 
 P14-SIDEBAR-ACTIONS-A0 完成，建议进入 P14-SIDEBAR-ACTIONS-B1。
+
+## P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现
+
+### 背景
+
+P14-SIDEBAR-ACTIONS-A0 已完成按钮显示策略设计，推荐方案为：平铺按钮上限 4 个（播放、详情、下载、更多），低频操作收入更多菜单。本阶段实现该方案。
+
+### 实现内容
+
+- `sample_sidebar.js` 新增 `canShowFill(source)` 函数，`batch_longtext_*` / `batch_script_*` 类型返回 `false`
+- `buildCard` 重构按钮区：平铺按钮 = 播放 + 下载 + 详情 + 更多（最多 4 个）
+- 更多菜单包含：复制文本、填入工作台（仅 workspace/audition）、删除
+- `bindActionEvents` 新增：更多按钮切换、菜单项点击（复制/填入/删除）、菜单外点击关闭
+- 删除菜单项增加 `window.confirm('确定删除该样本？')` 确认
+- `init` 新增 `document` 级点击监听，关闭已打开的更多菜单
+- CSS 新增：`.sample-more-wrap`、`.sample-more-menu`（`display:none`，`open` 时 `display:block`）、`.sample-menu-item`、`.sample-menu-item.danger`
+- 填入工作台对 longtext/script 样本不显示
+
+### 测试结果
+
+结果：589 passed。
+
+### 阶段边界
+
+- 未实现 B3 回填（详情面板内恢复按钮）
+- 未修改播放/下载/详情/复制/填入/删除核心逻辑
+- 未调用后端 / MiniMax
+
+### 阶段状态
+
+P14-SIDEBAR-ACTIONS-B1 完成。
+
 

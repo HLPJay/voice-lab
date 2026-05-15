@@ -127,6 +127,21 @@
     return text.substring(0, maxLen) + '…';
   }
 
+  /**
+   * Returns true if "fill" (填入工作台) should be shown for the given source.
+   * batch_longtext / batch_script samples should NOT show fill — they write to
+   * #textInput which is the workspace text area, not the batch tabs.
+   */
+  function canShowFill(source) {
+    if (!source) return true;
+    return !(
+      source === 'batch_longtext_merged' ||
+      source === 'batch_script_merged' ||
+      source === 'batch_longtext_segment' ||
+      source === 'batch_script_segment'
+    );
+  }
+
   // ── card builder ────────────────────────────────────────────────────
 
   function buildCard(sample) {
@@ -204,6 +219,9 @@
     }
 
     // Action buttons — play uses data-id (not data-url) for in-card playback
+    // Flat buttons: max 4 = play + download + detail + more
+    // Low-frequency actions (copy/fill/delete) go into the "more" dropdown menu
+    var hasMenuItems = true; // more menu always shown if rendered
     html += '<div class="sample-card-actions">';
     if (canPlay) {
       html += '<button class="sample-btn-play" data-id="' + idAttr + '" title="播放">▶</button>';
@@ -214,9 +232,18 @@
     if (sample.context_id) {
       html += '<button class="sample-btn-detail" data-id="' + idAttr + '" title="详情">ⓘ</button>';
     }
-    html += '<button class="sample-btn-copy" data-text="' + encodeURIComponent(textRaw) + '" title="复制文本">⎘</button>';
-    html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(textRaw) + '" title="填入工作台">↓</button>';
-    html += '<button class="sample-btn-delete" data-id="' + idAttr + '" title="删除">✕</button>';
+    if (hasMenuItems) {
+      html += '<div class="sample-more-wrap">';
+      html += '<button class="sample-btn-more" data-id="' + idAttr + '" title="更多">⋯</button>';
+      html += '<div class="sample-more-menu">';
+      html += '<button class="sample-menu-item sample-menu-copy" data-text="' + encodeURIComponent(textRaw) + '">复制文本</button>';
+      if (canShowFill(sourceRaw)) {
+        html += '<button class="sample-menu-item sample-menu-fill" data-text="' + encodeURIComponent(textRaw) + '">填入工作台</button>';
+      }
+      html += '<button class="sample-menu-item sample-menu-delete" data-id="' + idAttr + '">删除</button>';
+      html += '</div>';
+      html += '</div>';
+    }
     html += '</div>';
 
     html += '</div>';
@@ -301,7 +328,7 @@
         return;
       }
 
-      // Delete single sample
+      // Delete single sample (flat button — deprecated, now via more menu)
       if (target.classList.contains('sample-btn-delete') && sampleId) {
         deleteSample(sampleId);
         return;
@@ -310,6 +337,51 @@
       // Detail view
       if (target.classList.contains('sample-btn-detail') && sampleId) {
         showSampleDetail(sampleId);
+        return;
+      }
+
+      // More menu toggle
+      if (target.classList.contains('sample-btn-more') && sampleId) {
+        // Close any other open menus first
+        var openMenus = root.querySelectorAll('.sample-more-wrap.open');
+        for (var mi = 0; mi < openMenus.length; mi++) {
+          if (openMenus[mi] !== target.parentElement) {
+            openMenus[mi].classList.remove('open');
+          }
+        }
+        target.parentElement.classList.toggle('open');
+        return;
+      }
+
+      // More menu: copy
+      if (target.classList.contains('sample-menu-copy')) {
+        var copyTextVal = target.getAttribute ? target.getAttribute('data-text') : null;
+        if (copyTextVal) copyText(decodeURIComponent(copyTextVal));
+        // Close menu
+        var parentMenu = target.closest('.sample-more-wrap');
+        if (parentMenu) parentMenu.classList.remove('open');
+        return;
+      }
+
+      // More menu: fill
+      if (target.classList.contains('sample-menu-fill')) {
+        var fillTextVal = target.getAttribute ? target.getAttribute('data-text') : null;
+        if (fillTextVal) fillTextInput(decodeURIComponent(fillTextVal));
+        // Close menu
+        var parentMenu2 = target.closest('.sample-more-wrap');
+        if (parentMenu2) parentMenu2.classList.remove('open');
+        return;
+      }
+
+      // More menu: delete with confirm
+      if (target.classList.contains('sample-menu-delete')) {
+        var delId = target.getAttribute ? target.getAttribute('data-id') : null;
+        if (delId && window.confirm && window.confirm('确定删除该样本？')) {
+          deleteSample(delId);
+        }
+        // Close menu
+        var parentMenu3 = target.closest('.sample-more-wrap');
+        if (parentMenu3) parentMenu3.classList.remove('open');
         return;
       }
 
@@ -544,6 +616,23 @@
         }
       };
       window.addEventListener('storage', _storageListener);
+    }
+
+    // Close more menus when clicking outside the sidebar
+    if (window.addEventListener) {
+      document.addEventListener('click', function (e) {
+        var root = getRoot();
+        if (!root) return;
+        var target = e.target || e.srcElement;
+        if (!target) return;
+        // If click is outside the sidebar root, close all open menus
+        if (!root.contains(target)) {
+          var openMenus = root.querySelectorAll('.sample-more-wrap.open');
+          for (var i = 0; i < openMenus.length; i++) {
+            openMenus[i].classList.remove('open');
+          }
+        }
+      });
     }
   }
 

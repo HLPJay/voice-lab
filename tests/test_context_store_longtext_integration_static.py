@@ -343,7 +343,19 @@ class TestSampleSidebarIntegration:
     def test_detail_no_fill_back(self):
         content = read(SAMPLE_SIDEBAR_PATH)
         idx = content.find('showSampleDetail')
-        func_body = content[idx:idx + 2000]
+        assert idx >= 0, 'showSampleDetail must exist'
+        # Extract the exact function body using brace counting
+        depth = 0
+        end = idx
+        for i in range(idx, len(content)):
+            if content[i] == '{':
+                depth += 1
+            elif content[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = content[idx:end]
         # showSampleDetail should NOT call fillTextInput or modify DOM for fill
         # It should only display, not restore
         assert 'fillTextInput' not in func_body, \
