@@ -110,3 +110,37 @@
 
 **验证方式：**
 - targeted E2E：2 passed ✅
+
+## P12-USAGE-UX2：最近任务入口语义和位置不适合创作流程
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- 最近任务显示"无文本预览 · 未知状态 · 有音频资产"等低价值文本
+- "恢复"按钮语义不准确
+- 大卡片位于文案输入前，干扰主流程
+
+**原因：**
+- recent job 是任务恢复逻辑，不是创作样本管理
+- 当前展示没有按任务状态区分动作语义
+
+**修复方案：**
+- 降级为 compact bar（不再是大 card）
+- 根据信息完整度和状态调整按钮文案：
+  - 无 info → "查看历史"
+  - success → "查看最近结果"
+  - processing → "继续查看进度"
+  - failed → "查看失败原因"
+- 信息严重不足时不显示大卡片
+
+**修复位置：**
+- `app/static/index.html`：renderRecentJobRestore() 函数
+
+**验证方式：**
+- git diff --check：通过 ✅
+- 静态检查：node --check 不支持 HTML 内联脚本，跳过
+
+**未改范围：**
+- handleGenerate、renderResults、renderAsyncResult、renderStreamResult
+- batch_longtext.js、batch_script.js
+- 后端 API、localStorage 结构

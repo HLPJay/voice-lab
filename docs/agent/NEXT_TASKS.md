@@ -29,12 +29,13 @@
 - P12-USAGE-FIX2：check initial workspace binding status ✅
 - P12-USAGE-FIX3：sync batch binding hints ✅
 - P12-USAGE-FIX3B：add status to bind map entries ✅
+- P12-USAGE-UX2：redesign recent job entry ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE-UX2 | 最近任务入口优化 | 用户反馈后 |
+| P12-USAGE-FIX4-A0 | 音频下载失败审查 | 用户反馈后 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

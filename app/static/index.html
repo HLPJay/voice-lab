@@ -2011,26 +2011,49 @@
       el.innerHTML = '';
       return;
     }
-    const savedAt = recent.saved_at ? formatLocalDateTime(recent.saved_at) : '';
-    const assetHint = recent.audio_asset_id ? '有音频资产' : '未记录音频资产';
-    el.innerHTML = `
-      <div class="card" style="padding:12px 14px;margin-bottom:12px;border-left:4px solid #667eea">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-          <div>
-            <div style="font-weight:600;font-size:0.9rem;color:#2d3748">最近任务</div>
-            <div style="font-size:0.78rem;color:#718096;margin-top:4px">
-              ${esc(recent.text_preview || '无文本预览')} · ${esc(recent.status || '未知状态')} · ${esc(assetHint)}
-            </div>
-            <div style="font-size:0.72rem;color:#a0aec0;margin-top:2px">
-              ${esc(recent.job_id)} ${savedAt ? '· ' + esc(savedAt) : ''}
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn-sm" onclick="restoreRecentJob()">恢复</button>
-            <button class="btn-sm" onclick="clearRecentJob()">清除</button>
-          </div>
-        </div>
+    const status = recent.status || '';
+    const textPreview = recent.text_preview || '';
+    const audioAssetId = recent.audio_asset_id || null;
+    const isSuccess = /^(success|completed)$/i.test(status);
+    const isFailed = /^(failed|error)$/i.test(status);
+    const isProcessing = /^(processing|pending|running)$/i.test(status);
+    const hasInfo = textPreview || audioAssetId;
+
+    // If info severely lacking (no text, no audio, and unknown/processing status), show minimal entry
+    if (!hasInfo && !status) {
+      el.innerHTML = `<div style="font-size:0.78rem;color:#718096;padding:8px 12px;line-height:1.5">
+        最近有一条音频结果，可前往历史查看。
+        <button onclick="clearRecentJob()" style="margin-left:8px;font-size:0.75rem;padding:2px 8px;cursor:pointer">清除</button>
       </div>`;
+      return;
+    }
+
+    let msg = '';
+    let btnText = '查看';
+    if (isFailed) {
+      msg = '最近任务失败';
+      btnText = '查看失败原因';
+    } else if (isProcessing) {
+      msg = '最近任务仍在处理中';
+      btnText = '继续查看进度';
+    } else if (isSuccess && audioAssetId) {
+      msg = '最近完成：' + (textPreview ? esc(textPreview) : '音频结果');
+      btnText = '查看最近结果';
+    } else if (hasInfo) {
+      msg = '最近任务：' + (textPreview ? esc(textPreview) : '有音频结果');
+      btnText = '查看最近结果';
+    } else {
+      msg = '最近有一条音频结果';
+      btnText = '查看历史';
+    }
+
+    el.innerHTML = `<div style="font-size:0.78rem;color:#718096;padding:8px 12px;line-height:1.5;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      ${esc(msg)}
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="restoreRecentJob()" style="font-size:0.75rem;padding:2px 8px;cursor:pointer">${esc(btnText)}</button>
+        <button onclick="clearRecentJob()" style="font-size:0.75rem;padding:2px 8px;cursor:pointer">清除</button>
+      </div>
+    </div>`;
   }
 
   async function restoreRecentJob() {
