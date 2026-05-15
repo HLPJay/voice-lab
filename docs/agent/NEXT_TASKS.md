@@ -2,7 +2,11 @@
 
 ## 当前阶段
 
-**P13-CREATION-B5：batch samples 接入 sample_store**
+**P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store**
+
+## 已完成（续）
+
+- P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计 ✅
 
 ## 已完成
 
@@ -71,7 +75,7 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-CREATION-B5 | batch_longtext / batch_script samples 接入 sample_store | B4-CLOSE 完成 |
+| P13-CREATION-B5-MVP1 | connect batch merged audio to sample_store | B5-A0 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

@@ -26,7 +26,8 @@
 * P13-CREATION-B4-CHECK：sample sidebar UI 复核已完成 ✅
 * P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口已完成 ✅
 * P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归已完成 ✅
-* 当前下一阶段：P13-CREATION-B5 batch_longtext / batch_script samples 接入 sample_store
+* P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计已完成 ✅
+* 当前下一阶段：P13-CREATION-B5-MVP1 batch merged audio 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6330,3 +6331,180 @@ tab-workspace (unclosed)
 ### 阶段状态
 
 回归已修复。重新评估是否进入 P13-CREATION-B5。
+
+## P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计
+
+### 背景
+
+B4 已完成 sample_sidebar UI + workspace/audition sample_store 接入。B5 目标是将 batch_longtext / batch_script 的生成结果接入 sample_store。本阶段（B5-A0）只做代码审查和文档设计，不实现 B5。
+
+### 审查范围
+
+- `batch_longtext.js`（P9 抽取）— mode='longtext' 提交
+- `batch_script.js`（P9 抽取）— mode='script' 提交
+- `index.html` 内的批处理轮询与渲染逻辑（`renderBatchStatus` / `renderBatchResultPlayer` / `pollBatchStatus` / `startBatchPoll` / `showBatchProgress`）
+- `sample_store.js` — 已有 `batch_id` / `segment_id` 字段
+
+### 关键代码定位
+
+**提交入口**：
+
+- `batch_longtext.js`：`batchLongtextSubmit` → `guardedJsonFetch('/api/voice/batch/submit', {mode:'longtext', ...})`
+- `batch_script.js`：`batchScriptSubmit` → `guardedJsonFetch('/api/voice/batch/submit', {mode:'script', script:lines, ...})`
+
+**batch_id 管理**：
+
+- 成功后 `data.batch_id` 存入 `_currentBatchId`
+- 轮询通过 `startBatchPoll(_currentBatchId)` 启动
+
+**轮询逻辑**（index.html，约 4738-5048 行）：
+
+- `pollBatchStatus(batchId)` — GET `/api/voice/batch/{batchId}/status`
+- 返回结构：`{batch_id, status, total_duration_ms, segments: [{index, status, text_preview, error_message, duration_ms, url, id}], merged_audio: {url, id}}`
+- `renderBatchStatus(batchId, data)` — 渲染 segments 列表
+- `renderBatchResultPlayer(batchId, data)` — 渲染 merged_audio 播放器（URL / asset_id / total_duration_ms）
+- `showBatchProgress(batchId)` — 显示进度模态
+
+**merge_audio 可用时机**：
+
+- `renderBatchResultPlayer` 在 batch status 返回 `merged_audio` 非空时调用
+- 此时 `data.merged_audio.url` 和 `data.merged_audio.id` 可用于写入 sample
+
+### sample_store 已有字段适配
+
+`sample_store.js` 的 `normalizeSample` 支持以下与 batch 相关的字段：
+
+- `batch_id` — batch 任务 ID
+- `segment_id` — segment 索引（对 merged audio 用 segment_id = null）
+- `job_id` — 保留（batch 场景为 null）
+- `source` — `'batch_longtext_merged'` 或 `'batch_script_merged'`
+- `download_url` — `merged_audio.url`
+- `asset_id` — `merged_audio.id`
+- `text_preview` — 取 segments[0].text_preview 或 '批量文本'
+- `duration_ms` — `total_duration_ms`
+- `profile_id / profile_name` — 提交时的 profile 信息
+- `provider / model / voice_id / voice_name` — 提交时的音色信息
+
+### 最小实现策略
+
+**新增函数**：`safePushBatchSample(source, data, extra)`
+
+fail-safe 封装，类似 `safePushAuditionSample`：
+
+```
+source: 'batch_longtext' | 'batch_script'
+batch_id: data.batch_id
+segment_id: null  （merged audio，不按 segment 保存）
+asset_id: data.merged_audio?.id || null
+download_url: data.merged_audio?.url  （拒绝 blob:，用 isSafeAudioUrl 把关）
+text_preview: data.segments?.[0]?.text_preview || '批量文本'
+profile_id / profile_name: extra.profileId || null, extra.profileName || null
+provider / model / voice_id / voice_name: extra.provider, extra.model, extra.voiceId, extra.voiceName
+duration_ms: data.total_duration_ms || null
+audio_format: null  （batch API 未返回 format）
+status: data.status || 'completed'
+tags: ['batch']
+```
+
+**接入点**：`renderBatchResultPlayer` 内，merged_audio 存在时调用
+
+前提条件：`data.merged_audio?.url && data.merged_audio?.id`
+
+**extra 参数来源**：
+
+- `batch_longtext.js`：当前绑定音色信息需从 DOM 或状态获取（需审计现有代码是否有可复用状态）
+- `batch_script.js`：同上
+
+**不接入范围（本次 B5 最小实现）**：
+
+- 不按 segment 粒度保存（segment 多对多，不适合 sidebar 观察场景）
+- 不改 batch_longtext.js / batch_script.js 内部逻辑
+- 不接 batch 轮询进度（sample_store 只存最终结果）
+
+### 阶段边界
+
+- 只做代码审查和文档设计
+- 不实现 B5
+- 不接 sample_store
+- 不改 index.html / JS
+- 不改测试
+- 不调用真实 MiniMax
+
+### source 命名修正
+
+B5-MVP1 只保存合并音频 merged audio。source 名称必须明确区分 merged 与后续可能新增的 segment：
+
+- `batch_longtext_merged` — 一次 batch_longtext 成功结果的合并音频
+- `batch_script_merged` — 一次 batch_script 成功结果的合并音频
+- 后续预留：`batch_longtext_segment` / `batch_script_segment`（B5-MVP1 不实现）
+
+### B5-MVP1 推荐策略
+
+一次 batch_longtext 成功结果 → 写入 1 条 `batch_longtext_merged` sample
+一次 batch_script 成功结果 → 写入 1 条 `batch_script_merged` sample
+
+**sample 字段**：
+
+```
+source: batch_longtext_merged / batch_script_merged
+job_id: batch_id（使用 batch_id 作为 job_id）
+batch_id: batch_id
+segment_id: null
+asset_id: merged_audio.id
+download_url: merged_audio.url（必须通过 isSafeAudioUrl 验证）
+text_preview: longtext 使用 batchText 前 100 字；script 使用前几行台词拼接前 100 字
+provider: selectedProvider
+model: selectedModel || null
+voice_id: selectedVoiceId
+voice_name: selectedVoiceName
+profile_id: selectedProfileId || null
+profile_name: selectedProfileName || null
+duration_ms: total_duration_ms || null
+audio_format: null
+status: 'completed'
+tags: ['batch', 'merged']
+```
+
+**写入前置条件**：
+
+```
+IF merged_audio.id 不存在 → 不写 sample
+IF merged_audio.url 不存在 → 不写 sample
+IF merged_audio.url 是 blob: → 不写 sample
+IF batch status !== 'completed' → 不写 sample
+```
+
+**接入点**：`renderBatchResultPlayer` 内，merged_audio 存在且可用时调用 `safePushBatchSample`。
+
+### A0 最终结论
+
+```
+B5-MVP1 只接 merged audio
+不按 segment 粒度保存
+不接轮询进度
+不保存失败段
+不保存 blob URL
+不修改 sample_store.js（schema 已支持）
+不修改 sample_sidebar.js（除非后续需要补 sourceLabel）
+不修改后端 API
+不修改数据库
+```
+
+### 独立设计文档
+
+完整设计文档：`docs/P13_CREATION_SAMPLE_OBSERVATION_B5_A0.md`
+
+包含：batch_longtext/batch_script 代码路径、字段核验、merged/segment 字段分析、策略候选、B5-MVP1 详细字段定义、B5 实现边界、B5 测试计划。
+
+### 阶段边界
+
+- 只做代码审查和文档设计
+- 不实现 B5
+- 不接 sample_store
+- 不改 index.html / JS
+- 不改测试
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-A0 设计文档已完成，可以开始 P13-CREATION-B5-MVP1。
