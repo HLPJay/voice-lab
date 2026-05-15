@@ -1095,6 +1095,16 @@
     font-size: 0.78rem;
     color: #718096;
   }
+
+  /* Script batch hints */
+  .batch-script-hints {
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: #4a5568;
+  }
 </style>
 </head>
 <body>
@@ -1414,6 +1424,20 @@
           <!-- Dynamic script lines -->
         </div>
         <button class="btn-sm" id="scriptAddLineBtn" onclick="addScriptLine()" style="margin-top:8px">+ 添加一行</button>
+      </div>
+      <div class="batch-script-hints" id="batchScriptHints">
+        <div class="batch-hint-row">
+          <span id="batchScriptLineStats">剧本统计：共 0 行，0 行有效</span>
+          <span id="batchScriptCharStats">约 0 字</span>
+          <span id="batchScriptEstimatedSegments">预计生成：0 段</span>
+        </div>
+        <div class="batch-hint-row">
+          <span id="batchScriptRoleStats">角色：0 个</span>
+          <span id="batchScriptProfileStats">涉及音色：0 个</span>
+        </div>
+        <div class="batch-hint-warning" id="batchScriptRoleWarning" style="display:none"></div>
+        <div class="batch-hint-warning" id="batchScriptProfileWarning" style="display:none"></div>
+        <div class="batch-hint-subtitle" id="batchScriptSubtitleHint" style="display:none">已开启字幕，生成耗时可能增加。</div>
       </div>
       <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
@@ -4706,6 +4730,7 @@ function handleStopAsyncPolling() {
     }
     // Update voice binding hint for this line after profile is set
     updateScriptLineVoiceHint(id);
+    updateBatchScriptHints();
   }
 
   function removeScriptLine(id) {
@@ -4714,6 +4739,7 @@ function handleStopAsyncPolling() {
     const idx = _scriptRows.findIndex(r => r.id === id);
     if (idx >= 0) _scriptRows.splice(idx, 1);
     updateScriptLineLimitState();
+    updateBatchScriptHints();
   }
 
   // Event delegation for script line inputs (keeps state in sync)
@@ -4912,6 +4938,128 @@ function handleStopAsyncPolling() {
       const subEl2 = document.getElementById('batchNeedSubtitle');
       subEl.style.display = (subEl2 && subEl2.checked) ? '' : 'none';
     }
+  }
+
+  // Script batch hints
+
+  function getScriptRowsSafe() {
+    if (typeof _scriptRows === 'undefined') return [];
+    return _scriptRows;
+  }
+
+  function collectScriptStats() {
+    var rows = getScriptRowsSafe();
+    var totalRows = rows.length;
+    var validRows = 0;
+    var totalChars = 0;
+    var roleSet = {};
+    var emptyRoleRows = 0;
+    var profileSet = {};
+    var missingProfileRows = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var text = row.text ? row.text.trim() : '';
+      if (!text) continue;
+      validRows++;
+      totalChars += text.length;
+      var role = row.role ? row.role.trim() : '';
+      if (role) {
+        roleSet[role] = true;
+      } else {
+        emptyRoleRows++;
+      }
+      var profileId = row.profileId ? row.profileId.trim() : '';
+      if (profileId) {
+        profileSet[profileId] = true;
+      } else {
+        missingProfileRows++;
+      }
+    }
+    var roleNames = Object.keys(roleSet);
+    return {
+      totalRows: totalRows,
+      validRows: validRows,
+      emptyRows: totalRows - validRows,
+      totalChars: totalChars,
+      estimatedSegments: validRows,
+      roleCount: roleNames.length,
+      roleNames: roleNames,
+      emptyRoleRows: emptyRoleRows,
+      profileCount: Object.keys(profileSet).length,
+      missingProfileRows: missingProfileRows
+    };
+  }
+
+  function formatRoleList(roleNames) {
+    if (!roleNames || roleNames.length === 0) return '0 个';
+    var shown = roleNames.slice(0, 3);
+    var rest = roleNames.length - shown.length;
+    var text = shown.join(' / ');
+    if (rest > 0) {
+      text += ' 等 ' + roleNames.length + ' 个';
+    } else {
+      text += '（共 ' + roleNames.length + ' 个）';
+    }
+    return text;
+  }
+
+  function updateBatchScriptHints() {
+    var stats = collectScriptStats();
+
+    var lineStatsEl = document.getElementById('batchScriptLineStats');
+    if (lineStatsEl) lineStatsEl.textContent = '剧本统计：共 ' + stats.totalRows + ' 行，' + stats.validRows + ' 行有效';
+
+    var charStatsEl = document.getElementById('batchScriptCharStats');
+    if (charStatsEl) charStatsEl.textContent = '约 ' + stats.totalChars + ' 字';
+
+    var segEl = document.getElementById('batchScriptEstimatedSegments');
+    if (segEl) segEl.textContent = '预计生成：' + stats.estimatedSegments + ' 段';
+
+    var roleStatsEl = document.getElementById('batchScriptRoleStats');
+    if (roleStatsEl) roleStatsEl.textContent = '角色：' + formatRoleList(stats.roleNames);
+
+    var profileStatsEl = document.getElementById('batchScriptProfileStats');
+    if (profileStatsEl) profileStatsEl.textContent = '涉及音色：' + stats.profileCount + ' 个';
+
+    var roleWarnEl = document.getElementById('batchScriptRoleWarning');
+    if (roleWarnEl) {
+      if (stats.emptyRoleRows > 0) {
+        roleWarnEl.textContent = '有 ' + stats.emptyRoleRows + ' 行未填写角色名。';
+        roleWarnEl.style.display = '';
+      } else {
+        roleWarnEl.style.display = 'none';
+      }
+    }
+
+    var profileWarnEl = document.getElementById('batchScriptProfileWarning');
+    if (profileWarnEl) {
+      if (stats.missingProfileRows > 0) {
+        profileWarnEl.textContent = '有 ' + stats.missingProfileRows + ' 行未选择音色，请确认是否使用默认音色或手动选择。';
+        profileWarnEl.style.display = '';
+      } else {
+        profileWarnEl.style.display = 'none';
+      }
+    }
+
+    var subHintEl = document.getElementById('batchScriptSubtitleHint');
+    if (subHintEl) {
+      var subCb = document.getElementById('batchScriptNeedSubtitle');
+      subHintEl.style.display = (subCb && subCb.checked) ? '' : 'none';
+    }
+  }
+
+  var _batchScriptHintsBound = false;
+  function bindBatchScriptHints() {
+    if (_batchScriptHintsBound) return;
+    _batchScriptHintsBound = true;
+    var linesEl = document.getElementById('scriptLines');
+    var subEl = document.getElementById('batchScriptNeedSubtitle');
+    if (linesEl) {
+      linesEl.addEventListener('input', updateBatchScriptHints);
+      linesEl.addEventListener('change', updateBatchScriptHints);
+    }
+    if (subEl) subEl.addEventListener('change', updateBatchScriptHints);
+    updateBatchScriptHints();
   }
 
   var _batchLongtextHintsBound = false;
@@ -5314,6 +5462,7 @@ function handleStopAsyncPolling() {
 </script>
 <script>
   bindBatchLongtextHints();
+  bindBatchScriptHints();
 </script>
 </body>
 </html>
