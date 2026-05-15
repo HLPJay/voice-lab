@@ -1038,3 +1038,36 @@ def test_voice_helper_window_exports_are_available(
         ];
     } """)
     assert not any(invalid_cases), f"isValidVoiceId should return false for invalid IDs: {invalid_cases}"
+
+
+# ── Test 22: Voice clone module is loaded and exports available ─────────────────
+
+def test_voice_clone_module_is_loaded_and_exports_available(
+    page, e2e_base_url, console_errors
+):
+    """Verify voice_clone.js is loaded and exposes handleUploadAudio / handleCloneAutoId / updateCloneBtnState / handleCloneVoice."""
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Verify script tag exists
+    script_tag = page.locator('script[src="/static/js/voice_clone.js"]')
+    assert script_tag.count() == 1, "voice_clone.js script tag should exist"
+
+    # Verify all required window exports are functions
+    exports_ok = page.evaluate(""" () => {
+        const required = [
+            'handleUploadAudio',
+            'handleCloneAutoId',
+            'updateCloneBtnState',
+            'handleCloneVoice'
+        ];
+        const results = {};
+        for (const name of required) {
+            results[name] = typeof window[name] === 'function';
+        }
+        return results;
+    } """)
+
+    for name, is_fn in exports_ok.items():
+        assert is_fn, "window.%s should be a function" % name

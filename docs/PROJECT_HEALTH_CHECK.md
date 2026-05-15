@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-D：
+截至 P9-FE1-G4：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4345,3 +4345,28 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 21 pas
 **未改关键链路：** 未迁移 clone/design/import 业务函数、未改 app/static/js/*、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
 
 **下一步建议：** `voice_clone.js` 迁移所需的前置 helper 已就绪，可进入 `voice_clone.js` 抽离任务。
+
+## P9-FE1-G4：抽离声音克隆模块 voice_clone.js
+
+**时间：** 2026-05-15
+
+**问题：** `index.html` 内含 ~314 行克隆业务逻辑（handleUploadAudio / handleCloneAutoId / updateCloneBtnState / handleCloneVoice），混杂在 4000+ 行巨型单文件中，难以维护。
+
+**修复：**
+- 新建 `app/static/js/voice_clone.js`，以 IIFE 包装，4 个函数全部 export 为 `window.*`
+- `index.html` 移除迁移函数体，保留原 onclick 属性（由 IIFE 重新挂载）
+- 在 `index.html` 的 `batch_script.js` 后新增 `<script src="/static/js/voice_clone.js"></script>` 标签
+- 克隆函数段注释 `// Clone Tab — MOVED to /static/js/voice_clone.js`
+- 补回因克隆段删除而丢失的 `isValidVoiceId`（standalone 版本，`window.isValidVoiceId` 赋值保留在 index.html）
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "clone"  # 2 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 22 passed
+```
+
+**测试结果：** 22 passed in 70.11s。
+
+**未改关键链路：** 未迁移 import/design 业务函数、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
+
+**下一步建议：** voice_clone.js 抽离完成，E2E 22 passed。可进入 voice_import.js / voice_design.js 抽离。
