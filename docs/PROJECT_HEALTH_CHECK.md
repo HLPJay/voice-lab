@@ -30,9 +30,9 @@
 * P13-CREATION-B5-A0-CODE-CHECK-FIX：batch A0 文档代码事实校验修正已完成 ✅
 * P13-CREATION-B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧已完成 ✅
 * P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检已完成 ✅
-* P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store 已完成，待 B5-CHECK 复核 ✅
+* P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store 已完成 ✅
 * P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正已完成 ✅
-* 当前下一阶段：P13-CREATION-B5-CHECK batch merged audio sample_store 接入复核
+* P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6728,3 +6728,109 @@ B5-MVP1 实现后复核发现两个小问题：`docs/agent/NEXT_TASKS.md` 仍停
 ### 阶段状态
 
 B5-MVP1-CHECK-FIX1 完成后，进入 B5-CHECK。
+
+## P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核
+
+### 复核范围
+
+batch merged audio 接入 sample_store 的实现复核，覆盖以下文件：
+
+- `app/static/index.html`（`isSafeBatchAudioUrl`、`safePushBatchSample`、`renderBatchResultPlayer` 集成）
+- `app/static/js/batch_longtext.js`（`_batchSampleContextById` 保存）
+- `app/static/js/batch_script.js`（`_batchSampleContextById` 保存、`getSingleProfileId`、`buildScriptTextPreview`）
+- `app/static/js/sample_sidebar.js`（`sourceLabel` 标签）
+- `tests/test_sample_store_batch_integration_static.py`（新增 69 个静态契约测试）
+- `tests/test_sample_sidebar_static.py`（2 个测试更新）
+- `tests/test_existing_function_regression_static.py`（4 个测试更新）
+
+### 复核结果：22/22 通过
+
+#### isSafeBatchAudioUrl（6 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 函数存在于 index.html | ✅ |
+| 2 | 拒绝 `blob:` URL | ✅ |
+| 3 | 拒绝 `javascript:` URL | ✅ |
+| 4 | 拒绝 `data:` URL | ✅ |
+| 5 | 允许 `/api/` 路径 | ✅ |
+| 6 | 允许 `http://` 和 `https://` | ✅ |
+
+#### safePushBatchSample 契约（16 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 函数存在于 index.html | ✅ |
+| 2 | `extra = {}` 默认空对象参数 | ✅ |
+| 3 | try/catch fail-safe 结构 | ✅ |
+| 4 | 调用 `SampleStore.pushSample` | ✅ |
+| 5 | 无直接 localStorage 读写 | ✅ |
+| 6 | 拒绝 `data.status !== 'success'` | ✅ |
+| 7 | 拒绝缺失 `batch_id` | ✅ |
+| 8 | 拒绝缺失 `merged_audio.id` | ✅ |
+| 9 | 调用 `isSafeBatchAudioUrl` 校验 URL | ✅ |
+| 10 | `download_url` 使用 batch API（`/api/voice/batch/{id}/download`） | ✅ |
+| 11 | `download_url` 非 `merged_audio.url` | ✅ |
+| 12 | `download_url` 无 `/api/voice/assets/` 回退 | ✅ |
+| 13 | `source` 来自 `renderBatchResultPlayer` 传入 | ✅ |
+| 14 | `segment_id: null` | ✅ |
+| 15 | `model: null`、`voice_id: null`、`voice_name: null` | ✅ |
+| 16 | 标签含 `'batch'` 和 `'merged'` | ✅ |
+
+#### 上下文保存（longtext + script 各 9 项）
+
+| # | 检查项 | longtext | script |
+|---|--------|----------|--------|
+| 1 | `_batchSampleContextById` 存在 | ✅ | ✅ |
+| 2 | `source: 'batch_longtext_merged'` / `'batch_script_merged'` | ✅ | ✅ |
+| 3 | `text_preview` 保存 | ✅（submit text）| ✅（buildScriptTextPreview）|
+| 4 | `provider` 保存 | ✅ | ✅ |
+| 5 | `profile_id` 保存（可 null）| ✅ | ✅ |
+| 6 | `profile_name: null` | ✅ | ✅ |
+| 7 | `model: null` | ✅ | ✅ |
+| 8 | `voice_id: null` | ✅ | ✅ |
+| 9 | `audio_format` 保存 | ✅ | ✅ |
+
+#### renderBatchResultPlayer 集成（4 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 调用 `safePushBatchSample` | ✅ |
+| 2 | `source` 由 `targetPanelId` 决定（`batchScriptProgressPanel` → `batch_script_merged`）| ✅ |
+| 3 | 从 `_batchSampleContextById[data.batch_id]` 读取 extra | ✅ |
+| 4 | `safePushBatchSample` 在 `merged_audio` 检查之后调用 | ✅ |
+
+#### sourceLabel 标签（4 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | `batch_longtext_merged: '长文合并'` | ✅ |
+| 2 | `batch_script_merged: '剧本合并'` | ✅ |
+| 3 | `batch_longtext_segment` 预留 | ✅ |
+| 4 | `batch_script_segment` 预留 | ✅ |
+
+#### 负面清单（7 项）
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | `safePushBatchSample` 不在 sample_sidebar.js | ✅ |
+| 2 | `batch_longtext_merged` 不在 sidebar render | ✅ |
+| 3 | `batch_script_merged` 不在 sidebar render | ✅ |
+| 4 | sample_store.js 未修改（无 batch 相关代码）| ✅ |
+| 5 | 无 segment 级别样本推送 | ✅ |
+| 6 | 无 history sample_store 集成 | ✅ |
+| 7 | 无真实 MiniMax API 调用 | ✅ |
+
+### 测试覆盖
+
+- `test_sample_store_batch_integration_static.py`：69 个测试
+- `test_sample_sidebar_static.py`：批量相关 2 个测试更新
+- `test_existing_function_regression_static.py`：批量相关 4 个测试更新
+- 回归覆盖：92 个测试（`test_existing_function_regression_static.py`）
+- 总测试规模：364 个 pytest passed
+
+### 阶段状态
+
+B5-CHECK 复核通过，批量合并音频样本存储接入完成。
+
+下一阶段：`P13-CREATION-B5-CLOSE`（阶段收口文档更新）
