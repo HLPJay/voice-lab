@@ -2,13 +2,14 @@
 
 ## 当前阶段
 
-**P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核**
+**P14-PRODUCT-B0：全局 SampleSidebar 可见性与过滤策略设计**
 
 ## 已完成（续）
 
 - P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置 ✅
 - P14-CONTEXT-C2-FIX2-CHECK：SampleSidebar 详情面板插入位置修复复核 ✅
 - P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切 ✅
+- P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核 ✅
 - P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口 ✅
 - P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核 ✅
 - P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板 ✅

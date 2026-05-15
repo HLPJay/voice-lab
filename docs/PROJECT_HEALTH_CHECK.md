@@ -72,8 +72,9 @@
 * P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核已完成 ✅
 * P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置已完成 ✅
 * P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切已完成 ✅
+* P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核已完成 ✅
 * P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C2-FIX3-CHECK
+* 当前下一阶段：P14-PRODUCT-B0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8550,6 +8551,44 @@ FIX2 将详情面板从 `root.appendChild` 改为 `insertBefore` 插入到卡片
 ### 阶段状态
 
 P14-CONTEXT-C2-FIX3 完成。
+
+## P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核
+
+### 复核结论
+
+**通过**。
+
+### CSS 修复确认
+
+- `.sample-card` 已设置 `flex: 0 0 auto`（index.html line 973）✓
+- `.sample-detail-panel` 已设置 `flex: 0 0 auto`（index.html line 1060）✓
+- `.sample-sidebar-list` 保持 `display: flex; flex-direction: column; overflow-y: auto` ✓
+- 无 `.sample-more-menu` / `.sample-btn-more` CSS ✓
+
+### 浏览器手工验证结果
+
+- 长文本详情面板可正常展开 ✓
+- 剧本详情面板可正常展开 ✓
+- 不再出现只显示空白条的问题 ✓
+- 恢复按钮可用 ✓
+
+### 回归确认
+
+- 长文本恢复未受影响 ✓
+- 剧本恢复未受影响 ✓
+- 平铺按钮未受影响 ✓
+- 未调用后端 API / MiniMax ✓
+- 未修改 ContextStore / SampleStore 结构 ✓
+- 未修改 batch submit payload ✓
+
+### 测试结果
+
+- `test_sample_sidebar_static.py`：164 passed
+- `test_context_store_script_integration_static.py + test_existing_function_regression_static.py`：160 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX3-CHECK 通过。P14 context restore 闭环修复全部完成，当前阶段推进到 P14-PRODUCT-B0。
 
 
 
