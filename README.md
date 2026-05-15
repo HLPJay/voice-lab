@@ -353,8 +353,8 @@ storage/
 | `MINIMAX_TIMEOUT_SECONDS` | `120` | API 请求超时 |
 | `DEFAULT_AUDIO_FORMAT` | `mp3` | 默认音频格式 |
 | `CLONE_AUDIO_MAX_SIZE_MB` | `20` | 克隆音频最大文件大小 |
-| `CLONE_AUDIO_MIN_DURATION_SEC` | `10` | 克隆音频最短时长 |
-| `CLONE_AUDIO_MAX_DURATION_SEC` | `300` | 克隆音频最长时长 |
+
+> 说明：`CLONE_AUDIO_MIN_DURATION_SEC`、`CLONE_AUDIO_MAX_DURATION_SEC` 当前未接入 Settings，仅在 `.env.example` 的 "Unused / 保留配置" 中保留说明，不作为当前运行配置。
 
 ## 当前边界
 
@@ -413,19 +413,21 @@ GET /api/voice/capabilities?provider=minimax  # 返回指定 provider 能力
 
 ## 后续路线
 
-1. ~~P9-CAPABILITY1~~ ✅：Provider Capability Registry 最小实现已完成
-2. ~~P9-CAPABILITY2~~ ✅：CapabilityValidator 后端能力校验已完成
-3. ~~P9-CAPABILITY3~~ ✅：前端根据能力动态限制输入已完成
-4. **P9-CAPABILITY4**：Admin 能力矩阵只读展示（后续可选）
-5. **P9-FE1**：前端 JS 模块化（后续可选）
-6. **P9-E2E1**：关键路径浏览器测试（后续可选）
-7. **Project / 作品概念**：将每次创作归档为独立 Project
-8. **创作模板入口**：情绪独白、长文本朗读、多角色剧本
-9. **历史记录升级为资产库**：重命名、收藏、标签、搜索
-10. **手机端 H5 快速创作**：轻量入口
-11. **P10-CONFIG**：Admin 系统配置中心（后期可选）
-12. **资产清理后续接入**：Admin dry-run 报告 → 人工确认 quarantine → 30 天后 purge
-13. **更多 Provider**：OpenAI TTS、Azure Speech、ElevenLabs、本地 CosyVoice / GPT-SoVITS
+当前项目已完成 P12 真实使用修复阶段归档，后续开发从 `p13/creation-sample-sidebar` 分支继续。
+
+### 当前下一阶段
+
+- **P13-CREATION-A0**：样本观察侧边栏设计
+  - 第一阶段只做设计审查
+  - 不直接开发功能
+  - 不调用真实 MiniMax
+  - 不改变后端 API / 数据库结构 / 生成链路
+
+### 延后评估
+
+- P12-BE：后端能力增强，如有真实用户需求再评估
+- P12-APP：本地 App 打包评估
+- SaaS / 多用户：产品验证后再考虑
 
 ## 文档索引
 
