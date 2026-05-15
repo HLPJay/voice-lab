@@ -35,12 +35,14 @@
 - P12-USAGE-FIX4：normalize batch download href ✅
 - P12-USAGE-UX3：clarify async mode positioning ✅
 - P12-USAGE-UX4-A0：audit advanced quick bind panels ✅
+- P12-USAGE-FIX5-A0：audit audio duration display ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
 | P12-USAGE-UX4-B1 | normalize advanced quick bind panel layout | UX4-A0 审查完成 |
+| P12-USAGE-FIX5-B1 | extend audioPlayerHtml + batch total_duration display | FIX5-A0 审查完成 |
 | P13-CREATION-A0 | design sample observation sidebar | P10 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
