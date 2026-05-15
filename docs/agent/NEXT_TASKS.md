@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P14-LONGTEXT-UX-B1-CHECK：长文本 UX hints 实现复核**
+**待选择：P14-LONGTEXT-UX-B1-CHECK / P14-SCRIPT-UX-B0**
 
 ## 已完成（续）
 
@@ -20,6 +20,7 @@
 - P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充 ✅
 - P14-PRODUCT-A0-FIX2：文档章节编号修正 ✅
 - P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计 ✅
+- P14-LONGTEXT-UX-B0-FIX1：剧本生产入口统计提示方向补充 ✅
 - P14-LONGTEXT-UX-B1：长文本字数统计、预计分段、策略说明 ✅
 
 ## 已完成
@@ -90,6 +91,8 @@
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
 | P14-LONGTEXT-UX-B1-CHECK | verify longtext UX hints implementation | P14-LONGTEXT-UX-B1 完成 |
+| P14-SCRIPT-UX-B0 | design script count / role / profile completeness hints | P14-LONGTEXT-UX-B0-FIX1 完成 |
+| P14-SCRIPT-UX-B1 | implement script count / role / profile completeness hints | P14-SCRIPT-UX-B0 完成 |
 | P14-CONTEXT-B0 | design ContextStore for recoverable creation context | P14-LONGTEXT-UX-B1-CHECK 完成 |
 | P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-LONGTEXT-UX-B1-CHECK 完成 |
 | P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-LONGTEXT-UX-B1-CHECK 完成 |
