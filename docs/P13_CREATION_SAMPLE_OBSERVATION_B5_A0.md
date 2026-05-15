@@ -264,15 +264,23 @@ if (data.batch_id) {
 
 ### 8.3 sample_store download_url 策略
 
-B5-MVP1 的 `download_url` 写入应使用**持久化下载入口**：
+**B5-MVP1 固定要求 `data.batch_id` 存在。**
+
+B5-MVP1 的 `download_url` 固定写入：
 
 ```
-1. data.batch_id 存在 → /api/voice/batch/{batch_id}/download
-2. 否则 data.merged_audio.id 存在 → /api/voice/assets/{merged_audio.id}/download
-3. 否则 data.merged_audio.url 存在且安全 → data.merged_audio.url
+/api/voice/batch/{encodeURIComponent(data.batch_id)}/download
 ```
 
-> 注意：这是 sample_store 的持久化下载入口策略，不等同于当前播放器 `audio.src` 逻辑（播放器直接用 `merged_audio.url`）。
+**B5-MVP1 不做 fallback；`data.batch_id` 缺失则不写 sample。**
+
+原因：
+- batch merged audio 是批量任务最终产物，batch_id 必然存在
+- 当前页面下载按钮在 batch_id 存在时也优先使用 `/api/voice/batch/{batch_id}/download`
+- 固定 batch download URL 可以避免不同 URL 入口混杂
+- asset download fallback 留到后续增强阶段，不放入 B5-MVP1
+
+> 注意：当前播放器 `audio.src` 仍然使用 `data.merged_audio.url`。这是播放器逻辑，不等同于 sample_store 持久化 `download_url` 逻辑。
 
 ---
 
@@ -288,7 +296,7 @@ job_id: data.batch_id
 batch_id: data.batch_id
 segment_id: null                    // merged audio，无 segment
 asset_id: data.merged_audio?.id || null
-download_url: buildBatchMergedDownloadUrl(data)  // 见 8.3 节策略
+download_url: `/api/voice/batch/${encodeURIComponent(data.batch_id)}/download`  // B5-MVP1 固定，不做 fallback；batch_id 缺失则不写 sample
 text_preview:
   - longtext: 从提交上下文保存的 batch text 截断前 100 字
   - script: 从提交上下文保存的 lines 拼接前 100 字
@@ -315,15 +323,28 @@ created_at: Date.now()
 ### 9.2 写入前置条件
 
 ```
+IF data.status !== 'success' → 不写 sample
+   （partial / failed / running / pending 均不写 sample）
+IF data.batch_id 不存在 → 不写 sample
 IF merged_audio 不存在 → 不写 sample
 IF merged_audio.id 不存在 → 不写 sample
-IF merged_audio.url 不安全 (blob: / javascript: / data:) → 不写 sample
-IF data.batch_id 不存在 → 不写 sample  （因为 download_url 需要 batch_id）
+IF merged_audio.url 不存在或不安全 (blob: / javascript: / data:) → 不写 sample
 ```
+
+> 注意：虽然 `renderBatchResultPlayer` 在 `partial` 状态下也可能被调用（有 merged_audio 时），但 B5-MVP1 不保存 partial 结果。partial 保存留到 B5-MVP3 或后续增强阶段。
 
 ### 9.3 接入点
 
-`renderBatchResultPlayer(data, targetPanelId)` 内，在确认 `data.merged_audio` 存在且 `data.batch_id` 存在后调用 `safePushBatchSample(source, data, extra)`。
+`renderBatchResultPlayer(data, targetPanelId)` 内，调用 `safePushBatchSample(source, data, extra)` 前必须满足：
+
+- `data.status === 'success'`
+- `data.batch_id` 存在
+- `data.merged_audio.id` 存在
+- `data.merged_audio.url` 存在且安全
+
+source 根据 targetPanelId 判断：
+- `targetPanelId === 'batchScriptProgressPanel'` → `batch_script_merged`
+- 其他情况 → `batch_longtext_merged`
 
 ---
 
@@ -352,7 +373,12 @@ IF data.batch_id 不存在 → 不写 sample  （因为 download_url 需要 batc
 - [ ] 新增 `safePushBatchSample(source, data, extra)` — fail-safe 封装
 - [ ] `safePushBatchSample` 只通过 `SampleStore.pushSample` 写入
 - [ ] `safePushBatchSample` 拒绝 blob: / javascript: / data: URL
-- [ ] `safePushBatchSample` 在 `data.batch_id` 或 `merged_audio.id` 缺失时不写入
+- [ ] `safePushBatchSample` 必须拒绝 `data.status !== 'success'`
+- [ ] `safePushBatchSample` 在 `data.batch_id` 缺失时不写入
+- [ ] `safePushBatchSample` 在 `merged_audio.id` / `merged_audio.url` 缺失时不写入
+- [ ] `download_url` 固定写入 `/api/voice/batch/{batch_id}/download`
+- [ ] B5-MVP1 不使用 asset download fallback
+- [ ] B5-MVP1 不使用 `merged_audio.url` 作为持久化 `download_url`
 - [ ] batch_longtext 成功后写入 `batch_longtext_merged` sample
 - [ ] batch_script 成功后写入 `batch_script_merged` sample
 - [ ] sourceLabel map 新增 `batch_longtext_merged` / `batch_script_merged` 条目
@@ -384,6 +410,7 @@ IF data.batch_id 不存在 → 不写 sample  （因为 download_url 需要 batc
 | `safePushBatchSample` 不直接读写 localStorage | body 内无 `localStorage.getItem/setItem` |
 | `safePushBatchSample` 拒绝 blob URL | `isSafeAudioUrl(blobUrl)` 返回 false |
 | `safePushBatchSample` 允许 https URL | `isSafeAudioUrl(httpsUrl)` 返回 true |
+| `data.status !== 'success'` 不写入 | `status !== 'success'` 条件判断存在；partial / failed / running / pending 均不调用 SampleStore.pushSample |
 | `batch_id` 缺失时不写入 | 条件判断存在 |
 | `merged_audio.id` 缺失时不写入 | 条件判断存在 |
 | `source` 使用 `batch_longtext_merged` | 函数体内有该字符串 |
@@ -391,7 +418,8 @@ IF data.batch_id 不存在 → 不写 sample  （因为 download_url 需要 batc
 | `batch_id` 作为 job_id 写入 | `job_id: batch_id` |
 | `segment_id` 写入 null | `segment_id: null` |
 | `tags` 包含 `batch` 和 `merged` | `['batch', 'merged']` |
-| `download_url` 使用 batch download API | 包含 `/api/voice/batch/` |
+| `download_url` 使用 batch download API | 包含 `/api/voice/batch/`，不使用 `merged_audio.url` 作为 sample download_url |
+| `download_url` 不使用 fallback | 代码中无 asset download fallback 路径 |
 | `sourceLabel` 包含 `batch_longtext_merged` | map 内有该 key |
 | `sourceLabel` 包含 `batch_script_merged` | map 内有该 key |
 | `sourceLabel` 预留 `batch_longtext_segment` | map 内有该 key（注释或空条目） |
@@ -408,6 +436,8 @@ IF data.batch_id 不存在 → 不写 sample  （因为 download_url 需要 batc
 
 - `test_batch_blob_url_not_stored` — mock 返回 blob: URL，验证 sample 未写入
 - `test_batch_no_batch_id_not_stored` — mock 无 batch_id，验证 sample 未写入
+- `test_batch_partial_not_stored` — mock partial + merged_audio，验证 sample 未写入
+- `test_batch_download_url_uses_batch_api` — mock success，验证 sample download_url 是 `/api/voice/batch/{batch_id}/download`
 
 ---
 
@@ -451,3 +481,5 @@ IF data.batch_id 不存在 → 不写 sample  （因为 download_url 需要 batc
 | 12 | 下载 URL 策略 | batch_id 优先，其次 merged_audio.id | 未说明 download_url 优先级 | 修文档 | 是 |
 | 13 | merged_audio 出现时机 | `status === 'success'` 时有值，`partial` 时可能有 | 写成 `status === 'completed'` | 修文档 | 是 |
 | 14 | script profile_id | per-row `scriptProfile_{id}`，不是全局 `selectedProfileName` | 假设全局 `selectedProfileName` | 修文档 | 是 |
+| 15 | success 前置条件缺失 | `renderBatchResultPlayer` 可能在 partial 被调用 | 9.2 未写 `data.status === 'success'` | 补充 success 硬条件 | 是 |
+| 16 | download_url fallback 与 batch_id 必填冲突 | B5-MVP1 要求 `batch_id` 存在 | 8.3 写了 fallback，但 9.2 要求 batch_id | B5-MVP1 固定 batch download URL，fallback 留后续 | 是 |
