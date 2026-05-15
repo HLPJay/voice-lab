@@ -279,4 +279,19 @@ P9-FE2-A0 说"error_helpers.js 迁移成本大，拆分收益有限"和"profile_
 - targeted（B1/B2/B3）：4 passed
 - full suite：29 passed
 - 无需新增 module-loaded E2E（B1/B2/B3 已有 behavioral E2E 覆盖）
+
+### P11-FE-REDUCE-A1-CHECK 验证结果
+
+| 检查项 | 结果 |
+|---|---|
+| index.html 中无 updateWorkspaceVoiceBindingHint 函数定义 | ✅ |
+| index.html 中无 updateBatchVoiceBindingHint 函数定义 | ✅ |
+| index.html 中无 updateScriptLineVoiceHint 函数定义 | ✅ |
+| window.updateWorkspaceVoiceBindingHint 类型为 function | ✅ |
+| window.updateBatchVoiceBindingHint 类型为 function | ✅ |
+| window.updateScriptLineVoiceHint 类型为 function | ✅ |
+| script 加载顺序正确（product_hints.js 在 inline script 之前） | ✅ |
+| product_hints.js 只处理 UI hint，无生成逻辑 | ✅ |
+| 未改 handleGenerate / batch payload / 后端 API / shared batch state | ✅ |
+| targeted E2E（4）：voice_binding_hint + quick_bind：4 passed | ✅ |
 - 其它模块（voice_list、script_lines、error_helpers、batch_shared）当前阶段不应动
