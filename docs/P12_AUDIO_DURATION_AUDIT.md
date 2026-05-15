@@ -210,7 +210,47 @@ function formatDurationMs(ms) {
 
 ---
 
-## 6. 下一步
+## 6. FIX5-B1 实施记录
+
+**实施时间：** 2026-05-15
+
+**修改文件：** `app/static/index.html`
+
+**改动点：**
+
+1. **新增 `formatDurationMs()` helper**（line ~3172）
+   - 将毫秒转为 `x.xs` 格式，空值返回空字符串
+
+2. **扩展 `audioPlayerHtml(input)`**（line ~3175）
+   - 兼容旧调用 `audioPlayerHtml(assetId)` 和新调用 `audioPlayerHtml({assetId, durationMs, label, mediaType})`
+   - `preload` 从 `none` 改为 `metadata`
+   - 新增 `.audio-meta` 显示标签和时长
+
+3. **单条同步结果接入**（line ~3151）
+   - `audioPlayerHtml(audio.id)` → `audioPlayerHtml({assetId: audio.id, durationMs: audio.duration_ms, label: '音频结果'})`
+
+4. **多版本试音接入**（line ~3116）
+   - `audioPlayerHtml(v.audio_asset_id)` → `audioPlayerHtml({assetId: v.audio_asset_id, durationMs: v.duration_ms, label: '版本 ' + (i+1)})`
+
+5. **异步结果接入**（line ~3069）
+   - `audioPlayerHtml(audio.id)` → `audioPlayerHtml({assetId: audio.id, durationMs: audio.duration_ms, label: '音频结果'})`
+
+6. **批量合并音频展示 `total_duration_ms`**
+   - HTML 新增 `batchMergedDuration` 和 `batchScriptMergedDuration` div
+   - `getBatchPanelDom()` 增加 `durationEl`
+   - `renderBatchResultPlayer()` 设置 `durationEl.textContent = '合并音频时长：' + formatDurationMs(data.total_duration_ms)`
+
+7. **CSS 新增** `.audio-meta` / `.batch-audio-meta`
+
+**未改：**
+- 不改下载逻辑
+- 不改 subtitle 下载
+- 不改 batch polling
+- 不改 segment 表格
+
+---
+
+## 7. 下一步
 
 | 任务 | 内容 | 前提 |
 |---|---|---|

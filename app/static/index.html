@@ -569,6 +569,22 @@
     border-radius: 8px;
   }
 
+  .audio-player-wrap {
+    display: block;
+  }
+
+  .audio-meta {
+    font-size: 0.78rem;
+    color: #718096;
+    margin-bottom: 4px;
+  }
+
+  .batch-audio-meta {
+    font-size: 0.78rem;
+    color: #718096;
+    margin: 4px 0 6px 0;
+  }
+
   .action-row {
     display: flex;
     gap: 10px;
@@ -1104,6 +1120,7 @@
         <div id="batchSegmentTable" style="font-size:0.82rem"></div>
         <div id="batchResultPlayer" style="display:none;margin-top:16px">
           <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">批量结果</div>
+          <div id="batchMergedDuration" class="batch-audio-meta"></div>
           <audio id="batchMergedAudio" controls style="width:100%;margin-bottom:8px"></audio>
           <div id="batchCurrentSubtitle" style="padding:8px 12px;background:#f7fafc;border-radius:6px;min-height:40px;font-size:0.88rem;color:#2d3748;margin-bottom:8px"></div>
           <div id="batchSubtitleList" style="max-height:160px;overflow-y:auto;font-size:0.80rem;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px"></div>
@@ -1175,6 +1192,7 @@
         <div id="batchScriptSegmentTable" style="font-size:0.82rem"></div>
         <div id="batchScriptResultPlayer" style="display:none;margin-top:16px">
           <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">批量结果</div>
+          <div id="batchScriptMergedDuration" class="batch-audio-meta"></div>
           <audio id="batchScriptMergedAudio" controls style="width:100%;margin-bottom:8px"></audio>
           <div id="batchScriptCurrentSubtitle" style="padding:8px 12px;background:#f7fafc;border-radius:6px;min-height:40px;font-size:0.88rem;color:#2d3748;margin-bottom:8px"></div>
           <div id="batchScriptSubtitleList" style="max-height:160px;overflow-y:auto;font-size:0.80rem;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px"></div>
@@ -3066,7 +3084,7 @@ function handleStopAsyncPolling() {
     } else {
       // success: show audio, download, subtitle if present
       html += audio
-        ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
+        ? `${resultSectionLabel('音频结果')}${audioPlayerHtml({assetId: audio.id, durationMs: audio.duration_ms, label: '音频结果'})}`
         : `<p style="font-size:0.82rem;color:#c53030;margin-top:10px">本次结果未返回音频资产。</p>`;
       html += audio
         ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
@@ -3113,7 +3131,7 @@ function handleStopAsyncPolling() {
               ${v.emotion ? `<span>情绪 ${v.emotion}</span>` : ''}
             </div>
             ${v.audio_asset_id
-              ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(v.audio_asset_id)}`
+              ? `${resultSectionLabel('音频结果')}${audioPlayerHtml({assetId: v.audio_asset_id, durationMs: v.duration_ms, label: '版本 ' + (i + 1)})}`
               : `<p style="font-size:0.82rem;color:#c53030;margin-top:8px">该版本未返回音频资产。</p>`}
             ${v.audio_asset_id
               ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(v.audio_asset_id)}</div>`
@@ -3148,7 +3166,7 @@ function handleStopAsyncPolling() {
       </div>`;
       } else if (statusOk) {
         html += audio
-          ? `${resultSectionLabel('音频结果')}${audioPlayerHtml(audio.id)}`
+          ? `${resultSectionLabel('音频结果')}${audioPlayerHtml({assetId: audio.id, durationMs: audio.duration_ms, label: '音频结果'})}`
           : `<p style="font-size:0.82rem;color:#c53030;margin-top:10px">本次结果未返回音频资产，请检查任务状态。</p>`;
         html += audio
           ? `${resultSectionLabel('下载音频')}<div class="action-row">${downloadBtnHtml(audio.id)}</div>`
@@ -3169,10 +3187,19 @@ function handleStopAsyncPolling() {
     }
   }
 
-  function audioPlayerHtml(assetId) {
-    return `<audio class="audio-player" controls preload="none">
-      <source src="/api/voice/assets/${assetId}/download" type="audio/mpeg">
-      您的浏览器不支持音频播放</audio>`;
+  function formatDurationMs(ms) {
+    if (ms == null || ms === '' || Number(ms) <= 0) return '';
+    return (Number(ms) / 1000).toFixed(1) + 's';
+  }
+
+  function audioPlayerHtml(input) {
+    const opts = typeof input === 'object' ? input : { assetId: input };
+    const assetId = opts.assetId;
+    const durationText = formatDurationMs(opts.durationMs);
+    const mediaType = opts.mediaType || 'audio/mpeg';
+    const label = opts.label || '';
+    const showMeta = label || durationText;
+    return `<div class="audio-player-wrap">${showMeta ? `<div class="audio-meta">${label ? esc(label) : ''}${label && durationText ? ' · ' : ''}${durationText ? `时长 ${esc(durationText)}` : ''}</div>` : ''}<audio class="audio-player" controls preload="metadata"><source src="/api/voice/assets/${esc(assetId)}/download" type="${esc(mediaType)}">您的浏览器不支持音频播放</audio></div>`;
   }
 
   function downloadBtnHtml(assetId) {
@@ -4414,6 +4441,7 @@ function handleStopAsyncPolling() {
         currentSubtitle: document.getElementById('batchScriptCurrentSubtitle'),
         subtitleList: document.getElementById('batchScriptSubtitleList'),
         downloadSubtitle: document.getElementById('batchScriptDownloadSubtitle'),
+        durationEl: document.getElementById('batchScriptMergedDuration'),
       };
     }
     return {
@@ -4423,12 +4451,13 @@ function handleStopAsyncPolling() {
       currentSubtitle: document.getElementById('batchCurrentSubtitle'),
       subtitleList: document.getElementById('batchSubtitleList'),
       downloadSubtitle: document.getElementById('batchDownloadSubtitle'),
+      durationEl: document.getElementById('batchMergedDuration'),
     };
   }
 
   function renderBatchResultPlayer(data, targetPanelId = 'batchProgressPanel') {
     const dom = getBatchPanelDom(targetPanelId);
-    const { playerDiv, audio, downloadAudio, currentSubtitle, subtitleList, downloadSubtitle } = dom;
+    const { playerDiv, audio, downloadAudio, currentSubtitle, subtitleList, downloadSubtitle, durationEl } = dom;
     if (!playerDiv) return;
     if (!data.merged_audio) {
       playerDiv.style.display = 'none';
@@ -4444,6 +4473,17 @@ function handleStopAsyncPolling() {
       audio.src = data.merged_audio.url;
       audio.addEventListener('timeupdate', () => updateBatchSubtitleHighlight(targetPanelId));
       audio.addEventListener('seeking', () => updateBatchSubtitleHighlight(targetPanelId));
+
+      if (durationEl) {
+        const totalDurationText = formatDurationMs(data.total_duration_ms);
+        if (totalDurationText) {
+          durationEl.textContent = '合并音频时长：' + totalDurationText;
+          durationEl.style.display = '';
+        } else {
+          durationEl.textContent = '';
+          durationEl.style.display = 'none';
+        }
+      }
 
       if (downloadAudio) {
         let downloadHref = data.merged_audio.url;
