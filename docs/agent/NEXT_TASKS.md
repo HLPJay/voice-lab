@@ -39,12 +39,13 @@
 - P12-USAGE-FIX5-A0：audit audio duration display ✅
 - P12-USAGE-FIX5-B1：extend audioPlayerHtml + batch total_duration display ✅
 - P12-USAGE-FIX5-B2：normalize advanced audio duration display ✅
+- P12-USAGE-UX5：clarify sentence segmentation copy ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE-UX5 | clarify sentence segmentation copy | 用户反馈 |
+| P12-USAGE-CHECK | close real usage polish | 用户反馈 |
 | P13-CREATION-A0 | design sample observation sidebar | P10 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
