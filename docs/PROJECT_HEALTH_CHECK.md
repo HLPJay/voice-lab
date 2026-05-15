@@ -4089,3 +4089,40 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 16 pas
 **下一步：** P9-FE1-F2 可正式迁移 `handleBatchScriptSubmit()` 到 `batch_script.js`（Phase 1）；后续再补剧本批量 mock 提交成功 E2E 和行管理 E2E（Phase 2 前提）。
 
 **未改 app/static/index.html、app/static/js/*、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
+
+---
+
+## P9-FE1-F2：抽离剧本批量提交函数 batch_script.js Phase 1
+
+**问题：** `handleBatchScriptSubmit` 仍在 index.html 内，与其他剧本批量逻辑混合在一起，难以独立维护。
+
+**修复：**
+- 新增 `app/static/js/batch_script.js`（IIFE 包裹）
+- `handleBatchScriptSubmit` 整体迁移到 `batch_script.js`
+- `esc()` 调用替换为本地 `bsEsc()` 辅助函数（不依赖 index.html 的 `esc`）
+- `window.handleBatchScriptSubmit` 暴露到全局
+- index.html 中 `handleBatchScriptSubmit` 函数定义替换为注释说明已迁移
+- 新增 `<script src="/static/js/batch_script.js">` 标签于 `batch_longtext.js` 之后、inline script 之前
+
+**保持不变（本次不迁移）：**
+- `addScriptLine` / `removeScriptLine` / `updateScriptLineLimitState` — 留在 index.html
+- `_scriptRows` / `_scriptLineCount` / `MAX_SCRIPT_LINES` — 留在 index.html
+- scriptLines 事件委托逻辑 — 留在 index.html
+- `populateProfileSelect` / `loadProfiles` / `_cachedProfiles` — 留在 index.html
+- `showBatchProgress` / `startBatchPoll` / `stopBatchPoll` / `pollBatchStatus` 等共享批量函数 — 留在 index.html
+- `_batchPollTimer` / `_currentBatchId` / `_currentBatchPanelId` / `_batchTimeline` 等共享状态 — 留在 index.html
+- 长文本批量逻辑（`batch_longtext.js`）— 不受影响
+- API endpoint（`POST /api/voice/batch/submit`）— 不变
+- Request body（`mode='script'`, `script: [...]`）— 不变
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "script"  # 3 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 17 passed
+```
+
+**测试结果：** 17 passed in 55.25s。
+
+**下一步：** P9-FE1-F2 Phase 2（迁移行管理函数和 `_scriptRows` 状态）或补剧本批量 mock 提交成功 E2E。
+
+**未改 app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、app/static/js/batch_longtext.js、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、数据库、资产清理链路。

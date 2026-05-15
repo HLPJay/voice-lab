@@ -637,5 +637,49 @@ def test_batch_script_submit_validation_works(page, e2e_base_url, console_errors
         f"Expected validation error for empty lines, got: {result_html}"
     )
 
+
+# ── Test 17: batch_script.js module is loaded and validation still works ────────────
+
+def test_batch_script_module_is_loaded_and_submit_validation_still_works(
+    page, e2e_base_url, console_errors
+):
+    """batch_script.js is loaded, window.handleBatchScriptSubmit exists, and validation works."""
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # batch_script.js script tag exists
+    assert page.evaluate(
+        "!!document.querySelector('script[src=\"/static/js/batch_script.js\"]')"
+    ), "batch_script.js should be loaded"
+
+    # window.handleBatchScriptSubmit is a function
+    assert page.evaluate(
+        "typeof window.handleBatchScriptSubmit === 'function'"
+    ), "window.handleBatchScriptSubmit should be a function"
+
+    # Click the Script tab
+    script_tab = page.locator('button.tab-btn[data-tab="script"]')
+    assert script_tab.count() == 1, "Script tab button not found"
+    script_tab.click()
+    page.wait_for_selector("#tab-script", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # Abort the batch API to ensure validation fires before any network call
+    page.route("**/api/voice/batch/submit", lambda route: route.abort())
+
+    # Click submit with empty lines — validation should fire
+    submit_btn = page.locator("#batchScriptSubmit")
+    assert submit_btn.count() == 1, "batchScriptSubmit button not found"
+    submit_btn.click()
+    page.wait_for_timeout(500)
+
+    # Error message "请至少填写一行台词" should appear
+    result_html = page.locator("#batchScriptResult").inner_html()
+    assert "请至少填写一行台词" in result_html, (
+        f"Expected validation error for empty lines, got: {result_html}"
+    )
+
+
     # Verify batch/submit was NOT called (route.abort() would have thrown if reached)
     # If we got here, the API was never called because validation short-circuited first
