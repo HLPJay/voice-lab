@@ -22,7 +22,7 @@
 
 **E2E 覆盖：**
 - 现有 29 个 E2E 测试全部通过
-- 新增 targeted E2E `test_workspace_binding_hint_syncs_after_check_binding_status`（由于 Playwright 与 IIFE 闭包变量交互的复杂性问题，测试设置较困难，当前仅验证 voices tab 加载后 _voiceBindMap 正确填充）
+- 新增 Test 30（skipped）：因 providerSelect.value 在 page.evaluate 中不稳定，IIFE 闭包交互问题，测试设置困难
 - 相关测试：Test 26（workspace hint 切换 tab）、Test 27（quick bind 成功切换）、Test 28（longtext hint 切换）、Test 29（script hint 切换）
 
 **验证方式：**
