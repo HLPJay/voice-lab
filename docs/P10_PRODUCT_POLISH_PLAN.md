@@ -976,3 +976,24 @@ B3 可行，方案已在上节确定。Batch tab 只在 profile select 附近增
 | 后端 API | 无 |
 | localStorage 结构 | 无 |
 | E2E | 可选（展示行为，不改生成链路） |
+
+---
+
+## P10-PRODUCT-B6：历史最近任务快捷入口实现
+
+**执行时间：** 2026-05-15
+
+### 实现内容
+
+**仅移动 DOM 位置：**
+- 将 `#recentJobRestore` 从 `generateBtn` 下方移到 workspace hint card 之后、`#textInput` card 之前
+- 不改任何 JS 逻辑（`renderRecentJobRestore` / `restoreRecentJob` / `clearRecentJob` 均不变）
+- 不改 localStorage 结构
+
+### 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| 最近任务卡片显示在 workspace 顶部 hint 之后 | ✅ |
+| "恢复"和"清除"按钮行为不变 | ✅ |
+| 不改任何 JS 逻辑 | ✅ |
