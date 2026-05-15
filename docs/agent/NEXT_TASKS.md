@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P10 产品打磨**
+**P10 产品打磨 — 已完成**
 
 ## 已完成
 
@@ -20,73 +20,25 @@
 - P10-PRODUCT-B5：Advanced tab 重命名为音色工具 ✅
 - P10-PRODUCT-B6：历史最近任务快捷入口实现 ✅
 
-## P10-PRODUCT-B2 实现总结
+## P10 收口检查
 
-**实现内容：**
-- 在 quickBindVoice 绑定成功消息中增加"去创作"按钮
-- 点击"去创作"按钮切换到 workspace tab
-- 不改生成链路，不改绑定逻辑，不改后端 API
-
-**E2E：** `test_quick_bind_success_go_create_switches_workspace` — mock profiles/bindings/provider-voices/capabilities，验证绑定成功后出现"去创作"按钮，点击后切换到 workspace tab
-
-**E2E 结果：** 27 passed
-
-详见：`docs/P10_PRODUCT_POLISH_PLAN.md` P10-PRODUCT-B2 节
-
-## Next
-
-P10 产品打磨已全部完成。后续阶段请参考 `docs/P10_PRODUCT_POLISH_PLAN.md`。
-
-**实现内容：**
-- 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区 `#workspaceVoiceBindingHint`
-- `updateWorkspaceVoiceBindingHint()` 读取 `_voiceBindMap`，显示当前绑定 voice 或"尚未绑定音色"
-- 无绑定时显示"去选择音色"按钮，点击切换到 voices tab
-- profileSelect change / providerSelect change / populateAllProfiles / workspace tab 切换时更新提示
-
-**E2E：** `test_workspace_voice_binding_hint_switches_to_voices` — 验证 hint 显示"尚未绑定音色"、点击按钮切换到 voices tab
-
-**E2E 结果：** 26 passed
-
-详见：`docs/P10_PRODUCT_POLISH_PLAN.md` P10-PRODUCT-B1 节
+| 检查项 | 结果 |
+|---|---|
+| handleGenerate 未修改 | ✅ |
+| batch_longtext.js / batch_script.js payload 未修改 | ✅ |
+| 后端 API 未修改 | ✅ |
+| 未引入 batch 专用 voice select | ✅ |
+| localStorage 结构未修改 | ✅ |
+| 未调用真实 MiniMax | ✅ |
+| E2E 全量 29 passed | ✅ |
 
 ## Next
 
-1. **P10-PRODUCT-B2** — Voices tab 快速创作联动实现（添加"去创作"按钮）
-
-### P10 任务排序
-
-| 优先级 | 任务 | 状态 |
+| 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| 1 | B1: Workspace 音色快捷选择区 | ✅ 已完成 |
-| 2 | B2-A0: Voices tab 快速创作联动边界审查 | ✅ 已完成 |
-| 3 | B2: Voices tab 快速创作联动实现 | ✅ 已完成 |
-| 4 | B3-A0: Batch tab 音色快速选择边界审查 | ✅ 已完成 |
-| 5 | B3-longtext: Batch longtext tab 绑定音色提示 | ✅ 已完成 |
-| 6 | B3-script: Batch script tab 每行动态绑定音色提示 | ✅ 已完成 |
-| 4 | B4: 简化 onboarding 文案 | 待做 |
-| 5 | B5: Advanced tab 重命名 | 待做 |
-| 6 | B6: 历史最近任务快捷入口 | 待做 |
-
-### P10 任务排序
-
-| 优先级 | 任务 | 风险 |
-|---|---|---|
-| 1 | B1: Workspace 音色快捷选择区 | 低 |
-| 2 | Voices tab 快速创作联动 | 中 |
-| 3 | Batch tab 音色快速选择 | 中 |
-| 4 | 简化 onboarding 文案 | 极低 |
-| 5 | Advanced tab 重命名 | 极低 |
-| 6 | 历史最近任务快捷入口 | 低 |
-
-### 不应该投入的方向
-
-- 移动端 H5 适配
-- 创作模板 / 场景入口
-- SaaS / 多用户
-- 开放 API 平台
-- 桌面 App 打包
-
-详见：`docs/P10_PRODUCT_POLISH_PLAN.md`
+| P11 | 后端能力增强（如有需求） | 用户反馈 |
+| P12 | 本地 App 打包评估 | P10 完成 |
+| 后续 | SaaS / 多用户 | 产品验证后 |
 
 ## Paused / Do not touch yet
 

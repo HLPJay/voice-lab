@@ -997,3 +997,42 @@ B3 可行，方案已在上节确定。Batch tab 只在 profile select 附近增
 | 最近任务卡片显示在 workspace 顶部 hint 之后 | ✅ |
 | "恢复"和"清除"按钮行为不变 | ✅ |
 | 不改任何 JS 逻辑 | ✅ |
+
+---
+
+## P10-PRODUCT-CHECK：产品打磨收口检查
+
+**执行时间：** 2026-05-15
+
+### 检查结果
+
+| 检查项 | 结果 |
+|---|---|
+| handleGenerate 未修改 | ✅ |
+| batch_longtext.js / batch_script.js payload 未修改 | ✅ |
+| 后端 API 未修改 | ✅ |
+| 未引入 batch 专用 voice select | ✅ |
+| localStorage 结构未修改 | ✅ |
+| 未调用真实 MiniMax（E2E 全部 mock） | ✅ |
+| E2E 全量：29 passed | ✅ |
+
+### P10 完成清单
+
+| 任务 | 状态 |
+|---|---|
+| B1: Workspace 音色绑定提示 | ✅ |
+| B2: Voices tab 绑定后"去创作"按钮 | ✅ |
+| B3-longtext: 长文本绑定音色提示 | ✅ |
+| B3-script: 剧本每行绑定音色提示 | ✅ |
+| B4: onboarding 文案简化 | ✅ |
+| B5: Advanced tab → 音色工具 | ✅ |
+| B6: 最近任务入口位置调整 | ✅ |
+
+### 未纳入方向（保持不变）
+
+- 移动端 H5 适配
+- 创作模板 / 场景入口
+- SaaS / 多用户
+- 开放 API 平台
+- 桌面 App 打包
+- 前端框架迁移
