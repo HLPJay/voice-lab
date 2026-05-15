@@ -104,9 +104,18 @@ class TestWorkspaceSampleIntegrationStatic:
         func_start = content.find('function safePushWorkspaceSample')
         func_end = content.find('\n  }', func_start) + 4
         func_body = content[func_start:func_end]
-        # model: data?.model || ctx.model || null
-        assert re.search(r"data\?\.model\s*\|\|", func_body), \
-            'model must prioritize data?.model over context'
+        # model: extra.model || data?.model || ctx.model || null
+        assert re.search(r"extra\.model\s*\|\|\s*data\?\.model\s*\|\|\s*ctx\.model", func_body), \
+            'model must prioritize extra.model over data?.model and ctx.model'
+
+    def test_safePushWorkspaceSample_uses_extra_model_first(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        # Must have extra.model as first option in model resolution
+        assert re.search(r"model\s*:\s*extra\.model\s*\|\|", func_body), \
+            'model field must start with extra.model'
 
     def test_unified_context_saved_before_all_modes(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
@@ -221,6 +230,13 @@ class TestWorkspaceSampleIntegrationStatic:
         pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_variant'[\s\S]*?duration_ms[\s\S]*?\}\s*\)"
         assert re.search(pattern, content), \
             'variants safePushWorkspaceSample must pass extra.duration_ms'
+
+    def test_variants_call_passes_extra_model(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        # variants call must pass extra with model: v.model || data.model || null
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_variant'[\s\S]*?model[\s\S]*?v\.model[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'variants safePushWorkspaceSample must pass extra.model with v.model || data.model'
 
     def test_stream_call_passes_extra_asset_id(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()

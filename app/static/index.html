@@ -2087,7 +2087,7 @@
         profile_id: ctx.profile_id || null,
         profile_name: ctx.profile_name || null,
         provider: data?.provider || ctx.provider || null,
-        model: data?.model || ctx.model || null,
+        model: extra.model || data?.model || ctx.model || null,
         voice_id: ctx.voice_id || null,
         voice_name: ctx.voice_name || null,
         duration_ms: durationMs,

@@ -5769,3 +5769,26 @@ return '/api/voice/assets/' + encodeURIComponent(assetId) + '/download';
 ### 阶段状态
 
 B2-CHECK-FIX 完成，等待 B2-CHECK 复核。
+
+## P13-CREATION-B2-CHECK-FIX2：workspace sample metadata model 来源修正
+
+### 背景
+
+B2-CHECK-FIX 复核后发现 variants 调用已传入 `extra.model`，但 `safePushWorkspaceSample` 未读取 `extra.model`，可能导致部分 `workspace_variant` sample 缺失父级 model 信息。
+
+### 修正内容
+
+- `safePushWorkspaceSample` 的 `model` 字段改为优先读取 `extra.model`：`model: extra.model || data?.model || ctx.model || null`
+- 补充静态测试 `test_safePushWorkspaceSample_uses_extra_model_first`，确保 `extra.model` 优先级最高
+- 补充静态测试 `test_variants_call_passes_extra_model`，确保 variants 调用传入 `model: v.model || data.model || null`
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不接 audition / batch / history
+- 不新增 sidebar UI
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B2-CHECK-FIX2 完成，进入 B2-CHECK。
