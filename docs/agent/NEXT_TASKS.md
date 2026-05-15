@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P13-CREATION-B0：样本观察侧边栏最小实现方案设计**
+**P13-CREATION-B2：workspace 生成结果接入 sample_store**
 
 ## 已完成
 
@@ -48,12 +48,16 @@
 - P12-USAGE-CHECK2：close post-UX6 polish ✅
 - P13-CREATION-A0：样本观察侧边栏设计审查 ✅
 - P13-CREATION-A0-CHECK：A0 文档事实核验与修正 ✅
+- P13-CREATION-B0：样本观察侧边栏最小实现方案设计 ✅
+- P13-CREATION-B1：sample_store.js 前端样本存储模块实现 ✅
+- P13-CREATION-B1-CHECK-FIX：sample_store 契约修正 ✅
+- P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-CREATION-B0 | design minimal implementation plan for sample observation sidebar | A0-CHECK 完成 |
+| P13-CREATION-B2 | connect workspace generation results to sample_store | B1-CLOSE 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

@@ -10,7 +10,11 @@
 * P12-USAGE-CHECK2：close post-UX6 polish ✅
 * P13-CREATION-A0：样本观察侧边栏设计审查已完成 ✅
 * P13-CREATION-A0-CHECK：A0 文档事实核验与修正已完成 ✅
-* 当前下一阶段：P13-CREATION-B1 sample_store.js 前端样本存储模块实现进行中
+* P13-CREATION-B0：样本观察侧边栏最小实现方案设计已完成 ✅
+* P13-CREATION-B1：sample_store.js 前端样本存储模块实现已完成 ✅
+* P13-CREATION-B1-CHECK-FIX：sample_store 契约修正已完成 ✅
+* P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
+* 当前下一阶段：P13-CREATION-B2 workspace 生成结果接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5556,3 +5560,44 @@ B1-CHECK-FIX 已修复核心契约，但复核发现两个测试覆盖缺口：r
 ### 阶段状态
 
 测试覆盖补强完成，可以进入 B1-CLOSE。
+
+## P13-CREATION-B1-CLOSE：sample_store 阶段状态收口
+
+### 背景
+
+B1 已完成 sample_store.js 独立实现，并经过 B1-CHECK-FIX 与 B1-CHECK-FIX2 修正。sample_store 已具备后续 workspace / audition / sidebar 接入的最小稳定契约。
+
+### 收口内容
+
+- 标记 P13-CREATION-B1 完成
+- 标记 B1-CHECK-FIX 完成
+- 标记 B1-CHECK-FIX2 完成
+- 当前阶段推进到 P13-CREATION-B2
+- 明确 B2 目标是 workspace 生成结果接入 sample_store
+
+### B1 最终状态
+
+- `app/static/js/sample_store.js` 已新增
+- 暴露 `window.SampleStore`
+- 提供 `pushSample / getSamples / deleteSample / clearSamples / normalizeSample / trimSamples`
+- localStorage key 为 `voice_lab_recent_samples_v1`
+- 最大保存 200 条，按 `created_at` 倒序
+- `text_preview` 截断到 100 字符
+- 不保存 blob URL
+- 不读写 recentJobs
+- 不依赖 DOM
+- 不调用后端 API
+- 测试覆盖 25 项通过
+
+### 阶段边界
+
+- 只改文档
+- 不改 sample_store.js
+- 不改测试
+- 不改 index.html
+- 不接生成链路
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B1 已收口，可以开始 P13-CREATION-B2。
