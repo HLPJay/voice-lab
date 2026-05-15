@@ -118,6 +118,15 @@ class TestStaticContract:
         js = read_js()
         assert 'recentJob' not in js
 
+    def test_delete_context_comment_accurate(self):
+        js = read_js()
+        # deleteContext comment should say "Persists" not "does not persist"
+        delete_context_idx = js.find('function deleteContext')
+        if delete_context_idx >= 0:
+            snippet = js[delete_context_idx:delete_context_idx + 300]
+            assert 'does not persist' not in snippet, \
+                'deleteContext comment should not say "does not persist"'
+
 
 # ── Behavioral tests (Node.js + jsdom) ──────────────────────────────────────
 
@@ -373,19 +382,61 @@ console.log(JSON.stringify({ len: normalized.full_text.length }));
             pytest.fail('Node.js eval failed: ' + stdout)
         assert result['len'] == 50000, 'full_text should be truncated to 50000'
 
-    def test_longtext_max_segment_chars_clamp(self, context_store_js):
+    def test_longtext_max_segment_chars_nan_fallback_2000(self, context_store_js):
         code = '''
 var norm = window.ContextStore.normalizeContext({
-  context_id: 'c1', type: 'longtext', source: 'test', max_segment_chars: 9999
+  context_id: 'c1', type: 'longtext', source: 'test', max_segment_chars: 'not-a-number'
 });
-console.log(JSON.stringify({ clamped: norm.max_segment_chars }));
+console.log(JSON.stringify({ value: norm.max_segment_chars }));
 '''
         stdout, _ = node_eval(code, context_store_js)
         try:
             result = json.loads(stdout)
         except:
             pytest.fail('Node.js eval failed: ' + stdout)
-        assert result['clamped'] == 5000, 'max_segment_chars > 5000 should clamp to 5000'
+        assert result['value'] == 2000, 'max_segment_chars NaN should fallback to 2000'
+
+    def test_longtext_max_segment_chars_missing_fallback_2000(self, context_store_js):
+        code = '''
+var norm = window.ContextStore.normalizeContext({
+  context_id: 'c2', type: 'longtext', source: 'test'
+});
+console.log(JSON.stringify({ value: norm.max_segment_chars }));
+'''
+        stdout, _ = node_eval(code, context_store_js)
+        try:
+            result = json.loads(stdout)
+        except:
+            pytest.fail('Node.js eval failed: ' + stdout)
+        assert result['value'] == 2000, 'max_segment_chars missing should default to 2000'
+
+    def test_longtext_max_segment_chars_clamp_to_100(self, context_store_js):
+        code = '''
+var norm = window.ContextStore.normalizeContext({
+  context_id: 'c3', type: 'longtext', source: 'test', max_segment_chars: 50
+});
+console.log(JSON.stringify({ value: norm.max_segment_chars }));
+'''
+        stdout, _ = node_eval(code, context_store_js)
+        try:
+            result = json.loads(stdout)
+        except:
+            pytest.fail('Node.js eval failed: ' + stdout)
+        assert result['value'] == 100, 'max_segment_chars < 100 should clamp to 100'
+
+    def test_longtext_max_segment_chars_clamp_to_5000(self, context_store_js):
+        code = '''
+var norm = window.ContextStore.normalizeContext({
+  context_id: 'c4', type: 'longtext', source: 'test', max_segment_chars: 9999
+});
+console.log(JSON.stringify({ value: norm.max_segment_chars }));
+'''
+        stdout, _ = node_eval(code, context_store_js)
+        try:
+            result = json.loads(stdout)
+        except:
+            pytest.fail('Node.js eval failed: ' + stdout)
+        assert result['value'] == 5000, 'max_segment_chars > 5000 should clamp to 5000'
 
     def test_longtext_silence_clamp(self, context_store_js):
         code = '''

@@ -29,6 +29,7 @@
 - P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口 ✅
 - P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计 ✅
 - P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核 ✅
+- P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复 ✅
 
 ## 已完成
 

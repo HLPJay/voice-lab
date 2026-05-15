@@ -136,7 +136,8 @@
 
     // max_segment_chars
     var maxChars = parseInt(input.max_segment_chars, 10);
-    if (isNaN(maxChars) || maxChars < 100) maxChars = 100;
+    if (isNaN(maxChars)) maxChars = 2000;
+    else if (maxChars < 100) maxChars = 100;
     else if (maxChars > 5000) maxChars = 5000;
     out.max_segment_chars = maxChars;
 
@@ -299,7 +300,8 @@
 
   /**
    * Remove the context with the given context_id.
-   * Returns the updated contexts array (does not persist — caller may call persist).
+   * Persists the updated contexts array when a matching context is removed.
+   * Returns the updated contexts array.
    */
   function deleteContext(contextId) {
     if (!contextId) return getContexts();
