@@ -14,8 +14,8 @@
 * P13-CREATION-B1：sample_store.js 前端样本存储模块实现已完成 ✅
 * P13-CREATION-B1-CHECK-FIX：sample_store 契约修正已完成 ✅
 * P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
-* P13-CREATION-B2：workspace 生成结果接入 sample_store 已完成 ✅
-* 当前下一阶段：P13-CREATION-B3 样本观察侧边栏 UI 实现
+* P13-CREATION-B2：workspace 生成结果接入 sample_store 已实现，待 B2-CHECK 复核
+* 当前下一阶段：P13-CREATION-B2-CHECK workspace sample_store 接入复核
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5685,4 +5685,87 @@ voice_id/voice_name 从 `window._voiceBindMap` 回填（绑定表）。
 
 ### 阶段状态
 
-B2 已完成，47 项测试全部通过。
+B2 已完成，47 项测试全部通过。进入 B2-CHECK 复核。
+
+## P13-CREATION-B2-CHECK-FIX：workspace sample_store 接入修正
+
+### 背景
+
+B2 初版实现完成后复核发现：
+- sync / variants 未保存当前生成上下文，导致 `safePushWorkspaceSample` 可能读取空或旧 context
+- voiceBindMap 查找逻辑在 `safePushWorkspaceSample` 中重复两段
+- `duration_ms` 未优先读取 `audio_asset.duration_ms`
+- `buildAssetDownloadUrl` 未对 assetId 进行 URI 编码
+- variants 传入 data 而非 data 的结构，`model` 信息丢失
+- B2 状态文档过早推进到 B3
+
+### 修正内容
+
+#### 新增统一 `buildWorkspaceSampleContext(options)` helper
+
+将 voiceBindMap 查找逻辑收拢到统一函数中，返回完整上下文对象。handleGenerate 中所有模式（sync/variants/async/stream）统一在发起请求前调用一次。
+
+#### `handleGenerate` 统一上下文保存
+
+在 `stopAsyncPolling()` 之后，所有分支之前，统一调用：
+
+```javascript
+window._workspaceSampleContext = buildWorkspaceSampleContext({
+  text: text,
+  profile_id: profileId,
+  provider: provider,
+  audio_format: audioFormat,
+});
+```
+
+async 模式在收到响应后，仅更新 `job_id`：
+
+```javascript
+window._workspaceSampleContext.job_id = data.job_id || null;
+```
+
+#### `safePushWorkspaceSample` 重写
+
+- `window.SampleStore` 不存在时直接 return null
+- 无 `assetId` 时直接 return null（优先使用 `extra.asset_id`）
+- `duration_ms` 优先级：`extra.duration_ms > data.audio_asset.duration_ms > data.duration_ms > data.audio_duration_ms > data.total_duration_ms`
+- `audio_format` 优先级：`extra.audio_format > ctx.audio_format > data.audio_asset.format > data.audio_format > data.format > 'mp3'`
+- `provider/model` 优先从 `data` 取，其次从 `ctx` 取
+- `return window.SampleStore.pushSample(sample)` 以支持返回值
+- `catch` 中使用 `console.warn` 并 return null
+
+#### `buildAssetDownloadUrl` 修正
+
+```javascript
+return '/api/voice/assets/' + encodeURIComponent(assetId) + '/download';
+```
+
+#### 四个调用点传入 extra 参数
+
+- **sync**: `safePushWorkspaceSample('workspace_sync', data, { asset_id: audio.id, duration_ms: audio.duration_ms || null })`
+- **variants**: `safePushWorkspaceSample('workspace_variant', v, { asset_id: v.audio_asset_id, duration_ms: v.duration_ms || null, job_id: extractJobId(data), model: v.model || data.model || null })`
+- **async**: `safePushWorkspaceSample('workspace_async', data, { asset_id: audio.id, duration_ms: audio.duration_ms || null, job_id: data.job_id || null })`
+- **stream**: `safePushWorkspaceSample('workspace_stream', completed, { asset_id: asset.id, duration_ms: asset.duration_ms || completed.total_duration_ms || null })`
+
+#### 文档状态修正
+
+- `NEXT_TASKS.md`：移除 B3 推进，当前阶段改回 B2-CHECK，修正重复的 P12-BE 行
+- `PROJECT_HEALTH_CHECK.md`：顶部摘要 B2 状态改为"待 B2-CHECK 复核"，追加 B2-CHECK-FIX 章节
+
+### 测试
+
+- `tests/test_sample_store_static.py`：25 项全部通过
+- `tests/test_sample_store_workspace_integration_static.py`：34 项静态契约测试全部通过（新增覆盖 extra 参数、encodeURIComponent、buildWorkspaceSampleContext 等）
+- 总计 59 项测试
+
+### 阶段边界
+
+- 只改 `app/static/index.html`、`tests/test_sample_store_workspace_integration_static.py`
+- 不改 `sample_store.js`
+- 不改 `tests/test_sample_store_static.py`
+- 不接 audition / batch / history / sidebar UI
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B2-CHECK-FIX 完成，等待 B2-CHECK 复核。

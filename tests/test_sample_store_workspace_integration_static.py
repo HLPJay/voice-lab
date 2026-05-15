@@ -1,7 +1,7 @@
 """
 test_sample_store_workspace_integration_static.py
 
-B2: Static contract tests for workspace -> sample_store integration.
+B2/B2-CHECK-FIX: Static contract tests for workspace -> sample_store integration.
 Verifies the JS integration layer in index.html contains correct
 helpers, context saves, and safePushWorkspaceSample calls without
 executing browser-side code.
@@ -29,6 +29,19 @@ class TestWorkspaceSampleIntegrationStatic:
         assert 'function buildAssetDownloadUrl' in content, \
             'buildAssetDownloadUrl helper must be present'
 
+    def test_buildAssetDownloadUrl_uses_encodeURIComponent(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function buildAssetDownloadUrl')
+        func_end = content.find('\n  }\n', func_start) + 4
+        func_body = content[func_start:func_end]
+        assert 'encodeURIComponent' in func_body, \
+            'buildAssetDownloadUrl must use encodeURIComponent(assetId)'
+
+    def test_buildWorkspaceSampleContext_function_present(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        assert 'function buildWorkspaceSampleContext' in content, \
+            'buildWorkspaceSampleContext helper must be present'
+
     def test_safePushWorkspaceSample_function_present(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
         assert 'function safePushWorkspaceSample' in content, \
@@ -41,52 +54,99 @@ class TestWorkspaceSampleIntegrationStatic:
 
     def test_safePushWorkspaceSample_is_fail_safe(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # Must have try/catch that never propagates
         func_start = content.find('function safePushWorkspaceSample')
         func_end = content.find('\n  }', func_start) + 4
         func_body = content[func_start:func_end]
         assert 'try {' in func_body and '} catch' in func_body, \
             'safePushWorkspaceSample must be wrapped in try/catch'
 
-    def test_workspaceContext_global_set_before_stream(self):
+    def test_safePushWorkspaceSample_guards_sample_store_exists(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # window._workspaceSampleContext must be set before startStreamGenerate
-        # Use non-greedy match to handle nested braces in the object literal
-        pattern = r'window\._workspaceSampleContext\s*=\s*\{[\s\S]*?\}\s*;[\s\S]*?startStreamGenerate'
-        assert re.search(pattern, content), \
-            'window._workspaceSampleContext must be saved before startStreamGenerate'
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        # Must check window.SampleStore exists before calling
+        assert re.search(r"if\s*\(\s*!\s*window\.SampleStore", func_body) or \
+               re.search(r"if\s*\(\s*typeof\s+window\.SampleStore", func_body), \
+            'safePushWorkspaceSample must guard against missing SampleStore'
 
-    def test_workspaceContext_global_set_before_async(self):
+    def test_safePushWorkspaceSample_guards_asset_id(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # window._workspaceSampleContext must be set before startAsyncPolling
-        pattern = r'window\._workspaceSampleContext\s*=\s*\{[\s\S]*?\}\s*;[\s\S]*?startAsyncPolling'
-        assert re.search(pattern, content), \
-            'window._workspaceSampleContext must be saved before startAsyncPolling'
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        # Must return early if no assetId
+        assert re.search(r"if\s*\(\s*!\s*assetId", func_body), \
+            'safePushWorkspaceSample must return early if assetId is falsy'
+
+    def test_safePushWorkspaceSample_extra_parameter_used(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        # extra must be used for asset_id, duration_ms overrides
+        assert 'extra.asset_id' in func_body or 'extra[' in func_body, \
+            'safePushWorkspaceSample must use extra.asset_id from extra parameter'
+
+    def test_safePushWorkspaceSample_duration_ms_precedence(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        # Must check audio_asset.duration_ms (via optional chaining) and total_duration_ms
+        assert 'audio_asset' in func_body and 'duration_ms' in func_body, \
+            'duration_ms must read audio_asset.duration_ms'
+        assert 'total_duration_ms' in func_body, \
+            'duration_ms must read total_duration_ms (stream)'
+
+    def test_safePushWorkspaceSample_model_precedence(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        # model: data?.model || ctx.model || null
+        assert re.search(r"data\?\.model\s*\|\|", func_body), \
+            'model must prioritize data?.model over context'
+
+    def test_unified_context_saved_before_all_modes(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        # The unified buildWorkspaceSampleContext call must appear BEFORE the
+        # "if (isStream)" check (i.e., before any mode-specific branching)
+        build_ctx_pos = content.find('buildWorkspaceSampleContext({')
+        is_stream_pos = content.find('if (isStream)', build_ctx_pos if build_ctx_pos >= 0 else 0)
+        assert build_ctx_pos >= 0 and is_stream_pos > build_ctx_pos, \
+            'buildWorkspaceSampleContext must be called before any mode branching'
+
+    def test_async_job_id_update_after_response(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        # After async response, must update window._workspaceSampleContext.job_id
+        async_branch = re.search(
+            r"if\s*\(\s*isAsync\s*\)\s*\{[^}]*?\{[^}]*\}[\s\S]*?window\._workspaceSampleContext\.job_id\s*=",
+            content
+        )
+        assert async_branch, \
+            'async branch must update window._workspaceSampleContext.job_id after getting response'
 
     def test_safePushWorkspaceSample_called_in_renderResults_sync(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # safePushWorkspaceSample('workspace_sync', ...) in renderResults statusOk block
         pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_sync'"
         assert re.search(pattern, content), \
             "safePushWorkspaceSample('workspace_sync', ...) must be in renderResults"
 
     def test_safePushWorkspaceSample_called_in_renderResults_variants(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # safePushWorkspaceSample('workspace_variant', ...) in renderResults variants
         pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_variant'"
         assert re.search(pattern, content), \
             "safePushWorkspaceSample('workspace_variant', ...) must be in renderResults variants"
 
     def test_safePushWorkspaceSample_called_in_renderAsyncResult(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # safePushWorkspaceSample('workspace_async', ...) in renderAsyncResult
         pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_async'"
         assert re.search(pattern, content), \
             "safePushWorkspaceSample('workspace_async', ...) must be in renderAsyncResult"
 
     def test_safePushWorkspaceSample_called_in_renderStreamResult(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # safePushWorkspaceSample('workspace_stream', ...) in renderStreamResult
         pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_stream'"
         assert re.search(pattern, content), \
             "safePushWorkspaceSample('workspace_stream', ...) must be in renderStreamResult"
@@ -96,49 +156,31 @@ class TestWorkspaceSampleIntegrationStatic:
         assert 'function getSelectedProfileName' in content, \
             'getSelectedProfileName helper must be present'
 
-    def test_workspaceContext_includes_text_preview_truncation(self):
+    def test_buildWorkspaceSampleContext_includes_text_preview_truncation(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # text_preview must be truncated to 100 chars before saving to context
-        func_blocks = re.findall(
-            r'window\._workspaceSampleContext\s*=\s*\{([^}]+)\}',
-            content, re.DOTALL
-        )
-        assert len(func_blocks) >= 2, 'Should have 2 context saves (stream + async)'
-        for block in func_blocks:
-            assert 'text_preview' in block, \
-                'context must include text_preview'
-            # Should use substring or similar truncation
-            has_truncation = (
-                'substring' in block or
-                'slice' in block or
-                'substr' in block or
-                "text.length > 100" in block
-            )
-            assert has_truncation, \
-                'text_preview in context must be truncated (100 char max)'
+        func_start = content.find('function buildWorkspaceSampleContext')
+        func_end = content.find('\n  }\n', func_start) + 4
+        func_body = content[func_start:func_end]
+        assert 'text_preview' in func_body, \
+            'buildWorkspaceSampleContext must include text_preview'
+        assert 'substring' in func_body or 'slice' in func_body, \
+            'text_preview must be truncated'
 
-    def test_workspaceContext_includes_profile_name(self):
+    def test_buildWorkspaceSampleContext_includes_profile_name(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        func_blocks = re.findall(
-            r'window\._workspaceSampleContext\s*=\s*\{([^}]+)\}',
-            content, re.DOTALL
-        )
-        for block in func_blocks:
-            assert 'profile_name' in block, \
-                'context must include profile_name'
+        func_start = content.find('function buildWorkspaceSampleContext')
+        func_end = content.find('\n  }\n', func_start) + 4
+        func_body = content[func_start:func_end]
+        assert 'profile_name' in func_body, \
+            'buildWorkspaceSampleContext must include profile_name'
 
-    def test_workspaceContext_includes_job_id_for_async(self):
+    def test_buildWorkspaceSampleContext_uses_voiceBindMap(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # Find the async branch and verify job_id is in the context save
-        # The async context save is after "if (isAsync) {" and before "startAsyncPolling"
-        async_branch_match = re.search(
-            r"if\s*\(\s*isAsync\s*\)\s*\{[\s\S]*?window\._workspaceSampleContext\s*=\s*\{([\s\S]*?)\}\s*;",
-            content
-        )
-        assert async_branch_match, 'Async context save not found'
-        context_body = async_branch_match.group(1)
-        assert 'job_id' in context_body, \
-            'async context must include job_id'
+        func_start = content.find('function buildWorkspaceSampleContext')
+        func_end = content.find('\n  }\n', func_start) + 4
+        func_body = content[func_start:func_end]
+        assert '_voiceBindMap' in func_body, \
+            'buildWorkspaceSampleContext must look up voice from _voiceBindMap'
 
     def test_safePushWorkspaceSample_extracts_asset_id(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
@@ -156,47 +198,79 @@ class TestWorkspaceSampleIntegrationStatic:
         assert 'buildAssetDownloadUrl' in func_body, \
             'safePushWorkspaceSample must use buildAssetDownloadUrl'
 
-    def test_safePushWorkspaceSample_uses_voiceBindMap_fallback(self):
-        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function safePushWorkspaceSample')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert '_voiceBindMap' in func_body, \
-            'safePushWorkspaceSample must look up voice from _voiceBindMap'
-
-    def test_workspace_sync_source_tag_correct(self):
-        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # Tags should include the source identifier
-        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_sync'"
-        matches = re.findall(pattern, content)
-        assert len(matches) >= 1, \
-            "safePushWorkspaceSample('workspace_sync') must be called at least once"
-
-    def test_workspace_variant_iterates_over_variants(self):
-        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        # Variants branch must iterate and call push for each variant with audio
-        pattern = r"data\.variants\.forEach\s*\(\s*function\s*\(\s*\w+\s*\)\s*\{[^}]*safePushWorkspaceSample"
-        assert re.search(pattern, content, re.DOTALL), \
-            'renderResults variants branch must forEach and push each variant with audio_asset_id'
-
     def test_no_direct_localStorage_in_safePush(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
         func_start = content.find('function safePushWorkspaceSample')
         func_end = content.find('\n  }', func_start) + 4
         func_body = content[func_start:func_end]
-        # Must NOT use localStorage directly — must go through SampleStore
         forbidden = ['localStorage.getItem', 'localStorage.setItem', 'localStorage.removeItem']
         found = [kw for kw in forbidden if kw in func_body]
         assert not found, \
             f'safePushWorkspaceSample must not use localStorage directly: {found}'
 
-    def test_stream_context_saves_provider_and_profile(self):
+    def test_variants_call_passes_extra_asset_id(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        stream_context = re.search(
-            r"if\s*\(\s*isStream\s*\)[^}]*window\._workspaceSampleContext\s*=\s*\{([^}]+)\}",
-            content, re.DOTALL
+        # variants call must pass extra with asset_id (handle multiline object)
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_variant'[\s\S]*?\{[\s\S]*?asset_id[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'variants safePushWorkspaceSample must pass extra with asset_id'
+
+    def test_variants_call_passes_extra_duration_ms(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        # variants call must pass extra with duration_ms
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_variant'[\s\S]*?duration_ms[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'variants safePushWorkspaceSample must pass extra.duration_ms'
+
+    def test_stream_call_passes_extra_asset_id(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        # stream call must pass extra with asset_id (handle multiline object)
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_stream'[\s\S]*?\{[\s\S]*?asset_id[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'stream safePushWorkspaceSample must pass extra with asset_id'
+
+    def test_stream_call_passes_extra_duration_ms(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        # stream call must pass extra with duration_ms
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_stream'[\s\S]*?duration_ms[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'stream safePushWorkspaceSample must pass extra.duration_ms'
+
+    def test_stream_call_does_not_pass_blob_url(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        stream_call_block = re.search(
+            r"safePushWorkspaceSample\s*\(\s*'workspace_stream'[\s\S]*?\}\s*\)",
+            content
         )
-        assert stream_context, 'Stream context save not found'
-        body = stream_context.group(1)
-        assert 'provider' in body and 'profile_id' in body, \
-            'stream context must include provider and profile_id'
+        assert stream_call_block, 'stream safePushWorkspaceSample call not found'
+        call_text = stream_call_block.group(0)
+        assert 'blob:' not in call_text, \
+            'stream safePushWorkspaceSample must not pass blob URL'
+
+    def test_sync_call_passes_extra_asset_id(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_sync'[\s\S]*?\{[\s\S]*?asset_id[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'sync safePushWorkspaceSample must pass extra with asset_id'
+
+    def test_async_call_passes_extra_asset_id(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        pattern = r"safePushWorkspaceSample\s*\(\s*'workspace_async'[\s\S]*?\{[\s\S]*?asset_id[\s\S]*?\}\s*\)"
+        assert re.search(pattern, content), \
+            'async safePushWorkspaceSample must pass extra with asset_id'
+
+    def test_buildWorkspaceSampleContext_includes_audio_format(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function buildWorkspaceSampleContext')
+        func_end = content.find('\n  }\n', func_start) + 4
+        func_body = content[func_start:func_end]
+        assert 'audio_format' in func_body, \
+            'buildWorkspaceSampleContext must include audio_format'
+
+    def test_safePushWorkspaceSample_no_blob_url_in_download(self):
+        content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
+        func_start = content.find('function safePushWorkspaceSample')
+        func_end = content.find('\n  }', func_start) + 4
+        func_body = content[func_start:func_end]
+        assert "blob:" not in func_body, \
+            'safePushWorkspaceSample must not handle blob: URLs'
