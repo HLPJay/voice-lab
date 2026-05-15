@@ -40,7 +40,8 @@
 * P14-PRODUCT-A0：样本复用与配置恢复产品方案审查已完成 ✅
 * P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充已完成 ✅
 * P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计已完成 ✅
-* 当前下一阶段：P14-LONGTEXT-UX-B1
+* P14-LONGTEXT-UX-B1：长文本字数统计、预计分段、策略说明已完成，待复核
+* 当前下一阶段：P14-LONGTEXT-UX-B1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7189,3 +7190,47 @@ P14-PRODUCT-A0-FIX1 完成。
 ### 阶段状态
 
 P14-LONGTEXT-UX-B0 完成，建议进入 B1 实现。
+
+## P14-LONGTEXT-UX-B1：长文本字数统计、预计分段、策略说明
+
+### 背景
+
+P14-LONGTEXT-UX-B0 已完成设计。B1 在长文本页面实现生成前提示，帮助用户理解当前字数、预计消耗、预计分段数量和分段策略差异。
+
+### 实现内容
+
+- 新增长文本提示区 `#batchLongtextHints`
+- 新增当前字数提示（`#batchTextCount`，`/ 50000 字`）
+- 新增预计消耗字数提示（`#batchEstimatedCost`）
+- 新增预计分段数量提示（`#batchEstimatedSegments`）
+- 新增分段策略动态 helper text（`#batchStrategyHint`）
+- 新增字幕耗时提示（`#batchSubtitleHint`）
+- 新增 `estimateBatchSegments()` 前端估算（auto/paragraph/sentence/line 四种策略）
+- 新增事件绑定 `bindBatchLongtextHints()`
+- 新增长文本 UX 静态 / 行为测试（49 个测试）
+
+### 新增函数
+
+- `getBatchTextValue()` / `getBatchMaxCharsValue()` / `getBatchStrategyValue()`
+- `countBatchTextChars(text)`
+- `estimateBatchSegments(text, strategy, maxChars)`
+- `getBatchStrategyHint(strategy, estimatedSegments)`
+- `updateBatchLongtextHints()`
+- `bindBatchLongtextHints()`（含 `_batchLongtextHintsBound` 防重复绑定）
+
+### 阶段边界
+
+- 不改 batch submit payload
+- 不改后端分段逻辑
+- 不调用真实 MiniMax
+- 不接 ContextStore
+- 不改 SampleStore / SampleSidebar
+- 不做配置恢复
+
+### 测试结果
+
+413 passed（含新增 49 个测试）
+
+### 阶段状态
+
+B1 完成，待 B1-CHECK 复核。

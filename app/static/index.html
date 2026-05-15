@@ -1062,6 +1062,39 @@
       max-height: none;
     }
   }
+
+  /* Longtext batch hints */
+  .batch-hints {
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: #4a5568;
+  }
+  .batch-hint-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-bottom: 4px;
+  }
+  .batch-hint-row span {
+    white-space: nowrap;
+  }
+  .batch-hint-warning {
+    color: #c05621;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .batch-hint-strategy {
+    font-size: 0.78rem;
+    color: #718096;
+    margin-bottom: 4px;
+  }
+  .batch-hint-subtitle {
+    font-size: 0.78rem;
+    color: #718096;
+  }
 </style>
 </head>
 <body>
@@ -1221,6 +1254,16 @@
       <div class="form-group full-width">
         <label for="batchText">待分段文本</label>
         <textarea id="batchText" placeholder="输入长篇文章或段落文本，系统将自动分段后逐段生成音频并合并" style="min-height:120px" maxlength="50000"></textarea>
+        <div class="batch-hints" id="batchLongtextHints">
+          <div class="batch-hint-row">
+            <span id="batchTextCount">当前字数：0 / 50000 字</span>
+            <span id="batchEstimatedCost">预计消耗：0 字</span>
+            <span id="batchEstimatedSegments">预计分段：0 段</span>
+          </div>
+          <div class="batch-hint-warning" id="batchTextWarning" style="display:none"></div>
+          <div class="batch-hint-strategy" id="batchStrategyHint"></div>
+          <div class="batch-hint-subtitle" id="batchSubtitleHint" style="display:none">已开启字幕，生成耗时可能增加。</div>
+        </div>
       </div>
       <div class="config-grid">
         <div class="form-group">
@@ -4729,6 +4772,164 @@ function handleStopAsyncPolling() {
     el.style.display = 'none';
   };
 
+  // Longtext batch UX hints
+  function getBatchTextValue() {
+    const el = document.getElementById('batchText');
+    return el ? el.value : '';
+  }
+
+  function getBatchMaxCharsValue() {
+    const el = document.getElementById('batchMaxChars');
+    if (!el) return 2000;
+    const v = parseInt(el.value, 10);
+    if (isNaN(v)) return 2000;
+    return Math.max(100, Math.min(5000, v));
+  }
+
+  function getBatchStrategyValue() {
+    const el = document.getElementById('batchStrategy');
+    return el ? el.value : 'auto';
+  }
+
+  function countBatchTextChars(text) {
+    return String(text || '').length;
+  }
+
+  function estimateBatchSegments(text, strategy, maxChars) {
+    const str = String(text || '');
+    if (!str) return 0;
+    const mc = (typeof maxChars === 'number' && maxChars > 0) ? maxChars : 2000;
+    const clamped = Math.max(100, Math.min(5000, mc));
+
+    if (strategy === 'line') {
+      const lines = str.split('\n');
+      let count = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          count += Math.ceil(lines[i].trim().length / clamped) || 1;
+        }
+      }
+      return count;
+    }
+
+    if (strategy === 'sentence') {
+      const parts = str.split(/(?<=[。！？!?])/);
+      let count = 0;
+      for (let i = 0; i < parts.length; i++) {
+        const s = parts[i].trim();
+        if (s) {
+          count += Math.ceil(s.length / clamped) || 1;
+        }
+      }
+      return count;
+    }
+
+    if (strategy === 'paragraph') {
+      const blocks = str.split(/\n\s*\n/);
+      let count = 0;
+      for (let i = 0; i < blocks.length; i++) {
+        const s = blocks[i].trim();
+        if (s) {
+          count += Math.ceil(s.length / clamped) || 1;
+        }
+      }
+      return count;
+    }
+
+    // auto: split by blank lines, then greedy merge short paragraphs
+    const paragraphs = str.split(/\n\s*\n/).filter(function(p) { return p.trim(); });
+    if (paragraphs.length === 0) return 0;
+    // Greedy merge: accumulate paragraphs until exceeding clamped
+    let segments = [];
+    let current = '';
+    for (let i = 0; i < paragraphs.length; i++) {
+      const p = paragraphs[i];
+      if (!current) {
+        current = p;
+      } else if ((current.length + p.length + 1) <= clamped) {
+        current += '\n' + p;
+      } else {
+        segments.push(current);
+        current = p;
+      }
+    }
+    if (current) segments.push(current);
+    return segments.length || (str.trim() ? 1 : 0);
+  }
+
+  function getBatchStrategyHint(strategy, estimatedSegments) {
+    const n = typeof estimatedSegments === 'number' ? estimatedSegments : 0;
+    const segText = n === 0 ? '' : (n === 1 ? '当前预计：1 段。' : '当前预计：约 ' + n + ' 段。');
+    if (strategy === 'auto') {
+      return '自动策略会保持自然段边界，但会把较短段落合并到每段上限内。' + segText + ' 若希望每段单独生成，请选择"按空行分段"或"每行一段"，或降低每段上限。';
+    }
+    if (strategy === 'paragraph') {
+      return '按空行分段：以空行作为段落边界，适合已经整理好段落结构的长文。普通换行不一定等同于空行。';
+    }
+    if (strategy === 'sentence') {
+      return '每句一段：按句号、问号、感叹号等句子边界拆分，适合段落不清晰但句子边界明显的文本。';
+    }
+    if (strategy === 'line') {
+      return '每行一段：每一行作为独立生成段，适合手动控制节奏、列表、分镜旁白或台词。';
+    }
+    return '';
+  }
+
+  function updateBatchLongtextHints() {
+    const text = getBatchTextValue();
+    const count = countBatchTextChars(text);
+    const maxChars = getBatchMaxCharsValue();
+    const strategy = getBatchStrategyValue();
+    const estimated = estimateBatchSegments(text, strategy, maxChars);
+
+    const countEl = document.getElementById('batchTextCount');
+    if (countEl) countEl.textContent = '当前字数：' + count + ' / 50000 字';
+
+    const costEl = document.getElementById('batchEstimatedCost');
+    if (costEl) costEl.textContent = '预计消耗：' + count + ' 字';
+
+    const segEl = document.getElementById('batchEstimatedSegments');
+    if (segEl) segEl.textContent = '预计分段：' + (count === 0 ? '0 段' : (estimated === 1 ? '1 段' : '约 ' + estimated + ' 段'));
+
+    const warnEl = document.getElementById('batchTextWarning');
+    if (warnEl) {
+      if (count >= 47500) {
+        warnEl.textContent = '接近 50000 字上限。';
+        warnEl.style.display = '';
+      } else if (count >= 40000) {
+        warnEl.textContent = '文本较长，请确认分段策略。';
+        warnEl.style.display = '';
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
+
+    const hintEl = document.getElementById('batchStrategyHint');
+    if (hintEl) hintEl.textContent = getBatchStrategyHint(strategy, estimated);
+
+    const subEl = document.getElementById('batchSubtitleHint');
+    if (subEl) {
+      const subEl2 = document.getElementById('batchNeedSubtitle');
+      subEl.style.display = (subEl2 && subEl2.checked) ? '' : 'none';
+    }
+  }
+
+  var _batchLongtextHintsBound = false;
+  function bindBatchLongtextHints() {
+    if (_batchLongtextHintsBound) return;
+    _batchLongtextHintsBound = true;
+    var textEl = document.getElementById('batchText');
+    var stratEl = document.getElementById('batchStrategy');
+    var maxEl = document.getElementById('batchMaxChars');
+    var subEl = document.getElementById('batchNeedSubtitle');
+    if (textEl) textEl.addEventListener('input', updateBatchLongtextHints);
+    if (stratEl) stratEl.addEventListener('change', updateBatchLongtextHints);
+    if (maxEl) maxEl.addEventListener('input', updateBatchLongtextHints);
+    if (maxEl) maxEl.addEventListener('change', updateBatchLongtextHints);
+    if (subEl) subEl.addEventListener('change', updateBatchLongtextHints);
+    updateBatchLongtextHints();
+  }
+
   // handleBatchLongtextSubmit — moved to /static/js/batch_longtext.js
   // (button onclick="handleBatchLongtextSubmit()" still resolves via window lookup)
 
@@ -5110,6 +5311,9 @@ function handleStopAsyncPolling() {
       alert('重试失败：' + e.message);
     }
   }
+</script>
+<script>
+  bindBatchLongtextHints();
 </script>
 </body>
 </html>
