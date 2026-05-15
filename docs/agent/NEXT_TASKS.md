@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核**
+**P14-CONTEXT-C2：剧本一键回填**
 
 ## 已完成（续）
 
+- P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核 ✅
 - P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构 ✅
 - P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复 ✅
 - P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核 ✅ (发现阻塞问题)

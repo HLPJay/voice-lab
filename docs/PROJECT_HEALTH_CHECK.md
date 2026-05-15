@@ -65,7 +65,8 @@
 * P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核已完成 ✅（发现阻塞问题）
 * P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复已完成 ✅
 * P14-CONTEXT-C1-FIX1：修复 script detail panel HTML 结构已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C1-FIX1-CHECK
+* P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核已完成 ✅
+* 当前下一阶段：P14-CONTEXT-C2
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8237,6 +8238,34 @@ P14-CONTEXT-C1-CHECK 发现 `showSampleDetail` 的 script 分支中 `.sample-det
 ### 阶段状态
 
 P14-CONTEXT-C1-FIX1 完成，建议进入 **P14-CONTEXT-C1-FIX1-CHECK**。
+
+## P14-CONTEXT-C1-FIX1-CHECK：script detail panel HTML 结构修复复核
+
+### 背景
+
+P14-CONTEXT-C1-FIX1 已在 `showSampleDetail` 的 script 分支中补充 `'</div>'` 关闭 meta div。本阶段对修复进行复核。
+
+### 复核结果
+
+- 确认 `sample_sidebar.js` line 727 存在 `'</div>'`，位于 `panel.innerHTML +=` 拼接末尾、`scriptDetailHtml`（line 728）之前
+- 确认修复后 `.sample-detail-meta` 在 script 分支中正确关闭
+- 确认 `sample-detail-text-label` 和 `sample-detail-lines-wrap` 作为 meta div 的兄弟节点渲染
+- 确认 script 详情内容不变（来源/创建时间/行数/Provider/音频格式/字幕/段间静音/台词列表）
+- 确认每行展示：行号、role、text、profile_id，均使用 `esc()` 转义
+- 确认 `renderScriptLinesDetail(context)` 仍存在且逻辑未变
+- 确认 longtext 详情和恢复未受影响（longtext 分支结构完全未改）
+- 确认 script 详情仍不显示恢复按钮、不做回填
+- 确认平铺按钮 UXFIX1 未回退（copy/fill/delete 为平铺按钮，无更多菜单）
+- 确认 C1 保存链路未受影响（batch_script.js 未修改）
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py + test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：364 passed
+
+### 阶段状态
+
+P14-CONTEXT-C1-FIX1-CHECK 通过，建议进入 **P14-CONTEXT-C2**。
+
 
 
 
