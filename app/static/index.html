@@ -3798,12 +3798,20 @@ function handleStopAsyncPolling() {
             <div style="font-size:0.72rem;color:#718096"><span style="color:#4a5568;font-weight:500">时长</span> ${duration}</div>
           </div>
         </div>`;
-        window._auditionRecords.push({
-          voiceId, voiceName: voiceName || '',
-          text, audioUrl: data.audio_asset.url,
+        const auditionRecord = {
+          voiceId,
+          voiceName: voiceName || '',
+          provider,
+          model,
+          text,
+          audioUrl: data.audio_asset.url,
+          assetId: data.audio_asset.id || null,
           durationMs: data.audio_asset.duration_ms || null,
+          audioFormat: data.audio_asset.format || 'mp3',
           timestamp: Date.now(),
-        });
+        };
+        window._auditionRecords.push(auditionRecord);
+        window.safePushAuditionSample?.(auditionRecord);
         renderAuditionRecords();
         loadRuntimeStatus();
       } else {

@@ -16,6 +16,7 @@
 * P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
 * P13-CREATION-B2：workspace 生成结果接入 sample_store 已复核通过 ✅
 * P13-CREATION-B2-CHECK：workspace sample_store 接入复核已完成 ✅
+* P13-CREATION-B3：audition_records 接入 sample_store 进行中
 * 当前下一阶段：P13-CREATION-B3 audition_records 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
@@ -5869,3 +5870,91 @@ B2 已完成 workspace sync / async / stream / variants 成功结果接入 sampl
 ### 阶段状态
 
 B2 已收口，可以开始 P13-CREATION-B3。
+
+## P13-CREATION-B3：audition_records 接入 sample_store
+
+### 背景
+
+B2 已完成 workspace sync / async / stream / variants 接入 sample_store。B3 开始将 Voices tab 的试听成功记录接入 sample_store。
+
+### 本阶段目标
+
+试听生成成功后，在保持原有 `window._auditionRecords` 行为不变的前提下，将试听结果以 `source = audition` 写入 `SampleStore`。
+
+### 修改文件
+
+- `app/static/js/audition_records.js` — 新增 `window.safePushAuditionSample` helper
+- `app/static/index.html` — `handleGenerateAudition` 构造 `auditionRecord` 并调用 `safePushAuditionSample`
+- `tests/test_sample_store_audition_integration_static.py` — 25 项静态契约测试
+
+### 实现内容
+
+#### `window.safePushAuditionSample(record)` — audition_records.js
+
+fail-safe 封装，只通过 `window.SampleStore.pushSample` 写入：
+
+- `source: 'audition'`
+- `tags: ['audition']`
+- `job_id: null`
+- `asset_id: record.assetId || record.audioAssetId || null`
+- `download_url: audioUrl || null`（拒绝 blob: URL）
+- `text_preview: record.text || ''`
+- `profile_id / profile_name: null`
+- `provider / model / voice_id / voice_name: record 对应字段`
+- `duration_ms: record.durationMs || null`
+- `audio_format: record.audioFormat || 'mp3'`
+
+#### `handleGenerateAudition` 改造 — index.html
+
+在成功分支（`data.audio_asset && data.audio_asset.url`）中：
+
+```javascript
+const auditionRecord = {
+  voiceId, voiceName: voiceName || '',
+  provider, model,
+  text,
+  audioUrl: data.audio_asset.url,
+  assetId: data.audio_asset.id || null,
+  durationMs: data.audio_asset.duration_ms || null,
+  audioFormat: data.audio_asset.format || 'mp3',
+  timestamp: Date.now(),
+};
+window._auditionRecords.push(auditionRecord);
+window.safePushAuditionSample?.(auditionRecord);
+renderAuditionRecords();
+loadRuntimeStatus();
+```
+
+原有行为不变（试听记录渲染、状态刷新均保留）。
+
+### 接入范围
+
+- Voices tab audition success result
+- `window._auditionRecords`
+- `window.safePushAuditionSample`
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace 生成链路
+- 不接 batch_longtext / batch_script
+- 不接 history
+- 不新增 sample_sidebar.js
+- 不做 sidebar UI
+- 不修改后端 API
+- 不修改数据库结构
+- 不调用真实 MiniMax
+- sample 写入失败不得影响试听生成流程
+- 不保存 blob URL
+
+### 测试
+
+- `tests/test_sample_store_static.py`：25 项全部通过
+- `tests/test_sample_store_workspace_integration_static.py`：36 项全部通过
+- `tests/test_sample_store_audition_integration_static.py`：25 项全部通过
+
+结果：86 passed。
+
+### 阶段状态
+
+进行中，待测试通过后进入 B3-CHECK。
