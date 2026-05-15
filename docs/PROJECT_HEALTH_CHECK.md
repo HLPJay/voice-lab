@@ -39,7 +39,8 @@
 * 当前状态：P13 最近样本系统已归档
 * P14-PRODUCT-A0：样本复用与配置恢复产品方案审查已完成 ✅
 * P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充已完成 ✅
-* 当前下一阶段：P14-LONGTEXT-UX-B0 / P14-CONTEXT-B0 待选择
+* P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计已完成 ✅
+* 当前下一阶段：P14-LONGTEXT-UX-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7152,3 +7153,39 @@ P14-PRODUCT-A0-FIX1 完成。
 ## P14-PRODUCT-A0-FIX2：文档章节编号修正
 
 修正 `docs/P14_PRODUCT_A0_SAMPLE_REUSE_AND_RESTORE.md` 中 A0 结论章节编号重复问题。无产品结论变化，无代码变更。
+
+## P14-LONGTEXT-UX-B0：长文本字数 / 消耗 / 分段策略提示方案设计
+
+### 背景
+
+长文本是真实内容生产入口之一。当前长文本页面缺少字数提示、预计消耗、预计分段数量和清晰的分段策略说明，导致用户难以理解"自动分段"可能最终只有 1 段。
+
+### 代码事实核验
+
+- `#batchText maxlength="50000"`
+- `#batchStrategy` 值：`auto` / `paragraph` / `sentence` / `line`
+- `#batchMaxChars` 默认 2000，min 100，max 5000，step 100
+- submit payload：`segment_strategy`、`max_segment_chars` 与 UI 一一对应
+- 后端 schema：`Literal["auto", "paragraph", "sentence", "line"]`，`max_segment_chars` 范围 100～5000
+
+### 设计结论
+
+- 在 `#batchText` 附近显示当前字数 / 50000 字
+- 显示预计消耗字数（仅数字，不显示金额，不承诺计费）
+- 显示预计分段数量（前端估算，说明以后端结果为准）
+- 四种策略增加动态 helper text
+- "auto" 策略说明为何可能只有 1 段
+- 开启字幕时追加耗时提示
+- B0 只写设计文档，不实现代码
+
+### 阶段边界
+
+- 只做设计
+- 不改 index.html / JS / tests
+- 不调用真实 MiniMax
+- 不改 batch submit payload
+- 不改后端分段逻辑
+
+### 阶段状态
+
+P14-LONGTEXT-UX-B0 完成，建议进入 B1 实现。
