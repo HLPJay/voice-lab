@@ -12,8 +12,24 @@
 - P10-PRODUCT-B0：Workspace 音色快捷选择区边界审查 ✅
 - P10-PRODUCT-B1：Workspace 音色快捷选择区实现 ✅
 - P10-PRODUCT-B2-A0：Voices tab 快速创作联动边界审查 ✅
+- P10-PRODUCT-B2：Voices tab 快速创作联动实现 ✅
 
-## P10-PRODUCT-B1 实现总结
+## P10-PRODUCT-B2 实现总结
+
+**实现内容：**
+- 在 quickBindVoice 绑定成功消息中增加"去创作"按钮
+- 点击"去创作"按钮切换到 workspace tab
+- 不改生成链路，不改绑定逻辑，不改后端 API
+
+**E2E：** `test_quick_bind_success_go_create_switches_workspace` — mock profiles/bindings/provider-voices/capabilities，验证绑定成功后出现"去创作"按钮，点击后切换到 workspace tab
+
+**E2E 结果：** 27 passed
+
+详见：`docs/P10_PRODUCT_POLISH_PLAN.md` P10-PRODUCT-B2 节
+
+## Next
+
+1. **P10-PRODUCT-B3** — Batch tab 音色快速选择
 
 **实现内容：**
 - 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区 `#workspaceVoiceBindingHint`
@@ -37,8 +53,8 @@
 |---|---|---|
 | 1 | B1: Workspace 音色快捷选择区 | ✅ 已完成 |
 | 2 | B2-A0: Voices tab 快速创作联动边界审查 | ✅ 已完成 |
-| 3 | B2: Voices tab 快速创作联动实现 | 待做 |
-| 3 | B3: Batch tab 音色快速选择 | 待做 |
+| 3 | B2: Voices tab 快速创作联动实现 | ✅ 已完成 |
+| 4 | B3: Batch tab 音色快速选择 | 待做 |
 | 4 | B4: 简化 onboarding 文案 | 待做 |
 | 5 | B5: Advanced tab 重命名 | 待做 |
 | 6 | B6: 历史最近任务快捷入口 | 待做 |

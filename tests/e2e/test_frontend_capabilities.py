@@ -1429,3 +1429,133 @@ def test_workspace_voice_binding_hint_switches_to_voices(
     active_tab = page.locator(".tab-btn.active")
     active_tab_name = active_tab.get_attribute("data-tab")
     assert active_tab_name == "voices", f"Active tab should be 'voices', got: {active_tab_name}"
+
+
+# ── Test 27: Quick bind success shows '去创作' button that switches to workspace ─
+
+def test_quick_bind_success_go_create_switches_workspace(
+    page, e2e_base_url, console_errors
+):
+    """Verify quickBindVoice success message shows '去创作' button that switches to workspace tab."""
+
+    # Mock profiles
+    def handle_profiles(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([
+                {"id": "e2e_profile_001", "name": "E2E 测试人设"}
+            ]),
+        )
+
+    # Mock capabilities
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "t2a": {"supported": True}
+                }]
+            }),
+        )
+
+    # Mock provider-voices to render voice table with bind buttons
+    def handle_provider_voices(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "voices": [
+                    {
+                        "provider_voice_id": "e2e_voice_001",
+                        "name": "测试音色A",
+                        "voice_type": "female",
+                        "provider": "mock"
+                    }
+                ]
+            }),
+        )
+
+    # Mock bindings GET (empty)
+    def handle_bindings_get(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([]),
+        )
+
+    # Mock bindings POST (bind success)
+    def handle_bindings_post(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "id": "binding_001",
+                "profile_id": "e2e_profile_001",
+                "provider": "mock",
+                "model": "speech-2.8-hd",
+                "provider_voice_id": "e2e_voice_001",
+                "status": "available",
+                "priority": 1
+            }),
+        )
+
+    page.route("**/api/voice/profiles", handle_profiles)
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    page.route("**/api/voice/provider-voices*", handle_provider_voices)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/profiles/e2e_profile_001/bindings$"), handle_bindings_get)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/profiles/e2e_profile_001/bindings$"), handle_bindings_post)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Switch to voices tab
+    voices_tab = page.locator('button.tab-btn[data-tab="voices"]')
+    voices_tab.click()
+    page.wait_for_selector("#tab-voices", state="attached", timeout=10000)
+    page.wait_for_timeout(500)
+
+    # Select mock provider (already default) and click "查询音色" to load voice table
+    page.locator("#listVoicesBtn").click()
+    page.wait_for_timeout(2000)
+
+    # Wait for voice table to render with bind buttons
+    page.wait_for_selector(".bind-voice-btn", timeout=10000)
+
+    # Click the bind button to open quickBindVoice panel
+    bind_btn = page.locator(".bind-voice-btn").first
+    bind_btn.click()
+    page.wait_for_timeout(500)
+
+    # quickBindVoice panel should be visible
+    assert page.locator("#quickBindPanel").count() == 1, "quickBindPanel should appear"
+
+    # Select the profile in the quick bind panel
+    profile_sel = page.locator("#quickBindProfileSel")
+    assert profile_sel.count() == 1, "quickBindProfileSel should exist"
+    profile_sel.select_option("e2e_profile_001")
+    page.wait_for_timeout(200)
+
+    # Click confirm bind
+    confirm_btn = page.locator("#quickBindConfirm")
+    confirm_btn.click()
+    page.wait_for_timeout(2000)
+
+    # Verify success message shows "去创作" button
+    success_div = page.locator("#quickBindMsg .bg-green")
+    assert success_div.count() >= 1 or "绑定成功" in page.locator("#quickBindMsg").text_content(), \
+        "Success message should appear"
+
+    go_create_btn = page.locator("#quickBindGoCreateBtn")
+    assert go_create_btn.count() == 1, "'去创作' button should exist in success message"
+
+    # Click "去创作" button
+    go_create_btn.click()
+    page.wait_for_timeout(500)
+
+    # Verify workspace tab is now active
+    active_tab = page.locator(".tab-btn.active")
+    active_tab_name = active_tab.get_attribute("data-tab")
+    assert active_tab_name == "workspace", f"Active tab should be 'workspace' after clicking '去创作', got: {active_tab_name}"
