@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P13-FINAL-CHECK：P13 最近样本系统最终验收**
+**P13 已归档：最近样本系统完成**
 
 ## 已完成（续）
 
@@ -14,6 +14,8 @@
 - P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正 ✅
 - P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
 - P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口 ✅
+- P13-FINAL-CHECK：P13 最近样本系统最终验收 ✅
+- P13-CLOSE：P13 最近样本系统阶段收口归档 ✅
 
 ## 已完成
 
@@ -82,9 +84,11 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-FINAL-CHECK | final verification for recent samples system | B5-CLOSE 完成 |
+| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
+| P13-UI-POLISH-LATER | Workspace spacing 与 sample sidebar button visual consistency | P13 归档后的小型体验优化 |
+| P14-CREATION-CONTEXT-RESTORE | evaluate cross-tab configuration restore | 产品需要配置恢复时 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
-| P12-APP | 本地 App 打包评估 | P10 完成 |
+| P12-APP | 本地 App 打包评估 | P13 归档后 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
 ## Paused / Do not touch yet

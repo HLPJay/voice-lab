@@ -35,7 +35,8 @@
 * P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
 * P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口已完成 ✅
 * P13-FINAL-CHECK：P13 最近样本系统最终验收已完成 ✅
-* 当前下一阶段：P13-CLOSE / P13-ARCHIVE
+* P13-CLOSE：P13 最近样本系统阶段收口归档已完成 ✅
+* 当前状态：P13 最近样本系统已归档
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6984,3 +6985,85 @@ P13 已完成最近样本系统主线：sample_store.js、workspace 接入、aud
 ### 阶段状态
 
 P13-FINAL-CHECK 通过，可以进入 P13-CLOSE / P13-ARCHIVE。
+
+## P13-CLOSE：P13 最近样本系统阶段收口归档
+
+### 背景
+
+P13 已完成最近样本系统主线，并通过 FINAL-CHECK。该阶段目标是将 workspace / audition / batch merged audio 的生成结果统一沉淀到 SampleStore，并通过 SampleSidebar 进行观察、播放、下载、复制、回填、删除等轻量操作。
+
+### 已完成主线
+
+- B1：`sample_store.js` 前端样本存储模块
+- B2：workspace sync / async / stream / variants 接入 sample_store
+- B3：audition_records 接入 sample_store
+- B4：sample_sidebar UI
+- B4 回归修复：tab workspace DOM 闭合结构修复
+- B5-A0：batch sample_store 接入字段核验与方案设计
+- B5-A0-CODE-CHECK-FIX：batch 文档代码事实校验修正
+- B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧
+- B5-MVP1：batch merged audio 接入 sample_store
+- B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正
+- B5-CHECK：batch merged audio 接入复核
+- B5-CLOSE：batch merged audio 阶段收口
+- P13-FINAL-CHECK：最终验收
+
+### 最终能力
+
+当前 P13 支持以下样本来源：
+
+- `workspace_sync`
+- `workspace_async`
+- `workspace_stream`
+- `workspace_variant`
+- `audition`
+- `batch_longtext_merged`
+- `batch_script_merged`
+
+统一写入：
+
+- `voice_lab_recent_samples_v1`
+
+统一展示：
+
+- `SampleSidebar`
+
+### 核心约束
+
+- SampleStore 上限 200 条
+- Sidebar 展示最近 20 条
+- 不保存 blob URL
+- 不直接读写 recentJobs
+- 不接 history sample_store
+- 不接 segment samples
+- batch 只保存 `success` 状态的 merged audio
+- batch sample 的 `download_url` 固定使用 `/api/voice/batch/{batch_id}/download`
+- 不修改后端 API / 数据库
+- 不做多用户 / SaaS
+
+### 产品边界
+
+SampleSidebar 是统一最近样本观察面板，不是跨 tab 配置恢复系统。
+
+当前不支持：
+
+- 长文本 tab 独立侧边栏
+- 剧本 tab 独立侧边栏
+- 一键恢复长文本完整配置
+- 一键恢复剧本完整角色行与参数
+- 完整后端 sample library
+- 多浏览器 / 多用户同步
+
+### 测试结果
+
+最终测试结果：364 passed。
+
+### 遗留项
+
+- `P13-HISTORY-SECURITY-FIX1`：History textSnippet escape 安全债
+- `P13-UI-POLISH-LATER`：Workspace spacing 与 sample sidebar button visual consistency
+- `P14-CREATION-CONTEXT-RESTORE`：跨 tab 配置恢复能力评估
+
+### 阶段状态
+
+P13 最近样本系统已完成并归档。
