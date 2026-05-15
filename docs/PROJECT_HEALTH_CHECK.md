@@ -9,6 +9,7 @@
 * P12 真实使用修复阶段已最终收口
 * P12-USAGE-CHECK2：close post-UX6 polish ✅
 * 当前下一阶段：P13-CREATION-A0 样本观察侧边栏设计
+* P13-CREATION-A0：样本观察侧边栏设计审查进行中
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5319,3 +5320,53 @@ P12 阶段共完成 19 项修复：
 - P13-CREATION-A0：样本观察侧边栏设计
 - P12-BE：如有真实用户需求再评估后端能力增强
 - P12-APP：本地 App 打包评估
+
+## P13-CREATION-A0 样本观察侧边栏设计审查
+
+### 背景
+
+P12 已归档完成，P13 开始从"生成音频"进入"观察样本、复用样本、沉淀方案"的创作工作流设计。
+
+### 本阶段目标
+
+本阶段只做样本观察侧边栏的现状审查和设计文档，不实现功能。
+
+### 修改文件
+
+- docs/P13_CREATION_SAMPLE_OBSERVATION_A0.md（新增）
+- docs/PROJECT_HEALTH_CHECK.md（追加本节）
+
+### 阶段边界
+
+- 不改业务代码
+- 不改后端 API
+- 不改数据库结构
+- 不调用真实 MiniMax
+- 不进入 P13-B 实现
+- 不引入 React / Vite / 动态加载
+- 不做 SaaS / 多用户
+
+### 阶段状态
+
+进行中，审查与设计文档已完成，待提交后收口。
+
+### A0 结论
+
+- P13 可以启动
+- 第一版应采用 localStorage recent samples panel（200 条上限，text_preview 截断 100 字符）
+- 不应先做数据库样本库
+- 不应先做完整作品管理
+- 不应先改后端
+- 不应先做移动端
+
+### 后续阶段
+
+| 阶段 | 内容 |
+|---|---|
+| P13-CREATION-B0 | 最小实现方案设计（不写代码） |
+| P13-CREATION-B1 | 新增 sample_store.js 前端模块（localStorage 封装） |
+| P13-CREATION-B2 | 接入 workspace 单条生成结果 |
+| P13-CREATION-B3 | 接入 audition_records |
+| P13-CREATION-B4 | 新增 sidebar UI |
+| P13-CREATION-B5 | 接入 batch_longtext / batch_script 样本摘要 |
+| P13-CREATION-CHECK | 完整验收与回归 |
