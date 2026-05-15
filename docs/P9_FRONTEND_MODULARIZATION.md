@@ -688,3 +688,328 @@ inline script             ← index.html 第 1593 行开始
 - **Phase 2 行管理迁移需单独任务**：需先审查 `addScriptLine` / `removeScriptLine` 与 `populateProfileSelect` 的耦合点，不建议在当前阶段直接迁移。
 - **voice_clone_design.js 建议先审查再拆**：克隆/设计逻辑依赖 provider capability，建议完成 Phase 2 后再评估。
 - **batch_shared.js 暂缓**：共享轮询状态统一管理可作为独立后续任务。
+
+## P9-FE1-G0：voice_clone_design.js 抽离前边界审查
+
+**审查时间：** 2026-05-15
+
+### 音色高级能力相关 DOM id 清单
+
+**Clone Tab（`subtab-clone`，index.html 第 1254 行）：**
+
+| DOM id | 类型 | 用途 |
+|---|---|---|
+| `cloneProvider` | select | Provider 选择 |
+| `clonePurpose` | select | 用途（voice_clone） |
+| `cloneFile` | file input | 音频文件上传 |
+| `cloneFileHint` | div | file input hint（capability） |
+| `uploadBtn` | button | 上传按钮（`handleUploadAudio()`） |
+| `uploadResult` | div | 上传结果展示 |
+| `cloneVoiceId` | input text | voice_id 输入 |
+| `cloneAutoIdBtn` | button | 生成 voice_id（`handleCloneAutoId()`） |
+| `cloneVoiceIdHint` | div | voice_id 格式错误提示 |
+| `cloneFileId` | input number | file_id（上传后自动填入） |
+| `clonePromptFileId` | input number | prompt file_id（可选） |
+| `clonePromptText` | input text | prompt text（可选） |
+| `clonePreviewText` | input text | 试听文本 |
+| `cloneModel` | input text | model（preview 有值时必填） |
+| `needNoiseReduction` | checkbox | 降噪选项 |
+| `needVolumeNormalization` | checkbox | 音量标准化选项 |
+| `cloneBtn` | button | 克隆提交（`handleCloneVoice()`） |
+| `cloneBtnHint` | div | cloneBtn 禁用提示 |
+| `cloneCapabilityHint` | div | capability 不足提示（由 provider_capabilities.js 控制） |
+| `cloneResult` | div | 克隆结果 HTML |
+
+**Design Tab（`subtab-design`，index.html 第 1378 行）：**
+
+| DOM id | 类型 | 用途 |
+|---|---|---|
+| `designProvider` | select | Provider 选择 |
+| `designVoiceId` | input text | voice_id（可选） |
+| `designPrompt` | textarea | 音色描述 prompt |
+| `designPreviewText` | textarea | 试听文本 |
+| `designBtn` | button | 设计提交（`handleDesignVoice()`） |
+| `designCapabilityHint` | div | capability 不足提示（由 provider_capabilities.js 控制） |
+| `designResult` | div | 设计结果 HTML |
+
+**Import（Clone + Design sub-tabs）：**
+
+| DOM id | 类型 | 用途 |
+|---|---|---|
+| `importCloneProvider` / `importDesignProvider` | select | Import Provider |
+| `importCloneVoiceId` / `importDesignVoiceId` | input text | 远端 voice_id |
+| `importCloneName` / `importDesignName` | input text | 名称（可选） |
+| `importCloneModel` / `importDesignModel` | select | model |
+| `importClonePreviewText` / `importDesignPreviewText` | input text | 试听文本 |
+| `importCloneVerify` / `importDesignVerify` | checkbox | 是否验证试听 |
+| `importCloneBtn` / `importDesignBtn` | button | 验证并导入（`handleImportRemoteVoice('clone'/'design')`) |
+| `importCloneResult` / `importDesignResult` | div | 导入结果 HTML |
+
+**Voice List Tab：**
+
+| DOM id | 类型 | 用途 |
+|---|---|---|
+| `voiceProvider` | select | Provider |
+| `voiceType` | select | voice_type 过滤 |
+| `voiceSearch` | input | 关键词搜索 |
+| `listVoicesBtn` | button | 查询音色（`handleListVoices()`） |
+| `voiceListResults` | div | 音色列表表格 |
+
+**Audition Workstation（仍在 index.html）：**
+
+| DOM id | 类型 | 用途 |
+|---|---|---|
+| `auditionSelectedBanner` | div | 选中音色高亮条 |
+| `auditionSelected` | span | 选中音色名称 |
+| `auditionProfileSelectWrap` | div | profile 选择器包裹 |
+| `auditionProfileSelect` | select | 试听用 profile |
+| `auditionText` | textarea | 试听文本 |
+| `auditionCostHint` | div | 字数提示 |
+| `auditionModel` | select | 模型选择 |
+| `auditionGenBtn` | button | 生成试听 |
+| `auditionResult` | div | 试听结果 |
+| `auditionRecordsPanel` | div | 记录面板（调用 audition_records.js） |
+| `auditionCount` | span | 记录数量 |
+| `auditionClearBtn` | button | 清空记录 |
+| `auditionRecordsTable` | div | 记录表格 |
+
+**Shared result panel DOM（动态创建，clone/design/import 成功结果中）：**
+
+| DOM id 前缀 | 用途 |
+|---|---|
+| `cloneProfileWrap` / `designProfileWrap` / `importCloneProfileWrap` | 绑定人设 select 包裹 |
+| `cloneBindProfile` / `designBindProfile` / `importCloneBindProfile` | 人设 select（动态创建） |
+| `cloneBindModel` / `designBindModel` / `importCloneBindModel` | 模型 select |
+| `cloneBindBtn` / `designBindBtn` / `importCloneBindBtn` | 绑定按钮（inline onclick） |
+| `cloneBindResult` / `designBindResult` / `importCloneBindResult` | 绑定结果 |
+| `cloneQuickText` / `designQuickText` | 试听文本输入 |
+| `cloneQuickBtn` / `designQuickBtn` | 快速试听按钮（inline onclick） |
+| `cloneQuickResult` / `designQuickResult` | 快速试听结果 |
+
+### 音色高级能力相关状态变量清单
+
+| 变量 | 类型 | 位置 | 用途 |
+|---|---|---|---|
+| `_cachedProfiles` | array | index.html inline script | 全局 profile 缓存（被所有模块共用） |
+| `_cachedVoices` | object | index.html inline script | per-provider voice 缓存 |
+| `_loadedVoices` | array | index.html inline script | 当前已加载音色列表 |
+| `_voiceBindMap` | object | index.html inline script | voice binding 状态映射 |
+| `_voicePagination` | object | index.html inline script | 音色列表分页状态 |
+| `_auditionSelectedVoiceId` | string | index.html inline script | 当前选中试听音色 ID |
+| `_auditionSelectedVoiceName` | string | index.html inline script | 当前选中试听音色名称 |
+| `_auditionDelegated` | boolean | index.html inline script | 试听事件委托守卫 |
+| `_OPERATION_MESSAGES` | object | index.html inline script | highRisk 操作确认文案 |
+
+### 函数清单
+
+**核心业务函数（可迁移候选）：**
+
+| 函数 | 行号 | 用途 | API |
+|---|---|---|---|
+| `handleUploadAudio` | 3918 | 音频文件上传 | `POST /api/voice/clone/upload` |
+| `handleCloneAutoId` | 3972 | 生成 voice_id | — |
+| `updateCloneBtnState` | 3991 | 克隆按钮状态校验 | — |
+| `handleCloneVoice` | 4020 | 克隆创建 | `POST /api/voice/clone/create` |
+| `handleDesignVoice` | 4370 | 声音设计创建 | `POST /api/voice/design/create` |
+| `handleImportRemoteVoice` | 4232 | 远端音色导入 | `POST /api/voice/provider-voices/import` |
+
+**辅助/渲染函数（必须留在 index.html）：**
+
+| 函数 | 行号 | 用途 | 依赖 |
+|---|---|---|---|
+| `populateProfileSelect` | 1708 | 填充 profile select | `_cachedProfiles` |
+| `loadProfiles` | 1692 | 加载 profile 列表 | `_cachedProfiles` |
+| `bindVoiceToProfile` | 1748 | 绑定 voice 到 profile | `/api/voice/profiles/${id}/bindings` |
+| `refreshVoiceBindStatus` | 3231 | 刷新音色绑定状态 | `loadAllBindings` |
+| `renderInlineCreateProfile` | 3719 | 动态创建内联人设表单 | `populateProfileSelect`, `_cachedProfiles` |
+| `handleListVoices` | 3540 | 查询音色列表 | `/api/voice/provider-voices` |
+| `filterVoiceList` | 3586 | 过滤音色列表 | `_loadedVoices` |
+| `renderVoiceTable` | 3610 | 渲染音色列表表格 | `_voicePagination`, `_voiceBindMap` |
+| `renderAuditionWorkstation` | 3274 | 渲染试听工作站 HTML | audition generation |
+| `hexToBlobUrl` | 2147 | hex → blob URL（音频播放） | — |
+
+**Provider capability 驱动函数（在 provider_capabilities.js 中）：**
+
+| 函数 | 行号 | 用途 |
+|---|---|---|
+| `applyVoiceCloneCapability` | 307 | 设置 clone capability hint 和按钮状态 |
+| `applyVoiceDesignCapability` | 371 | 设置 design capability hint 和按钮状态 |
+
+### API endpoint 清单
+
+| Endpoint | Method | 用途 |
+|---|---|---|
+| `/api/voice/clone/upload` | POST | 上传克隆音频文件 |
+| `/api/voice/clone/create` | POST | 创建克隆音色 |
+| `/api/voice/design/create` | POST | 创建设计音色 |
+| `/api/voice/provider-voices` | GET | 查询远端音色列表 |
+| `/api/voice/provider-voices/import` | POST | 导入远端音色 |
+| `/api/voice/profiles/${profileId}/bindings` | POST | 绑定音色到人设 |
+| `/api/voice/profiles` | GET/POST | 查询/创建 profile |
+| `/api/voice/voices/delete` | POST | 删除远端音色 |
+| `/api/voice/render` | POST | 快速试听（clone result panel 内 inline fetch） |
+
+### provider capability 依赖
+
+**clone：**
+- `applyVoiceCloneCapability()` 在 `provider_capabilities.js` 第 307 行
+- 检查 `cap.voice_clone.supported`
+- 设置 `cloneCapabilityHint`（第 315 行）和 `cloneBtn` disabled 状态
+- 从 capability 填充 `preview_text_max`、`voice_id.min_length/max_length/pattern/hint`
+- provider 切换时触发 `bindProviderCapabilityEvents` → `applyVoiceCloneCapability()`
+
+**design：**
+- `applyVoiceDesignCapability()` 在 `provider_capabilities.js` 第 371 行
+- 检查 `cap.voice_design.supported`
+- 设置 `designCapabilityHint`（第 379 行）和 `designBtn` disabled 状态
+- 从 capability 填充 `prompt_max`、`preview_text_max`
+- provider 切换时触发 `bindProviderCapabilityEvents` → `applyVoiceDesignCapability()`
+
+**结论：** clone/design 表单的 capability hint 和按钮状态完全由 `provider_capabilities.js` 控制。voice_clone_design.js 迁移后仍需调用 `applyVoiceCloneCapability()` / `applyVoiceDesignCapability()` 或让 `provider_capabilities.js` 暴露对应 window 入口。
+
+### highRisk confirm 依赖
+
+以下操作使用 `guardedJsonFetch(..., { ..., highRisk: true })`：
+
+| 操作 | operation key | confirm 提示 |
+|---|---|---|
+| `handleCloneVoice` | `voice_clone` | `voice_clone: '声音克隆会调用云端模型，可能产生费用，是否继续？'` |
+| `handleDesignVoice` | `voice_design` | `voice_design: '声音设计会调用云端模型，可能产生费用，是否继续？'` |
+| voice preview（audition） | `provider_voice_preview` | 试听确认 |
+| provider voice import | `provider_voice_import_verify` | 导入确认 |
+
+**E2E 影响：** 使用 `provider=mock` 可绕过 `guardedJsonFetch` 的 highRisk 确认框；使用 `provider=minimax` 且无 mock 时会触发 `confirmHighCostVoiceAction` 对话框。
+
+### 错误展示依赖
+
+| 错误处理 | 使用方式 |
+|---|---|
+| `parseApiError(resp)` | 第 2331 行，所有 API 错误先经过此函数解析 |
+| `formatApiError(err)` | 第 2401 行，格式化错误消息 |
+| `friendlyErrorMessage(message)` | 第 2213 行，生成友好错误消息（含 insufficient balance 特殊处理） |
+| `renderApiError(err)` | 第 2445 行，渲染 API 错误（RESOURCE_LIMIT_EXCEEDED 时使用） |
+| `renderValidationError(msg)` | 内联，`err.code === 'VALIDATION_ERROR'` 时使用 |
+| `esc()` | 第 2100 行，HTML 转义 |
+
+**insufficient balance 特殊处理：** `friendlyErrorMessage` 第 2217 行专门处理 MiniMax voice_design / voice_clone / preview 接口的余额不足错误，提示切换到 `provider=mock` 测试。
+
+**现状：** clone 和 design 的 `err.code === 'RESOURCE_LIMIT_EXCEEDED'` 分支均调用 `renderApiError(err)`（正确）；其他错误使用 `friendlyErrorMessage(formatApiError(err))`（正确）。
+
+### 与 audition_records.js 的关系
+
+**audition_records.js 已迁出：**
+- `window.renderAuditionRecords` — 渲染试听记录列表
+- `window.deleteAuditionRecord` — 删除单条记录
+- `window.clearAuditionRecords` — 清空全部记录
+- `window._auditionRecords` — 记录数组状态
+
+**仍在 index.html：**
+- `renderAuditionWorkstation()` — 试听工作站 HTML 渲染（第 3274 行）
+- `hexToBlobUrl(hex, mime)` — hex 字符串转 Blob URL（第 2147 行）
+- audition generation 逻辑（`handleAuditionGen` 相关，第 3445 行起）
+- audition 快速试听生成（clone/design result panel 内的 inline onclick，第 4193 行）
+- `_auditionSelectedVoiceId` / `_auditionSelectedVoiceName` — 选中音色状态
+- `_auditionDelegated` — 事件委托守卫
+
+**voice_clone_design.js 如果迁移后：** clone/design result panel 内的快速试听功能（inline onclick）会直接调用 `/api/voice/render`，不经过 audition workstation。这意味着 `hexToBlobUrl` 或类似的 hex → audio URL 转换需要在 index.html 保留，或者作为共享 helper 单独暴露。
+
+### 可迁移到 voice_clone_design.js 的候选内容
+
+按独立性从高到低排序：
+
+1. **`handleCloneVoice`** — clone 创建核心逻辑，独立性强，依赖清晰（`guardedJsonFetch`、API endpoint、DOM ids）
+2. **`handleDesignVoice`** — design 创建核心逻辑，独立性强
+3. **`handleUploadAudio`** — 文件上传，独立性强
+4. **`handleCloneAutoId`** — voice_id 生成，完全独立
+5. **`updateCloneBtnState`** — clone 按钮状态校验，依赖 clone tab DOM，独立性中等
+6. **`handleImportRemoteVoice`** — 远端导入，依赖较复杂（verify vs no-verify 两种行为）
+
+### 暂不迁移的共享内容
+
+以下内容依赖过广，强行迁入 voice_clone_design.js 会造成循环依赖或强耦合：
+
+| 内容 | 原因 |
+|---|---|
+| `populateProfileSelect` / `loadProfiles` / `_cachedProfiles` | clone/design/import/voice list/batch/audition 全部依赖 profile 系统 |
+| `bindVoiceToProfile` | 被 clone result、design result、import result、voice list 四处调用 |
+| `renderInlineCreateProfile` | 被 clone、design、import、voice list quick bind 四处调用 |
+| `refreshVoiceBindStatus` | voice list 依赖，且依赖 `loadAllBindings` |
+| `handleListVoices` / `renderVoiceTable` | voice list 独立模块，需要单独审查 |
+| `renderAuditionWorkstation` / audition generation | 与 `_auditionSelectedVoiceId` 状态耦合 |
+| `hexToBlobUrl` | 被 design result 和 audition generation 共用 |
+
+### 需要先提取为 window.* 的 helper
+
+| helper | 当前状态 | 建议 |
+|---|---|---|
+| `isValidVoiceId(value)` | inline function（第 3987 行） | 暴露为 `window.isValidVoiceId` 供 voice_clone_design.js 调用 |
+| `bindVoiceToProfile(voiceId, provider, profileId, model)` | inline function（第 1748 行） | 暴露为 `window.bindVoiceToProfile` — 已有潜在需求，voice_clone_design.js 迁移后需此入口 |
+| `renderInlineCreateProfile(container, selectEl, idPrefix)` | inline function（第 3719 行） | 暴露为 `window.renderInlineCreateProfile` |
+| `populateProfileSelect(selectEl, selectedId)` | inline function（第 1708 行） | 暴露为 `window.populateProfileSelect` |
+| `loadProfiles(forceRefresh)` | inline function（第 1692 行） | 暴露为 `window.loadProfiles` |
+| `hexToBlobUrl(hex, mime)` | inline function（第 2147 行） | 暴露为 `window.hexToBlobUrl` — design result 需要 |
+
+### 需要先补的 E2E
+
+当前 E2E 对 voice clone/design/import 覆盖为零（没有任何相关测试）。建议按优先级补：
+
+| 优先级 | E2E | 验证内容 |
+|---|---|---|
+| 高 | `test_voice_clone_error_insufficient_balance` | clone 余额不足错误展示，mock `POST /api/voice/clone/create` 返回 RESOURCE_LIMIT_EXCEEDED，验证 renderApiError 正确渲染 |
+| 高 | `test_voice_design_mock_submit_success` | design mock 提交成功，mock `POST /api/voice/design/create` 返回成功，验证成功消息和 demo_audio_url |
+| 中 | `test_voice_clone_mock_submit_success` | clone mock 提交成功，mock `POST /api/voice/clone/create` 返回成功，验证成功消息和 demo_audio_url |
+| 中 | `test_voice_import_mock_success` | import mock 验证成功，mock `POST /api/voice/provider-voices/import` 返回成功 |
+| 低 | `test_voice_list_loads` | 验证音色列表加载，mock `GET /api/voice/provider-voices` |
+
+### 风险点
+
+1. **inline onclick 注入风险**：clone/design/import 成功结果 HTML 中动态创建的元素（`cloneBindBtn`、`cloneQuickBtn` 等）使用 `btn.onclick = async () => { ... }` 直接注入事件处理器，而非事件委托。这些处理器依赖闭包中的 `data`（API 返回结果）。如果将此 HTML 生成逻辑迁入独立 JS 文件，需要处理 HTML 模板和事件绑定的分离。
+
+2. **highRisk confirm 阻塞**：clone/design/import 操作使用 `highRisk: true`，E2E 必须使用 `provider=mock` 绕过确认框才能完成自动化测试。
+
+3. **profile 系统耦合**：`populateProfileSelect` / `loadProfiles` / `bindVoiceToProfile` 被 clone/design/import/voice list/batch 多处共用。如果 voice_clone_design.js 需要这些函数，必须先将它们暴露为 window 入口，否则只能继续留在 index.html。
+
+4. **provider capability 联动**：clone/design 表单的 hint 和按钮启用状态由 `provider_capabilities.js` 控制。模块迁出后需要确保 `applyVoiceCloneCapability()` / `applyVoiceDesignCapability()` 在 provider 切换时仍能被调用。
+
+5. **hexToBlobUrl 依赖**：design 创建成功返回 `trial_audio_hex`，需要 `hexToBlobUrl` 转换为可播放音频。`hexToBlobUrl` 在 index.html 中，且被 audition generation 也使用。
+
+### P9-FE1-G1 建议
+
+**结论：不建议一次性抽离 voice_clone_design.js，建议拆分为多个阶段。**
+
+**建议的最小安全第一步（voice_clone.js）：**
+
+可独立迁移到 `voice_clone.js` 的内容：
+- `handleUploadAudio` — 文件上传
+- `handleCloneAutoId` — voice_id 生成
+- `updateCloneBtnState` — 按钮状态
+- `handleCloneVoice` — clone 创建（但需处理 inline onclick 部分）
+
+先决条件：
+- 将 `isValidVoiceId` 暴露为 `window.isValidVoiceId`
+- 保留 `handleCloneVoice` 成功结果 HTML 中的 inline onclick 绑定逻辑（或重构为事件委托）
+- 确保 `applyVoiceCloneCapability()` 仍可在 provider 切换时被调用
+
+**不建议拆分 voice_design.js 的原因：**
+- design 和 clone 共享 `handleImportRemoteVoice(source)` 统一处理 import
+- import 面板的 clone/design 两个入口高度相似
+- 强行拆分为 voice_clone.js / voice_design.js 会导致 `handleImportRemoteVoice` 重复
+
+**建议的第二步（voice_import.js）：**
+- `handleImportRemoteVoice(source)` — 统一导入处理
+- 需要先确保 `bindVoiceToProfile` 已暴露为 window 入口
+
+**建议的第三步（voice_design.js）：**
+- `handleDesignVoice` — design 创建
+- 需处理 `hexToBlobUrl` 依赖
+
+**建议暂缓的原因：**
+1. 没有任何 voice clone/design/import 相关 E2E，贸然迁移无法验证正确性
+2. 共享 helper（`populateProfileSelect`、`bindVoiceToProfile`、`renderInlineCreateProfile`）未暴露为 window 入口
+3. inline onclick 事件绑定方式需要重构为事件委托才能安全迁移
+4. `hexToBlobUrl` 等共享 utility 需要先提取
+
+**下一步行动：**
+1. **先补 E2E**：`test_voice_clone_error_insufficient_balance`、`test_voice_design_mock_submit_success`（高优先级）
+2. **再提取 helper**：将 `bindVoiceToProfile`、`renderInlineCreateProfile`、`populateProfileSelect`、`hexToBlobUrl` 暴露为 window 入口
+3. **最后迁移业务函数**：voice_clone.js → voice_import.js → voice_design.js

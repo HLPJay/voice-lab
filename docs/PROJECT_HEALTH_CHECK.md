@@ -4217,3 +4217,43 @@ provider_capabilities.js → runtime_status.js → history.js → audition_recor
 ```
 python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 18 passed in 59.49s
 ```
+
+---
+
+## P9-FE1-G0：voice_clone_design.js 抽离前边界审查
+
+**时间：** 2026-05-15
+
+**本次任务类型：** 审查和文档记录，不迁移任何业务逻辑，不修改 index.html。
+
+### 本次只做审查和文档记录
+
+- 阅读了 index.html 中所有 clone/design/import/audition 相关代码段
+- 梳理了 DOM id 清单（clone tab、design tab、import、voice list、audition workstation）
+- 梳理了状态变量（`_cachedProfiles`、`_cachedVoices`、`_loadedVoices`、`_voiceBindMap`、`_auditionSelectedVoiceId` 等）
+- 梳理了函数清单和 API endpoint
+- 分析了 provider capability 依赖（`provider_capabilities.js` 中的 `applyVoiceCloneCapability` / `applyVoiceDesignCapability`）
+- 分析了 highRisk confirm 依赖（clone、design、import、preview 均使用 `highRisk: true`）
+- 分析了错误展示依赖（`parseApiError` / `formatApiError` / `friendlyErrorMessage` / `renderApiError`）
+- 分析了与 audition_records.js 的关系（`renderAuditionRecords` 等已迁出，audition workstation 仍在 index.html）
+- 分析了可迁移内容（`handleCloneVoice`、`handleDesignVoice`、`handleUploadAudio` 等）
+- 分析了暂不迁移的共享内容（`populateProfileSelect`、`bindVoiceToProfile`、`renderInlineCreateProfile` 等）
+- 明确了需要先提取为 window.* 的 helper（`isValidVoiceId`、`bindVoiceToProfile`、`renderInlineCreateProfile`、`populateProfileSelect`、`hexToBlobUrl`）
+- 识别了风险点（inline onclick 注入、highRisk confirm 阻塞、profile 系统耦合）
+
+### 未改业务逻辑
+
+未改：app/static/index.html（本次仅阅读和 grep）、app/static/js/*、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
+
+### 测试结果
+
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 18 passed in 59.49s
+```
+
+### 下一步建议
+
+- **先补 E2E 再迁移**：当前没有任何 voice clone/design/import 相关 E2E。建议优先补 `test_voice_clone_error_insufficient_balance`（高）和 `test_voice_design_mock_submit_success`（高）。
+- **先提取共享 helper 为 window 入口**：再迁移业务函数。
+- **建议拆分迁移**：voice_clone.js（第一步）→ voice_import.js（第二步）→ voice_design.js（第三步），不建议一个 voice_clone_design.js 全量迁移。
+- **voice list 和 audition workstation 暂不迁移**：这两个模块依赖复杂，建议独立审查。
