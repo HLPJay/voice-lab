@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P14-CONTEXT-B3-CHECK：长文本一键回填复核**
+**P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查**
 
 ## 已完成（续）
 
+- P14-CONTEXT-B3-CHECK：长文本一键回填复核 ✅
 - P14-CONTEXT-B3：长文本一键回填 ✅
 - P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计 ✅
 - P13-CREATION-B5-A0-CODE-CHECK-FIX：batch A0 文档代码事实校验修正 ✅
@@ -106,7 +107,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-B3-CHECK | verify longtext one-click restore | P14-CONTEXT-B3 完成 |
 | P14-CONTEXT-C1-A0 | audit script context save/detail prerequisites | P14-CONTEXT-B3-CHECK 完成 |
 | P14-CONTEXT-C1 | script context save and detail view | P14-CONTEXT-C1-A0 完成 |
 | P14-CONTEXT-C2 | script one-click restore | P14-CONTEXT-C1 完成 |

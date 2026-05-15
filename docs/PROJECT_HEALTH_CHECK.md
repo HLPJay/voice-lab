@@ -57,7 +57,8 @@
 * P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口已完成 ✅
 * P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计已完成 ✅
 * P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B3
+* P14-CONTEXT-B3：长文本一键回填已完成 ✅
+* 当前下一阶段：P14-CONTEXT-B3-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7977,6 +7978,79 @@ P14-SIDEBAR-ACTIONS-B1 已完成侧边栏按钮分层与更多菜单实现。P14
 ### 阶段状态
 
 P14-CONTEXT-B3 完成。
+
+## P14-CONTEXT-B3-CHECK：长文本一键回填复核
+
+### 复核范围
+
+本次复核覆盖 `sample_sidebar.js` B3 实现的所有代码事实、测试覆盖和阶段边界。
+
+### 复核结果
+
+**通过。所有核心要求满足。**
+
+#### 5.1 恢复按钮显示条件 ✅
+
+- `showSampleDetail` 在 `context.type === 'longtext'` 时渲染 `.sample-detail-restore-btn` 按钮（line 695）
+- 按钮使用 `data-context-id`，属性值通过 `attr()` 转义（line 696）
+- 不存在 `data-full-text` 或其他 full_text 进入 data-* 属性
+- workspace / audition / batch_script_merged / 无 context_id 旧样本均不显示恢复按钮
+
+#### 5.2 showSampleDetail 边界 ✅
+
+- 不直接写 batchText / batchProfile / 任何表单字段
+- 不调用 fillTextInput / handleBatchLongtextSubmit / fetch / guardedJsonFetch / MiniMax
+- 不写 ContextStore / SampleStore
+
+#### 5.3 恢复事件绑定 ✅
+
+- `bindActionEvents` 处理 `.sample-detail-restore-btn` 点击（line 401）
+- 从 `data-context-id` 读取 context_id，通过 `ContextStore.getContext(contextId)` 重新读取（line 407）
+- 调用 `restoreLongtextContext(ctx)`
+- 不把完整 context JSON 放入 DOM attribute
+
+#### 5.4 restoreLongtextContext ✅
+
+- 存在（line 593）
+- 校验 `context.type !== 'longtext'`（line 594）
+- 调用 `switchToLongtextTab()`（line 595）
+- 延迟调用 `applyLongtextContextToForm(context)`（line 596）
+- 不调用 fetch / guardedJsonFetch / handleBatchLongtextSubmit / MiniMax / ContextStore.pushContext / SampleStore
+
+#### 5.5 applyLongtextContextToForm ✅
+
+- 存在（line 574）
+- 安全读取 `context.params || {}`（line 576）
+- 恢复字段完整：batchText, batchProvider, batchProfile, batchStrategy, batchMaxChars, batchSilence, batchOutputFormat, batchNeedSubtitle.checked, batchSpeed, batchVol, batchPitch, batchEmotion
+- 不写 `output_format`
+- 不提交任务
+
+#### 5.6 事件触发 ✅
+
+- `dispatchInputChange(el)` 触发 input + change（line 528）
+- `setValueIfPresent` 和 `setCheckedIfPresent` 均调用 `dispatchInputChange`
+
+#### 5.7 切换长文本 Tab ✅
+
+- 目标 `.tab-btn[data-tab="longtext"]`（line 555）
+- 优先调用 `btn.click()`（line 557）
+- Fallback 手动切换 active class（line 561-569）
+
+### 非阻塞观察项
+
+- **B3-OBS-001**：`batchProfile` 仅单次 `setTimeout(..., 0)` 恢复，如果 `populateProfileSelect` 在 tab click 后异步加载并覆盖 select，则 profile_id 恢复可能失效；建议 B3-FIX1 验证真实 UI 并考虑二次延迟或重试。
+- **B3-OBS-002**：恢复成功后无 toast/hint，详情面板未关闭，用户可能不清楚恢复是否成功；建议 B3-FIX1 补充轻量反馈（toast 或关闭详情面板）。
+- **B3-OBS-003**：全量测试存在 1 个 E2E 404 资源错误（`test_voice_import_clone_mock_success`），与 B3 修改完全无关（该测试是 voice import/clone，sample_sidebar.js 未改动相关逻辑），非本次引入。
+
+### 测试结果
+
+- 目标测试：196 passed（test_sample_sidebar_static.py + test_context_store_longtext_integration_static.py）
+- 回归测试：92 passed（test_existing_function_regression_static.py）
+- 全量测试：1255 passed, 7 skipped, 1 E2E error（E2E error 为 voice import clone 资源 404，与 B3 无关）
+
+### 阶段状态
+
+P14-CONTEXT-B3-CHECK 通过。
 
 
 
