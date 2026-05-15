@@ -48,3 +48,27 @@
 **验证方式：**
 - targeted E2E（clone/design/import）：6 passed ✅
 - git diff --check：无 whitespace 错误 ✅
+
+## P12-USAGE-FIX2：首次刷新 Workspace 默认人设绑定提示不准确
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- 首次刷新页面进入 Workspace 后，默认选中的人设可能已绑定音色，但页面仍显示"该人设尚未绑定音色"
+- P12-USAGE-FIX1 已修复 checkBindingStatus() 的同步问题，但初始加载时 hint 仍可能错误
+
+**原因：**
+- populateAllProfiles() 中直接调用 updateWorkspaceVoiceBindingHint()，依赖 window._voiceBindMap
+- 首次刷新时 _voiceBindMap 可能为空，导致错误提示
+
+**修复方案：**
+在 populateAllProfiles() 中：
+1. 先调用 updateWorkspaceVoiceBindingHint() 同步设置正确初始状态
+2. 再调用 checkBindingStatus() 异步刷新（以真实 API 为准）
+
+**修复位置：**
+- `app/static/index.html`：populateAllProfiles() 函数
+
+**验证方式：**
+- targeted E2E（workspace_voice_binding_hint / voice_binding_hint / quick_bind_success_go_create）：4 passed ✅
+- git diff --check：无 whitespace 错误 ✅

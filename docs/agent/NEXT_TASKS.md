@@ -26,6 +26,7 @@
 - P11-FE-REDUCE-CHECK：index.html 瘦身收口 ✅
 - P12-USAGE-FIX1：workspace binding hint 与 #bindingStatus 同步修复 ✅
 - P12-USAGE-UX1：compact advanced tool hints ✅
+- P12-USAGE-FIX2：check initial workspace binding status ✅
 
 ## Next
 
