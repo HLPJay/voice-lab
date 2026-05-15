@@ -997,6 +997,7 @@
           <select id="batchProfile">
             <option value="">加载中…</option>
           </select>
+          <div id="batchVoiceBindingHint" style="margin-top:6px;font-size:0.82rem;display:none"></div>
         </div>
         <div class="form-group">
           <label for="batchProvider">Provider</label>
@@ -1637,7 +1638,10 @@
         });
       }
       if (tab === 'longtext') {
-        loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
+        loadProfiles(true).then(() => {
+          populateProfileSelect(document.getElementById('batchProfile'));
+          updateBatchVoiceBindingHint();
+        });
       }
       if (tab === 'script') {
         loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
@@ -1937,11 +1941,43 @@
     }
   }
 
+  // B3-longtext: voice binding hint for longtext tab
+  function updateBatchVoiceBindingHint() {
+    const profileId = document.getElementById('batchProfile')?.value;
+    const provider = document.getElementById('batchProvider')?.value;
+    const hintEl = document.getElementById('batchVoiceBindingHint');
+    if (!hintEl) return;
+    if (!profileId) { hintEl.style.display = 'none'; return; }
+    hintEl.style.display = '';
+    const bindMap = window._voiceBindMap || {};
+    let foundVoiceId = null, foundModel = null;
+    for (const voiceId in bindMap) {
+      const match = (bindMap[voiceId] || []).find(b => b.profile_id === profileId && b.provider === provider && b.status === 'available');
+      if (match) { foundVoiceId = voiceId; foundModel = match.model || null; break; }
+    }
+    if (foundVoiceId) {
+      hintEl.innerHTML = `<span style="color:#2f855a">当前音色：${esc(foundVoiceId)}${foundModel ? ' (' + esc(foundModel) + ')' : ''}</span>`;
+    } else {
+      hintEl.innerHTML = `<span style="color:#c53030">该人设尚未绑定音色</span> <button type="button" id="batchVoiceBindingSwitchBtn" style="font-size:0.75rem;padding:1px 6px;cursor:pointer;margin-left:4px">去选择音色</button>`;
+      const switchBtn = document.getElementById('batchVoiceBindingSwitchBtn');
+      if (switchBtn) {
+        switchBtn.addEventListener('click', function() {
+          var voicesBtn = document.querySelector('.tab-btn[data-tab="voices"]');
+          if (voicesBtn) voicesBtn.click();
+        });
+      }
+    }
+  }
+
   loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
 
   // T2A Tab: also load binding status when provider changes
   providerSelect.addEventListener('change', () => { checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
   profileSelect.addEventListener('change', () => { checkBindingStatus(); updateWorkspaceVoiceBindingHint(); });
+
+  // Batch longtext tab: update voice binding hint on profile/provider change
+  document.getElementById('batchProfile')?.addEventListener('change', updateBatchVoiceBindingHint);
+  document.getElementById('batchProvider')?.addEventListener('change', updateBatchVoiceBindingHint);
 
   // P8-5: localStorage recent job helpers
   const RECENT_JOB_STORAGE_KEY = 'voice_lab_recent_job_v1';

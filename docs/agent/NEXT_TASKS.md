@@ -14,6 +14,7 @@
 - P10-PRODUCT-B2-A0：Voices tab 快速创作联动边界审查 ✅
 - P10-PRODUCT-B2：Voices tab 快速创作联动实现 ✅
 - P10-PRODUCT-B3-A0：Batch tab 音色快速选择边界审查 ✅
+- P10-PRODUCT-B3-longtext：Batch longtext tab 绑定音色提示实现 ✅
 
 ## P10-PRODUCT-B2 实现总结
 
@@ -30,8 +31,7 @@
 
 ## Next
 
-1. **P10-PRODUCT-B3-longtext** — Batch longtext tab 绑定音色提示（新增 `#batchVoiceBindingHint`，复用 B1 模式）
-2. **P10-PRODUCT-B3-script** — Batch script tab 每行动态绑定音色提示
+1. **P10-PRODUCT-B3-script** — Batch script tab 每行动态绑定音色提示
 
 **实现内容：**
 - 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区 `#workspaceVoiceBindingHint`
@@ -57,7 +57,7 @@
 | 2 | B2-A0: Voices tab 快速创作联动边界审查 | ✅ 已完成 |
 | 3 | B2: Voices tab 快速创作联动实现 | ✅ 已完成 |
 | 4 | B3-A0: Batch tab 音色快速选择边界审查 | ✅ 已完成 |
-| 5 | B3-longtext: Batch longtext tab 绑定音色提示 | 待做 |
+| 5 | B3-longtext: Batch longtext tab 绑定音色提示 | ✅ 已完成 |
 | 6 | B3-script: Batch script tab 每行动态绑定音色提示 | 待做 |
 | 4 | B4: 简化 onboarding 文案 | 待做 |
 | 5 | B5: Advanced tab 重命名 | 待做 |

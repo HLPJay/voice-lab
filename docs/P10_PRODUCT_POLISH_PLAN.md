@@ -766,3 +766,42 @@ document.getElementById('batchVoiceBindingSwitchBtn').addEventListener('click', 
 ### B0 审查结论
 
 B3 可行，方案已在上节确定。Batch tab 只在 profile select 附近增加绑定音色提示，与 B1 模式一致。不新增 batch 专用 voice select，不改 batch 提交 payload，不动 shared batch state。建议拆成 B3-longtext 和 B3-script 两个小任务。
+
+---
+
+## P10-PRODUCT-B3-longtext：Batch longtext tab 绑定音色提示实现
+
+**执行时间：** 2026-05-15
+
+### 实现内容
+
+**新增 DOM：** `#batchVoiceBindingHint`（位于 longtext tab `#batchProfile` select 下方）
+
+**新增函数：** `updateBatchVoiceBindingHint()`
+- 读取 `#batchProfile.value` 和 `#batchProvider.value`
+- 从 `window._voiceBindMap` 查找当前 profile 在当前 provider 下是否有 available binding
+- 有绑定：显示"当前音色：voice_id (model)"
+- 无绑定：显示"该人设尚未绑定音色" + "去选择音色"按钮
+
+**事件绑定：**
+- `#batchProfile.addEventListener('change')` → `updateBatchVoiceBindingHint()`
+- `#batchProvider.addEventListener('change')` → `updateBatchVoiceBindingHint()`
+- longtext tab 切换回调：`loadProfiles(true).then(...).then(updateBatchVoiceBindingHint)`
+
+**验收结果：**
+
+| 验收项 | 结果 |
+|---|---|
+| longtext tab 的 profile select 下方显示当前绑定 voice（如果有） | ✅ |
+| 无绑定时显示"该人设尚未绑定音色" | ✅ |
+| "去选择音色"按钮切换到 voices tab | ✅ |
+| batch 提交行为不变 | ✅ |
+
+### E2E
+
+- `test_batch_longtext_voice_binding_hint_switches_to_voices` — mock profiles/bindings/capabilities，验证 hint 显示"尚未绑定音色"，点击"去选择音色"切换到 voices tab
+- **结果：28 passed**
+
+### E2E 输出
+
+- `tests/e2e/test_frontend_capabilities.py` — 新增 Test 28
