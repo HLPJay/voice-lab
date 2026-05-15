@@ -40,6 +40,17 @@
 - 共享 batch 状态
 - 引入前端框架或构建工具
 
+## 前端模块迁移防覆盖规则
+
+从 index.html 抽取函数到 `app/static/js/*.js` 时：
+
+1. **不要在 index.html 留下同名空函数 stub**。
+2. **不要在 inline script 中留下同名函数声明**。
+3. 原函数位置只留注释，不留可执行 JS。
+4. 因为抽离脚本加载顺序在 inline script 之前，index.html 中的同名函数声明会覆盖 `window.*` 导出。
+5. 只检查 `typeof window.xxx === 'function'` 的 module-loaded E2E 不足以覆盖 submit/import/clone/design handlers。
+6. Submit/import/clone/design handlers 必须同时有 behavioral E2E，证明 mock API 实际被调用。
+
 ## 高风险区域（迁移时需格外小心）
 
 - shared batch state

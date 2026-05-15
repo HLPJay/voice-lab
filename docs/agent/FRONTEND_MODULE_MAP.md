@@ -42,15 +42,15 @@
 
 ### batch_longtext.js
 - **职责**：长文本批量任务提交 / 进度
-- **window exports**：`handleSubmitBatchLongtext`
+- **window exports**：`window.handleBatchLongtextSubmit`
 - **依赖 helper**：`guardedJsonFetch`, `esc`
-- **对应 E2E**：`test_batch_longtext_module_is_loaded_and_exports_available`, `test_batch_longtext_mock_submit_success`
+- **对应 E2E**：`test_batch_longtext_module_is_loaded_and_submit_validation_works`, `test_batch_longtext_mock_submit_success_starts_progress`
 
 ### batch_script.js
 - **职责**：剧本科本批量任务提交 / 进度
-- **window exports**：`handleSubmitBatchScript`
+- **window exports**：`window.handleBatchScriptSubmit`
 - **依赖 helper**：`guardedJsonFetch`, `esc`
-- **对应 E2E**：`test_batch_script_module_is_loaded_and_exports_available`, `test_batch_script_mock_submit_success`
+- **对应 E2E**：`test_batch_script_module_is_loaded_and_submit_validation_still_works`, `test_batch_script_mock_submit_success_starts_progress`
 
 ### voice_clone.js
 - **职责**：声音克隆入口 / 提交 / 快速试听 / 快速绑定

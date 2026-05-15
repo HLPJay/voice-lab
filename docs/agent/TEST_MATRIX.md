@@ -8,8 +8,8 @@
 |---|---|
 | `test_voice_clone_module_is_loaded_and_exports_available` | voice_clone.js 加载 + 4 个 window 函数 |
 | `test_voice_import_module_is_loaded_and_exports_available` | voice_import.js 加载 + window.handleImportRemoteVoice |
-| `test_batch_longtext_module_is_loaded_and_exports_available` | batch_longtext.js 加载 + handleSubmitBatchLongtext |
-| `test_batch_script_module_is_loaded_and_exports_available` | batch_script.js 加载 + handleSubmitBatchScript |
+| `test_batch_longtext_module_is_loaded_and_submit_validation_works` | batch_longtext.js 加载 + handleBatchLongtextSubmit |
+| `test_batch_script_module_is_loaded_and_submit_validation_still_works` | batch_script.js 加载 + handleBatchScriptSubmit |
 
 ## Voice Clone
 
@@ -34,13 +34,13 @@
 
 | 测试 | 覆盖 |
 |---|---|
-| `test_batch_longtext_mock_submit_success` | longtext 批量提交 + 进度面板 + 按钮恢复 |
+| `test_batch_longtext_mock_submit_success_starts_progress` | longtext 批量提交 + 进度面板 + 按钮恢复 |
 
 ## Batch Script
 
 | 测试 | 覆盖 |
 |---|---|
-| `test_batch_script_mock_submit_success` | 剧本批量提交 + 进度面板 + 按钮恢复 |
+| `test_batch_script_mock_submit_success_starts_progress` | 剧本批量提交 + 进度面板 + 按钮恢复 |
 
 ## Audition Records
 
