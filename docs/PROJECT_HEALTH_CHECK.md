@@ -25,6 +25,7 @@
 * P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 已复核通过 ✅
 * P13-CREATION-B4-CHECK：sample sidebar UI 复核已完成 ✅
 * P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口已完成 ✅
+* P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归已完成 ✅
 * 当前下一阶段：P13-CREATION-B5 batch_longtext / batch_script samples 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
@@ -6282,3 +6283,50 @@ Workspace 主区域仍存在轻微视觉密度问题，已记录为后续 UI pol
 ### 阶段状态
 
 B4 已收口，可以开始 P13-CREATION-B5。
+
+## P13-B4-REGRESSION-FIX1：修复 workspace layout 导致其他 tab 无法打开
+
+### 背景
+
+B4 完成 sample sidebar UI 后，发现页面只有「创作工作台」tab 可用，其他 tab 无法正常打开。根因为 B4 在 `index.html` 中修改 `workspace-layout / workspace-main` 结构时，`tab-workspace` 的闭合 `</div>` 被遗漏，导致 `tab-longtext / tab-script / tab-voices / tab-history / tab-advanced` 全部嵌套在 `tab-workspace` 内部，tab 切换逻辑无法找到对应 tab-content。
+
+### 修正内容
+
+- 在 `workspace-layout` 闭合 `</div>` 之后、`tab-longtext` 之前，新增 `</div>` 闭合 `tab-workspace`
+- 修复后 6 个 tab-content 全部为顶层兄弟节点
+- 补充 `tests/test_tab_layout_static.py` 静态回归测试（22 个测试用例）
+
+### 根因
+
+B4 初版实现中，`tab-workspace` 的闭合 `</div>` 被意外删除，导致 DOM 结构：
+
+```
+tab-workspace (unclosed)
+  workspace-layout
+    workspace-main
+    ...
+    aside#sampleSidebarRoot
+  </div>   ← workspace-layout 闭合
+  tab-longtext (INCORRECTLY nested inside tab-workspace)
+  tab-script
+  ...
+```
+
+### 阶段边界
+
+- 只改 index.html（1 个 `</div>`）
+- 不改 sample_store.js
+- 不改 sample_sidebar.js
+- 不改 workspace / audition sample 写入逻辑
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+- 不进入 B5
+
+### 测试结果
+
+- `tests/test_tab_layout_static.py` — 22 个测试，全部通过
+- 全量测试：203 passed（+22 tab layout tests）
+
+### 阶段状态
+
+回归已修复。重新评估是否进入 P13-CREATION-B5。

@@ -65,6 +65,7 @@
 - P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正 ✅
 - P13-CREATION-B4-CHECK：sample sidebar UI 复核 ✅
 - P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口 ✅
+- P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归 ✅
 
 ## Next
 
