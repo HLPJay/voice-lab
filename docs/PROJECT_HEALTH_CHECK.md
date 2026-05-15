@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-H0：
+截至 P9-FE1-H1：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4578,3 +4578,35 @@ POST /api/voice/provider-voices/import
 - onclick 属性保持 `onclick="handleImportRemoteVoice('clone')"` 不变（IIFE 后 window 仍可访问）
 - 快速绑定面板保持内联 onclick（与 voice_clone.js 一致）
 - loadProfiles/populateProfileSelect/renderInlineCreateProfile/bindVoiceToProfile/refreshVoiceBindStatus/handleListVoices 继续调用 window.*
+
+## P9-FE1-H1：补 voice import mock success E2E
+
+**时间：** 2026-05-15
+
+**问题：** H0 审查已完成 import 边界梳理，但 import 链路缺少 E2E，无法验证 clone import 成功链路。
+
+**修复：**
+- 新增 `test_voice_import_clone_mock_success` E2E。
+- mock GET /api/voice/profiles（返回 `[{id, name}]`）。
+- mock GET /api/voice/capabilities（voice_clone.supported=true）。
+- mock POST /api/voice/provider-voices/import（返回成功 voice_id + audio_asset.url + status=imported）。
+- mock GET /api/voice/provider-voices（返回空 voices，避免 handleListVoices 真实请求）。
+- 填写 importClone 表单（provider=mock、voice_id、name、model、previewText、verify=true）。
+- 点击 #importCloneBtn，验证 clone/create 被调用。
+- 断言 #importCloneResult 包含"导入成功"、voice_id、audio 标签。
+- 断言快速绑定面板（importProfileWrap / importBindProfile / importBindModel / importBindBtn）存在。
+- 断言按钮恢复为"验证并导入"。
+- 页面无 TypeError / ReferenceError。
+- 不调用真实 MiniMax、不上传音频、不点击绑定按钮。
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "import"  # 1 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 24 passed
+```
+
+**测试结果：** 24 passed in 80.62s。
+
+**未改关键链路：** 未迁移 handleImportRemoteVoice、未新增 voice_import.js、未改 app/static/js/*、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
+
+**下一步建议：** import 链路成功链路 E2E 已补齐，24 E2E passed。可进入 voice_import.js 抽离。

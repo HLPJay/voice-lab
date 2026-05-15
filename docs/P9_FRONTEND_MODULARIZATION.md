@@ -648,7 +648,7 @@ inline script             ← index.html 第 1593 行开始
 
 ### 当前 E2E 覆盖数量
 
-**23 个 E2E**（tests/e2e/test_frontend_capabilities.py）
+**24 个 E2E**（tests/e2e/test_frontend_capabilities.py）
 
 重点覆盖链路：
 - Provider capability 加载 / 切换 / 失败降级
@@ -663,6 +663,7 @@ inline script             ← index.html 第 1593 行开始
 - 声音设计 mock submit success
 - voice helper window exports
 - voice_clone.js 模块加载 + 4 个 window 函数导出
+- voice import clone mock success + audio player + quick bind 面板 + 按钮恢复
 - Admin 页面和矩阵
 
 ### 当前仍留在 index.html 的高风险逻辑
@@ -1060,3 +1061,7 @@ inline script             ← index.html 第 1593 行开始
 - 快速绑定面板绑定功能暂不需在 E2E 覆盖，focus 在 import 本身
 
 **下一步 P9-FE1-H1：** 补 import mock success E2E（clone import 方向）
+
+**P9-FE1-H1 已完成 ✅：** 新增 `test_voice_import_clone_mock_success` E2E，mock provider-voices/import 返回成功 + audio_asset.url，验证"导入成功"文案、provider_voice_id、audio 标签、快速绑定面板（importProfileWrap / importBindProfile / importBindModel / importBindBtn）、按钮恢复；mock profiles / capabilities / provider-voices 避免真实请求；24 passed。
+
+**下一步：** import 链路 E2E 已建立，24 E2E passed。可进入 voice_import.js 抽离（仅迁移 handleImportRemoteVoice）。

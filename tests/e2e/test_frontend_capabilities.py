@@ -1193,3 +1193,142 @@ def test_voice_clone_mock_submit_success(
     # Verify button text is restored
     btn_text = page.locator("#cloneBtn").text_content()
     assert "克隆" in btn_text, f"cloneBtn should be restored to '克隆', got: {btn_text}"
+
+
+# ── Test 24: Voice import clone mock success ─────────────────────────────────────
+
+def test_voice_import_clone_mock_success(
+    page, e2e_base_url, console_errors
+):
+    """Mock provider-voices/import to return success; verify import success result, audio player, quick bind panel, and button restore."""
+
+    import_called = {}
+
+    # Mock profiles so populateProfileSelect can populate the dynamic select
+    def handle_profiles(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([
+                {"id": "e2e_profile_001", "name": "E2E 测试人设"}
+            ]),
+        )
+
+    # Mock capabilities to avoid real requests during page init
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "voice_clone": {
+                        "supported": True,
+                        "preview_text_max": 1000,
+                        "voice_id": {"min_length": 8, "max_length": 256}
+                    }
+                }]
+            }),
+        )
+
+    # Mock provider-voices/import to return success
+    def handle_import(route):
+        import_called["yes"] = True
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "provider": "mock",
+                "provider_voice_id": "e2e_remote_clone_voice_001",
+                "voice_type": "voice_cloning",
+                "name": "E2E Remote Clone Voice",
+                "status": "imported",
+                "verified": True,
+                "audio_asset": {
+                    "url": "/static/e2e-import-demo.mp3"
+                },
+                "message": "导入成功"
+            }),
+        )
+
+    # Mock provider-voices to avoid handleListVoices(true) real call after import success
+    def handle_provider_voices(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"voices": [], "total": 0}),
+        )
+
+    # Register routes BEFORE navigation
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/provider-voices/import.*"), handle_import)
+    page.route("**/api/voice/profiles", handle_profiles)
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/provider-voices\?.*"), handle_provider_voices)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Wait for capabilities to be loaded
+    page.wait_for_timeout(1000)
+
+    # Navigate to Advanced tab
+    page.locator('button.tab-btn[data-tab="advanced"]').click()
+    page.wait_for_selector("#tab-advanced", state="attached", timeout=10000)
+
+    # Confirm Clone subtab is active by default; importClone form elements exist
+    page.wait_for_selector("#importCloneProvider", state="attached", timeout=5000)
+    page.wait_for_selector("#importCloneVoiceId", state="attached", timeout=5000)
+    page.wait_for_selector("#importCloneBtn", state="attached", timeout=5000)
+    page.wait_for_selector("#importCloneResult", state="attached", timeout=5000)
+
+    # Set provider to mock (bypasses highRisk confirm) and fill import form
+    page.evaluate(""" () => {
+        document.getElementById('importCloneProvider').value = 'mock';
+        document.getElementById('importCloneProvider').dispatchEvent(new Event('change'));
+    } """)
+
+    # Fill import form
+    page.locator("#importCloneVoiceId").fill("e2e_remote_clone_voice_001")
+    page.locator("#importCloneName").fill("E2E Remote Clone Voice")
+    page.locator("#importCloneModel").select_option("speech-2.8-hd")
+    page.locator("#importClonePreviewText").fill("这是一段远端音色导入E2E试听文本")
+    # verify checkbox is checked by default; confirm it is
+    verify_checked = page.locator("#importCloneVerify").is_checked()
+    assert verify_checked, "importCloneVerify should be checked by default"
+
+    # Verify import button is enabled
+    btn_disabled = page.locator("#importCloneBtn").get_attribute("disabled")
+    assert not btn_disabled, "importCloneBtn should be enabled with valid inputs"
+
+    # Click import button via JS click
+    page.evaluate("document.getElementById('importCloneBtn').click()")
+    page.wait_for_timeout(2000)
+
+    # Verify API was called
+    assert import_called.get("yes"), f"provider-voices/import should have been called: {import_called}"
+
+    # Verify success message and voice_id appear in importCloneResult
+    result_html = page.locator("#importCloneResult").inner_html()
+    assert "导入成功" in result_html, (
+        f"Expected '导入成功' in importCloneResult, got: {result_html}"
+    )
+    assert "e2e_remote_clone_voice_001" in result_html, (
+        f"Expected provider_voice_id 'e2e_remote_clone_voice_001' in importCloneResult, got: {result_html}"
+    )
+
+    # Verify audio player is rendered
+    audio_player = page.locator("#importCloneResult audio.audio-player")
+    assert audio_player.count() > 0, f"Expected audio player in importCloneResult, got: {result_html}"
+    source_tag = page.locator('#importCloneResult source[src="/static/e2e-import-demo.mp3"]')
+    assert source_tag.count() > 0, f"Expected source tag with demo_audio_url, got: {result_html}"
+
+    # Verify quick bind panel appears (rendered after setTimeout)
+    page.wait_for_timeout(500)  # wait for setTimeout(0) to fire
+    assert page.locator("#importProfileWrap").count() > 0, "Quick bind profile wrap should exist"
+    assert page.locator("#importBindBtn").count() > 0, "Quick bind button should exist"
+    assert page.locator("#importBindModel").count() > 0, "Quick bind model select should exist"
+    assert page.locator("#importBindProfile").count() > 0, "Dynamic importBindProfile select should be created"
+
+    # Verify button text is restored
+    btn_text = page.locator("#importCloneBtn").text_content()
+    assert "验证并导入" in btn_text, f"importCloneBtn should be restored to '验证并导入', got: {btn_text}"
