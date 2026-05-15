@@ -47,7 +47,8 @@
 * P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计已完成 ✅
 * P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核已完成 ✅
 * P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B0 / P14-PRODUCT-B0 待选择
+* P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计已完成 ✅
+* 当前下一阶段：P14-CONTEXT-B1 / P14-PRODUCT-B0 待选择
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7525,3 +7526,41 @@ P14-SCRIPT-UX-B1 已实现并通过复核。该阶段聚焦剧本主生产入口
 ### 阶段状态
 
 P14-SCRIPT-UX-B1 已完成并收口。
+
+## P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计
+
+### 背景
+
+P13 已完成最近样本系统（SampleStore + SampleSidebar），P14 已完成长文本和剧本主生产入口的生成前提示。下一阶段需要支持样本复用：查看完整文本 / 剧本内容，并一键回填到对应生产入口。
+
+### 代码事实核验
+
+- SampleStore `text_preview` 硬编码 100 字符截断（`TEXT_PREVIEW_MAX = 100`）
+- `_batchSampleContextById` 是内存变量，页面刷新丢失
+- `batch_longtext.js` 当前保存 `text_preview = text`（完整文本），无 `context_id` 链接
+- `batch_script.js` 当前保存 `text_preview = buildScriptTextPreview(lines)`，无完整 lines 结构
+- SampleSidebar `fillTextInput` 只写 `#textInput`，不支持长文本 / 剧本回填
+- localStorage 上限约 5～10MB，长文本 full_text 最多 ~100KB/条
+
+### 设计结论
+
+- ContextStore 使用独立 key `voice_lab_sample_context_v1`
+- SampleStore.sample.context_id = sample.sample_id（v1 简化关联）
+- ContextStore 最多 50 条，按 created_at LRU 淘汰
+- longtext context 保存 `full_text` + 生成参数
+- script context 保存 `lines`（有效台词行）+ 生成参数
+- context 缺失时播放/下载/复制仍可用，详情/回填置灰
+- 回填只恢复编辑状态，不自动生成
+
+### 阶段边界
+
+- 只做设计，不改 index.html / JS / tests
+- 不实现 ContextStore
+- 不实现详情弹层
+- 不实现一键回填
+- 不修改 SampleStore / SampleSidebar
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+P14-CONTEXT-B0 完成，建议进入 P14-CONTEXT-B1（实现 context_store.js 基础模块）。

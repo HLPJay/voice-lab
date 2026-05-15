@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**待选择：P14-CONTEXT-B0 / P14-PRODUCT-B0**
+**待选择：P14-CONTEXT-B1 / P14-PRODUCT-B0**
 
 ## 已完成（续）
 
@@ -27,6 +27,7 @@
 - P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计 ✅
 - P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核 ✅
 - P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口 ✅
+- P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计 ✅
 
 ## 已完成
 
@@ -95,11 +96,13 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-B0 | design ContextStore for recoverable creation context | P14-SCRIPT-UX-B1-CLOSE 完成 |
-| P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-SCRIPT-UX-B1-CLOSE 完成 |
-| P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-SCRIPT-UX-B1-CLOSE 完成 |
-| P14-CONTEXT-B1 | longtext context save and restore design | P14-CONTEXT-B0 完成 |
-| P14-CONTEXT-B2 | script context save and restore design | P14-CONTEXT-B0 完成 |
+| P14-CONTEXT-B1 | implement context_store.js base module | P14-CONTEXT-B0 完成 |
+| P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-CONTEXT-B0 完成 |
+| P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-CONTEXT-B0 完成 |
+| P14-CONTEXT-B2 | longtext context save and detail view | P14-CONTEXT-B1 完成 |
+| P14-CONTEXT-B3 | longtext one-click restore | P14-CONTEXT-B2 完成 |
+| P14-CONTEXT-C1 | script context save and detail view | P14-CONTEXT-B1 完成 |
+| P14-CONTEXT-C2 | script one-click restore | P14-CONTEXT-C1 完成 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
