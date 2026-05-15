@@ -260,7 +260,7 @@ class TestAuditionSampleIntegrationStatic:
         assert 'batch_script' not in audition_body, \
             'batch_script must not be called within handleGenerateAudition'
 
-    def test_no_sample_sidebar_js(self):
+    def test_sample_sidebar_js_loaded(self):
         content = open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
-        assert 'sample_sidebar.js' not in content, \
-            'sample_sidebar.js must not be referenced in index.html'
+        assert 'sample_sidebar.js' in content, \
+            'sample_sidebar.js must be referenced in index.html (added in B4)'
