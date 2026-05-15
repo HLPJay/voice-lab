@@ -16,7 +16,7 @@
 * P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
 * P13-CREATION-B2：workspace 生成结果接入 sample_store 已复核通过 ✅
 * P13-CREATION-B2-CHECK：workspace sample_store 接入复核已完成 ✅
-* P13-CREATION-B3：audition_records 接入 sample_store 进行中
+* P13-CREATION-B3：audition_records 接入 sample_store 已实现，待 B3-CHECK 收口
 * 当前下一阶段：P13-CREATION-B3 audition_records 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
@@ -5958,3 +5958,35 @@ loadRuntimeStatus();
 ### 阶段状态
 
 进行中，待测试通过后进入 B3-CHECK。
+
+## P13-CREATION-B3-CHECK：audition_records sample_store 接入复核
+
+### 背景
+
+B3 已完成 Voices tab audition 成功结果接入 sample_store。B3-CHECK 对实现进行复核，确认其不会影响原 audition_records 行为，也不会越界接入其他模块。
+
+### 复核内容
+
+- 确认 `window.safePushAuditionSample` 存在并具备 fail-safe 行为 ✅
+- 确认 `safePushAuditionSample` 只通过 `window.SampleStore.pushSample` 写入 sample ✅
+- 确认 `safePushAuditionSample` 不直接操作 localStorage ✅
+- 确认 `safePushAuditionSample` 不读写 recentJobs ✅
+- 确认 blob URL 不写入 sample ✅
+- 确认 `handleGenerateAudition` 只在试听成功且返回 `audio_asset.url` 时 push sample ✅
+- 确认原有 `window._auditionRecords.push(...)`、`renderAuditionRecords()`、`loadRuntimeStatus()` 行为保留 ✅
+- 确认未接 workspace / batch / history / sidebar UI ✅
+- 确认未修改后端 API / 数据库结构 / sample_store.js ✅
+- 确认测试通过 ✅
+- 确认 `profile_id / profile_name` 暂不强制写入 audition sample，后续如需与绑定关系强关联再补充 ✅
+
+### 测试结果
+
+- `tests/test_sample_store_static.py`：25 项全部通过 ✅
+- `tests/test_sample_store_workspace_integration_static.py`：36 项全部通过 ✅
+- `tests/test_sample_store_audition_integration_static.py`：25 项全部通过 ✅
+
+结果：86 passed。
+
+### 阶段结论
+
+P13-CREATION-B3 复核通过，可以进入 B3-CLOSE。下一步只做状态收口，不进入 B4 实现。
