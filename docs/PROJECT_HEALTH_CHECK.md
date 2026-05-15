@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-H1：
+截至 P9-FE1-H2：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4557,7 +4557,7 @@ POST /api/voice/provider-voices/import
 4. **verify=true 时内部调用 preview**：在 Python 服务内完成，无额外 HTTP 请求，无 E2E mock 额外成本
 5. **两个 subtab 的 result div id 不同**（importCloneResult / importDesignResult），需通过 prefix 参数统一访问
 
-### 下一步 P9-FE1-H1 建议
+### 下一步 P9-FE1-H2 建议
 
 **建议先补 import mock success E2E，再迁移 voice_import.js。**
 
@@ -4592,7 +4592,7 @@ POST /api/voice/provider-voices/import
 - mock POST /api/voice/provider-voices/import（返回成功 voice_id + audio_asset.url + status=imported）。
 - mock GET /api/voice/provider-voices（返回空 voices，避免 handleListVoices 真实请求）。
 - 填写 importClone 表单（provider=mock、voice_id、name、model、previewText、verify=true）。
-- 点击 #importCloneBtn，验证 clone/create 被调用。
+- 点击 #importCloneBtn，验证 provider-voices/import 被调用。
 - 断言 #importCloneResult 包含"导入成功"、voice_id、audio 标签。
 - 断言快速绑定面板（importProfileWrap / importBindProfile / importBindModel / importBindBtn）存在。
 - 断言按钮恢复为"验证并导入"。
@@ -4601,12 +4601,36 @@ POST /api/voice/provider-voices/import
 
 **E2E 验证：**
 ```
-python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "import"  # 1 passed
-python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 24 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "import"  # 2 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 25 passed
 ```
 
-**测试结果：** 24 passed in 80.62s。
+**测试结果：** 25 passed in 83.77s。
 
 **未改关键链路：** 未迁移 handleImportRemoteVoice、未新增 voice_import.js、未改 app/static/js/*、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
 
-**下一步建议：** import 链路成功链路 E2E 已补齐，24 E2E passed。可进入 voice_import.js 抽离。
+**下一步建议：** import 链路成功链路 E2E 已补齐，25 E2E passed。可进入 voice_import.js 抽离。
+
+## P9-FE1-H2：抽离 voice_import.js
+
+**时间：** 2026-05-15
+
+**问题：** handleImportRemoteVoice 仍在 index.html  inline script 中，需要抽离为独立模块 voice_import.js。
+
+**修复：**
+- 创建 `app/static/js/voice_import.js`，IIFE 包装，`window.handleImportRemoteVoice` 导出。
+- 所有 G3 helpers（loadProfiles、populateProfileSelect、renderInlineCreateProfile、bindVoiceToProfile、refreshVoiceBindStatus、handleListVoices）使用 `window.*` 调用。
+- shared helpers（guardedJsonFetch、parseApiError、formatApiError、friendlyErrorMessage、esc、renderValidationError）直接使用（已在 index.html G3 中暴露）。
+- 在 index.html 添加 `<script src="/static/js/voice_import.js"></script>`（位于 voice_clone.js 之后）。
+- 删除 index.html 中的 empty function stub `async function handleImportRemoteVoice(source) {}`（之前遗留的 orphan 空函数）。
+- 保留 Migration comment（Import Remote Voice - MOVED to /static/js/voice_import.js）。
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "import"  # 2 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 25 passed
+```
+
+**测试结果：** 25 passed in 83.77s。
+
+**未改关键链路：** 未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。

@@ -1332,3 +1332,22 @@ def test_voice_import_clone_mock_success(
     # Verify button text is restored
     btn_text = page.locator("#importCloneBtn").text_content()
     assert "验证并导入" in btn_text, f"importCloneBtn should be restored to '验证并导入', got: {btn_text}"
+
+
+# ── Test 25: Voice import module is loaded and exports available ─────────────────
+
+def test_voice_import_module_is_loaded_and_exports_available(
+    page, e2e_base_url, console_errors
+):
+    """Verify voice_import.js is loaded and exposes handleImportRemoteVoice."""
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Verify script tag exists
+    script_tag = page.locator('script[src="/static/js/voice_import.js"]')
+    assert script_tag.count() == 1, "voice_import.js script tag should exist"
+
+    # Verify window.handleImportRemoteVoice is a function
+    is_fn = page.evaluate("typeof window.handleImportRemoteVoice === 'function'")
+    assert is_fn, "window.handleImportRemoteVoice should be a function"
