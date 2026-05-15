@@ -22,8 +22,10 @@
 * P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正已完成 ✅
 * P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正已完成 ✅
 * P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正已完成 ✅
-* P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 已实现，待 B4-CHECK 收口
-* 当前下一阶段：P13-CREATION-B4-CLOSE 状态收口
+* P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 已复核通过 ✅
+* P13-CREATION-B4-CHECK：sample sidebar UI 复核已完成 ✅
+* P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口已完成 ✅
+* 当前下一阶段：P13-CREATION-B5 batch_longtext / batch_script samples 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6221,3 +6223,62 @@ B4 已完成 sample_sidebar.js + index.html 容器 UI，实现最近样本观察
 ### 阶段结论
 
 P13-CREATION-B4 复核通过，可以进入 B4-CLOSE。下一步只做状态收口，不进入 B5 实现。
+
+## P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口
+
+### 背景
+
+B4 已完成 `sample_sidebar.js + index.html` 容器 UI，实现最近样本观察面板，并经过 B4-CHECK-FIX、B4-CHECK-FIX2、B4-CHECK-FIX3、B4-CHECK-FIX4 与 B4-CHECK 复核。
+
+### 收口内容
+
+- 标记 P13-CREATION-B4 完成
+- 标记 B4-CHECK-FIX / FIX2 / FIX3 / FIX4 完成
+- 标记 B4-CHECK 完成
+- 当前阶段推进到 P13-CREATION-B5
+- 明确 B5 目标是 batch_longtext / batch_script samples 接入 sample_store，不是本次实现
+
+### B4 最终状态
+
+- 新增 `app/static/js/sample_sidebar.js`
+- Workspace 内新增 `sampleSidebarRoot` 容器
+- `sample_store.js` 先于 `sample_sidebar.js` 加载
+- `window.SampleSidebar` 暴露 init / render / refresh / playSample / deleteSample / clearSamples / copyText / fillTextInput
+- sidebar 只通过 `SampleStore.getSamples()` 读取样本
+- 不直接读取 localStorage
+- 不读写 recentJobs
+- HTML 文本使用 `esc()`
+- HTML attribute 使用 `attr()`
+- 播放 / 下载 URL 使用 `isSafeAudioUrl()`
+- 拒绝 blob / javascript / data URL
+- 空状态和非空状态均可刷新
+- 清空前有 confirm
+- 初版最多展示最近 20 条
+- sample card 展示 source / text_preview / voice / profile / provider / model / created_at / duration
+- 支持播放、下载、复制文本、回填、删除、清空
+- 未接 batch_longtext / batch_script
+- 未接 history sample_store
+- 未修改后端 API / 数据库结构
+- 测试结果：181 passed
+
+### 遗留项
+
+Workspace 主区域仍存在轻微视觉密度问题，已记录为后续 UI polish：
+
+`P13-UI-POLISH-LATER：Workspace compact spacing polish`
+
+该问题不阻塞 B4 收口。
+
+### 阶段边界
+
+- 只改文档
+- 不改 index.html
+- 不改 sample_sidebar.js
+- 不改 sample_store.js
+- 不改测试
+- 不接 B5 功能
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4 已收口，可以开始 P13-CREATION-B5。
