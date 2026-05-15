@@ -442,3 +442,41 @@ P8-5 最近任务恢复相关函数：
 - 后续如需迁移，先补 recent job restore E2E
 - 优先确保 P11 其它更高价值任务完成
 - batch_shared 状态管理设计、P11 后端能力增强优先于 recent_job 模块化
+
+---
+
+## P11-FE-REDUCE-CHECK：index.html 瘦身收口检查
+
+**执行时间：** 2026-05-15
+
+### 检查结果
+
+| 检查项 | 结果 |
+|---|---|
+| product_hints.js 加载顺序正确（在 inline script 之前） | ✅ |
+| index.html 中无 updateWorkspaceVoiceBindingHint 函数定义 | ✅ |
+| index.html 中无 updateBatchVoiceBindingHint 函数定义 | ✅ |
+| index.html 中无 updateScriptLineVoiceHint 函数定义 | ✅ |
+| window.updateWorkspaceVoiceBindingHint 可用 | ✅ |
+| window.updateBatchVoiceBindingHint 可用 | ✅ |
+| window.updateScriptLineVoiceHint 可用 | ✅ |
+| recent_job_restore 保持不迁移 | ✅ |
+| 未改 handleGenerate | ✅ |
+| 未改 batch_longtext.js / batch_script.js payload | ✅ |
+| 未改后端 API | ✅ |
+| 未改 shared batch state | ✅ |
+| 未调用真实 MiniMax | ✅ |
+| E2E 全量 29 passed | ✅ |
+
+### P11 完成清单
+
+| 任务 | 状态 |
+|---|---|
+| P11-A0: index.html 瘦身审查 | ✅ |
+| P11-A1: product_hints.js 抽离 | ✅ |
+| P11-A1-CHECK: product_hints.js 验证 | ✅ |
+| P11-A2-A0: recent_jobRestore 审查（结论：不迁移） | ✅ |
+
+### P11 结论
+
+P11 index.html 瘦身阶段完成。优先抽离了纯 UI 无耦合的 `product_hints.js`，收益明确且风险极低。`recent_job_restore` 因 E2E 零覆盖 + 高度耦合，结论为不迁移。后续不再主动往 index.html 增加新逻辑，新模块需有明确收益才引入。
