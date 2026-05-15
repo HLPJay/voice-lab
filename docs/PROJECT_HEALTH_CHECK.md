@@ -58,7 +58,8 @@
 * P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计已完成 ✅
 * P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现已完成 ✅
 * P14-CONTEXT-B3：长文本一键回填已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B3-CHECK
+* P14-CONTEXT-B3-CHECK：长文本一键回填复核已完成 ✅
+* 当前下一阶段：P14-CONTEXT-C1-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
