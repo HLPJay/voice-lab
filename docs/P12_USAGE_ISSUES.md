@@ -28,3 +28,23 @@
 **验证方式：**
 - 手动切换 workspace → voices → workspace，binding hint 与 #bindingStatus 状态一致 ✅
 - E2E targeted：29 passed ✅
+
+## P12-USAGE-UX1：Advanced tab 提示区域过于臃肿
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- 「音色工具」页面有多个大卡片提示区域，占用过多垂直空间
+- "高成本 / 工程验证能力" 大卡片（12px padding）+ "克隆、设计、导入音色后，建议绑定到人设再用于生成" 又一个大卡片
+- "删除音色" 危险操作说明也是大卡片样式
+
+**修复方案：**
+- 将两个大卡片合并为一个紧凑 warning bar（约 3 行 vs 原来 6+ 行）
+- 将 "删除音色" 大卡片改为紧凑 warning bar（2 行 vs 原来 4 行）
+
+**修复位置：**
+- `app/static/index.html`：tab-advanced 区域
+
+**验证方式：**
+- targeted E2E（clone/design/import）：6 passed ✅
+- git diff --check：无 whitespace 错误 ✅

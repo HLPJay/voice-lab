@@ -25,6 +25,7 @@
 - P11-FE-REDUCE-A2-A0：recent_job 模块审查（结论：不迁移） ✅
 - P11-FE-REDUCE-CHECK：index.html 瘦身收口 ✅
 - P12-USAGE-FIX1：workspace binding hint 与 #bindingStatus 同步修复 ✅
+- P12-USAGE-UX1：compact advanced tool hints ✅
 
 ## Next
 

@@ -1247,19 +1247,9 @@
   </div>
 
   <div class="tab-content" id="tab-advanced">
-    <!-- High-cost / engineering validation notice -->
-    <div class="card" style="background:#fffaf0;border:1px solid #fbd38d;margin-bottom:16px">
-      <div style="padding:12px 16px">
-        <div style="font-size:0.85rem;font-weight:600;color:#9c4221;margin-bottom:4px">高成本 / 工程验证能力</div>
-        <div style="font-size:0.78rem;color:#9c4221">以下能力可能产生较高 API 调用成本，适合工程验证和少量样本测试。使用真实 Provider 前请确认费用、限制和音频素材合规性。</div>
-      </div>
-    </div>
-
-    <!-- Onboarding hint -->
-    <div class="card" style="padding:12px 16px;margin-bottom:12px">
-      <p style="font-size:0.8rem;color:#4a5568;line-height:1.6;margin:0">
-        克隆、设计、导入音色后，建议绑定到人设再用于生成。
-      </p>
+    <!-- Compact warning bar: high-cost + onboarding hint merged -->
+    <div style="background:#fffaf0;border:1px solid #fbd38d;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:0.78rem;color:#9c4221;line-height:1.5">
+      <strong>⚠ 高成本 / 工程验证能力：</strong>克隆、设计、导入音色可能产生较高费用，适合工程验证。使用真实 Provider 前请确认费用和音频合规性。克隆/设计/导入后建议<strong>绑定到人设</strong>再用于生成。
     </div>
 
     <!-- Sub-tab navigation for advanced features -->
@@ -1570,11 +1560,8 @@
     </div>
     <!-- Danger sub-tab content -->
     <div class="advanced-subtab-panel" id="subtab-danger">
-      <div class="card" style="background:#fffaf0;border:1px solid #fbd38d;margin-bottom:16px">
-        <div style="padding:12px 16px">
-          <div style="font-size:0.85rem;font-weight:600;color:#c05621;margin-bottom:4px">⚠ 删除音色</div>
-          <div style="font-size:0.78rem;color:#c05621">删除音色属于高风险操作。真实 provider 下可能会影响远端音色资产和本地绑定状态。请确认 voice_id、音色类型和 provider 后再操作。</div>
-        </div>
+      <div style="background:#fffaf0;border:1px solid #fbd38d;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:0.78rem;color:#c05621;line-height:1.5">
+        <strong>⚠ 删除音色：</strong>高风险操作。真实 provider 下可能影响远端音色资产和本地绑定状态，请确认后操作。
       </div>
       <div class="card">
         <div class="card-title">删除音色</div>
