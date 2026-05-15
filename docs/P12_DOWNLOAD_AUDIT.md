@@ -11,9 +11,9 @@
 | 单条同步生成 | `renderResults` | `#resultsArea` 内 `downloadBtnHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset download |
 | 异步轮询生成 | `renderAsyncResult` | `#resultsArea` 内 `downloadBtnHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset download |
 | 流式生成 | `renderStreamResult` | 两个下载按钮 | (1) `/api/voice/assets/${assetId}/download`<br>(2) `blobUrl` | ✅/⚠️ 混合 | blob 仅当前会话 | **中** | 正确标注了浏览器缓存限制 |
-| 批量长文本 | `renderBatchResultPlayer` | `#batchDownloadAudio` | `data.merged_audio.url` = `/api/voice/assets/{id}/download` | ✅ 是（URL 已正确） | 否（URL 稳定） | **低（URL 正确）** | 后端已返回 asset_id 和正确 download URL |
-| 批量剧本 | `renderBatchResultPlayer` | `#batchScriptDownloadAudio` | `data.merged_audio.url` = `/api/voice/assets/{id}/download` | ✅ 是（URL 已正确） | 否（URL 稳定） | **低（URL 正确）** | 同上，batch_longtext/script 共用同一函数 |
-| 批量字幕 | `renderBatchResultPlayer` | `#batchDownloadSubtitle` | `/api/voice/assets/${subId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API |
+| 批量长文本 | `renderBatchResultPlayer` | `#batchDownloadAudio` | 优先 `/api/voice/batch/{batch_id}/download`，fallback `merged_audio.id` → `merged_audio.url` | ✅ 是 | 否 | **低（FIX4 规范化）** | FIX4 优先 batch 语义化 endpoint |
+| 批量剧本 | `renderBatchResultPlayer` | `#batchScriptDownloadAudio` | 同上 | ✅ 是 | 否 | **低（FIX4 规范化）** | 同上，batch_longtext/script 共用同一函数 |
+| 批量字幕 | `renderBatchResultPlayer` | `#batchDownloadSubtitle` | `/api/voice/assets/${subId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API；FIX4 不改变 subtitle 逻辑 |
 | 最近任务恢复 | `renderRecoveredJob` | `#resultsArea` 内 `downloadBtnHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API |
 | 历史任务 | `renderHistoryItem` | 复用 `audioPlayerHtml` | `/api/voice/assets/${assetId}/download` | ✅ 是 | 否 | **低** | 正确使用 asset API |
 
@@ -21,25 +21,22 @@
 
 ## 2. 下载失败可能原因排序
 
-### 原因 1（最高风险）：batch merged_audio.url 直接作为下载链接
+### 原因 1（已排除）：batch merged_audio.url 直接作为下载链接
 
-**代码位置：** `renderBatchResultPlayer()`，line 4418：
-```javascript
-downloadAudio.href = data.merged_audio.url;
-```
+**原问题（FIX4-A0 初步判断）：**
+- 认为 `data.merged_audio.url` 是 MiniMax provider 返回的临时 URL
+- 认为批量下载未走 asset API
 
-**问题：**
-- `data.merged_audio.url` 是批量服务合并后的音频 URL
-- 如果该 URL 是 MiniMax provider 返回的临时 URL（而非本服务端 asset），可能：
-  - 有时效性（过期后无法访问）
-  - 有 CORS 限制（跨域下载被浏览器阻止）
-  - 有频次限制（重复下载受限）
-- 与单条/异步生成的下载路径不一致（其他都用 asset API）
+**FIX4-B0 复查结论：**
+- ✅ 后端已创建 `AudioAsset`，`merged_audio.url = /api/voice/assets/{id}/download`
+- ✅ URL 格式与单条/异步下载完全一致
+- ⚠️ 但前端下载按钮仍直接依赖 status 返回字段，耦合不够理想
 
-**表现：**
-- Chrome 下载提示"无法从网站上提取文件"
-- 部分下载成功（可能是缓存或临时 URL 有效期内的请求）
-- 批量结果中 audio 标签可播放，但下载按钮点不开
+**FIX4 修复（normalize batch download href）：**
+- 批量下载按钮优先使用语义化 endpoint：`/api/voice/batch/{batch_id}/download`
+- 播放 `audio.src` 保持使用 `data.merged_audio.url`，不影响播放链路
+- fallback 链：`batch_id` → `merged_audio.id` → `merged_audio.url`
+- 真实下载失败根因仍需 Network 证据确认；本次修复只做下载入口语义规范化
 
 ---
 
@@ -179,46 +176,57 @@ if (data.merged_audio.url.startsWith('/api/')) {
 
 ---
 
-## 4. 后续 FIX4 推荐方案
+## 4. FIX4 实际修复方案（normalize batch download href）
 
-**最小修复范围（FIX4）：**
+**修复时间：** 2026-05-15
 
-1. **批量音频下载路径统一为 asset API**
-   - 如果 `data.merged_audio` 包含 `asset_id` 字段，前端优先使用 `/api/voice/assets/${asset_id}/download`
-   - 如果 `data.merged_audio` 只有 `url` 而无 `asset_id`，保持现状（这是后端问题，需在后端修复）
+**修复内容：**
 
-2. **前端不做大范围重构**
-   - 只改 `renderBatchResultPlayer()` 中的 `downloadAudio.href` 赋值
-   - 其他场景（单条/异步/流式）已经是正确的 asset API 路径
+`renderBatchResultPlayer()` 中 `downloadAudio.href` 赋值逻辑改为：
+```javascript
+let downloadHref = data.merged_audio.url;
+if (data.batch_id) {
+  downloadHref = `/api/voice/batch/${encodeURIComponent(data.batch_id)}/download`;
+} else if (data.merged_audio.id) {
+  downloadHref = `/api/voice/assets/${encodeURIComponent(data.merged_audio.id)}/download`;
+}
+downloadAudio.href = downloadHref;
+downloadAudio.setAttribute('download', '');
+```
 
-3. **后端需配合：**
-   - 批量合并完成后应创建 `voice_asset` 记录并返回 `asset_id`
-   - `merged_audio` 应包含 `{ asset_id, url }` 而非仅有 `url`
+**优先级：**
+1. `batch_id` 存在时 → `/api/voice/batch/{batch_id}/download`（语义化 endpoint）
+2. `merged_audio.id` 存在时 → `/api/voice/assets/{id}/download`（asset API）
+3. 最后 fallback → `data.merged_audio.url`
 
-**验证方式：**
-- 不调用真实 MiniMax
-- Mock 批量合并响应，验证下载按钮 href 是否指向 asset API
-- 不新增 E2E（当前无批量下载 E2E）
+**不变更：**
+- `audio.src` 保持 `data.merged_audio.url`，不影响播放链路
+- subtitle 下载逻辑不变
+- batch status polling 不变
 
 ---
 
 ## 5. 审查结论
 
-**高风险（需立即修复）：**
-- `renderBatchResultPlayer` 中 `data.merged_audio.url` 直接作为下载 href
+**FIX4-A0 初步结论（已纠偏）：**
+- 原判断：批量下载高风险，`merged_audio.url` 是 provider 临时 URL
+- 纠偏后：`merged_audio.url` 已是 asset API URL，格式正确
 
-**中风险（次优先）：**
-- 流式 blob URL 刷新后失效（已知限制，可接受）
-- asset_id 字段提取路径较多（extractAudioAssetId 已处理，但需确保各 API 路径一致）
+**FIX4 实际风险：**
+- 下载入口耦合问题（直接依赖 status 返回字段）→ 已通过 normalize to batch endpoint 修复
+- 真实下载失败根因仍需 Network 证据确认
 
-**低风险（可接受）：**
+**已确认低风险：**
 - 单条/异步生成下载：正确使用 asset API ✅
 - 字幕下载：正确使用 asset API ✅
 - recent job 恢复：正确使用 asset API ✅
+- 流式 blob URL：刷新后失效（已知限制，可接受）
 
-**后端配合项：**
-- 批量合并完成后是否已存储 asset？
-- `merged_audio` 响应结构是否包含 `asset_id`？
+**已排除的后端问题（FIX4-B0 确认）：**
+- ✅ 批量音频已保存为 AudioAsset
+- ✅ `merged_audio.id` 就是 asset_id
+- ✅ `merged_audio.url` 格式正确
+- ❓ 真实下载失败根因仍需 Network 证据
 
 
 ---
@@ -314,50 +322,39 @@ batch_job.merged_audio_asset_id = merged_audio_id  # ← 保存到 BatchJob
 
 ---
 
-### 4. 下一步修复方案
+### 4. FIX4 执行结果
 
-**分支 A（推荐）：后端已有 asset_id，前端 URL 已正确**
+**已实施修复（normalize batch download href）：**
+- ✅ 前端 `renderBatchResultPlayer` `downloadAudio.href` 优先使用 `/api/voice/batch/{batch_id}/download`
+- ✅ `audio.src` 保持 `data.merged_audio.url`，播放链路不变
+- ✅ fallback 链：`batch_id` → `merged_audio.id` → `merged_audio.url`
 
-根据审查结论：
-- ✅ `merged_audio.id` 就是 asset_id
-- ✅ `merged_audio.url` = `/api/voice/assets/{id}/download` 已经是正确 URL
-- ✅ 批量音频已保存为 AudioAsset
+**未涉及：**
+- 后端 batch.py、BatchOrchestrationService、voice_assets.py 均未改
+- batch payload 未改
+- 播放链路未改
 
-**无需前端改动 URL 逻辑！**
-
-但需要排查下载失败的实际原因：
-1. **排查 merge 是否真的成功**：检查 `merged_audio_path` 是否存在
-2. **排查 FileResponse 是否正确**：检查 `batch_download` 接口的 FileResponse
-3. **可能的修复**：在 `batch_download` 中增加文件存在性校验，返回更明确的错误信息
-
-**建议 FIX4-C0（排查）：**
-- 在后端 `batch_download` 中，如果文件不存在，明确返回 404 而不是模糊错误
-- 检查 `audio_merger.merge()` 的异常处理是否会导致不完整的文件被保存
-
-**如果经排查确认是前端问题（不太可能），则：**
-- 前端 `renderBatchResultPlayer` 可以统一使用 `data.merged_audio.id` 构造 URL：
-  ```javascript
-  // 优先使用 id 构造，与其他场景保持一致
-  downloadAudio.href = `/api/voice/assets/${data.merged_audio.id}/download`;
-  audio.src = `/api/voice/assets/${data.merged_audio.id}/download`;
-  ```
+**真实下载失败根因：**
+- ❓ 仍需 Network 证据确认
+- 可能是 merge 异常导致文件不完整，或文件路径问题
 
 ---
 
-### 5. 风险和不改范围
+### 5. 风险和范围
 
 **已确认安全：**
 - ✅ 批量音频已保存为 voice_asset
-- ✅ merged_audio.url 格式正确，与单条/异步下载 URL 格式一致
+- ✅ merged_audio.url 格式正确
 - ✅ merged_audio.id 就是 asset_id
 
-**需进一步排查：**
+**需进一步排查（如有用户报告）：**
 - ❓ 合并过程中异常处理是否导致文件不完整但状态显示成功
 - ❓ 文件路径 `merged_audio_path` 是否正确
-- ❓ 真实使用中"部分下载失败"的具体错误信息
+- ❓ 真实使用中"部分下载失败"的具体 Network 错误信息
 
-**不改范围（本次审查不涉及）：**
+**不改范围（FIX4）：**
+- 不改后端 API
 - 不改生成链路
 - 不改 batch payload
-- 不改前端下载逻辑（URL 本身正确）
+- 不改播放链路
 - 不调用真实 MiniMax

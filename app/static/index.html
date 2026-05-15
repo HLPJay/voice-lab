@@ -4415,7 +4415,14 @@ function handleStopAsyncPolling() {
       audio.addEventListener('seeking', () => updateBatchSubtitleHighlight(targetPanelId));
 
       if (downloadAudio) {
-        downloadAudio.href = data.merged_audio.url;
+        let downloadHref = data.merged_audio.url;
+        if (data.batch_id) {
+          downloadHref = `/api/voice/batch/${encodeURIComponent(data.batch_id)}/download`;
+        } else if (data.merged_audio.id) {
+          downloadHref = `/api/voice/assets/${encodeURIComponent(data.merged_audio.id)}/download`;
+        }
+        downloadAudio.href = downloadHref;
+        downloadAudio.setAttribute('download', '');
         downloadAudio.style.display = '';
       }
 
