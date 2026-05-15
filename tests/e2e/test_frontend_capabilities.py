@@ -687,10 +687,6 @@ def test_batch_script_mock_submit_success_starts_progress(
     page, e2e_base_url, console_errors
 ):
     """Mock batch/submit + status so handleBatchScriptSubmit completes without real MiniMax."""
-    # Capture all browser console messages
-    browser_logs = []
-    page.on("console", lambda msg: browser_logs.append(msg.type + ': ' + msg.text) if msg.type in ('log', 'error') else None)
-
     submit_called = {}
 
     def handle_submit(route):
@@ -781,11 +777,6 @@ def test_batch_script_mock_submit_success_starts_progress(
 
     page.wait_for_timeout(500)  # allow DOM updates to settle
 
-    # Check result HTML
-    result_check = page.evaluate(""" () => {
-        var el = document.getElementById('batchScriptResult');
-        return el ? el.innerHTML.substring(0, 300) : 'NO_RESULT_EL';
-    } """)
     # Verify submit was called
     assert submit_called.get("yes"), f"batch/submit should have been called: {submit_called}"
 

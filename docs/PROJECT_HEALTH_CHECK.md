@@ -4153,3 +4153,67 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 18 pas
 **下一步：** P9-FE1-F2 Phase 2（迁移行管理函数和 `_scriptRows` 状态）。
 
 **未改** app/static/index.html（业务逻辑）、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、数据库。
+
+---
+
+## P9-FE1-CHECK：前端模块化阶段收口检查
+
+**时间：** 2026-05-15
+
+**本次任务类型：** 阶段收口检查 + 测试小清理，不迁移任何业务逻辑。
+
+### 测试小清理
+
+删除了 `test_batch_script_mock_submit_success_starts_progress` 中不再使用的变量：
+- `browser_logs`（console message 收集列表）— 未被任何断言使用
+- `result_check`（page.evaluate 结果）— 未被任何断言使用
+
+保留：所有有效断言、submit_called 断言、success message / batch_id / progress panel / button restore 断言、stopBatchPoll 清理、`import json`。
+
+### 已核对已抽离模块
+
+| 模块 | 入口 |
+|---|---|
+| provider_capabilities.js | loadProviderCapabilities, applyAllProviderCapabilities, setControlDisabled, updateProviderSelectOptions, getProviderCapability |
+| runtime_status.js | loadRuntimeStatus, scheduleRuntimeStatusRefresh |
+| history.js | loadHistory, loadMoreHistory, refreshHistory, toggleHistoryAudio, deleteHistoryJob, copyJobId |
+| audition_records.js | renderAuditionRecords, deleteAuditionRecord, clearAuditionRecords |
+| batch_longtext.js | handleBatchLongtextSubmit |
+| batch_script.js | handleBatchScriptSubmit |
+
+script 加载顺序（index.html 第 1587-1592 行）：
+provider_capabilities.js → runtime_status.js → history.js → audition_records.js → batch_longtext.js → batch_script.js → inline script
+
+### 已核对 E2E 覆盖
+
+共 18 个 E2E（tests/e2e/test_frontend_capabilities.py）。
+
+### 已核对未改关键链路
+
+未改：app/static/index.html（业务逻辑）、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
+
+### 当前仍留在 index.html 的高风险逻辑（记录，不迁移）
+
+- Tab 切换逻辑
+- populateProfileSelect / loadProfiles / _cachedProfiles（被剧本/长文本行管理依赖）
+- addScriptLine / removeScriptLine / updateScriptLineLimitState（与 populateProfileSelect 紧耦合）
+- _scriptRows / _scriptLineCount / MAX_SCRIPT_LINES（与 DOM 事件委托强耦合）
+- scriptLines 事件委托
+- 共享 batch 轮询函数（showBatchProgress / startBatchPoll / stopBatchPoll / pollBatchStatus）
+- 共享 batch 状态变量（_batchPollTimer / _currentBatchId / _currentBatchPanelId / _batchTimeline）
+- renderBatchStatus
+- voice clone/design/import（handleCloneSubmit / handleDesignSubmit / bindVoiceToProfile）
+- API 共享 helper（esc / guardedJsonFetch / parseApiError / formatApiError / renderApiError / showToast）
+
+### 下一步建议
+
+- 暂不迁移共享 batch 状态；`_batchPollTimer` / `_currentBatchId` 等变量继续保留在 index.html，待 batch 模块 Phase 2 统一考虑
+- Phase 2 行管理迁移（addScriptLine / removeScriptLine / _scriptRows）需单独任务，需先审查与 populateProfileSelect 的耦合点
+- voice_clone_design.js 建议先审查再拆
+- batch_shared.js 暂缓
+
+### 测试结果
+
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 18 passed in 59.49s
+```
