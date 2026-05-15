@@ -46,7 +46,8 @@
 * P14-LONGTEXT-UX-B1-CLOSE：长文本 UX hints 阶段收口已完成 ✅
 * P14-SCRIPT-UX-B0：剧本行数 / 字数 / 角色 / 音色完整性提示方案设计已完成 ✅
 * P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核已完成 ✅
-* 当前下一阶段：P14-SCRIPT-UX-B1-CLOSE
+* P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口已完成 ✅
+* 当前下一阶段：P14-CONTEXT-B0 / P14-PRODUCT-B0 待选择
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7470,3 +7471,57 @@ P14-SCRIPT-UX-B1 已实现剧本行数、有效台词、字数、预计生成段
 ### 阶段状态
 
 P14-SCRIPT-UX-B1-CHECK 通过，建议进入 P14-SCRIPT-UX-B1-CLOSE。
+
+## P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口
+
+### 背景
+
+P14-SCRIPT-UX-B1 已实现并通过复核。该阶段聚焦剧本主生产入口的基础可用性，解决用户在生成前无法理解行数、有效台词、字数、预计生成段数、角色分布和音色完整性的问题。
+
+### 已完成能力
+
+- 剧本提示区 `#batchScriptHints`
+- 总行数 / 有效台词行数统计
+- 空文本行过滤逻辑提示
+- 总字数统计
+- 预计生成段数提示
+- 角色统计与角色列表
+- 未填写角色名 warning
+- 涉及音色数提示
+- 未选择音色 warning
+- 字幕耗时提示
+- `collectScriptStats()` 前端统计
+- `bindBatchScriptHints()` 事件绑定
+- `addScriptLine` / `removeScriptLine` 后自动刷新提示
+- 新增 54 项测试
+
+### 阶段边界
+
+- 未修改 `_scriptRows` 结构
+- 未修改 batch_script.js
+- 未修改剧本 submit payload
+- 未修改后端逻辑
+- 未调用真实 MiniMax
+- 未修改 SampleStore / SampleSidebar
+- 未接 ContextStore
+- 未做剧本回填
+- 未做配置恢复
+
+### 测试结果
+
+结果：467 passed。
+
+### 非阻塞观察
+
+当前字数提示显示为 `约 N 字`，预计消耗与总字数等价。后续如需更明确表达消耗，可考虑改为 `约 N 字｜预计消耗：N 字`。
+
+### 后续
+
+长文本与剧本两个主生产入口的生成前提示能力已完成。下一阶段可以选择：
+
+- `P14-CONTEXT-B0`：ContextStore 可恢复上下文设计
+- `P14-PRODUCT-B0`：全局 SampleSidebar 可见性方案设计
+
+### 阶段状态
+
+P14-SCRIPT-UX-B1 已完成并收口。
