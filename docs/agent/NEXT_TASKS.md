@@ -37,12 +37,12 @@
 - P12-USAGE-UX4-A0：audit advanced quick bind panels ✅
 - P12-USAGE-FIX5-A0：audit audio duration display ✅
 - P12-USAGE-FIX5-B1：extend audioPlayerHtml + batch total_duration display ✅
+- P12-USAGE-FIX5-B2：normalize advanced audio duration display ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE-FIX5-B2 | normalize advanced audio duration display | FIX5-B1 完成 |
 | P12-USAGE-UX4-B1 | normalize advanced quick bind panel layout | UX4-A0 审查完成 |
 | P12-USAGE-UX5 | clarify sentence segmentation copy | 用户反馈 |
 | P13-CREATION-A0 | design sample observation sidebar | P10 完成 |

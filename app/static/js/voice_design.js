@@ -83,14 +83,18 @@
 
       if (data.trial_audio_hex) {
         const trialBlobUrl = window.hexToBlobUrl(data.trial_audio_hex);
+        var _designDur = (data.trial_audio_duration_ms || data.duration_ms) ? ((data.trial_audio_duration_ms || data.duration_ms) / 1000).toFixed(1) + 's' : '';
         html += '<div style="margin-top:10px">' +
+          (_designDur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">设计试听' + (_designDur ? ' · 时长 ' + _designDur : '') + '</div>' : '') +
           (trialBlobUrl
-            ? '<audio class="audio-player" controls preload="none"><source src="' + trialBlobUrl + '" type="audio/mpeg">您的浏览器不支持音频播放</audio>'
+            ? '<audio class="audio-player" controls preload="metadata"><source src="' + trialBlobUrl + '" type="audio/mpeg">您的浏览器不支持音频播放</audio>'
             : '<div class="hex-player">trial_audio_hex 解析失败，无法播放。</div>') +
         '</div>';
       } else if (data.trial_audio_url) {
+        var _designDur2 = (data.trial_audio_duration_ms || data.duration_ms) ? ((data.trial_audio_duration_ms || data.duration_ms) / 1000).toFixed(1) + 's' : '';
         html += '<div style="margin-top:10px">' +
-          '<audio class="audio-player" controls preload="none">' +
+          (_designDur2 ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">设计试听' + (_designDur2 ? ' · 时长 ' + _designDur2 : '') + '</div>' : '') +
+          '<audio class="audio-player" controls preload="metadata">' +
             '<source src="' + esc(data.trial_audio_url) + '" type="audio/mpeg">' +
             '您的浏览器不支持音频播放</audio>' +
         '</div>';
@@ -174,7 +178,9 @@
                 return;
               }
               if (rd.audio_asset && rd.audio_asset.url) {
-                resultDiv.innerHTML = '<audio class="audio-player" controls autoplay>' +
+                var _qDurD = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
+                resultDiv.innerHTML = (_qDurD ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_qDurD ? ' · 时长 ' + _qDurD : '') + '</div>' : '') +
+                  '<audio class="audio-player" controls autoplay preload="metadata">' +
                   '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
                 '</audio>';
               } else {

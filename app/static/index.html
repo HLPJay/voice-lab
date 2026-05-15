@@ -3659,6 +3659,7 @@ function handleStopAsyncPolling() {
         window._auditionRecords.push({
           voiceId, voiceName: voiceName || '',
           text, audioUrl: data.audio_asset.url,
+          durationMs: data.audio_asset.duration_ms || null,
           timestamp: Date.now(),
         });
         renderAuditionRecords();

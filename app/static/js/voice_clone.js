@@ -231,8 +231,10 @@
         '克隆成功：voice_id=<code>' + esc(data.voice_id) + '</code>，' + (data.message || '') +
       '</div>';
       if (data.demo_audio_url) {
+        var _cloneDemoDur = (data.demo_audio_duration_ms || data.duration_ms) ? ((data.demo_audio_duration_ms || data.duration_ms) / 1000).toFixed(1) + 's' : '';
         html += '<div style="margin-top:10px">' +
-          '<audio class="audio-player" controls preload="none">' +
+          '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">克隆试听' + (_cloneDemoDur ? ' · 时长 ' + _cloneDemoDur : '') + '</div>' +
+          '<audio class="audio-player" controls preload="metadata">' +
             '<source src="' + esc(data.demo_audio_url) + '" type="audio/mpeg">' +
             '您的浏览器不支持音频播放</audio>' +
         '</div>';
@@ -318,7 +320,9 @@
                 return;
               }
               if (rd.audio_asset && rd.audio_asset.url) {
-                resultDiv.innerHTML = '<audio class="audio-player" controls autoplay>' +
+                var _qDur = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
+                resultDiv.innerHTML = (_qDur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_qDur ? ' · 时长 ' + _qDur : '') + '</div>' : '') +
+                  '<audio class="audio-player" controls autoplay preload="metadata">' +
                   '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
                 '</audio>';
               } else {

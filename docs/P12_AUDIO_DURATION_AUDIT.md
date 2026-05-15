@@ -250,7 +250,43 @@ function formatDurationMs(ms) {
 
 ---
 
-## 7. 下一步
+## 7. FIX5-B2 实施记录
+
+**实施时间：** 2026-05-15
+
+**修改文件：**
+- `app/static/js/voice_import.js`
+- `app/static/js/voice_clone.js`
+- `app/static/js/voice_design.js`
+- `app/static/js/audition_records.js`
+- `app/static/index.html`（handleGenerateAudition push 增加 durationMs）
+
+**改动点：**
+
+1. **voice_import.js**：导入验证音频
+   - `preload="none"` → `preload="metadata"`
+   - 显示 `data.audio_asset.duration_ms` 时长标签（如有）
+
+2. **voice_clone.js**：克隆 demo 音频 + quick preview
+   - demo audio 显示 `data.demo_audio_duration_ms || data.duration_ms` 时长（如有）
+   - `preload="none"` → `preload="metadata"`
+   - quick preview 显示 `rd.audio_asset.duration_ms` 时长（如有）
+
+3. **voice_design.js**：设计 trial 音频 + quick preview
+   - trial audio (hex blob / URL) 显示 `data.trial_audio_duration_ms || data.duration_ms` 时长（如有）
+   - `preload="none"` → `preload="metadata"`
+   - quick preview 显示 `rd.audio_asset.duration_ms` 时长（如有）
+
+4. **audition_records.js**：展示 + 保存
+   - 渲染时显示 `r.durationMs`（如有无显示）
+   - `window._auditionRecords.push` 时新增 `durationMs: data.audio_asset.duration_ms || null`
+
+5. **旧记录兼容**
+   - `r.durationMs` 不存在时显示为空，不报错
+
+---
+
+## 8. 下一步
 
 | 任务 | 内容 | 前提 |
 |---|---|---|

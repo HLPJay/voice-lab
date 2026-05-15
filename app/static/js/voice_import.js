@@ -94,8 +94,10 @@
       '</div>';
 
       if (data.audio_asset && data.audio_asset.url) {
+        var _dur = data.audio_asset.duration_ms ? (data.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
         html += '<div style="margin-top:10px">' +
-          '<audio class="audio-player" controls preload="none">' +
+          (_dur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">导入试听' + (_dur ? ' · 时长 ' + _dur : '') + '</div>' : '') +
+          '<audio class="audio-player" controls preload="metadata">' +
             '<source src="' + esc(data.audio_asset.url) + '" type="audio/mpeg">' +
             '您的浏览器不支持音频播放</audio>' +
         '</div>';
