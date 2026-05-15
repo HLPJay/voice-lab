@@ -1030,3 +1030,33 @@ inline script             ← index.html 第 1593 行开始
 1. **已完成**：voice clone/error + voice design/success + helper window exports + voice_clone.js 抽离 + clone success E2E
 2. **下一步**：voice_import.js 边界审查 + 前置 E2E
 3. **后续迁移**：voice_import.js → voice_design.js
+
+### P9-FE1-H0：voice_import.js 抽离前边界审查（文档记录）
+
+**审查时间：** 2026-05-15
+
+**审查结论：**
+
+**候选迁移内容：**
+- `handleImportRemoteVoice(source)` — 约 134 行，同时服务 clone 和 design 两个 subtab，通过 `source` 参数切换 DOM prefix
+
+**暂不迁移内容（共享 helpers / cache 状态）：**
+- `loadProfiles` / `populateProfileSelect` / `renderInlineCreateProfile` / `bindVoiceToProfile` / `refreshVoiceBindStatus` / `handleListVoices` — 全部已为 window 导出
+- `guardedJsonFetch` / `parseApiError` / `formatApiError` / `friendlyErrorMessage` / `esc` — 共享 helpers
+- `_OPERATION_MESSAGES['provider_voice_import_verify']` — confirm 文案
+- 快速绑定面板 HTML 模板（内联 onclick，与 voice_clone.js 模式一致）
+
+**关键发现：**
+- `POST /api/voice/provider-voices/import`，request 含 `provider / provider_voice_id / voice_type / name / verify / model / preview_text`
+- `provider=mock` bypass highRisk confirm（同 clone/design）
+- `verify=true` 时内部调用 preview 服务（Python 内，非 HTTP 请求，E2E 无需额外 mock）
+- 导入成功后渲染 audio_player + 快速绑定面板 + 调用 `handleListVoices(true)`
+- 共享 DOM id：`importProfileWrap` / `importBindModel` / `importBindBtn`（两个 subtab 共用同一 DOM）
+- `setTimeout(0)` 内创建 `importBindProfile` select 并调用 `populateProfileSelect` + `renderInlineCreateProfile`
+
+**迁移建议：**
+- 建议先补 import mock success E2E（clone import 方向），再迁移 voice_import.js
+- 迁移后可参照 voice_clone.js 模式：IIFE 包装 + window.handleImportRemoteVoice 导出 + onclick 属性保持不变
+- 快速绑定面板绑定功能暂不需在 E2E 覆盖，focus 在 import 本身
+
+**下一步 P9-FE1-H1：** 补 import mock success E2E（clone import 方向）

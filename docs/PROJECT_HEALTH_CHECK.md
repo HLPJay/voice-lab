@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-G4-FIX：
+截至 P9-FE1-H0：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4399,3 +4399,182 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 23 pas
 **未改关键链路：** 未迁移 import/design 业务函数、未改 app/static/js/provider_capabilities.js、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
 
 **下一步建议：** voice_clone.js 成功链路 E2E 已补齐，23 E2E passed。可进入 voice_import.js 边界审查和前置 E2E。
+
+## P9-FE1-H0：voice_import.js 抽离前边界审查
+
+**时间：** 2026-05-15
+
+**本次性质：** 审查 + 文档记录，不迁移代码。
+
+### import 相关 DOM id 清单
+
+| DOM id | 说明 | 所在 subtab |
+|---|---|---|
+| `importCloneProvider` | Provider 选择 | clone |
+| `importCloneVoiceId` | voice_id 输入 | clone |
+| `importCloneName` | 名称（可选） | clone |
+| `importCloneModel` | model 下拉 | clone |
+| `importClonePreviewText` | 试听文本 | clone |
+| `importCloneVerify` | 验证复选框 | clone |
+| `importCloneBtn` | 验证并导入按钮 | clone |
+| `importCloneResult` | 结果展示区 | clone |
+| `importDesignProvider` | Provider 选择 | design |
+| `importDesignVoiceId` | voice_id 输入 | design |
+| `importDesignName` | 名称（可选） | design |
+| `importDesignModel` | model 下拉 | design |
+| `importDesignPreviewText` | 试听文本 | design |
+| `importDesignVerify` | 验证复选框 | design |
+| `importDesignBtn` | 验证并导入按钮 | design |
+| `importDesignResult` | 结果展示区 | design |
+
+**共享 DOM id（两个 subtab 共用同一个 DOM）：**
+- `importProfileWrap` — 快速绑定人设面板容器
+- `importBindModel` — 绑定 model 下拉
+- `importBindBtn` — 绑定按钮
+- `importBindResult` — 绑定结果
+- `importBindProfile` — 动态创建的 profile select
+
+### import 相关状态变量
+
+| 变量 | 说明 |
+|---|---|
+| `source` | 函数参数，'clone' 或 'design'，决定 DOM prefix |
+| `isClone` | `source === 'clone'` |
+| `prefix` | `'importClone'` 或 `'importDesign'` |
+| `_cachedProfiles` | profile 缓存（loadProfiles） |
+| `_cachedVoices` | voices 缓存（loadVoices） |
+
+### handleImportRemoteVoice(source) 函数依赖清单
+
+**window 导出（G3 已暴露）：**
+- `window.loadProfiles` — 第 1693 行，GET /api/voice/profiles，带缓存
+- `window.populateProfileSelect` — 第 1728 行，填充 profile select
+- `window.renderInlineCreateProfile` — 第 3788 行，行内创建 profile
+- `window.bindVoiceToProfile` — 第 1767 行，绑定音色到人设
+- `window.refreshVoiceBindStatus` — 第 1774 行，刷新绑定状态 badge
+- `window.handleListVoices` — 第 3551 行，刷新音色列表
+
+**共享 helper（index.html 内）：**
+- `guardedJsonFetch` — 第 2198 行，highRisk confirm + fetch 封装
+- `parseApiError` — 解析 API 错误响应
+- `formatApiError` — 格式化错误消息
+- `friendlyErrorMessage` — 第 2224 行，余额不足等特殊错误处理
+- `renderApiError` — 渲染 API 错误 HTML
+- `renderValidationError` — 渲染校验错误 HTML
+- `esc` — HTML 转义
+
+**其他依赖：**
+- `_OPERATION_MESSAGES['provider_voice_import_verify']` — highRisk 确认文案（第 2189 行）
+
+### API endpoint
+
+```
+POST /api/voice/provider-voices/import
+```
+
+### request body 字段
+
+| 字段 | 类型 | 来源 | 说明 |
+|---|---|---|---|
+| provider | string | `prefix+'Provider'` | provider 选择值 |
+| provider_voice_id | string | `prefix+'VoiceId'`.trim() | 必填，远端 voice_id |
+| voice_type | string | isClone?'voice_cloning':'voice_generation' | 固定值 |
+| name | string\|null | `prefix+'Name'`.trim() \|\| null | 可选 |
+| verify | bool | `prefix+'Verify'`.checked | 默认 true |
+| model | string | `prefix+'Model'`.value | 默认 speech-2.8-hd |
+| preview_text | string | `prefix+'PreviewText'`.trim() | 必填 |
+| confirm_cost | bool | false（固定） | highRisk 时由 guardedJsonFetch 覆盖为 true |
+
+### response 使用字段
+
+| 字段 | 用途 |
+|---|---|
+| provider | 透传 |
+| provider_voice_id | 成功消息展示、绑定参数 |
+| voice_type | 成功消息展示 |
+| name | 成功消息展示（pv.name） |
+| status | 成功消息展示 |
+| verified | 用于判断是否展示"未验证导入"警告 |
+| audio_asset.url | 试听 audio 播放器 src |
+| message | 固定"导入成功" |
+
+### highRisk confirm 依赖
+
+```
+{ provider, operation: 'provider_voice_import_verify', highRisk: true }
+```
+
+- 仅 `provider === 'minimax'` 时触发 confirm 对话框
+- `provider=mock` 时 bypass，不弹窗
+- operation message: `'provider_voice_import_verify': '验证试听会调用云端 TTS，可能产生费用，是否继续？'`
+
+### 错误展示依赖
+
+- `parseApiError(resp)` → 获取 err.code / err.message
+- `formatApiError(err)` → 字符串化
+- `friendlyErrorMessage(message)` → 余额不足等特殊文案
+- `renderValidationError(err.message)` → VALIDATION_ERROR 时
+- `renderApiError(err)` → RESOURCE_LIMIT_EXCEEDED 等特殊错误码时
+- 兜底：`'<div class="error-msg">导入失败：' + esc(friendlyErrorMessage(formatApiError(err))) + '</div>'`
+
+### profile / binding 依赖
+
+导入成功后（await loadProfiles 后）：
+1. 渲染成功消息 + audio_asset 播放器
+2. 如 verify=false 渲染"未验证导入"警告
+3. 渲染快速绑定面板 HTML（`importProfileWrap` / `importBindModel` / `importBindBtn` / `importBindResult`）
+4. setTimeout(0) 后：动态创建 `importBindProfile` select，调用 `populateProfileSelect(sel)` + `renderInlineCreateProfile(profileWrap, sel, 'import')`
+5. `importBindBtn.onclick` 调用 `bindVoiceToProfile(data.provider_voice_id, provider, profileId, model)`
+6. 绑定成功后调用 `refreshVoiceBindStatus(data.provider_voice_id)`
+7. 最后调用 `handleListVoices(true).catch(() => {})`
+
+### voice list 依赖
+
+- 导入成功后调用 `handleListVoices(true)` → GET `/api/voice/provider-voices?provider=...&voice_type=...&refresh=true`
+- E2E 需 mock 该接口避免真实请求
+
+### 可迁移到 voice_import.js 的候选内容
+
+1. **handleImportRemoteVoice(source)** — 核心迁移目标，约 134 行
+2. onclick 属性可保持不变（引用 `window.handleImportRemoteVoice`）
+
+### 暂不迁移内容
+
+1. **loadProfiles** — 共享 cache 状态，多处调用
+2. **populateProfileSelect** — 共享 UI helper
+3. **renderInlineCreateProfile** — 共享 UI helper
+4. **bindVoiceToProfile** — 绑定音色到人设，共享
+5. **refreshVoiceBindStatus** — 共享 badge 刷新
+6. **handleListVoices** — 音色列表刷新，共享
+7. **guardedJsonFetch / parseApiError / formatApiError / friendlyErrorMessage / esc** — 共享 helpers
+8. **快速绑定面板 HTML 模板** — 动态生成的内联 onclick
+
+### 风险点
+
+1. **共享 DOM id 冲突**：`importProfileWrap` / `importBindBtn` 等在两个 subtab 间共用同一 DOM 元素，voice_import.js 迁移后仍需注意
+2. **setTimeout(0) 内联 onclick**：成功面板的绑定按钮使用字符串内 onclick 注入，增加 XSS 表面；在 voice_clone.js 中已有先例，可接受
+3. **loadProfiles 无 await 语义问题**：handleImportRemoteVoice 中 `await loadProfiles()` 语义正确（loadProfiles 返回 Promise），但结果未用于后续逻辑，不影响迁移
+4. **verify=true 时内部调用 preview**：在 Python 服务内完成，无额外 HTTP 请求，无 E2E mock 额外成本
+5. **两个 subtab 的 result div id 不同**（importCloneResult / importDesignResult），需通过 prefix 参数统一访问
+
+### 下一步 P9-FE1-H1 建议
+
+**建议先补 import mock success E2E，再迁移 voice_import.js。**
+
+理由：
+- import 链路目前无任何 E2E，迁移后无法验证正确性
+- clone import 和 design import 共享同一函数，第一条 E2E 覆盖 clone import 即可
+- E2E mock 方案：mock GET /api/voice/profiles + mock GET /api/voice/capabilities + mock POST /api/voice/provider-voices/import + mock GET /api/voice/provider-voices
+- provider=mock 绕过 highRisk confirm，无需 mock confirm 交互
+- 迁移后快速绑定面板的绑定功能（bindVoiceToProfile）可暂不测试，focus 在 import 本身
+
+**第一条 import E2E 建议覆盖 clone import，理由：**
+- voice_type='voice_cloning' 更接近 clone 工作流，与现有 clone E2E 互补
+- clone import 的 preview_text 默认值与 design 不同，E2E 需覆盖
+- importDesign 后续可单独补 E2E 或与 importDesign E2E 合并
+
+**voice_import.js 迁移方案建议（供参考，本次不执行）：**
+- 将 handleImportRemoteVoice(source) 移至 voice_import.js，IIFE 包装，window.handleImportRemoteVoice 导出
+- onclick 属性保持 `onclick="handleImportRemoteVoice('clone')"` 不变（IIFE 后 window 仍可访问）
+- 快速绑定面板保持内联 onclick（与 voice_clone.js 一致）
+- loadProfiles/populateProfileSelect/renderInlineCreateProfile/bindVoiceToProfile/refreshVoiceBindStatus/handleListVoices 继续调用 window.*
