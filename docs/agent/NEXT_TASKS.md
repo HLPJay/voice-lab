@@ -27,12 +27,13 @@
 - P12-USAGE-FIX1：workspace binding hint 与 #bindingStatus 同步修复 ✅
 - P12-USAGE-UX1：compact advanced tool hints ✅
 - P12-USAGE-FIX2：check initial workspace binding status ✅
+- P12-USAGE-FIX3：sync batch binding hints ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE | 真实使用验证（手动） | 需要真实 API Key |
+| P12-USAGE-UX2 | 最近任务入口优化 | 用户反馈后 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

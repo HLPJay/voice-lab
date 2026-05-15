@@ -1644,14 +1644,16 @@
         });
       }
       if (tab === 'longtext') {
-        loadProfiles(true).then(() => {
+        loadProfiles(true).then(async () => {
           populateProfileSelect(document.getElementById('batchProfile'));
+          await refreshVoiceBindMapForHints();
           updateBatchVoiceBindingHint();
         });
       }
       if (tab === 'script') {
-        loadProfiles(true).then(() => {
+        loadProfiles(true).then(async () => {
           populateProfileSelect(document.getElementById('batchProfile'));
+          await refreshVoiceBindMapForHints();
           _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
         });
       }
@@ -3936,6 +3938,17 @@ function handleStopAsyncPolling() {
       } catch (e) {}
     }
     return voiceBindMap;
+  }
+
+  // Refresh window._voiceBindMap for hint functions (longtext/script tabs)
+  async function refreshVoiceBindMapForHints() {
+    try {
+      const bindMap = await loadAllBindings();
+      window._voiceBindMap = bindMap || {};
+      return window._voiceBindMap;
+    } catch (e) {
+      return window._voiceBindMap || {};
+    }
   }
 
   async function handleDeleteVoice() {

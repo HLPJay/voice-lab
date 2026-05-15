@@ -72,3 +72,26 @@
 **验证方式：**
 - targeted E2E（workspace_voice_binding_hint / voice_binding_hint / quick_bind_success_go_create）：4 passed ✅
 - git diff --check：无 whitespace 错误 ✅
+
+## P12-USAGE-FIX3：Longtext / Script 绑定提示状态过期
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- Longtext tab 中，已绑定音色的人设仍显示"该人设尚未绑定音色"
+- Script tab 中，每行已选择的人设仍显示"尚未绑定"
+
+**原因：**
+- updateBatchVoiceBindingHint() / updateScriptLineVoiceHint() 依赖 window._voiceBindMap
+- 切换到 longtext/script tab 时只 loadProfiles + update hint，未刷新真实 bindings
+
+**修复方案：**
+- 增加 refreshVoiceBindMapForHints() helper，调用 loadAllBindings() 并写入 window._voiceBindMap
+- 进入 longtext/script tab 时先 await refreshVoiceBindMapForHints() 再更新提示
+
+**修复位置：**
+- `app/static/index.html`：loadAllBindings() 后新增 helper；longtext/script tab switch 分支
+
+**验证方式：**
+- targeted E2E（batch_longtext_voice_binding_hint / batch_script_line_voice_binding_hint）：2 passed ✅
+- git diff --check：无 whitespace 错误 ✅
