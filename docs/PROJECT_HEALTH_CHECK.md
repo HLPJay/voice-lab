@@ -74,7 +74,8 @@
 * P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切已完成 ✅
 * P14-CONTEXT-C2-FIX3-CHECK：SampleSidebar 详情面板 flex 压缩修复复核已完成 ✅
 * P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口已完成 ✅
-* 当前下一阶段：P14-PRODUCT-B0
+* P14-PRODUCT-B0-SKIP：SampleSidebar 常驻策略确认，跳过隐藏/过滤设计已完成 ✅
+* 当前下一阶段：P15-STATS-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8589,6 +8590,37 @@ P14-CONTEXT-C2-FIX3 完成。
 ### 阶段状态
 
 P14-CONTEXT-C2-FIX3-CHECK 通过。P14 context restore 闭环修复全部完成，当前阶段推进到 P14-PRODUCT-B0。
+
+## P14-PRODUCT-B0-SKIP：确认 SampleSidebar 常驻并跳过可见性/过滤设计
+
+### 决策结论
+
+**SampleSidebar 当前保持常驻。暂不做隐藏。暂不做折叠。暂不做按 Tab 过滤。继续保留全局最近样本策略。**
+
+### 原因
+
+- SampleSidebar 是 P14 context restore 闭环的核心入口，不是辅助装饰
+- 隐藏或过滤会增加到达恢复入口的步骤，与"一键恢复"目标冲突
+- 当前产品是本地单用户工作台，常驻不带来额外风险
+- 增加可见性状态会提高 UI 复杂度，当前阶段收益有限
+
+### 策略
+
+| 策略 | 当前状态 |
+|---|---|
+| 位置 | 右侧常驻 |
+| 隐藏 | 不做 |
+| 折叠 | 不做 |
+| 按 Tab 过滤 | 不做（全局最近样本） |
+| 跨 Tab storage event 刷新 | 保留 |
+
+### 后续方向
+
+进入 P15-STATS-A0：后期统计能力设计（只设计不实现）。
+
+### 阶段状态
+
+P14-PRODUCT-B0-SKIP 完成。
 
 
 
