@@ -56,6 +56,7 @@
 * P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核已完成 ✅
 * P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口已完成 ✅
 * P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计已完成 ✅
+* P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复已完成 ✅
 * P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现已完成 ✅
 * P14-CONTEXT-B3：长文本一键回填已完成 ✅
 * P14-CONTEXT-B3-CHECK：长文本一键回填复核已完成 ✅

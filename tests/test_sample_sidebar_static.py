@@ -674,59 +674,64 @@ class TestDetailView:
             'showSampleDetail must show graceful message when context not found'
 
 
-# ── more menu (P14-SIDEBAR-ACTIONS-B1) ─────────────────────────────────────
+# ── flat action buttons (P14-SIDEBAR-ACTIONS-B1-UXFIX1) ──────────────────────
 
-class TestMoreMenu:
-    def test_buildCard_contains_sample_more_wrap(self):
+class TestFlatActionButtons:
+    """Tests for flat action buttons in sample cards (B1-UXFIX1)."""
+
+    def test_buildCard_contains_sample_btn_copy(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'sample-more-wrap' in body, \
-            'buildCard must include sample-more-wrap element'
+        assert 'sample-btn-copy' in body, \
+            'buildCard must include sample-btn-copy as flat button'
 
-    def test_buildCard_contains_sample_more_menu(self):
+    def test_buildCard_contains_sample_btn_fill(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'sample-more-menu' in body, \
-            'buildCard must include sample-more-menu element'
+        assert 'sample-btn-fill' in body, \
+            'buildCard must include sample-btn-fill as flat button'
 
-    def test_buildCard_contains_sample_btn_more(self):
+    def test_buildCard_contains_sample_btn_delete(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'sample-btn-more' in body, \
-            'buildCard must include sample-btn-more button'
+        assert 'sample-btn-delete' in body, \
+            'buildCard must include sample-btn-delete as flat button'
 
-    def test_buildCard_flat_actions_max_four(self):
+    def test_buildCard_no_sample_more_wrap(self):
         c = read()
         body = func_body('buildCard', c)
-        # Flat buttons: play, download, detail, more
-        # These should be in the flat section, not in the menu
-        flat_count = 0
-        if 'sample-btn-play' in body:
-            flat_count += 1
-        if 'sample-btn-download' in body:
-            flat_count += 1
-        if 'sample-btn-detail' in body:
-            flat_count += 1
-        if 'sample-btn-more' in body:
-            flat_count += 1
-        # At most 4 flat buttons
-        assert flat_count <= 4, \
-            f'Flat buttons must be at most 4, got {flat_count}'
+        assert 'sample-more-wrap' not in body, \
+            'buildCard must not include sample-more-wrap (more menu removed)'
 
-    def test_buildCard_no_flat_copy_button(self):
+    def test_buildCard_no_sample_more_menu(self):
         c = read()
         body = func_body('buildCard', c)
-        # copy, fill, delete moved to more menu
-        # They should appear in the menu, not as flat buttons
-        # We verify they appear inside the more-menu context
-        assert 'sample-menu-copy' in body, \
-            'buildCard must include sample-menu-copy in more menu'
+        assert 'sample-more-menu' not in body, \
+            'buildCard must not include sample-more-menu'
 
-    def test_buildCard_no_flat_delete_button(self):
+    def test_buildCard_no_sample_btn_more(self):
         c = read()
         body = func_body('buildCard', c)
-        assert 'sample-menu-delete' in body, \
-            'buildCard must include sample-menu-delete in more menu'
+        assert 'sample-btn-more' not in body, \
+            'buildCard must not include sample-btn-more'
+
+    def test_buildCard_no_sample_menu_copy(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'sample-menu-copy' not in body, \
+            'buildCard must not include sample-menu-copy (copy is now flat)'
+
+    def test_buildCard_no_sample_menu_fill(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'sample-menu-fill' not in body, \
+            'buildCard must not include sample-menu-fill (fill is now flat)'
+
+    def test_buildCard_no_sample_menu_delete(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'sample-menu-delete' not in body, \
+            'buildCard must not include sample-menu-delete (delete is now flat)'
 
     def test_canShowFill_function_exists(self):
         c = read()
@@ -745,58 +750,57 @@ class TestMoreMenu:
         assert 'batch_script_merged' in body, \
             'canShowFill must return false for batch_script_merged'
 
-    def test_bindActionEvents_handles_more_button(self):
+    def test_bindActionEvents_handles_copy_button(self):
         c = read()
         body = func_body('bindActionEvents', c)
-        assert 'sample-btn-more' in body, \
-            'bindActionEvents must handle sample-btn-more click'
+        assert 'sample-btn-copy' in body, \
+            'bindActionEvents must handle sample-btn-copy click'
 
-    def test_bindActionEvents_handles_menu_copy(self):
+    def test_bindActionEvents_handles_fill_button(self):
         c = read()
         body = func_body('bindActionEvents', c)
-        assert 'sample-menu-copy' in body, \
-            'bindActionEvents must handle sample-menu-copy click'
+        assert 'sample-btn-fill' in body, \
+            'bindActionEvents must handle sample-btn-fill click'
 
-    def test_bindActionEvents_handles_menu_fill(self):
+    def test_bindActionEvents_handles_delete_button(self):
         c = read()
         body = func_body('bindActionEvents', c)
-        assert 'sample-menu-fill' in body, \
-            'bindActionEvents must handle sample-menu-fill click'
+        assert 'sample-btn-delete' in body, \
+            'bindActionEvents must handle sample-btn-delete click'
 
-    def test_bindActionEvents_handles_menu_delete(self):
+    def test_flat_delete_calls_confirm(self):
         c = read()
         body = func_body('bindActionEvents', c)
-        assert 'sample-menu-delete' in body, \
-            'bindActionEvents must handle sample-menu-delete click'
-
-    def test_menu_delete_calls_confirm(self):
-        c = read()
-        body = func_body('bindActionEvents', c)
-        idx = body.find('sample-menu-delete')
-        region = body[idx:idx + 300]
-        assert 'confirm' in region, \
-            'sample-menu-delete must call window.confirm before delete'
-
-    def test_menu_toggle_open_close(self):
-        c = read()
-        body = func_body('bindActionEvents', c)
-        idx = body.find('sample-btn-more')
+        idx = body.find('sample-btn-delete')
         region = body[idx:idx + 400]
-        # Verify the more button toggles the 'open' class on its parent wrapper
-        assert "'.sample-more-wrap.open'" in body or '.sample-more-wrap' in region, \
-            'bindActionEvents must toggle open class on sample-more-wrap'
+        assert 'confirm' in region, \
+            'sample-btn-delete must call window.confirm before delete'
 
-    def test_init_closes_menu_on_outside_click(self):
+    def test_no_sample_more_wrap_in_bindActionEvents(self):
         c = read()
-        body = func_body('init', c)
-        # Document click listener should close menus
-        assert 'sample-more-wrap' in body or 'open' in body, \
-            'init must handle closing more menu on outside click'
+        body = func_body('bindActionEvents', c)
+        assert 'sample-more-wrap' not in body, \
+            'bindActionEvents must not handle sample-more-wrap (more menu removed)'
+
+    def test_no_sample_btn_more_in_bindActionEvents(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        assert 'sample-btn-more' not in body, \
+            'bindActionEvents must not handle sample-btn-more'
+
+    def test_no_sample_menu_items_in_bindActionEvents(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        assert 'sample-menu-copy' not in body, \
+            'bindActionEvents must not handle sample-menu-copy'
+        assert 'sample-menu-fill' not in body, \
+            'bindActionEvents must not handle sample-menu-fill'
+        assert 'sample-menu-delete' not in body, \
+            'bindActionEvents must not handle sample-menu-delete'
 
     def test_play_and_download_still_flat(self):
         c = read()
         body = func_body('buildCard', c)
-        # Play and download buttons should still be flat
         assert 'sample-btn-play' in body
         assert 'sample-btn-download' in body
 
