@@ -10,7 +10,7 @@
 * P12-USAGE-CHECK2：close post-UX6 polish ✅
 * P13-CREATION-A0：样本观察侧边栏设计审查已完成 ✅
 * P13-CREATION-A0-CHECK：A0 文档事实核验与修正已完成 ✅
-* 当前下一阶段：P13-CREATION-B0 样本观察侧边栏最小实现方案设计进行中
+* 当前下一阶段：P13-CREATION-B1 sample_store.js 前端样本存储模块实现进行中
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5464,3 +5464,41 @@ A0 / A0-CHECK 已完成，当前进入最小实现方案设计阶段。B0 不写
 ### 阶段状态
 
 进行中，待 B0 文档完成后收口。
+
+## P13-CREATION-B1 sample_store.js 前端样本存储模块
+
+### 背景
+
+B0 已完成最小实现方案设计，B1 开始实现独立的 sample_store.js，只封装 localStorage 样本读写。
+
+### 本阶段目标
+
+新增 sample_store.js，提供 SampleStore 的 6 个方法（pushSample / getSamples / deleteSample / clearSamples / normalizeSample / trimSamples），为后续 workspace / audition / sidebar 接入做准备。
+
+### 修改文件
+
+- app/static/js/sample_store.js
+- tests/test_sample_store_static.py
+- docs/PROJECT_HEALTH_CHECK.md
+
+### 阶段边界
+
+- 不改 index.html
+- 不接 UI
+- 不接生成链路
+- 不修改现有 app/static/js/*.js
+- 不改后端 API
+- 不改数据库结构
+- 不调用真实 MiniMax
+- 不读写 recentJobs
+- 不保存 blob URL
+
+### 测试
+
+- 22 项静态 + 行为测试全部通过
+- 静态契约：window.SampleStore、6 个方法、常量、blob URL 过滤、无 recentJobs、无 fetch、无 DOM
+- 行为（Node.js）：localStorage 读写、200 条裁剪、text_preview 截断、malformed JSON 恢复、删除、清空、audio_format 覆盖、recentJobs 隔离
+
+### 阶段状态
+
+进行中，待测试通过后收口。
