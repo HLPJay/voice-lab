@@ -51,7 +51,8 @@
 * P14-CONTEXT-B1：context_store.js 基础模块已完成，待复核
 * P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核已完成 ✅
 * P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B1-CLOSE
+* P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口已完成 ✅
+* 当前下一阶段：P14-CONTEXT-B2-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7674,3 +7675,50 @@ P14-CONTEXT-B1-CHECK 发现三个观察点。其中 `max_segment_chars` 缺失 /
 ### 阶段状态
 
 P14-CONTEXT-B1-CHECK-FIX1 完成，建议进入 P14-CONTEXT-B1-CLOSE。
+
+## P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口
+
+### 背景
+
+P14-CONTEXT-B1 已新增独立前端存储模块 `context_store.js`，并经 B1-CHECK 与 B1-CHECK-FIX1 修正完成。本阶段正式收口 ContextStore 基础模块。
+
+### 最终能力
+
+- 新增 `app/static/js/context_store.js`
+- 暴露 `window.ContextStore`
+- 支持 7 个方法：`pushContext`、`getContext`、`getContexts`、`deleteContext`、`clearContexts`、`normalizeContext`、`trimContexts`
+- localStorage key：`voice_lab_sample_context_v1`
+- `{ version, contexts }` 存储格式，兼容 legacy flat array
+- 支持 longtext context normalize
+- 支持 script context normalize
+- 50 条上限与 created_at 倒序 LRU
+- localStorage / QuotaExceededError fail-safe
+- `max_segment_chars` 缺失 / NaN 默认 2000
+- `deleteContext` 注释与实际持久化行为一致
+
+### 阶段边界
+
+- 未接入生成链路
+- 未加载到 `index.html`
+- 未修改 SampleStore
+- 未修改 SampleSidebar
+- 未实现详情弹层
+- 未实现长文本回填
+- 未实现剧本回填
+- 未调用真实 MiniMax
+
+### 已知后续前置
+
+进入 `P14-CONTEXT-B2` 前必须处理：
+
+1. `SampleStore.normalizeSample` 当前尚未保留 `context_id`
+2. `index.html` 当前尚未加载 `context_store.js`
+3. `SampleSidebar` 当前尚无详情 / 回填能力
+
+### 测试结果
+
+结果：510 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B1 已完成并收口。
