@@ -1,0 +1,79 @@
+# Frontend Module Map
+
+## index.html（仍在 index.html 的职责）
+
+| 职责 | 说明 |
+|---|---|
+| Shell / tab / subtab | 所有 tab/subtab 切换逻辑 |
+| Shared helpers | `guardedJsonFetch`, `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `esc`, `renderApiError`, `renderValidationError` |
+| Profile / binding helpers | `loadProfiles`, `populateProfileSelect`, `renderInlineCreateProfile`, `bindVoiceToProfile`, `refreshVoiceBindStatus` |
+| Voice list | `handleListVoices`, `renderVoiceTable`, `filterVoiceList` |
+| Audition workstation | `renderAuditionWorkstation` |
+| Voice design | `handleDesignVoice` |
+| Shared batch | batch 状态管理，被 longtext/script 共用 |
+| highRisk confirm | `confirmHighCostVoiceAction` |
+| Error helpers | `renderApiError`, `renderValidationError` 等 |
+
+## 已抽离模块
+
+### provider_capabilities.js
+- **职责**：Provider capability 加载 / 切换 / 失败降级
+- **window exports**：能力约束入口（`applyVoiceCloneCapability` 等）
+- **依赖 helper**：无
+- **对应 E2E**：`test_provider_capability_loaded`
+
+### runtime_status.js
+- **职责**：顶部用量状态条
+- **window exports**：无直接入口
+- **依赖 helper**：无
+- **对应 E2E**：由其他 E2E 间接覆盖
+
+### history.js
+- **职责**：历史任务渲染 / 刷新 / 删除
+- **window exports**：无直接入口
+- **依赖 helper**：无
+- **对应 E2E**：`test_history_tab_loads`, `test_history_delete_job`
+
+### audition_records.js
+- **职责**：试听记录渲染 / 删除
+- **window exports**：无直接入口
+- **依赖 helper**：无
+- **对应 E2E**：`test_audition_records_render`, `test_audition_records_delete`
+
+### batch_longtext.js
+- **职责**：长文本批量任务提交 / 进度
+- **window exports**：`handleSubmitBatchLongtext`
+- **依赖 helper**：`guardedJsonFetch`, `esc`
+- **对应 E2E**：`test_batch_longtext_module_is_loaded_and_exports_available`, `test_batch_longtext_mock_submit_success`
+
+### batch_script.js
+- **职责**：剧本科本批量任务提交 / 进度
+- **window exports**：`handleSubmitBatchScript`
+- **依赖 helper**：`guardedJsonFetch`, `esc`
+- **对应 E2E**：`test_batch_script_module_is_loaded_and_exports_available`, `test_batch_script_mock_submit_success`
+
+### voice_clone.js
+- **职责**：声音克隆入口 / 提交 / 快速试听 / 快速绑定
+- **window exports**：`handleUploadAudio`, `handleCloneAutoId`, `updateCloneBtnState`, `handleCloneVoice`
+- **依赖 helper**：`window.loadProfiles`, `window.populateProfileSelect`, `window.renderInlineCreateProfile`, `window.bindVoiceToProfile`, `window.refreshVoiceBindStatus`, `guardedJsonFetch`, `parseApiError`, `esc`
+- **对应 E2E**：`test_voice_clone_module_is_loaded_and_exports_available`, `test_voice_clone_mock_submit_success`, `test_voice_clone_error_insufficient_balance`
+
+### voice_import.js
+- **职责**：远端音色导入，同时服务 clone import 和 design import
+- **window exports**：`handleImportRemoteVoice`
+- **依赖 helper**：`window.loadProfiles`, `window.populateProfileSelect`, `window.renderInlineCreateProfile`, `window.bindVoiceToProfile`, `window.refreshVoiceBindStatus`, `window.handleListVoices`, `guardedJsonFetch`, `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `esc`, `renderValidationError`
+- **对应 E2E**：`test_voice_import_module_is_loaded_and_exports_available`, `test_voice_import_clone_mock_success`
+
+## 下一候选模块
+
+### voice_design.js
+- 尚未抽离，后续评估
+- 依赖 `handleDesignVoice`，需先确认 capability 约束链路
+- 详见 `docs/P9_FRONTEND_MODULARIZATION.md`
+
+## 严禁迁移（当前不宜动）
+
+- `profile_binding.js` — 依赖太广，强行拆出会导致循环依赖
+- `batch_shared.js` — shared batch state 风险高
+- `error_helpers.js` — 被多处引用，迁移成本大
+- `provider_capabilities.js` — 已稳定，暂无充分理由动
