@@ -7,6 +7,7 @@
 ## 已完成（续）
 
 - P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计 ✅
+- P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检 ✅
 
 ## 已完成
 

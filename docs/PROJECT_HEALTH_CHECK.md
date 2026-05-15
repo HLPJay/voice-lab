@@ -27,6 +27,7 @@
 * P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口已完成 ✅
 * P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归已完成 ✅
 * P13-CREATION-B5-A0：batch sample_store 接入字段核验与方案设计已完成 ✅
+* P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检已完成 ✅
 * 当前下一阶段：P13-CREATION-B5-MVP1 batch merged audio 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
@@ -6508,3 +6509,62 @@ B5-MVP1 只接 merged audio
 ### 阶段状态
 
 B5-A0 设计文档已完成，可以开始 P13-CREATION-B5-MVP1。
+
+## P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检
+
+### 背景
+
+B4 引入 sample sidebar UI 后曾出现 tab-workspace 闭合结构缺失，导致其他 tab 无法打开。进入 B5 前，需要对已有功能做一次集中回归自检，确认 P13-B1 到 B4 没有破坏基础功能。
+
+### 自检范围
+
+- Tab 导航（6 个 tab 存在且互为兄弟节点）
+- Workspace 输入与生成入口（textInput / batchText / auditionText 限制）
+- 长文本 batch 表单（14 项 DOM id）
+- 剧本 batch 表单（11 项 DOM id）
+- Audition 试听（6 项 DOM id + sample 集成）
+- History 历史模块（6 项 window exports + play + delete URL）
+- sample sidebar 隔离（7 项隔离检查）
+- localStorage 隔离（recentJobs 不被 sample_store 访问）
+- workspace sample 接入隔离（stream / variants / async 写保护）
+
+### 测试结果
+
+- `tests/test_existing_function_regression_static.py` — 92 项新增回归测试，全部通过
+- 既有测试：203 项，全部通过
+- **总计：295 项测试，全部通过**
+
+### 回归问题
+
+无。
+
+### 手动验收清单（待人工验证）
+
+- [ ] 打开页面，Console 无红色错误
+- [ ] 逐个点击 6 个 tab，内容均显示
+- [ ] Workspace 输入 100 字，字数统计正常
+- [ ] Workspace 粘贴超过 9500 字，输入受限
+- [ ] 长文本 tab 可输入，batchText 50000 限制存在
+- [ ] 剧本 tab 可添加 / 删除台词行
+- [ ] 音色 tab 可打开 audition 面板
+- [ ] History tab 可加载列表
+- [ ] History 播放按钮点击后自动播放
+- [ ] sample sidebar 只在 Workspace 出现
+- [ ] sample sidebar 刷新 / 清空 / 删除按钮存在
+- [ ] 切换 tab 后页面不报错
+
+### 阶段边界
+
+- 不实现 B5
+- 不调用真实 MiniMax
+- 不改后端 API / 数据库
+- 不改 index.html / JS / sample_store.js / sample_sidebar.js / history.js
+- 发现问题先记录，不扩大修复范围
+
+### 独立文档
+
+完整自检报告：`docs/P13_PRE_B5_REGRESSION_CHECK.md`
+
+### 阶段状态
+
+P13-PRE-B5-REGRESSION-CHECK 自检通过，建议进入 P13-CREATION-B5-MVP1。
