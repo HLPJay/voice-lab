@@ -77,7 +77,8 @@
 * P14-PRODUCT-B0-SKIP：SampleSidebar 常驻策略确认，跳过隐藏/过滤设计已完成 ✅
 * P15-STATS-A0：后期统计能力设计已完成 ✅
 * P15-STATS-A0-CHECK：后期统计能力设计复核已完成 ✅
-* 当前下一阶段：P15-STATS-B1-A0
+* P15-STATS-B1-A0：轻量本地统计面板实现前置审查已完成 ✅
+* 当前下一阶段：P15-STATS-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8719,7 +8720,64 @@ P15-STATS-A0-CHECK 通过。当前阶段推进到 P15-STATS-B1-A0。
 
 ### 阶段状态
 
-待进入。
+P15-STATS-B1-A0 完成。
+
+## P15-STATS-B1-A0：轻量本地统计面板实现前置审查
+
+### 当前代码事实
+
+- Tab 结构：workspace / longtext / script / voices / history / advanced（无 stats）✓
+- 脚本加载顺序：sample_store.js → context_store.js → sample_sidebar.js ✓
+- Tab 切换逻辑：检查 `document.getElementById('tab-' + tab)` 存在性，B1 必须同步加 button + container ✓
+
+### B1 实现范围确认
+
+| 文件 | 操作 |
+|---|---|
+| `app/static/js/stats_store.js` | 新增 |
+| `app/static/js/stats.js` | 新增 |
+| `app/static/index.html` | 修改（仅加 button / container / CSS / script 标签） |
+| sample_store.js / context_store.js / sample_sidebar.js | 不改 |
+
+### stats_store.js API
+
+```javascript
+window.StatsStore = {
+  getSampleStats,    // A 级指标
+  getContextStats,   // B 级指标
+  getAll,            // 合并
+  formatDuration,    // ms 格式化
+  groupCount         // 分组计数
+}
+```
+
+### stats.js API
+
+```javascript
+window.StatsPanel = {
+  init,    // 绑定刷新 + 监听 storage
+  render,  // 调用 StatsStore.getAll + 渲染
+  refresh  // 重新 render
+}
+```
+
+### index.html 修改边界
+
+仅限：button / container / CSS / script 标签 / StatsPanel.init() 调用。
+
+### 测试策略
+
+- `tests/test_stats_store_static.py`：IIFE / window.StatsStore / 不调用 fetch 或 localStorage write
+- `tests/test_stats_panel_static.py`：button+container 存在 / script 标签存在 / StatsPanel API / 不调用 fetch
+- 回归测试：SampleSidebar / SampleStore / ContextStore / batch 链路不受影响
+
+### 审查结论
+
+B1 实现范围明确且受控，可以进入 P15-STATS-B1。
+
+### 阶段状态
+
+P15-STATS-B1-A0 完成。当前阶段推进到 P15-STATS-B1。
 
 
 
