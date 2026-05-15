@@ -128,11 +128,13 @@
   /**
    * Read all samples from localStorage.
    * Returns [] if unavailable, malformed, or not an array.
+   * Returned array is sorted newest-first by created_at and trimmed to MAX_SAMPLES.
+   * Does NOT write to localStorage.
    */
   function getSamples() {
     var raw = safeGetItem(STORAGE_KEY);
     if (!raw) return [];
-    return parseSamples(raw);
+    return trimSamples(parseSamples(raw));
   }
 
   // ── pushSample ────────────────────────────────────────────────────
