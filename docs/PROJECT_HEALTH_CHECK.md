@@ -7925,4 +7925,58 @@ P14-SIDEBAR-ACTIONS-A0 已完成按钮显示策略设计，推荐方案为：平
 
 P14-SIDEBAR-ACTIONS-B1 完成。
 
+## P14-CONTEXT-B3：长文本一键回填
+
+### 背景
+
+P14-SIDEBAR-ACTIONS-B1 已完成侧边栏按钮分层与更多菜单实现。P14-CONTEXT-B3 在此基础上，在 SampleSidebar 详情面板中为 longtext context 增加"恢复到长文本"按钮，用户点击后切换到长文本 Tab 并恢复上次生成时的表单字段，但不自动提交任务。
+
+### 实现内容
+
+- `sample_sidebar.js` 新增 helper 函数：
+  - `dispatchInputChange(el)` — 触发 input + change 事件
+  - `setValueIfPresent(id, value)` — 安全设置 DOM value
+  - `setCheckedIfPresent(id, value)` — 安全设置 DOM checked
+  - `switchToLongtextTab()` — 切换到 data-tab="longtext" tab
+  - `applyLongtextContextToForm(context)` — 恢复表单字段
+  - `restoreLongtextContext(context)` — 主入口，校验 type 后切换 tab + 延迟填充
+- `showSampleDetail` 修改：当 `context.type === 'longtext'` 时，在详情面板底部增加"恢复到长文本"按钮，按钮使用 `data-context-id`（attr() escape），full_text 不进入 data-* 属性
+- `bindActionEvents` 新增：`.sample-detail-restore-btn` 点击事件，从 `ContextStore.getContext(contextId)` 读取 context，调用 `restoreLongtextContext(ctx)`
+
+### 恢复字段列表
+
+| 表单字段 | context 字段 |
+|----------|-------------|
+| #batchText | full_text |
+| #batchProvider | provider |
+| #batchProfile | profile_id |
+| #batchStrategy | segment_strategy |
+| #batchMaxChars | max_segment_chars |
+| #batchSilence | silence_between_ms |
+| #batchOutputFormat | audio_format |
+| #batchNeedSubtitle.checked | need_subtitle |
+| #batchSpeed | params.speed |
+| #batchVol | params.vol |
+| #batchPitch | params.pitch |
+| #batchEmotion | params.emotion |
+
+### 安全边界
+
+- 不调用 fetch / guardedJsonFetch
+- 不调用 handleBatchLongtextSubmit
+- 不调用 MiniMax
+- 不写 ContextStore / SampleStore
+- 不修改 batch submit payload
+- 不自动提交批量任务
+- 不实现剧本回填
+
+### 测试结果
+
+589 passed + 新增 35 个 restore 测试。
+
+### 阶段状态
+
+P14-CONTEXT-B3 完成。
+
+
 

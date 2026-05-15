@@ -396,6 +396,23 @@
         clearSamples();
         return;
       }
+
+      // Restore longtext context from detail panel
+      if (target.classList.contains('sample-detail-restore-btn')) {
+        var contextId = target.getAttribute ? target.getAttribute('data-context-id') : null;
+        if (contextId) {
+          var ctx = null;
+          try {
+            if (window.ContextStore && typeof window.ContextStore.getContext === 'function') {
+              ctx = window.ContextStore.getContext(contextId);
+            }
+          } catch (e) {
+            ctx = null;
+          }
+          if (ctx) restoreLongtextContext(ctx);
+        }
+        return;
+      }
     });
   }
 
@@ -506,6 +523,83 @@
     render();
   }
 
+  // ── helper: dispatch input + change events ───────────────────────────
+
+  function dispatchInputChange(el) {
+    if (!el) return;
+    try {
+      if (typeof Event === 'function') {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    } catch (e) {}
+  }
+
+  function setValueIfPresent(id, value) {
+    var el = document.getElementById(id);
+    if (!el || value == null) return;
+    el.value = String(value);
+    dispatchInputChange(el);
+  }
+
+  function setCheckedIfPresent(id, value) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.checked = !!value;
+    dispatchInputChange(el);
+  }
+
+  // ── helper: switch to longtext tab ─────────────────────────────────
+
+  function switchToLongtextTab() {
+    var btn = document.querySelector('.tab-btn[data-tab="longtext"]');
+    if (btn && typeof btn.click === 'function') {
+      btn.click();
+      return;
+    }
+    // Fallback: manual class toggle
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(function (b) {
+      b.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-content').forEach(function (c) {
+      c.classList.remove('active');
+    });
+    if (btn) btn.classList.add('active');
+    var panel = document.getElementById('tab-longtext');
+    if (panel) panel.classList.add('active');
+  }
+
+  // ── helper: apply longtext context to form fields ──────────────────
+
+  function applyLongtextContextToForm(context) {
+    if (!context) return;
+    var params = context.params || {};
+    setValueIfPresent('batchText', context.full_text);
+    setValueIfPresent('batchProvider', context.provider);
+    setValueIfPresent('batchProfile', context.profile_id);
+    setValueIfPresent('batchStrategy', context.segment_strategy);
+    setValueIfPresent('batchMaxChars', context.max_segment_chars);
+    setValueIfPresent('batchSilence', context.silence_between_ms);
+    setValueIfPresent('batchOutputFormat', context.audio_format);
+    setCheckedIfPresent('batchNeedSubtitle', context.need_subtitle);
+    setValueIfPresent('batchSpeed', params.speed);
+    setValueIfPresent('batchVol', params.vol);
+    setValueIfPresent('batchPitch', params.pitch);
+    setValueIfPresent('batchEmotion', params.emotion);
+  }
+
+  // ── helper: restore longtext context ────────────────────────────────
+
+  function restoreLongtextContext(context) {
+    if (!context || context.type !== 'longtext') return;
+    switchToLongtextTab();
+    setTimeout(function () {
+      applyLongtextContextToForm(context);
+      var batchText = document.getElementById('batchText');
+      if (batchText) batchText.focus();
+    }, 0);
+  }
+
   // ── showSampleDetail ─────────────────────────────────────────────────
 
   function showSampleDetail(sampleId) {
@@ -596,6 +690,15 @@
       '<div class="sample-detail-text-wrap">' +
         '<div class="sample-detail-text">' + fullTextEsc + '</div>' +
       '</div>';
+
+    // Restore button: only for longtext context
+    if (context.type === 'longtext') {
+      var contextIdAttr = attr(String(context.context_id || ''));
+      panel.innerHTML +=
+        '<div class="sample-detail-actions">' +
+          '<button class="sample-detail-restore-btn" data-context-id="' + contextIdAttr + '">恢复到长文本</button>' +
+        '</div>';
+    }
 
     root.appendChild(panel);
 

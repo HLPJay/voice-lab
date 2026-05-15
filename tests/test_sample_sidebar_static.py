@@ -817,3 +817,253 @@ class TestMoreMenu:
             'bindActionEvents must not call API endpoints'
         assert 'fetch(' not in detail_body, \
             'showSampleDetail must not call fetch'
+
+
+# ── restore longtext (P14-CONTEXT-B3) ─────────────────────────────────────────
+
+class TestRestoreLongtext:
+    """Tests for longtext context restore functionality."""
+
+    def test_dispatchInputChange_exists(self):
+        c = read()
+        assert 'function dispatchInputChange' in c, \
+            'dispatchInputChange function must exist'
+
+    def test_setValueIfPresent_exists(self):
+        c = read()
+        assert 'function setValueIfPresent' in c, \
+            'setValueIfPresent function must exist'
+
+    def test_setCheckedIfPresent_exists(self):
+        c = read()
+        assert 'function setCheckedIfPresent' in c, \
+            'setCheckedIfPresent function must exist'
+
+    def test_switchToLongtextTab_exists(self):
+        c = read()
+        assert 'function switchToLongtextTab' in c, \
+            'switchToLongtextTab function must exist'
+
+    def test_applyLongtextContextToForm_exists(self):
+        c = read()
+        assert 'function applyLongtextContextToForm' in c, \
+            'applyLongtextContextToForm function must exist'
+
+    def test_restoreLongtextContext_exists(self):
+        c = read()
+        assert 'function restoreLongtextContext' in c, \
+            'restoreLongtextContext function must exist'
+
+    def test_restoreLongtextContext_calls_switchToLongtextTab(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert 'switchToLongtextTab' in body, \
+            'restoreLongtextContext must call switchToLongtextTab'
+
+    def test_restoreLongtextContext_calls_applyLongtextContextToForm(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert 'applyLongtextContextToForm' in body, \
+            'restoreLongtextContext must call applyLongtextContextToForm'
+
+    def test_restoreLongtextContext_checks_type_longtext(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert "type !== 'longtext'" in body or 'type !== "longtext"' in body, \
+            'restoreLongtextContext must guard on context.type !== "longtext"'
+
+    def test_restoreLongtextContext_no_fetch(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert 'fetch(' not in body, \
+            'restoreLongtextContext must not call fetch'
+
+    def test_restoreLongtextContext_no_guardedJsonFetch(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert 'guardedJsonFetch' not in body, \
+            'restoreLongtextContext must not call guardedJsonFetch'
+
+    def test_restoreLongtextContext_no_submit(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert 'handleBatchLongtextSubmit' not in body, \
+            'restoreLongtextContext must not call handleBatchLongtextSubmit'
+
+    def test_restoreLongtextContext_no_context_store_write(self):
+        c = read()
+        body = func_body('restoreLongtextContext', c)
+        assert 'ContextStore.pushContext' not in body, \
+            'restoreLongtextContext must not write to ContextStore'
+
+    def test_applyLongtextContextToForm_writes_batchText(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchText' in body, \
+            'applyLongtextContextToForm must write to batchText'
+
+    def test_applyLongtextContextToForm_writes_batchProfile(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchProfile' in body, \
+            'applyLongtextContextToForm must write to batchProfile'
+
+    def test_applyLongtextContextToForm_writes_batchProvider(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchProvider' in body, \
+            'applyLongtextContextToForm must write to batchProvider'
+
+    def test_applyLongtextContextToForm_writes_batchStrategy(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchStrategy' in body, \
+            'applyLongtextContextToForm must write to batchStrategy'
+
+    def test_applyLongtextContextToForm_writes_batchMaxChars(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchMaxChars' in body, \
+            'applyLongtextContextToForm must write to batchMaxChars'
+
+    def test_applyLongtextContextToForm_writes_batchSilence(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchSilence' in body, \
+            'applyLongtextContextToForm must write to batchSilence'
+
+    def test_applyLongtextContextToForm_writes_batchOutputFormat(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchOutputFormat' in body, \
+            'applyLongtextContextToForm must write to batchOutputFormat'
+
+    def test_applyLongtextContextToForm_writes_batchNeedSubtitle(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchNeedSubtitle' in body, \
+            'applyLongtextContextToForm must write to batchNeedSubtitle'
+
+    def test_applyLongtextContextToForm_writes_batchSpeed(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchSpeed' in body, \
+            'applyLongtextContextToForm must write to batchSpeed'
+
+    def test_applyLongtextContextToForm_writes_batchVol(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchVol' in body, \
+            'applyLongtextContextToForm must write to batchVol'
+
+    def test_applyLongtextContextToForm_writes_batchPitch(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchPitch' in body, \
+            'applyLongtextContextToForm must write to batchPitch'
+
+    def test_applyLongtextContextToForm_writes_batchEmotion(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'batchEmotion' in body, \
+            'applyLongtextContextToForm must write to batchEmotion'
+
+    def test_applyLongtextContextToForm_dispatches_events(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        # setValueIfPresent / setCheckedIfPresent call dispatchInputChange internally
+        assert 'setValueIfPresent' in body or 'setCheckedIfPresent' in body, \
+            'applyLongtextContextToForm must call setValueIfPresent/setCheckedIfPresent which dispatch events'
+
+    def test_showSampleDetail_adds_restore_button_for_longtext(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'sample-detail-restore-btn' in body, \
+            'showSampleDetail must add sample-detail-restore-btn button'
+
+    def test_showSampleDetail_restore_button_uses_data_context_id(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'data-context-id' in body, \
+            'restore button must use data-context-id attribute'
+
+    def test_showSampleDetail_restore_button_conditional_on_longtext(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        # Button only added when context.type === 'longtext'
+        idx = body.find('sample-detail-restore-btn')
+        assert idx >= 0, 'restore button must exist in showSampleDetail'
+        region = body[max(0, idx - 300):idx + 50]
+        assert "type === 'longtext'" in region or 'type === "longtext"' in region, \
+            'restore button must be conditional on context.type === "longtext"'
+
+    def test_showSampleDetail_no_fill_back_in_showSampleDetail(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'fillTextInput' not in body, \
+            'showSampleDetail must not directly fill/restore (fill logic is in restoreLongtextContext)'
+
+    def test_showSampleDetail_restore_button_uses_attr_escape(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        idx = body.find('sample-detail-restore-btn')
+        assert idx >= 0
+        region = body[max(0, idx - 200):idx + 50]
+        assert 'attr(' in region, \
+            'restore button context_id must use attr() for escaping'
+
+    def test_full_text_not_in_data_attribute(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        # full_text must NOT appear in any data-* attribute
+        import re
+        data_attr_refs = re.findall(r'data-[a-zA-Z-]+\s*=\s*"[^"]*full_text[^"]*"', body)
+        assert not data_attr_refs, \
+            'full_text must not appear in data-* attributes'
+
+    def test_bindActionEvents_handles_restore_button(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        assert 'sample-detail-restore-btn' in body, \
+            'bindActionEvents must handle sample-detail-restore-btn click'
+
+    def test_bindActionEvents_restore_reads_context_from_store(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        idx = body.find('sample-detail-restore-btn')
+        region = body[idx:idx + 800]
+        assert 'ContextStore.getContext' in region, \
+            'restore handler must read context from ContextStore'
+
+    def test_bindActionEvents_restore_calls_restoreLongtextContext(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        idx = body.find('sample-detail-restore-btn')
+        region = body[idx:idx + 800]
+        assert 'restoreLongtextContext' in region, \
+            'restore handler must call restoreLongtextContext'
+
+    def test_switchToLongtextTab_toggles_active_class(self):
+        c = read()
+        body = func_body('switchToLongtextTab', c)
+        assert 'active' in body, \
+            'switchToLongtextTab must toggle active class'
+
+    def test_switchToLongtextTab_uses_data_tab_longtext(self):
+        c = read()
+        body = func_body('switchToLongtextTab', c)
+        assert 'data-tab="longtext"' in body, \
+            'switchToLongtextTab must target data-tab="longtext"'
+
+    def test_applyLongtextContextToForm_reads_context_params(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'params' in body, \
+            'applyLongtextContextToForm must safely read context.params'
+
+    def test_applyLongtextContextToForm_handles_null_params(self):
+        c = read()
+        body = func_body('applyLongtextContextToForm', c)
+        assert 'context.params || {}' in body or 'params ||' in body, \
+            'applyLongtextContextToForm must handle null/undefined params'
+
