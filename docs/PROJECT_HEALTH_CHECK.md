@@ -4008,3 +4008,51 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 15 passed
 **测试结果：** 15 passed in 46.66s。
 
 **未改 app/api、app/services、app/providers、app/domain、admin.html、app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。
+
+---
+
+## P9-FE1-F0：剧本批量模块抽离前边界审查
+
+**目标：** 审查 `app/static/index.html` 中剧本批量相关 JS，梳理 DOM id、状态变量、函数清单、API endpoint、共享逻辑，为 P9-FE1-F1 是否抽离 `batch_script.js` 提供决策依据。本次仅做审查和文档记录，不迁移代码。
+
+**执行内容：**
+
+- grep `scriptRows`、`handleBatchScriptSubmit`、`addScriptLine`、`removeScriptLine`、`batchScript`、`scriptProgressPanel`、`targetPanelId`、`_batchPollTimer` 等关键模式
+- 阅读 index.html 第 4710–5250 行（约 540 行），梳理剧本批量完整逻辑链
+- 阅读 `populateProfileSelect` / `loadProfiles` / `_cachedProfiles` 全局人设系统
+- 阅读共享轮询函数（`showBatchProgress` 等）完整实现
+- 梳理剧本批量与长文本批量的共享状态和函数边界
+
+**边界审查发现：**
+
+1. **状态变量 `_scriptRows`**：实际名为 `_scriptRows`（非 `scriptRows`），元素 `{id, role, text, profileId}`，与 DOM 事件委托紧耦合（`input`/`change` 事件监听器直接修改数组元素字段）。
+
+2. **addScriptLine / removeScriptLine**：每添加一行调用 `populateProfileSelect` 初始化人设下拉，`populateProfileSelect` 依赖全局 `_cachedProfiles`。若独立模块在 profiles 缓存就绪前调用，会自动 `loadProfiles()`，行为不变但有额外网络请求。
+
+3. **handleBatchScriptSubmit**：内部使用 `esc`、`guardedJsonFetch`、`parseApiError`、`formatApiError`、`window.renderApiError` 等全局函数。提交流程为：收集 `_scriptRows` DOM → 构建 `script: [{role, text, profile_id}]` payload → `POST /api/voice/batch/submit` → `showBatchProgress` → `startBatchPoll`。可整体迁移，但需确保全局 helper 已就绪。
+
+4. **共享轮询函数**：`showBatchProgress` / `startBatchPoll` / `stopBatchPoll` / `pollBatchStatus` / `renderBatchStatus` / `renderBatchResultPlayer` / `renderBatchSubtitleList` / `updateBatchSubtitleHighlight` / `getBatchPanelDom` / `formatTime` 全部留在 index.html。其中 `renderBatchStatus` 含 `isScriptPanel` 分支逻辑，输出额外"角色"列。
+
+5. **独立 targetPanelId**：剧本批量使用 `batchScriptProgressPanel`，长文本批量使用 `batchProgressPanel`，两者完全独立，不共用进度 DOM id。
+
+6. **共享状态冲突**：`_batchPollTimer` / `_currentBatchId` / `_currentBatchPanelId` / `_batchTimeline` 两批量共用，与长文本批量风险相同（交替提交会覆盖彼此状态）。
+
+7. **无 `renderScriptRows` 函数**：行渲染直接由 `addScriptLine` 完成（创建 DOM 元素并追加），无独立渲染函数。
+
+**测试结果：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "script"
+# 1 passed
+git diff --check
+# no output (no whitespace errors)
+```
+full tests 未运行，原因：本次仅做剧本批量模块边界审查和文档更新，未改业务逻辑、前端运行代码、后端 API、Provider Adapter、生成链路、数据库、资产清理链路。
+
+**下一步建议：**
+
+- **P9-FE1-F1 Phase 1**：仅迁移 `handleBatchScriptSubmit()` 到 `batch_script.js`，台词行管理函数（`addScriptLine` 等）和事件委托代码暂时保留在 index.html。将 `esc` 作为本地 `arEsc` 辅助函数复制到模块内，避免依赖 index.html 的 `esc`。
+- **Phase 1 之前**：建议补剧本行增删 E2E（添加行、删除行、验证行数上限 200）和剧本批量提交校验 E2E（空文本、无 profile 场景）。
+- **Phase 2**：迁移 `addScriptLine` / `removeScriptLine` / `updateScriptLineLimitState` / `_scriptLineCount` / `_scriptRows` / `MAX_SCRIPT_LINES` 和事件委托代码。需先确认 `populateProfileSelect` 已暴露为 `window.populateProfileSelect`。
+- **Phase 2 之前**：建议补剧本批量 mock 提交成功 E2E（参考 `test_batch_longtext_mock_submit_success_starts_progress`）。
+
+**未改 app/static/index.html、app/static/js/*、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路、scripts/cleanup_assets.py。
