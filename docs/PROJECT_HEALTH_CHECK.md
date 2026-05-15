@@ -33,6 +33,8 @@
 * P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store 已完成 ✅
 * P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正已完成 ✅
 * P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
+* P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口已完成 ✅
+* 当前下一阶段：P13-FINAL-CHECK P13 最近样本系统最终验收
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6834,3 +6836,84 @@ batch merged audio 接入 sample_store 的实现复核，覆盖以下文件：
 B5-CHECK 复核通过，批量合并音频样本存储接入完成。
 
 下一阶段：`P13-CREATION-B5-CLOSE`（阶段收口文档更新）
+
+## P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口
+
+### 背景
+
+B5 已完成 batch_longtext / batch_script 的 merged audio 接入 sample_store，并经过 B5-A0、B5-A0-CODE-CHECK-FIX、B5-A0-CODE-CHECK-FIX2、B5-MVP1、B5-MVP1-CHECK-FIX1、B5-CHECK 多轮核验。
+
+### 收口内容
+
+- 标记 P13-CREATION-B5-A0 完成
+- 标记 P13-CREATION-B5-A0-CODE-CHECK-FIX 完成
+- 标记 P13-CREATION-B5-A0-CODE-CHECK-FIX2 完成
+- 标记 P13-CREATION-B5-MVP1 完成
+- 标记 P13-CREATION-B5-MVP1-CHECK-FIX1 完成
+- 标记 P13-CREATION-B5-CHECK 完成
+- 当前阶段推进到 P13-FINAL-CHECK
+
+### B5 最终状态
+
+- batch_longtext submit 成功后保存 `_batchSampleContextById[data.batch_id]`
+- batch_script submit 成功后保存 `_batchSampleContextById[data.batch_id]`
+- `safePushBatchSample(source, data, extra = {})` 已实现
+- 只在 `data.status === 'success'` 写入 sample
+- partial / failed / running / pending 均不写入
+- `data.batch_id` 缺失不写入
+- `merged_audio.id` 缺失不写入
+- `merged_audio.url` 不安全不写入
+- 拒绝 blob / javascript / data URL
+- `download_url` 固定使用 `/api/voice/batch/{batch_id}/download`
+- 不使用 asset download fallback
+- 不使用 `merged_audio.url` 作为 sample download_url
+- `batch_longtext_merged` / `batch_script_merged` source 已接入
+- sample_sidebar sourceLabel 已补充 batch merged label
+- `sample_store.js` 未修改
+- 后端 API / 数据库未修改
+- 测试结果：364 passed
+
+### 产品边界
+
+当前 SampleSidebar 是统一最近样本观察面板，不是跨 tab 配置恢复系统。
+
+B5-MVP1 只将 batch merged audio 写入统一 SampleStore：
+
+- `batch_longtext_merged`
+- `batch_script_merged`
+
+当前不支持：
+
+- 长文本 tab 独立侧边栏
+- 剧本 tab 独立侧边栏
+- 一键恢复长文本完整配置
+- 一键恢复剧本完整角色行与参数
+- 保存 segment samples
+- 保存 partial batch result
+
+如果后续要支持长文本 / 剧本配置恢复，应单独设计：
+
+`P14：Creation Context Restore`
+
+不要混入 B5。
+
+### 遗留项
+
+- `P13-HISTORY-SECURITY-FIX1`：History textSnippet escape 安全债
+- `P13-UI-POLISH-LATER`：Workspace spacing 与 sample sidebar button visual consistency
+- `P14-CREATION-CONTEXT-RESTORE`：跨 tab 配置恢复能力评估
+
+### 阶段边界
+
+- 只改文档
+- 不改 index.html
+- 不改 JS
+- 不改测试
+- 不接 segment samples
+- 不接 history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5 已收口。下一阶段进入 P13-FINAL-CHECK。
