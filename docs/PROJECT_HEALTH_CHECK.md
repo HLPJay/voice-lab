@@ -15,7 +15,8 @@
 * P13-CREATION-B1-CHECK-FIX：sample_store 契约修正已完成 ✅
 * P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
 * P13-CREATION-B2：workspace 生成结果接入 sample_store 已复核通过 ✅
-* 当前下一阶段：P13-CREATION-B2-CLOSE workspace sample_store 接入状态收口
+* P13-CREATION-B2-CHECK：workspace sample_store 接入复核已完成 ✅
+* 当前下一阶段：P13-CREATION-B3 audition_records 接入 sample_store
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5827,3 +5828,44 @@ B2 已完成 workspace sync / async / stream / variants 成功结果接入 sampl
 ### 阶段结论
 
 P13-CREATION-B2 复核通过，可以进入 B2-CLOSE。下一步只做状态收口，不进入 B3 实现。
+
+## P13-CREATION-B2-CLOSE：workspace sample_store 接入状态收口
+
+### 背景
+
+B2 已完成 workspace sync / async / stream / variants 成功结果接入 sample_store，并经过 B2-CHECK-FIX、B2-CHECK-FIX2 与 B2-CHECK 复核。
+
+### 收口内容
+
+- 标记 P13-CREATION-B2 完成
+- 标记 P13-CREATION-B2-CHECK-FIX 完成
+- 标记 P13-CREATION-B2-CHECK-FIX2 完成
+- 标记 P13-CREATION-B2-CHECK 完成
+- 当前阶段推进到 P13-CREATION-B3
+- 明确 B3 目标是 audition_records 接入 sample_store，不是 sidebar UI
+
+### B2 最终状态
+
+- workspace_sync 已接入 sample_store
+- workspace_variant 已接入 sample_store
+- workspace_async 已接入 sample_store
+- workspace_stream 已接入 sample_store
+- sample 写入失败不会影响生成流程
+- stream 不保存 blobUrl
+- 只保存 server asset 下载入口
+- 未接入 audition / batch / history / sidebar UI
+- 未修改后端 API / 数据库结构
+- 测试结果：61 passed
+
+### 阶段边界
+
+- 只改文档
+- 不改 index.html
+- 不改 sample_store.js
+- 不改测试
+- 不接 B3 功能
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B2 已收口，可以开始 P13-CREATION-B3。
