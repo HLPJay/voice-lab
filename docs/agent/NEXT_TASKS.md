@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P13-CREATION-B2：workspace 生成结果接入 sample_store**
+**P13-CREATION-B3：样本观察侧边栏 UI 实现**
 
 ## 已完成
 
@@ -52,12 +52,14 @@
 - P13-CREATION-B1：sample_store.js 前端样本存储模块实现 ✅
 - P13-CREATION-B1-CHECK-FIX：sample_store 契约修正 ✅
 - P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强 ✅
+- P13-CREATION-B2：workspace 生成结果接入 sample_store ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-CREATION-B2 | connect workspace generation results to sample_store | B1-CLOSE 完成 |
+| P13-CREATION-B3 | 样本观察侧边栏 UI 实现 | B2-CLOSE 完成 |
+| P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

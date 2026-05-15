@@ -1633,6 +1633,7 @@
 <script src="/static/js/voice_clone.js"></script>
 <script src="/static/js/voice_import.js"></script>
 <script src="/static/js/voice_design.js"></script>
+<script src="/static/js/sample_store.js"></script>
 <script>
   // ============================================================
   // Provider Capability Registry (P9-CAPABILITY3)
@@ -1996,6 +1997,74 @@
     if (data?.audio_asset_id) return data.audio_asset_id;
     if (data?.asset_id) return data.asset_id;
     return null;
+  }
+
+  function buildAssetDownloadUrl(assetId) {
+    if (!assetId) return null;
+    return '/api/voice/assets/' + assetId + '/download';
+  }
+
+  function getSelectedProfileName() {
+    var el = document.getElementById('profileSelect');
+    if (el && el.selectedOptions && el.selectedOptions[0]) {
+      return el.selectedOptions[0].textContent || null;
+    }
+    if (el && el.options && el.selectedIndex >= 0) {
+      return el.options[el.selectedIndex].textContent || null;
+    }
+    return null;
+  }
+
+  function safePushWorkspaceSample(source, data, extra) {
+    try {
+      var profileId = window._workspaceSampleContext?.profile_id || null;
+      var profileName = window._workspaceSampleContext?.profile_name || getSelectedProfileName() || null;
+      var provider = window._workspaceSampleContext?.provider || null;
+      var assetId = extractAudioAssetId(data);
+      var jobId = extractJobId(data) || window._workspaceSampleContext?.job_id || null;
+      var status = data?.status || 'completed';
+      var durationMs = data?.duration_ms || data?.audio_duration_ms || null;
+      var audioFormat = data?.audio_format || data?.format || 'mp3';
+
+      var voiceId = window._workspaceSampleContext?.voice_id || null;
+      var voiceName = window._workspaceSampleContext?.voice_name || null;
+      if (!voiceId && profileId && provider && window._voiceBindMap) {
+        for (var vid in window._voiceBindMap) {
+          var bindings = window._voiceBindMap[vid] || [];
+          for (var i = 0; i < bindings.length; i++) {
+            var b = bindings[i];
+            if (b.profile_id === profileId && b.provider === provider) {
+              voiceId = vid;
+              voiceName = vid;
+              break;
+            }
+          }
+          if (voiceId) break;
+        }
+      }
+
+      var sample = {
+        source: source,
+        job_id: jobId,
+        asset_id: assetId,
+        download_url: buildAssetDownloadUrl(assetId),
+        text_preview: window._workspaceSampleContext?.text_preview || '',
+        profile_id: profileId,
+        profile_name: profileName,
+        provider: provider,
+        model: window._workspaceSampleContext?.model || null,
+        voice_id: voiceId,
+        voice_name: voiceName,
+        duration_ms: durationMs,
+        audio_format: audioFormat,
+        status: status,
+        tags: [source],
+      };
+
+      window.SampleStore.pushSample(sample);
+    } catch (e) {
+      // fail-safe: push errors must never interrupt generation flow
+    }
   }
 
   function buildRecentJobPayload(data, fallback) {
@@ -2680,6 +2749,30 @@ function handleStopAsyncPolling() {
     resultsArea.innerHTML = '';
 
     if (isStream) {
+      window._workspaceSampleContext = {
+        text_preview: text.length > 100 ? text.substring(0, 100) + '…' : text,
+        profile_id: profileId,
+        profile_name: getSelectedProfileName(),
+        provider,
+        model: null,
+        voice_id: null,
+        voice_name: null,
+      };
+      if (profileId && provider && window._voiceBindMap) {
+        for (var sv in window._voiceBindMap) {
+          var sbinds = window._voiceBindMap[sv] || [];
+          for (var si = 0; si < sbinds.length; si++) {
+            var sb = sbinds[si];
+            if (sb.profile_id === profileId && sb.provider === provider) {
+              window._workspaceSampleContext.voice_id = sv;
+              window._workspaceSampleContext.voice_name = sv;
+              window._workspaceSampleContext.model = sb.model || null;
+              break;
+            }
+          }
+          if (window._workspaceSampleContext.voice_id) break;
+        }
+      }
       startStreamGenerate(text, profileId, provider, subtitle, audioFormat, { speed, vol, pitch, emotion });
       return;
     }
@@ -2719,6 +2812,31 @@ function handleStopAsyncPolling() {
 
       if (isAsync) {
         saveRecentJob(data, { job_type: 'async', text: text });
+        window._workspaceSampleContext = {
+          text_preview: text.length > 100 ? text.substring(0, 100) + '…' : text,
+          profile_id: profileId,
+          profile_name: getSelectedProfileName(),
+          provider,
+          model: null,
+          job_id: data.job_id || null,
+          voice_id: null,
+          voice_name: null,
+        };
+        if (profileId && provider && window._voiceBindMap) {
+          for (var av in window._voiceBindMap) {
+            var abinds = window._voiceBindMap[av] || [];
+            for (var ai = 0; ai < abinds.length; ai++) {
+              var ab = abinds[ai];
+              if (ab.profile_id === profileId && ab.provider === provider) {
+                window._workspaceSampleContext.voice_id = av;
+                window._workspaceSampleContext.voice_name = av;
+                window._workspaceSampleContext.model = ab.model || null;
+                break;
+              }
+            }
+            if (window._workspaceSampleContext.voice_id) break;
+          }
+        }
         startAsyncPolling(data.job_id);
       } else {
         saveRecentJob(data, { job_type: isVariant ? 'variants' : 'single', text: text });
@@ -2895,6 +3013,7 @@ function handleStopAsyncPolling() {
         ${!asset ? `<p style="font-size:0.82rem;color:#718096;margin-top:6px">当前流式结果未返回服务端音频资产，仅提供浏览器缓存下载。</p>` : ''}
       </div>`;
     resultsArea.classList.add('visible');
+    if (asset && asset.id) safePushWorkspaceSample('workspace_stream', completed);
   }
 
   function startAsyncPolling(jobId) {
@@ -3096,6 +3215,7 @@ function handleStopAsyncPolling() {
       }
       html += `
       </div>`;
+      if (audio && audio.id) safePushWorkspaceSample('workspace_async', data);
     }
 
     resultsArea.innerHTML = html;
@@ -3141,6 +3261,9 @@ function handleStopAsyncPolling() {
       html += '</div></div>';
       resultsArea.innerHTML = html;
       resultsArea.classList.add('visible');
+      data.variants.forEach(function(v) {
+        if (v.audio_asset_id) safePushWorkspaceSample('workspace_variant', v);
+      });
     } else {
       const job = data;
       const audio = job.audio_asset;
@@ -3178,6 +3301,7 @@ function handleStopAsyncPolling() {
         }
         html += `
       </div>`;
+        if (audio && audio.id) safePushWorkspaceSample('workspace_sync', data);
       } else {
         // queued/pending/running/processing: no audio/download/subtitle sections
         html += `

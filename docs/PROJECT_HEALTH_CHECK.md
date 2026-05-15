@@ -14,7 +14,8 @@
 * P13-CREATION-B1：sample_store.js 前端样本存储模块实现已完成 ✅
 * P13-CREATION-B1-CHECK-FIX：sample_store 契约修正已完成 ✅
 * P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
-* 当前下一阶段：P13-CREATION-B2 workspace 生成结果接入 sample_store
+* P13-CREATION-B2：workspace 生成结果接入 sample_store 已完成 ✅
+* 当前下一阶段：P13-CREATION-B3 样本观察侧边栏 UI 实现
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5601,3 +5602,87 @@ B1 已完成 sample_store.js 独立实现，并经过 B1-CHECK-FIX 与 B1-CHECK-
 ### 阶段状态
 
 B1 已收口，可以开始 P13-CREATION-B2。
+
+## P13-CREATION-B2：workspace 生成结果接入 sample_store
+
+### 背景
+
+B1 完成了独立的 sample_store.js 模块（localStorage 封装），B2 开始将 workspace 生成链路（sync/async/stream/variants）的成功结果接入 sample_store，在本地保存最近生成成功的音频样本元数据。
+
+### 实现内容
+
+#### 新增辅助函数（index.html）
+
+- `buildAssetDownloadUrl(assetId)` — 构造 `/api/voice/assets/{id}/download`
+- `getSelectedProfileName()` — 从 `#profileSelect` 获取当前选中人设名称
+- `safePushWorkspaceSample(source, data, extra)` — fail-safe 封装，调用 `window.SampleStore.pushSample`
+
+#### 上下文保存（window._workspaceSampleContext）
+
+在 `handleGenerate` 中，async/stream 提交前将上下文保存到 `window._workspaceSampleContext`：
+
+```javascript
+window._workspaceSampleContext = {
+  text_preview: text.length > 100 ? text.substring(0, 100) + '…' : text,
+  profile_id: profileId,
+  profile_name: getSelectedProfileName(),
+  provider,
+  model: null,
+  job_id: data.job_id || null,  // async only
+  voice_id: null,
+  voice_name: null,
+};
+```
+
+voice_id/voice_name 从 `window._voiceBindMap` 回填（绑定表）。
+
+#### 生成结果接入点
+
+| 模式 | 调用位置 | source 标签 |
+|---|---|---|
+| sync | `renderResults` statusOk 分支 | `workspace_sync` |
+| variants | `renderResults` variants 分支（每项遍历） | `workspace_variant` |
+| async | `renderAsyncResult` success 分支 | `workspace_async` |
+| stream | `renderStreamResult` 完成时 | `workspace_stream` |
+
+#### safePushWorkspaceSample 字段填充
+
+- `source`：固定 source 标签（如 `workspace_sync`）
+- `job_id`：`extractJobId(data)` 或 `window._workspaceSampleContext.job_id`
+- `asset_id`：`extractAudioAssetId(data)`
+- `download_url`：`buildAssetDownloadUrl(assetId)`
+- `text_preview`：从 `window._workspaceSampleContext` 取
+- `profile_id / profile_name`：同上
+- `provider / model / voice_id / voice_name`：上下文 + `window._voiceBindMap` 回填
+- `duration_ms`：`data.duration_ms || data.audio_duration_ms`
+- `audio_format`：`data.audio_format || data.format || 'mp3'`
+- `status`：`data.status || 'completed'`
+- `tags`：`[source]`
+
+#### 错误处理
+
+`safePushWorkspaceSample` 整体被 `try/catch` 包裹，push 失败不影响生成流程。
+
+### 测试
+
+- 新增 `tests/test_sample_store_workspace_integration_static.py`：22 项静态契约测试
+  - script tag 存在性
+  - 三个 helper 函数存在性
+  - `safePushWorkspaceSample` fail-safe 特性
+  - `window._workspaceSampleContext` 在 stream/async 提交前保存
+  - 四种 source 的 `safePushWorkspaceSample` 调用存在
+  - text_preview 截断逻辑
+  - 不直接使用 localStorage
+- 既有 `tests/test_sample_store_static.py`：25 项测试全部通过
+
+### 阶段边界
+
+- 只改 `app/static/index.html`（新增 helper 函数 + 调用点）
+- 不改 `sample_store.js`
+- 不改任何后端 API
+- 不接 audition / batch / history / sidebar UI
+- 不调用真实 MiniMax（使用 E2E mock）
+
+### 阶段状态
+
+B2 已完成，47 项测试全部通过。
