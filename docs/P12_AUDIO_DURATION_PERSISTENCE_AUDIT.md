@@ -205,3 +205,52 @@ if not result.duration_ms:
 **最可能根因：`output_format="hex"` 时 MiniMax 返回的 `audio_length` 为 0 或 null，而 `estimate_duration_ms` 虽然会 fallback，但由于某种原因（如预览文本过短或 API 返回特殊值）导致 duration_ms 最终为 0 或极小值。**
 
 **推荐 FIX6-B1 方向：在 `AssetService.save_assets()` 中，当 `result.duration_ms` 无效时，使用 `pydub` 从本地音频文件解析真实时长作为 fallback。** 这不依赖 provider 返回结构，且能保证数据库中存储的是真实时长。
+
+---
+
+## 9. FIX6-B1 实施记录
+
+**实施时间：** 2026-05-15
+
+**修改文件：**
+- `app/services/asset_service.py`
+
+**改动点：**
+
+1. **新增 `_valid_duration_ms(value)` helper**（模块级私有函数）
+   - 将任意 value 转为正整数，无效返回 None
+   - 处理 None、0、"0"、负数、字符串非数字等情况
+
+2. **新增 `_probe_audio_duration_ms(audio_path)` helper**（模块级私有函数）
+   - 使用 pydub 读取本地音频文件真实时长
+   - 失败时静默返回 None，不影响主流程
+   - `pydub>=0.25.1` 已在 requirements.txt
+
+3. **修改 `save_assets()` duration 写入逻辑**
+   ```python
+   duration_ms = _valid_duration_ms(result.duration_ms)
+   if duration_ms is None:
+       duration_ms = _probe_audio_duration_ms(audio_path)
+   ```
+
+**影响范围：**
+- 同步生成（`/api/voice/render`）
+- 异步生成
+- 试听生成（`/api/voice/provider-voices/preview`）
+- 导入验证（`/api/voice/provider-voices/import`）
+- 批量生成
+
+所有经过 `AssetService.save_assets()` 的链路都会受益。
+
+**测试：**
+- `tests/test_asset_duration_fallback.py`：20 passed ✅
+  - `_valid_duration_ms` 参数化测试（11 cases）
+  - `_probe_audio_duration_ms` 文件不存在、有效WAV、无效文件测试（3 cases）
+  - `save_assets` fallback 行为测试（6 cases）
+
+**未改范围：**
+- ❌ 不改 provider adapter
+- ❌ 不改前端
+- ❌ 不改数据库结构
+- ❌ 不改生成 payload
+- ❌ 不调用真实 MiniMax

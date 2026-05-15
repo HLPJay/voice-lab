@@ -3,6 +3,7 @@ from pathlib import Path
 
 from sqlmodel import Session
 
+from app.core.logging import get_logger
 from app.core.time import utc_now_iso
 from app.models.voice_asset import AudioAsset, SubtitleAsset
 from app.repositories import voice_asset_repo
@@ -10,6 +11,34 @@ from app.providers.base import ProviderRenderResult
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 from app.utils.srt import timeline_to_srt
+
+_logger = get_logger("asset_service")
+
+
+def _valid_duration_ms(value) -> int | None:
+    """Coerce a duration value to a positive int, or return None if invalid."""
+    try:
+        if value is None:
+            return None
+        n = int(value)
+        return n if n > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _probe_audio_duration_ms(audio_path: Path) -> int | None:
+    """Read real audio duration from a local audio file using pydub.
+
+    Returns None if the file doesn't exist or cannot be parsed.
+    Does not raise — failures are silent.
+    """
+    try:
+        from pydub import AudioSegment
+        audio = AudioSegment.from_file(str(audio_path))
+        duration_ms = len(audio)
+        return duration_ms if duration_ms > 0 else None
+    except Exception:
+        return None
 
 
 class AssetService:
@@ -27,6 +56,11 @@ class AssetService:
         now = utc_now_iso()
         audio_id = new_id("audio")
         audio_path = Path(result.audio_path)
+
+        duration_ms = _valid_duration_ms(result.duration_ms)
+        if duration_ms is None:
+            duration_ms = _probe_audio_duration_ms(audio_path)
+
         audio_asset = AudioAsset(
             id=audio_id,
             job_id=job_id,
@@ -35,7 +69,7 @@ class AssetService:
             file_path=str(audio_path),
             file_url=f"/api/voice/assets/{audio_id}/download",
             format=audio_path.suffix.lstrip(".") or audio_params.get("format"),
-            duration_ms=result.duration_ms,
+            duration_ms=duration_ms,
             sample_rate=audio_params.get("sample_rate"),
             bitrate=audio_params.get("bitrate"),
             channel=audio_params.get("channel"),

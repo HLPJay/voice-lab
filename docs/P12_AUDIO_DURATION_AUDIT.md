@@ -317,4 +317,5 @@ function formatDurationMs(ms) {
 |---|---|---|
 | FIX5-B1 | 扩展 audioPlayerHtml + 批量结果展示 total_duration_ms | FIX5-A0 完成 |
 | FIX5-B2 | 克隆/设计/导入/audition_records 时长统一 | FIX5-B1 完成 |
-| FIX6-B1 | fix audio asset duration persistence（使用 pydub 解析本地文件时长 fallback） | FIX6-A0 完成 |
+| FIX6-B1 | fix audio asset duration persistence（使用 pydub 解析本地文件时长 fallback） | FIX6-A0 完成 ✅ |
+| FIX6-B1 | 后端 duration persistence 已修复：AssetService 增加 pydub fallback ✅ | FIX6-A0 完成 |
