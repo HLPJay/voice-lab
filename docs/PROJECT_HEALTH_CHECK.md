@@ -59,7 +59,8 @@
 * P14-SIDEBAR-ACTIONS-B1：侧边栏按钮分层与更多菜单实现已完成 ✅
 * P14-CONTEXT-B3：长文本一键回填已完成 ✅
 * P14-CONTEXT-B3-CHECK：长文本一键回填复核已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C1-A0
+* P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查已完成 ✅
+* 当前下一阶段：P14-CONTEXT-C1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8113,6 +8114,49 @@ P14-CONTEXT-B3 已完成长文本 context 的保存与一键回填。P14-CONTEXT
 ### 阶段状态
 
 P14-CONTEXT-C1-A0 完成，建议进入 P14-CONTEXT-C1。
+
+## P14-CONTEXT-C1：剧本 context 保存与详情查看实现
+
+### 背景
+
+P14-CONTEXT-C1-A0 审查结论确认 batch_script.js 已具备接入条件，ContextStore 已支持 script normalize，SampleStore context_id 透传已就绪。本阶段实现剧本 context 保存与详情查看。
+
+### 实现内容
+
+**batch_script.js：**
+- 在 `handleBatchScriptSubmit` 成功后、polling 前增加 `ContextStore.pushContext` 调用
+- 保存字段：`context_id=data.batch_id`、`type='script'`、`source='batch_script_merged'`、`lines`、`provider`、`silence_between_ms`、`output_format='hex'`、`audio_format`、`need_subtitle`、`batch_id`
+- `context_id = data.batch_id` 回填到 `_batchSampleContextById[data.batch_id]`
+- try/catch fail-safe，不阻塞 batch 生成
+
+**sample_sidebar.js：**
+- 新增 `renderScriptLinesDetail(context)` helper，渲染 script lines 详情
+- `showSampleDetail` 增加 `context.type === 'script'` 分支，调用 `renderScriptLinesDetail`
+- script 详情展示：来源、行数、Provider、音频格式、字幕、段间静音、台词列表
+- 每行展示：行号、角色、台词文本、profile_id
+- `context.type === 'script'` 不显示恢复按钮
+- 所有展示文本使用 `esc()` 转义
+
+**index.html CSS：**
+- 新增 `.sample-detail-actions`、`.sample-detail-restore-btn` 样式
+- 新增 `.sample-detail-lines-wrap`、`.sample-detail-script-line` 及其子元素样式
+
+### 测试结果
+
+- 目标测试：199 passed（test_sample_sidebar_static.py + test_context_store_script_integration_static.py）
+- 回归测试：161 passed
+- B3 相关回归：199 + 161 = 360 passed
+
+### 阶段边界
+
+- 不实现剧本回填（C2）
+- 不修改 submit payload
+- 不修改 ContextStore / SampleStore schema
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+P14-CONTEXT-C1 完成。
 
 
 

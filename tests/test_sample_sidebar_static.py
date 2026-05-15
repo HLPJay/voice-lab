@@ -993,7 +993,8 @@ class TestRestoreLongtext:
         # Button only added when context.type === 'longtext'
         idx = body.find('sample-detail-restore-btn')
         assert idx >= 0, 'restore button must exist in showSampleDetail'
-        region = body[max(0, idx - 300):idx + 50]
+        # Window must be wide enough to cover the longtext HTML building block
+        region = body[max(0, idx - 2000):idx + 50]
         assert "type === 'longtext'" in region or 'type === "longtext"' in region, \
             'restore button must be conditional on context.type === "longtext"'
 

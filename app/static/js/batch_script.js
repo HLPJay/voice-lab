@@ -166,6 +166,30 @@
         };
       }
 
+      // Save script context to ContextStore (fail-safe, non-blocking)
+      try {
+        if (window.ContextStore && typeof window.ContextStore.pushContext === 'function' && data && data.batch_id) {
+          var contextId = data.batch_id;
+          window.ContextStore.pushContext({
+            context_id: contextId,
+            type: 'script',
+            source: 'batch_script_merged',
+            lines: lines,
+            provider: provider,
+            silence_between_ms: silence,
+            output_format: 'hex',
+            audio_format: outputFormat,
+            need_subtitle: needSubtitle,
+            batch_id: data.batch_id,
+          });
+          if (window._batchSampleContextById && window._batchSampleContextById[data.batch_id]) {
+            window._batchSampleContextById[data.batch_id].context_id = contextId;
+          }
+        }
+      } catch (e) {
+        // fail-safe: context save must not block batch generation
+      }
+
       // Show success inline — stay on script tab
       showResult('<div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:8px;padding:14px 16px;font-size:0.85rem;color:#276749">' +
         '<div style="font-weight:600;margin-bottom:6px">批量剧本任务已提交</div>' +

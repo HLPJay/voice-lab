@@ -523,6 +523,70 @@
     render();
   }
 
+  // ── helper: render script lines detail ───────────────────────────────
+
+  function renderScriptLinesDetail(context) {
+    if (!context || context.type !== 'script') return '';
+    var lines = Array.isArray(context.lines) ? context.lines : [];
+    var lineCount = lines.length;
+    var providerEsc = esc(context.provider || '');
+    var audioFormatEsc = esc(context.audio_format || '');
+    var needSubtitleText = context.need_subtitle ? '是' : '否';
+    var silenceEsc = esc(String(context.silence_between_ms != null ? context.silence_between_ms : ''));
+
+    var html = '';
+    // Metadata rows
+    html += '<div class="sample-detail-meta-row">';
+    html += '<span class="sample-detail-meta-label">行数:</span>';
+    html += '<span class="sample-detail-meta-value">' + esc(String(lineCount)) + '</span>';
+    html += '</div>';
+    if (providerEsc) {
+      html += '<div class="sample-detail-meta-row">';
+      html += '<span class="sample-detail-meta-label">Provider:</span>';
+      html += '<span class="sample-detail-meta-value">' + providerEsc + '</span>';
+      html += '</div>';
+    }
+    if (audioFormatEsc) {
+      html += '<div class="sample-detail-meta-row">';
+      html += '<span class="sample-detail-meta-label">音频格式:</span>';
+      html += '<span class="sample-detail-meta-value">' + audioFormatEsc + '</span>';
+      html += '</div>';
+    }
+    html += '<div class="sample-detail-meta-row">';
+    html += '<span class="sample-detail-meta-label">字幕:</span>';
+    html += '<span class="sample-detail-meta-value">' + esc(needSubtitleText) + '</span>';
+    html += '</div>';
+    if (silenceEsc) {
+      html += '<div class="sample-detail-meta-row">';
+      html += '<span class="sample-detail-meta-label">段间静音:</span>';
+      html += '<span class="sample-detail-meta-value">' + silenceEsc + 'ms</span>';
+      html += '</div>';
+    }
+
+    // Lines list
+    html += '<div class="sample-detail-text-label">台词列表</div>';
+    html += '<div class="sample-detail-text-wrap sample-detail-lines-wrap">';
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!line) continue;
+      var roleText = line.role ? esc(line.role) : esc('未命名角色');
+      var textText = line.text ? esc(line.text) : '';
+      var profileText = line.profile_id ? esc(line.profile_id) : '-';
+      var lineNum = i + 1;
+      html += '<div class="sample-detail-script-line">';
+      html += '<span class="sample-detail-line-num">' + esc(String(lineNum)) + '.</span>';
+      html += '<span class="sample-detail-line-role">' + roleText + '</span>';
+      html += '<div class="sample-detail-line-text">' + textText + '</div>';
+      html += '<div class="sample-detail-line-profile">profile_id: ' + profileText + '</div>';
+      html += '</div>';
+    }
+    if (lines.length === 0) {
+      html += '<div class="sample-detail-empty">无台词数据</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   // ── helper: dispatch input + change events ───────────────────────────
 
   function dispatchInputChange(el) {
@@ -652,10 +716,6 @@
 
     var sourceEsc = esc(context.source || '');
     var createdAtEsc = esc(formatCreatedAt(context.created_at));
-    var providerEsc = esc(context.provider || '');
-    var profileIdEsc = esc(context.profile_id || '');
-    var fullTextEsc = esc(context.full_text || '');
-    var charCount = context.full_text ? context.full_text.length : 0;
     var sourceLabelText = sourceLabel(context.source || '');
     var sourceBadgeEsc = esc(sourceLabelText);
 
@@ -664,7 +724,15 @@
         '<span class="sample-detail-title">详情</span>' +
         '<button class="sample-detail-close" title="关闭">✕</button>' +
       '</div>' +
-      '<div class="sample-detail-meta">' +
+      '<div class="sample-detail-meta">';
+
+    if (context.type === 'longtext') {
+      var providerEsc = esc(context.provider || '');
+      var profileIdEsc = esc(context.profile_id || '');
+      var fullTextEsc = esc(context.full_text || '');
+      var charCount = context.full_text ? context.full_text.length : 0;
+
+      panel.innerHTML +=
         '<div class="sample-detail-meta-row">' +
           '<span class="sample-detail-meta-label">来源:</span>' +
           '<span class="sample-detail-meta-value">' + sourceBadgeEsc + '</span>' +
@@ -685,18 +753,45 @@
           '<span class="sample-detail-meta-label">字数:</span>' +
           '<span class="sample-detail-meta-value">' + esc(String(charCount)) + '</span>' +
         '</div>' +
-      '</div>' +
-      '<div class="sample-detail-text-label">完整文本</div>' +
-      '<div class="sample-detail-text-wrap">' +
-        '<div class="sample-detail-text">' + fullTextEsc + '</div>' +
-      '</div>';
+        '</div>' +
+        '<div class="sample-detail-text-label">完整文本</div>' +
+        '<div class="sample-detail-text-wrap">' +
+          '<div class="sample-detail-text">' + fullTextEsc + '</div>' +
+        '</div>';
 
-    // Restore button: only for longtext context
-    if (context.type === 'longtext') {
+      // Restore button: only for longtext context
       var contextIdAttr = attr(String(context.context_id || ''));
       panel.innerHTML +=
         '<div class="sample-detail-actions">' +
           '<button class="sample-detail-restore-btn" data-context-id="' + contextIdAttr + '">恢复到长文本</button>' +
+        '</div>';
+
+    } else if (context.type === 'script') {
+      var scriptDetailHtml = renderScriptLinesDetail(context);
+      panel.innerHTML +=
+        '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">来源:</span>' +
+          '<span class="sample-detail-meta-value">' + sourceBadgeEsc + '</span>' +
+        '</div>' +
+        (createdAtEsc ? '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">创建:</span>' +
+          '<span class="sample-detail-meta-value">' + createdAtEsc + '</span>' +
+        '</div>' : '') +
+        scriptDetailHtml;
+
+    } else {
+      panel.innerHTML +=
+        '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">来源:</span>' +
+          '<span class="sample-detail-meta-value">' + sourceBadgeEsc + '</span>' +
+        '</div>' +
+        (createdAtEsc ? '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">创建:</span>' +
+          '<span class="sample-detail-meta-value">' + createdAtEsc + '</span>' +
+        '</div>' : '') +
+        '</div>' +
+        '<div class="sample-detail-body">' +
+          '<div class="sample-detail-empty">完整上下文不可用</div>' +
         '</div>';
     }
 
