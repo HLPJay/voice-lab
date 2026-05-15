@@ -70,7 +70,8 @@
 * P14-CONTEXT-C2-CHECK：剧本一键回填复核已完成 ✅（发现阻塞问题）
 * P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板已完成 ✅
 * P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C2-CLOSE
+* P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口已完成 ✅
+* 当前下一阶段：P14-PRODUCT-B0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8393,6 +8394,66 @@ P14-CONTEXT-C2-FIX1 修复了 `switchToScriptBatchMode()` 中 `btn.click()` 后 
 
 P14-CONTEXT-C2-FIX1-CHECK 通过，建议进入 **P14-CONTEXT-C2-CLOSE**。
 
+## P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口
+
+### 收口结论
+
+**P14 context restore 闭环阶段可以收口。**
+
+Voice Lab 当前已具备 "最近样本记录 → 上下文详情查看 → 长文本一键恢复 → 剧本一键恢复 → 用户继续编辑再生成" 的完整创作闭环基础能力。
+
+### P14 最终能力确认
+
+**SampleSidebar（平铺按钮策略）：**
+- 播放 / 下载 / 详情 / 复制 / 填入 / 删除平铺按钮
+- 无更多菜单
+- canShowFill 控制"填入工作台"显示
+- batch_longtext_* / batch_script_* 不显示"填入工作台"
+- 有 context_id 显示详情按钮
+
+**Longtext 闭环：**
+- batch_longtext.js 提交成功后保存 longtext context
+- context_id = batch_id 回填到 _batchSampleContextById
+- safePushBatchSample 将 context_id 写入 SampleStore
+- SampleSidebar 详情展示 full_text
+- "恢复到长文本"按钮切换到长文本 Tab 并恢复所有字段
+- 不自动提交
+
+**Script 闭环：**
+- batch_script.js 提交成功后保存 script context
+- context_id = batch_id 回填到 _batchSampleContextById
+- safePushBatchSample 将 context_id 写入 SampleStore
+- SampleSidebar 详情展示 lines（行号/role/text/profile_id）
+- "恢复到剧本"按钮切换到 script tab + batchMode=script + 显示 batchScriptPanel + 清空并恢复剧本行
+- 不自动提交
+
+**ContextStore / SampleStore 边界：**
+- ContextStore 保存完整上下文（localStorage），SampleStore 只保存轻量索引
+- context_id = batch_id 一对一策略
+- 保存失败 fail-safe，不阻塞 batch 生成
+- 不保存音频 blob / base64 / hex
+- 本地单用户，不承诺 SaaS 多用户一致性
+
+### 已修复关键问题
+
+1. **B1 更多菜单 UX**：`P14-SIDEBAR-ACTIONS-B1-UXFIX1` 恢复平铺按钮
+2. **C1 Script Detail HTML 结构**：`P14-CONTEXT-C1-FIX1` 补充 meta div 关闭标签
+3. **C2 剧本恢复子面板切换**：`P14-CONTEXT-C2-FIX1` 重构 switchToScriptBatchMode，设置 batchMode=script
+
+### 已知非阻塞观察项
+
+- B3-OBS-001：batchProfile 异步覆盖风险（不阻塞）
+- B3-OBS-002：长文本恢复反馈可进一步优化（不阻塞）
+- E2E 404：voice import clone 资源问题，与 P14 无关
+- Product OBS：SampleSidebar 不过滤，后续可做 P14-PRODUCT-B0
+
+### 测试结果
+
+- P14-CONTEXT-C2-FIX1-CHECK：384 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-CLOSE 完成，P14 context restore 闭环阶段正式收口。详细结论见 `docs/P14_CONTEXT_RESTORE_CLOSE.md`。
 
 
 
