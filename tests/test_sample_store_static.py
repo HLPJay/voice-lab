@@ -79,19 +79,29 @@ class TestSampleStoreStatic:
     def test_no_recent_jobs(self):
         content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
         lower = content.lower()
-        # Check for actual code patterns that access recentJobs, not just the word in comments.
-        # The JSDoc header says "read/write recentJobs" — that's the documented prohibition,
-        # not actual code. We check for actual subscript/property access patterns.
-        # Subscript: localStorage['recentJobs'] or localStorage.getItem('recentJobs')
-        # Property: recentJobs.something or window.recentJobs
+        # JSDoc comments may mention recentJobs as a documented prohibition -- that is fine.
+        # We detect all actual JS code forms that would read/write the recentJobs key.
         import re
-        code_patterns = [
-            r"recentjobs\s*[.\[]",   # recentjobs.prop or recentjobs['key']
-            r"\[\s*['\"]recentjobs['\"]\s*\]",  # ['recentjobs'] as array index
+        forbidden = [
+            # localStorage / safeGetItem / safeSetItem forms
+            (r"localstorage\s*\.\s*getitem\s*\(\s*['\"']recentjobs['\"]",
+             "localStorage.getItem('recentJobs')"),
+            (r"localstorage\s*\.\s*setitem\s*\(\s*['\"']recentjobs['\"]",
+             "localStorage.setItem('recentJobs')"),
+            (r"safegetitem\s*\(\s*['\"']recentjobs['\"]",
+             "safeGetItem('recentJobs')"),
+            (r"safesetitem\s*\(\s*['\"']recentjobs['\"]",
+             "safeSetItem('recentJobs')"),
+            # window.recentJobs property access
+            (r"window\s*\.\s*recentjobs", 'window.recentJobs property'),
+            # bracket-notation subscript with 'recentJobs' as the key
+            (r"\[\s*['\"']recentjobs['\"]\s*\]",
+             "bracket subscript ['recentJobs']"),
+            # direct identifier reference recentJobs.something or recentJobs[...]
+            (r"recentjobs\s*[.\[]", 'recentJobs identifier deref'),
         ]
-        for pattern in code_patterns:
-            assert not re.search(pattern, lower), \
-                f'sample_store.js must not access recentJobs in code; found pattern: {pattern}'
+        for pattern, label in forbidden:
+            assert not re.search(pattern, lower),                 'sample_store.js must not access recentJobs (' + label + '); pattern: ' + pattern
 
     def test_no_backend_fetch(self):
         content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
@@ -309,14 +319,30 @@ class TestSampleStoreBehavior:
         assert 'order:new,mid,old' in stdout
 
     def test_get_samples_trims_existing_storage_to_200(self):
-        # Write 220 items via pushSample, then verify getSamples caps at 200
+        # Write 220 items directly into mocked localStorage (bypass pushSample),
+        # then verify getSamples() caps the result at 200.
         stdout, stderr, rc = self._eval_in_vm("""
-        _store.clearSamples();
-        for (var i = 0; i < 220; i++) {{
-            _store.pushSample({ source: 'test', text_preview: 'item' + i, created_at: '2026-01-01T00:00:' + String(i).padStart(2,'0') + ':00.000Z' });
-        }}
+        var items = [];
+        for (var i = 0; i < 220; i++) {
+            items.push({sample_id: "s" + i, created_at: "2026-01-01T00:00:" + String(i).padStart(2,"0") + ":00.000Z", text_preview: "item" + i});
+        }
+        _ls.setItem("voice_lab_recent_samples_v1", JSON.stringify(items));
         var arr = _store.getSamples();
-        console.log('count:' + arr.length);
+        console.log("count:" + arr.length);
         """)
-        assert rc == 0, f'Node error: {stderr}'
-        assert 'count:200' in stdout
+        assert rc == 0, f"Node error: {stderr}"
+        assert "count:200" in stdout
+
+    def test_get_samples_does_not_write_back_to_storage(self):
+        # Verify that getSamples() reads but never writes to localStorage.
+        stdout, stderr, rc = self._eval_in_vm("""
+        var initial = [{sample_id:"a",created_at:"2026-01-01T00:00:01.000Z",text_preview:"alpha"},
+                       {sample_id:"b",created_at:"2026-01-01T00:00:02.000Z",text_preview:"beta"}];
+        _ls.setItem("voice_lab_recent_samples_v1", JSON.stringify(initial));
+        var rawBefore = _ls.getItem("voice_lab_recent_samples_v1");
+        _store.getSamples();
+        var rawAfter = _ls.getItem("voice_lab_recent_samples_v1");
+        console.log("same:" + (rawBefore === rawAfter));
+        """)
+        assert rc == 0, f"Node error: {stderr}"
+        assert "same:true" in stdout
