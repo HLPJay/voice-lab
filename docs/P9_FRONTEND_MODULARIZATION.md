@@ -1068,3 +1068,20 @@ inline script             ← index.html 第 1593 行开始
 **下一步：** import 链路 E2E 已建立，24 E2E passed。可进入 voice_import.js 抽离（仅迁移 handleImportRemoteVoice）。
 
 **P9-FE1-H2 已完成 ✅：** 创建 `app/static/js/voice_import.js`，IIFE 包装，`window.handleImportRemoteVoice` 导出；G3 helpers（loadProfiles/populateProfileSelect/renderInlineCreateProfile/bindVoiceToProfile/refreshVoiceBindStatus/handleListVoices）使用 `window.*` 调用；shared helpers 直接使用；index.html 添加 script 标签（位于 voice_clone.js 之后）；删除 index.html 中的 empty function stub；保留 Migration comment；E2E `test_voice_import_module_is_loaded_and_exports_available` 新增；25 passed。
+
+**下一步 P9-FE1-I0：** voice_design.js 快速边界审查（审查 `handleDesignVoice` 依赖边界，判断是否可独立迁移）
+
+**P9-FE1-I0 已完成 ✅：** 审查结论：可独立迁移。
+
+- `handleDesignVoice` DOM prefix `design*`，与 clone（`clone*`）/import（`importClone*`/`importDesign*`）无重叠
+- API：`POST /api/voice/design/create?provider={provider}`，payload `{ prompt, preview_text, confirm_cost, voice_id? }`，与 clone/design import 均不同
+- highRisk：`guardedJsonFetch(..., { operation: 'voice_design', highRisk: true })`，`provider=mock` 绕过 confirm
+- quick preview：`fetch('/api/voice/render', ...)` raw fetch，不用 guardedJsonFetch，无 highRisk
+- 依赖的 window helpers 全部已暴露：`isValidVoiceId`、`hexToBlobUrl`、`populateProfileSelect`、`renderInlineCreateProfile`、`bindVoiceToProfile`、`refreshVoiceBindStatus`、`handleListVoices`
+- shared helpers（guardedJsonFetch / parseApiError / formatApiError / friendlyErrorMessage / esc / renderApiError / renderValidationError）直接使用
+- provider capability 不在 `handleDesignVoice` 内部检查，由 `provider_capabilities.js` 的 `applyVoiceDesignCapability()` 控制按钮状态
+- quick bind 面板和 quick preview 面板均为 setTimeout 内动态创建，与 clone/design import 结构一致
+- `test_voice_design_mock_submit_success` 已覆盖成功链路，可作为 I1 迁移回归保护
+- I1 允许修改范围：仅迁移 `handleDesignVoice`，不动其他任何函数
+
+**下一步 P9-FE1-I1：** voice_design.js 抽离（仅迁移 `handleDesignVoice`，参照 voice_import.js 模式）

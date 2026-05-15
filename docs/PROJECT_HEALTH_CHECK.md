@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-H2：
+截至 P9-FE1-I0：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4557,16 +4557,16 @@ POST /api/voice/provider-voices/import
 4. **verify=true 时内部调用 preview**：在 Python 服务内完成，无额外 HTTP 请求，无 E2E mock 额外成本
 5. **两个 subtab 的 result div id 不同**（importCloneResult / importDesignResult），需通过 prefix 参数统一访问
 
-### 下一步 P9-FE1-H2 建议
+### 下一步 P9-FE1-I0 建议
 
-**建议先补 import mock success E2E，再迁移 voice_import.js。**
+**建议进入 voice_design.js 抽离（I1）。**
 
-理由：
-- import 链路目前无任何 E2E，迁移后无法验证正确性
-- clone import 和 design import 共享同一函数，第一条 E2E 覆盖 clone import 即可
-- E2E mock 方案：mock GET /api/voice/profiles + mock GET /api/voice/capabilities + mock POST /api/voice/provider-voices/import + mock GET /api/voice/provider-voices
-- provider=mock 绕过 highRisk confirm，无需 mock confirm 交互
-- 迁移后快速绑定面板的绑定功能（bindVoiceToProfile）可暂不测试，focus 在 import 本身
+I0 审查结论：
+- `handleDesignVoice` 可独立迁移，无循环依赖
+- DOM prefix `design*` 与 clone/import 无重叠
+- API endpoint `design/create` 与其他 voice 链路均不同
+- 所有依赖的 window helpers 已暴露
+- `test_voice_design_mock_submit_success` 已覆盖成功链路，可作为 I1 迁移回归保护
 
 **第一条 import E2E 建议覆盖 clone import，理由：**
 - voice_type='voice_cloning' 更接近 clone 工作流，与现有 clone E2E 互补
@@ -4634,3 +4634,35 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 25 pas
 **测试结果：** 25 passed in 83.77s。
 
 **未改关键链路：** 未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
+
+## P9-FE1-I0：voice_design.js 边界审查
+
+**时间：** 2026-05-15
+
+**审查结论：** 可独立迁移。
+
+**handleDesignVoice 依赖分析：**
+
+- **DOM prefix**：`design*`（designProvider / designVoiceId / designPrompt / designPreviewText / designResult / designBtn），与 clone（`clone*`）/import（`importClone*`/`importDesign*`）无重叠
+- **动态创建 DOM ids**：`designProfileWrap`, `designBindProfile`, `designBindModel`, `designBindBtn`, `designBindResult`, `designQuickText`, `designQuickBtn`, `designQuickResult`
+- **API**：`POST /api/voice/design/create?provider={provider}`，payload `{ prompt, preview_text, confirm_cost, voice_id? }`
+- **highRisk confirm**：是（`guardedJsonFetch(..., { operation: 'voice_design', highRisk: true })`），`provider=mock` 绕过
+- **quick preview**：`fetch('/api/voice/render', ...)` raw fetch，不用 guardedJsonFetch，无 highRisk
+- **response 字段**：`voice_id`, `message`, `trial_audio_hex`, `trial_audio_url`
+- **window helpers 依赖**：`window.isValidVoiceId`（已暴露）、`window.hexToBlobUrl`（已暴露）、`window.populateProfileSelect`（已暴露）、`window.renderInlineCreateProfile`（已暴露）、`window.bindVoiceToProfile`（已暴露）、`window.refreshVoiceBindStatus`（已暴露）、`window.handleListVoices`（已暴露）
+- **shared helpers**：直接使用 guardedJsonFetch / parseApiError / formatApiError / friendlyErrorMessage / esc / renderApiError / renderValidationError
+- **provider capability**：不在 `handleDesignVoice` 内部检查；由 `provider_capabilities.js` 的 `applyVoiceDesignCapability()` 控制按钮 enabled/disabled 状态
+- **vs voice_import.js**：结构高度相似（提交 → 成功面板 + audio + quick bind + quick preview）；API 和 DOM prefix 不同；依赖的 helpers 几乎完全相同
+- **vs voice_clone.js**：结构相似；voice_clone 有 audio upload，`handleDesignVoice` 没有；`hexToBlobUrl` 是 design 特有
+- **E2E 保护**：`test_voice_design_mock_submit_success` 已覆盖成功链路，可作为 I1 迁移回归保护
+
+**I1 允许修改范围：**
+- 仅迁移 `handleDesignVoice`
+- 参照 voice_import.js 模式：IIFE 包装 + `window.handleDesignVoice` 导出 + onclick 保持不变
+- 动态创建的 DOM ids（designProfileWrap 等）在 setTimeout 内创建，不影响迁移
+- quick preview 的 raw `fetch` 保持原样，不改 highRisk 行为
+
+**I1 严禁迁移：**
+- `handleDesignVoice` 以外的任何函数
+- `handleListVoices`（留在 index.html，由 `handleDesignVoice` 调用）
+- `handleCloneVoice` / `handleImportRemoteVoice` / `handleDesignVoice` 以外的任何 voice 相关函数
