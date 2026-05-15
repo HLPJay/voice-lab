@@ -71,8 +71,9 @@
 * P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板已完成 ✅
 * P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核已完成 ✅
 * P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置已完成 ✅
+* P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切已完成 ✅
 * P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C2-FIX2-CHECK
+* 当前下一阶段：P14-CONTEXT-C2-FIX3-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8510,6 +8511,45 @@ function insertDetailPanel(root, sampleId, panel) {
 ### 阶段状态
 
 P14-CONTEXT-C2-FIX2 完成。
+
+## P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切
+
+### 问题
+
+FIX2 将详情面板从 `root.appendChild` 改为 `insertBefore` 插入到卡片下方，但用户反馈面板仍不可见——实际表现为卡片下方出现空白区域但内容不可见。截图确认详情面板已插入，但高度异常（被压缩为一条窄线），内容被 `overflow: hidden` 裁切。
+
+### 根因
+
+`.sample-sidebar-list` 为 `display: flex; flex-direction: column`，详情面板作为 flex item 默认 `flex-shrink: 1`（可压缩），在滚动区域高度紧张时被压缩，加上 `overflow: hidden` 导致内容不可见。
+
+### 修复
+
+在 `index.html` CSS 中为 `.sample-card` 和 `.sample-detail-panel` 增加 `flex: 0 0 auto`，禁止 flex 压缩：
+
+```css
+.sample-card {
+  /* ...existing props... */
+  flex: 0 0 auto;
+}
+
+.sample-detail-panel {
+  /* ...existing props... */
+  flex: 0 0 auto;
+}
+```
+
+### 测试结果
+
+- `test_sample_card_has_flex_zero_zero_auto`
+- `test_sample_detail_panel_has_flex_zero_zero_auto`
+- `test_sample_sidebar_list_is_flex_column`
+- `test_sample_detail_panel_still_has_overflow_hidden`
+- `test_no_more_menu_css`
+- 合计：`test_sample_sidebar_static.py` 164 passed
+
+### 阶段状态
+
+P14-CONTEXT-C2-FIX3 完成。
 
 
 

@@ -13,12 +13,17 @@ import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIDEBAR_JS_PATH = os.path.join(REPO_ROOT, 'app', 'static', 'js', 'sample_sidebar.js')
+INDEX_HTML_PATH = os.path.join(REPO_ROOT, 'app', 'static', 'index.html')
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 def read():
     return open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
+
+
+def read_index():
+    return open(INDEX_HTML_PATH, 'r', encoding='utf-8').read()
 
 
 def func_body(name, content):
@@ -1071,4 +1076,53 @@ class TestRestoreLongtext:
         body = func_body('applyLongtextContextToForm', c)
         assert 'context.params || {}' in body or 'params ||' in body, \
             'applyLongtextContextToForm must handle null/undefined params'
+
+    def test_sample_card_has_flex_zero_zero_auto(self):
+        c = read_index()
+        m = re.search(r'\.sample-card\s*\{([^}]+)\}', c)
+        assert m, '.sample-card CSS rule must exist'
+        props = m.group(1)
+        assert 'flex:' in props or 'flex-' in props, \
+            '.sample-card must have flex property to prevent shrink'
+        assert re.search(r'flex:\s*0\s+0\s+auto', props), \
+            '.sample-card must have flex: 0 0 auto to prevent flex shrink'
+
+    def test_sample_detail_panel_has_flex_zero_zero_auto(self):
+        c = read_index()
+        m = re.search(r'\.sample-detail-panel\s*\{([^}]+)\}', c)
+        assert m, '.sample-detail-panel CSS rule must exist'
+        props = m.group(1)
+        assert 'flex:' in props or 'flex-' in props, \
+            '.sample-detail-panel must have flex property to prevent shrink'
+        assert re.search(r'flex:\s*0\s+0\s+auto', props), \
+            '.sample-detail-panel must have flex: 0 0 auto to prevent flex shrink'
+
+    def test_sample_sidebar_list_is_flex_column(self):
+        c = read_index()
+        m = re.search(r'\.sample-sidebar-list\s*\{([^}]+)\}', c)
+        assert m, '.sample-sidebar-list CSS rule must exist'
+        props = m.group(1)
+        assert re.search(r'display:\s*flex', props), \
+            '.sample-sidebar-list must have display: flex'
+        assert re.search(r'flex-direction:\s*column', props), \
+            '.sample-sidebar-list must have flex-direction: column'
+        assert re.search(r'overflow-y:\s*auto', props), \
+            '.sample-sidebar-list must have overflow-y: auto'
+
+    def test_sample_detail_panel_still_has_overflow_hidden(self):
+        c = read_index()
+        m = re.search(r'\.sample-detail-panel\s*\{([^}]+)\}', c)
+        assert m, '.sample-detail-panel CSS rule must exist'
+        props = m.group(1)
+        assert 'overflow:' in props, \
+            '.sample-detail-panel must keep overflow property'
+        assert 'hidden' in props, \
+            '.sample-detail-panel must keep overflow: hidden'
+
+    def test_no_more_menu_css(self):
+        c = read_index()
+        assert '.sample-more-menu' not in c, \
+            'no .sample-more-menu CSS should exist'
+        assert '.sample-btn-more' not in c, \
+            'no .sample-btn-more CSS should exist'
 
