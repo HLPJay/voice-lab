@@ -14,8 +14,8 @@
 * P13-CREATION-B1：sample_store.js 前端样本存储模块实现已完成 ✅
 * P13-CREATION-B1-CHECK-FIX：sample_store 契约修正已完成 ✅
 * P13-CREATION-B1-CHECK-FIX2：sample_store 测试覆盖补强已完成 ✅
-* P13-CREATION-B2：workspace 生成结果接入 sample_store 已实现，待 B2-CHECK 复核
-* 当前下一阶段：P13-CREATION-B2-CHECK workspace sample_store 接入复核
+* P13-CREATION-B2：workspace 生成结果接入 sample_store 已复核通过 ✅
+* 当前下一阶段：P13-CREATION-B2-CLOSE workspace sample_store 接入状态收口
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -5792,3 +5792,38 @@ B2-CHECK-FIX 复核后发现 variants 调用已传入 `extra.model`，但 `safeP
 ### 阶段状态
 
 B2-CHECK-FIX2 完成，进入 B2-CHECK。
+
+## P13-CREATION-B2-CHECK：workspace sample_store 接入复核
+
+### 背景
+
+B2 已完成 workspace sync / async / stream / variants 成功结果接入 sample_store，并经过 B2-CHECK-FIX 与 B2-CHECK-FIX2 修正。B2-CHECK 对实现进行全面复核。
+
+### 复核内容
+
+- **sample_store.js 加载顺序**：`index.html` 中 `<script src="/static/js/sample_store.js">` 在主 inline script 之前（行 1636），确保 `window.SampleStore` 可用 ✅
+- **workspace context 统一保存**：`handleGenerate()` 在所有模式分支（sync/variants/async/stream）之前统一调用 `buildWorkspaceSampleContext(...)` 保存上下文；async 模式在收到响应后仅更新 `job_id` ✅
+- **safePushWorkspaceSample fail-safe**：try/catch 包裹；`window.SampleStore` 不存在时 return null；`assetId` 不存在时 return null；catch 中只 console.warn 不 throw；return SampleStore.pushSample() ✅
+- **四个接入点**：
+  - `workspace_sync`：renderResults sync success 分支，`audio && audio.id` 时调用 ✅
+  - `workspace_variant`：renderResults variants 遍历，`v.audio_asset_id` 存在时调用 ✅
+  - `workspace_async`：renderAsyncResult success 分支，`audio && audio.id` 时调用 ✅
+  - `workspace_stream`：renderStreamResult，`asset && asset.id` 时调用 ✅
+- **字段来源正确**：
+  - `model: extra.model || data?.model || ctx.model` ✅
+  - `duration_ms: extra.duration_ms || audio_asset.duration_ms || ... || total_duration_ms` ✅
+  - `download_url: buildAssetDownloadUrl(assetId)`（使用 encodeURIComponent）✅
+- **stream blob 安全**：blobUrl 仅用于当前播放器和浏览器缓存下载；`safePushWorkspaceSample` 不接收 blobUrl；无 server asset 时不写入 sample ✅
+- **variants model 传递**：`extra.model` 优先，`v.model || data.model || null` 通过 extra 参数传入 ✅
+- **边界确认**：未接入 audition / batch / history / sidebar UI；未修改后端 API / 数据库结构 / sample_store.js ✅
+
+### 测试结果
+
+- `tests/test_sample_store_static.py`：25 项全部通过 ✅
+- `tests/test_sample_store_workspace_integration_static.py`：36 项全部通过 ✅
+
+结果：61 passed。
+
+### 阶段结论
+
+P13-CREATION-B2 复核通过，可以进入 B2-CLOSE。下一步只做状态收口，不进入 B3 实现。
