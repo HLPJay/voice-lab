@@ -286,9 +286,35 @@ function formatDurationMs(ms) {
 
 ---
 
-## 8. 下一步
+## 8. FIX6-A0 关联：导入验证试听仍缺时长
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- FIX5-B2 前端已支持展示导入音频 `duration_ms`
+- 真实使用时"导入已有克隆音色"验证试听成功后，audio 控件仍显示 `0:00 / 0:00`
+- 页面没有出现"导入试听 · 时长 x.xs"
+
+**FIX5-B2 正确实现的部分：**
+- `voice_import.js` 显示 `data.audio_asset.duration_ms` 时长标签
+- `handleGenerateAudition` push 保存 `durationMs`
+
+**根因定位：**
+- FIX6-A0 审查确认：链路各节点（ProviderRenderResult、AssetService、AudioAsset、AudioAssetResponse）都正确传递 duration_ms
+- 问题在于 `output_format="hex"` 时 MiniMax 返回的 `audio_length` 可能为 0 或 null
+- `estimate_duration_ms()` fallback 使用字符估算，但用户看到的是 0:00 而非估算值
+- 真正原因可能是 MiniMax 对 hex 格式不返回 audio_length，或返回 0
+
+**后续方向：**
+- FIX6-B1：在 `AssetService.save_assets()` 中使用 `pydub` 从本地音频文件解析真实时长作为 fallback
+- 详细审查报告：`docs/P12_AUDIO_DURATION_PERSISTENCE_AUDIT.md`
+
+---
+
+## 9. 下一步
 
 | 任务 | 内容 | 前提 |
 |---|---|---|
 | FIX5-B1 | 扩展 audioPlayerHtml + 批量结果展示 total_duration_ms | FIX5-A0 完成 |
 | FIX5-B2 | 克隆/设计/导入/audition_records 时长统一 | FIX5-B1 完成 |
+| FIX6-B1 | fix audio asset duration persistence（使用 pydub 解析本地文件时长 fallback） | FIX6-A0 完成 |

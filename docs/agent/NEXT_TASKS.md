@@ -41,12 +41,13 @@
 - P12-USAGE-FIX5-B2：normalize advanced audio duration display ✅
 - P12-USAGE-UX5：clarify sentence segmentation copy ✅
 - P12-USAGE-UX5-FIX：repair HTML attribute quotes ✅
+- P12-USAGE-FIX6-A0：audit audio asset duration persistence ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE-FIX6-A0 | audit audio asset duration persistence | P12 完成 |
+| P12-USAGE-FIX6-B1 | fix audio asset duration persistence（pydub fallback） | FIX6-A0 完成 |
 | P12-USAGE-CHECK | close real usage polish | 用户反馈 |
 | P13-CREATION-A0 | design sample observation sidebar | P10 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
