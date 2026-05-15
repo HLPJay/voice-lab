@@ -17,6 +17,7 @@
 - P10-PRODUCT-B3-longtext：Batch longtext tab 绑定音色提示实现 ✅
 - P10-PRODUCT-B3-script：Batch script tab 每行动态绑定音色提示实现 ✅
 - P10-PRODUCT-B4：简化 onboarding 文案 ✅
+- P10-PRODUCT-B5：Advanced tab 重命名为音色工具 ✅
 
 ## P10-PRODUCT-B2 实现总结
 
@@ -33,7 +34,7 @@
 
 ## Next
 
-1. **P10-PRODUCT-B5** — Advanced tab 重命名
+1. **P10-PRODUCT-B6** — 历史最近任务快捷入口
 
 **实现内容：**
 - 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区 `#workspaceVoiceBindingHint`
