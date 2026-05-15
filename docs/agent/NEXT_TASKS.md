@@ -43,12 +43,12 @@
 - P12-USAGE-UX5-FIX：repair HTML attribute quotes ✅
 - P12-USAGE-FIX6-A0：audit audio asset duration persistence ✅
 - P12-USAGE-FIX6-B1：add audio duration fallback (pydub) ✅
+- P12-USAGE-CHECK：close real usage polish ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE-CHECK | close real usage polish | 用户反馈 |
 | P13-CREATION-A0 | design sample observation sidebar | P10 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
