@@ -805,3 +805,44 @@ B3 可行，方案已在上节确定。Batch tab 只在 profile select 附近增
 ### E2E 输出
 
 - `tests/e2e/test_frontend_capabilities.py` — 新增 Test 28
+
+---
+
+## P10-PRODUCT-B3-script：Batch script tab 每行动态绑定音色提示实现
+
+**执行时间：** 2026-05-15
+
+### 实现内容
+
+**新增 DOM：** `#scriptVoiceHint_${id}`（位于每行 profile select 右侧）
+
+**新增函数：** `updateScriptLineVoiceHint(id)`
+- 读取 `#scriptProfile_${id}.value` 和 `#batchScriptProvider.value`
+- 从 `window._voiceBindMap` 查找当前 profile 在当前 provider 下是否有 available binding
+- 有绑定：显示"当前音色：voice_id (model)"
+- 无绑定：显示"尚未绑定" + "去选择音色"按钮
+
+**改动位置：**
+- `addScriptLine()` — 每行新增 `#scriptVoiceHint_${id}` span，创建后调用 `updateScriptLineVoiceHint(id)`
+- `updateScriptLineVoiceHint()` — 新增函数
+- script tab 切换回调 — `_scriptRows.forEach(r => updateScriptLineVoiceHint(r.id))`
+- script line profile change 事件委托 — 调用 `updateScriptLineVoiceHint(id)`
+- `batchScriptProvider` change — 更新所有 `_scriptRows` 的 hint
+
+**验收结果：**
+
+| 验收项 | 结果 |
+|---|---|
+| script tab 每行 profile select 旁显示绑定 voice 状态 | ✅ |
+| 无绑定时显示"尚未绑定" + "去选择音色"按钮 | ✅ |
+| "去选择音色"按钮切换到 voices tab | ✅ |
+| batch 提交行为不变 | ✅ |
+
+### E2E
+
+- `test_batch_script_line_voice_binding_hint_switches_to_voices` — mock profiles/bindings/capabilities，验证 script tab 首行显示"尚未绑定"，点击"去选择音色"切换到 voices tab
+- **结果：29 passed**
+
+### E2E 输出
+
+- `tests/e2e/test_frontend_capabilities.py` — 新增 Test 29

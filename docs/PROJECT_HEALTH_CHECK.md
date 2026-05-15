@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P10-PRODUCT-B3-longtext：
+截至 P10-PRODUCT-B3-script：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台

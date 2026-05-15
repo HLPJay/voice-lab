@@ -1635,3 +1635,77 @@ def test_batch_longtext_voice_binding_hint_switches_to_voices(
     active_tab = page.locator(".tab-btn.active")
     active_tab_name = active_tab.get_attribute("data-tab")
     assert active_tab_name == "voices", f"Active tab should be 'voices' after clicking '去选择音色', got: {active_tab_name}"
+
+
+# ── Test 29: Batch script line voice binding hint switches to voices tab ─────────
+
+def test_batch_script_line_voice_binding_hint_switches_to_voices(
+    page, e2e_base_url, console_errors
+):
+    """Verify script tab each line shows voice binding hint and '去选择音色' button switches to voices tab."""
+
+    # Mock profiles
+    def handle_profiles(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([
+                {"id": "e2e_profile_001", "name": "E2E 测试人设"}
+            ]),
+        )
+
+    # Mock capabilities
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "t2a": {"supported": True}
+                }]
+            }),
+        )
+
+    # Mock bindings for the profile (no voice bound — "尚未绑定" case)
+    def handle_bindings(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([]),
+        )
+
+    page.route("**/api/voice/profiles", handle_profiles)
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/profiles/e2e_profile_001/bindings.*"), handle_bindings)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Switch to script tab
+    script_tab = page.locator(".tab-btn[data-tab='script']")
+    script_tab.click()
+    page.wait_for_selector("#tab-script", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # Script tab has 3 default lines (initialized by addScriptLine() calls)
+    # First line should have a hint span
+    first_hint = page.locator("#scriptVoiceHint_0")
+    assert first_hint.count() == 1, "scriptVoiceHint_0 should exist"
+
+    # Hint should show "尚未绑定" (no binding in _voiceBindMap)
+    hint_html = first_hint.inner_html()
+    assert "尚未绑定" in hint_html, f"Hint should show '尚未绑定', got: {hint_html}"
+
+    # Verify "去选择音色" button exists in the hint
+    btn = first_hint.locator("button")
+    assert btn.count() == 1, "去选择音色 button should exist in hint"
+
+    # Click the "去选择音色" button
+    btn.click()
+    page.wait_for_timeout(500)
+
+    # Verify voices tab is now active
+    active_tab = page.locator(".tab-btn.active")
+    active_tab_name = active_tab.get_attribute("data-tab")
+    assert active_tab_name == "voices", f"Active tab should be 'voices' after clicking '去选择音色', got: {active_tab_name}"

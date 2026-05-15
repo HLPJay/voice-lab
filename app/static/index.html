@@ -1644,7 +1644,10 @@
         });
       }
       if (tab === 'script') {
-        loadProfiles(true).then(() => populateProfileSelect(document.getElementById('batchProfile')));
+        loadProfiles(true).then(() => {
+          populateProfileSelect(document.getElementById('batchProfile'));
+          _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
+        });
       }
       if (tab === 'history') {
         const area = document.getElementById('historyArea');
@@ -1969,6 +1972,31 @@
     }
   }
 
+  // B3-script: per-line voice binding hint for script tab
+  function updateScriptLineVoiceHint(id) {
+    const profileId = document.getElementById(`scriptProfile_${id}`)?.value;
+    const provider = document.getElementById('batchScriptProvider')?.value;
+    const hintEl = document.getElementById(`scriptVoiceHint_${id}`);
+    if (!hintEl) return;
+    if (!profileId) { hintEl.style.display = 'none'; return; }
+    hintEl.style.display = '';
+    const bindMap = window._voiceBindMap || {};
+    let foundVoiceId = null, foundModel = null;
+    for (const voiceId in bindMap) {
+      const match = (bindMap[voiceId] || []).find(b => b.profile_id === profileId && b.provider === provider && b.status === 'available');
+      if (match) { foundVoiceId = voiceId; foundModel = match.model || null; break; }
+    }
+    if (foundVoiceId) {
+      hintEl.innerHTML = `<span style="color:#2f855a">当前音色：${esc(foundVoiceId)}${foundModel ? ' (' + esc(foundModel) + ')' : ''}</span>`;
+    } else {
+      hintEl.innerHTML = `<span style="color:#c53030">尚未绑定</span> <button type="button" class="scriptVoiceSwitchBtn" data-line-id="${id}" style="font-size:0.7rem;padding:1px 5px;cursor:pointer;margin-left:2px">去选择音色</button>`;
+      hintEl.querySelector('.scriptVoiceSwitchBtn')?.addEventListener('click', function() {
+        var voicesBtn = document.querySelector('.tab-btn[data-tab="voices"]');
+        if (voicesBtn) voicesBtn.click();
+      });
+    }
+  }
+
   loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
 
   // T2A Tab: also load binding status when provider changes
@@ -1978,6 +2006,11 @@
   // Batch longtext tab: update voice binding hint on profile/provider change
   document.getElementById('batchProfile')?.addEventListener('change', updateBatchVoiceBindingHint);
   document.getElementById('batchProvider')?.addEventListener('change', updateBatchVoiceBindingHint);
+
+  // B3-script: update script line voice hint on provider change
+  document.getElementById('batchScriptProvider')?.addEventListener('change', () => {
+    _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
+  });
 
   // P8-5: localStorage recent job helpers
   const RECENT_JOB_STORAGE_KEY = 'voice_lab_recent_job_v1';
@@ -4234,6 +4267,7 @@ function handleStopAsyncPolling() {
       <select id="scriptProfile_${id}" style="width:120px;padding:6px;border:1px solid #e2e8f0;border-radius:6px" data-field="profile">
         <option value="">选择人设</option>
       </select>
+      <span id="scriptVoiceHint_${id}" style="font-size:0.75rem;margin-left:4px;display:none"></span>
       <button class="btn-sm script-remove-btn" data-line-id="${id}" style="padding:6px 10px;color:#e53e3e">删除</button>
     `;
     container.appendChild(row);
@@ -4246,6 +4280,8 @@ function handleStopAsyncPolling() {
     } else {
       loadProfiles().then(() => populateProfileSelect(sel, profileId));
     }
+    // Update voice binding hint for this line after profile is set
+    updateScriptLineVoiceHint(id);
   }
 
   function removeScriptLine(id) {
@@ -4277,6 +4313,7 @@ function handleStopAsyncPolling() {
     if (field === 'profile') {
       const state = _scriptRows.find(r => r.id === id);
       if (state) state.profileId = e.target.value;
+      updateScriptLineVoiceHint(id);
     }
   });
   // Event delegation for script remove buttons
