@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**待选择：P14-CONTEXT-B0 / P14-PRODUCT-B0**
+**待选择：P14-LONGTEXT-UX-B0 / P14-CONTEXT-B0**
 
 ## 已完成（续）
 
@@ -17,6 +17,7 @@
 - P13-FINAL-CHECK：P13 最近样本系统最终验收 ✅
 - P13-CLOSE：P13 最近样本系统阶段收口归档 ✅
 - P14-PRODUCT-A0：样本复用与配置恢复产品方案审查 ✅
+- P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充 ✅
 
 ## 已完成
 
@@ -85,9 +86,11 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-B0 | design ContextStore for recoverable creation context | P14-A0 完成 |
-| P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-A0 完成 |
-| P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-A0 完成 |
+| P14-LONGTEXT-UX-B0 | design longtext count / cost / segmentation hints | P14-A0-FIX1 完成 |
+| P14-LONGTEXT-UX-B1 | implement longtext count / segment estimate / strategy helper | P14-LONGTEXT-UX-B0 完成 |
+| P14-CONTEXT-B0 | design ContextStore for recoverable creation context | P14-A0-FIX1 完成 |
+| P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-A0-FIX1 完成 |
+| P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-A0-FIX1 完成 |
 | P14-CONTEXT-B1 | longtext context save and restore design | P14-CONTEXT-B0 完成 |
 | P14-CONTEXT-B2 | script context save and restore design | P14-CONTEXT-B0 完成 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |

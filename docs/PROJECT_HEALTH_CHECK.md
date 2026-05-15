@@ -38,7 +38,8 @@
 * P13-CLOSE：P13 最近样本系统阶段收口归档已完成 ✅
 * 当前状态：P13 最近样本系统已归档
 * P14-PRODUCT-A0：样本复用与配置恢复产品方案审查已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B0 / P14-PRODUCT-B0 待选择
+* P14-PRODUCT-A0-FIX1：长文本生产入口可用性方向补充已完成 ✅
+* 当前下一阶段：P14-LONGTEXT-UX-B0 / P14-CONTEXT-B0 待选择
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7105,12 +7106,45 @@ P14-A0 不做：
 
 | 阶段 | 内容 | 优先级 |
 |------|------|--------|
-| P14-CONTEXT-B0 | ContextStore 数据结构设计 | 优先级 1 |
-| P14-PRODUCT-B1 | 侧边栏预览与详情弹层设计 | 优先级 2 |
-| P14-CONTEXT-B1 | 长文本 context 保存与回填 | 优先级 3 |
-| P14-CONTEXT-B2 | 剧本 context 保存与回填 | 优先级 4 |
-| P14-PRODUCT-B0 | 全局 SampleSidebar 可见性方案设计 | 优先级 5 |
+| P14-LONGTEXT-UX-B0 | 长文本字数 / 消耗 / 分段策略提示方案设计 | 优先级 1 |
+| P14-CONTEXT-B0 | ContextStore 数据结构设计 | 优先级 2 |
+| P14-PRODUCT-B1 | 侧边栏预览与详情弹层设计 | 优先级 3 |
+| P14-CONTEXT-B1 | 长文本 context 保存与回填 | 优先级 4 |
+| P14-CONTEXT-B2 | 剧本 context 保存与回填 | 优先级 5 |
+| P14-PRODUCT-B0 | 全局 SampleSidebar 可见性方案设计 | 优先级 6 |
 
 ### 阶段状态
 
 P14-PRODUCT-A0 完成。
+
+## P14-PRODUCT-A0-FIX1：补充长文本生产入口可用性方向
+
+### 背景
+
+P14-PRODUCT-A0 已明确长文本和剧本是主生产入口，并将 SampleSidebar 从观察面板升级为样本复用入口。继续产品复核发现，长文本页面本身还存在基础可用性问题：缺少字数提示、消耗/分段预估，以及分段策略解释。
+
+### 补充结论
+
+- 长文本输入区应显示当前字数 / 50000 字
+- 长文本提交前应显示预计消耗字数
+- 长文本提交前应显示预计分段数量
+- 分段策略需要动态 helper text
+- "自动"策略应明确为"自动合并短段落"，不是每个自然段单独生成
+- 该问题属于主生产路径可用性问题，不是普通 UI polish
+- 长文本生产入口可用性优先于 ContextStore 实现
+
+### 后续建议
+
+| 阶段 | 内容 | 优先级 |
+|------|------|--------|
+| P14-LONGTEXT-UX-B0 | 长文本字数 / 消耗 / 分段策略提示方案设计 | 优先级 1 |
+| P14-LONGTEXT-UX-B1 | 实现长文本字数统计、预计分段、策略说明 | P14-LONGTEXT-UX-B0 完成 |
+| P14-CONTEXT-B0 | ContextStore 数据结构设计 | 优先级 2 |
+| P14-PRODUCT-B1 | 侧边栏预览与详情弹层设计 | 优先级 3 |
+| P14-CONTEXT-B1 | 长文本 context 保存与回填 | 优先级 4 |
+| P14-CONTEXT-B2 | 剧本 context 保存与回填 | 优先级 5 |
+| P14-PRODUCT-B0 | 全局 SampleSidebar 可见性方案设计 | 优先级 6 |
+
+### 阶段状态
+
+P14-PRODUCT-A0-FIX1 完成。
