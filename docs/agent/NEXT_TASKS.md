@@ -30,12 +30,13 @@
 - P12-USAGE-FIX3：sync batch binding hints ✅
 - P12-USAGE-FIX3B：add status to bind map entries ✅
 - P12-USAGE-UX2：redesign recent job entry ✅
+- P12-USAGE-FIX4-A0：audit audio download failures ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P12-USAGE-FIX4-A0 | 音频下载失败审查 | 用户反馈后 |
+| P12-USAGE-FIX4-B0 | 批量下载 asset_id 统一修复 | 后端配合后 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

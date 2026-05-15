@@ -144,3 +144,30 @@
 - handleGenerate、renderResults、renderAsyncResult、renderStreamResult
 - batch_longtext.js、batch_script.js
 - 后端 API、localStorage 结构
+
+## P12-USAGE-FIX4-A0：音频下载失败审查
+
+**发现时间：** 2026-05-15
+
+**问题描述：**
+- Chrome 下载记录中部分音频下载失败，提示"无法从网站上提取文件"
+- 部分 audio / subtitle / stream_audio 下载成功
+
+**审查结论：**
+
+| 风险等级 | 路径 | 问题 |
+|---|---|---|
+| **高** | `renderBatchResultPlayer` 批量音频下载 | `data.merged_audio.url` 直接作为 href，未使用 asset API |
+| 中 | 流式 blob URL | 刷新页面后失效（已知限制） |
+| 中 | asset_id 字段提取 | 三种字段名混用，需统一 |
+| 低 | 单条/异步生成下载 | 正确使用 asset API ✅ |
+| 低 | 字幕下载 | 正确使用 asset API ✅ |
+| 低 | recent job 恢复 | 正确使用 asset API ✅ |
+
+**后续 FIX4 修复方向：**
+- 批量合并完成后应创建 voice_asset 记录并返回 asset_id
+- 前端 `renderBatchResultPlayer` 中优先使用 `/api/voice/assets/${asset_id}/download`
+- 如果 `merged_audio` 只有 url 而无 asset_id，保持现状（后端问题）
+
+**审查输出：**
+- `docs/P12_DOWNLOAD_AUDIT.md`：完整审查报告
