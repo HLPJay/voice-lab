@@ -12,17 +12,16 @@
 - P9-FE1-H1：import clone mock success E2E
 - P9-FE1-H2：voice_import.js 抽离
 - P9-FE1-I0：voice_design.js 边界审查（可迁移）
+- P9-FE1-I1：voice_design.js 抽离
 
 ## Next（按优先级）
 
-1. **P9-FE1-I1** — voice_design.js 抽离
-   - 仅迁移 `handleDesignVoice`
-   - 参照 voice_import.js 模式
-   - I0 结论：可独立迁移，无循环依赖
-
-2. **P9-FE1-CHECK** — voice advanced stage 收口
-   - 确认 voice_clone + voice_import + voice_design 三模块边界清晰
-   - 确认无遗漏依赖
+1. **P9-FE1-CHECK** — voice advanced stage 收口 ✅ 已完成
+   - voice_clone + voice_import + voice_design 三模块边界清晰
+   - script 加载顺序正确：voice_clone.js → voice_import.js → voice_design.js → inline script
+   - index.html 无同名函数声明覆盖，无空函数 stub
+   - onclick 入口可用
+   - E2E 25 passed
 
 ## Paused / Do not touch yet
 

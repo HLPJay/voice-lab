@@ -1085,3 +1085,13 @@ inline script             ← index.html 第 1593 行开始
 - I1 允许修改范围：仅迁移 `handleDesignVoice`，不动其他任何函数
 
 **下一步 P9-FE1-I1：** voice_design.js 抽离（仅迁移 `handleDesignVoice`，参照 voice_import.js 模式）
+
+**P9-FE1-I1 已完成 ✅：** 创建 `app/static/js/voice_design.js`，IIFE 包装，`window.handleDesignVoice` 导出；G3 helpers 使用 `window.*` 调用；shared helpers 直接使用；script 标签位于 voice_import.js 之后；index.html 添加 Migration comment；E2E `test_voice_design_mock_submit_success` 验证成功链路。
+
+**P9-FE1-CHECK 已完成 ✅：** voice advanced stage 收口检查通过。
+
+- script 加载顺序正确：voice_clone.js → voice_import.js → voice_design.js → inline script
+- index.html 无同名函数声明覆盖，无空函数 stub
+- onclick 入口可用：`onclick="handleDesignVoice()"` 等
+- E2E 25 passed
+- 已更新文档：NEXT_TASKS.md、FRONTEND_MODULE_MAP.md、P9_FRONTEND_MODULARIZATION.md（本文档）、PROJECT_HEALTH_CHECK.md

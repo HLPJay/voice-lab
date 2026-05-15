@@ -64,29 +64,14 @@
 - **依赖 helper**：`window.loadProfiles`, `window.populateProfileSelect`, `window.renderInlineCreateProfile`, `window.bindVoiceToProfile`, `window.refreshVoiceBindStatus`, `window.handleListVoices`, `guardedJsonFetch`, `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `esc`, `renderValidationError`
 - **对应 E2E**：`test_voice_import_module_is_loaded_and_exports_available`, `test_voice_import_clone_mock_success`
 
-## 下一候选模块
-
-### voice_design.js（I0 审查完成，可迁移）
+### voice_design.js
 - **职责**：声音设计入口 / 提交 / 快速试听 / 快速绑定
-- **window exports**：`window.handleDesignVoice`
-- **依赖 helper**：
-  - `window.isValidVoiceId`（voice_id 格式校验）
-  - `window.hexToBlobUrl`（hex 音频解析）
-  - `window.handleListVoices`
-  - `window.populateProfileSelect`
-  - `window.renderInlineCreateProfile`
-  - `window.bindVoiceToProfile`
-  - `window.refreshVoiceBindStatus`
-  - shared helpers: `guardedJsonFetch`, `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `esc`, `renderApiError`, `renderValidationError`
-- **DOM prefix**：`design*`（designProvider / designVoiceId / designPrompt / designPreviewText / designResult / designBtn）
-- **动态创建的 DOM ids**：`designProfileWrap`, `designBindProfile`, `designBindModel`, `designBindBtn`, `designBindResult`, `designQuickText`, `designQuickBtn`, `designQuickResult`
-- **API**：`POST /api/voice/design/create?provider={provider}`，payload `{ prompt, preview_text, confirm_cost, voice_id? }`
+- **window exports**：`handleDesignVoice`
+- **依赖 helper**：`window.isValidVoiceId`, `window.hexToBlobUrl`, `window.handleListVoices`, `window.populateProfileSelect`, `window.renderInlineCreateProfile`, `window.bindVoiceToProfile`, `window.refreshVoiceBindStatus`, `guardedJsonFetch`, `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `esc`, `renderApiError`, `renderValidationError`
+- **DOM prefix**：`design*`
+- **API**：`POST /api/voice/design/create?provider={provider}`
 - **highRisk**：是（`guardedJsonFetch(..., { highRisk: true })`），`provider=mock` 绕过 confirm
-- **quick preview**：`fetch('/api/voice/render', ...)` 不用 `guardedJsonFetch`，无 highRisk confirm
-- **response 字段**：`voice_id`, `message`, `trial_audio_hex`, `trial_audio_url`
-- **对应 E2E**：`test_voice_design_mock_submit_success`（已有成功链路）
-- **I1 迁移允许范围**：仅迁移 `handleDesignVoice`，不动 `handleDesignVoice` 以外的任何函数
-- **I1 必须测试**：voice design E2E（已有 `test_voice_design_mock_submit_success`）
+- **对应 E2E**：`test_voice_design_mock_submit_success`
 
 ## 严禁迁移（当前不宜动）
 

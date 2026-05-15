@@ -4666,3 +4666,69 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 25 pas
 - `handleDesignVoice` 以外的任何函数
 - `handleListVoices`（留在 index.html，由 `handleDesignVoice` 调用）
 - `handleCloneVoice` / `handleImportRemoteVoice` / `handleDesignVoice` 以外的任何 voice 相关函数
+
+## P9-FE1-I1：voice_design.js 抽离
+
+**完成时间：** 2026-05-15
+
+**实现：**
+- 创建 `app/static/js/voice_design.js`，IIFE 包装
+- `window.handleDesignVoice` 导出
+- G3 helpers 使用 `window.*` 调用
+- shared helpers 直接使用
+- script 标签位于 `voice_import.js` 之后
+- index.html 添加 Migration comment
+- E2E `test_voice_design_mock_submit_success` 验证成功链路
+
+**E2E 覆盖：**
+- `test_voice_design_mock_submit_success`（已有）
+- 25 E2E passed
+
+## P9-FE1-CHECK：voice advanced stage 收口
+
+**检查时间：** 2026-05-15
+
+**检查结果：全部通过 ✅**
+
+### 模块边界检查
+
+| 模块 | 文件 | window exports | 状态 |
+|---|---|---|---|
+| voice_clone.js | `app/static/js/voice_clone.js` | `handleUploadAudio`, `handleCloneAutoId`, `updateCloneBtnState`, `handleCloneVoice` | ✅ |
+| voice_import.js | `app/static/js/voice_import.js` | `handleImportRemoteVoice` | ✅ |
+| voice_design.js | `app/static/js/voice_design.js` | `handleDesignVoice` | ✅ |
+
+### index.html 残留检查
+
+- **同名函数声明覆盖**：无 ✅
+- **空函数 stub**：无 ✅
+- **Migration comment**：仅注释，无可执行代码 ✅
+
+### script 加载顺序检查
+
+```
+voice_clone.js   → 第 1593 行
+voice_import.js  → 第 1594 行
+voice_design.js  → 第 1595 行
+inline script    → 第 1596 行起
+```
+顺序正确 ✅
+
+### onclick 入口检查
+
+- `onclick="handleCloneVoice()"` ✅
+- `onclick="handleImportRemoteVoice('clone')"` ✅
+- `onclick="handleImportRemoteVoice('design')"` ✅
+- `onclick="handleDesignVoice()"` ✅
+
+### E2E 覆盖
+
+- targeted（clone/import/design）：6 passed
+- full suite：25 passed ✅
+
+### 文档更新
+
+- `docs/agent/NEXT_TASKS.md` — 标记 I1 已完成，CHECK 已完成 ✅
+- `docs/agent/FRONTEND_MODULE_MAP.md` — voice_design.js 移入已抽离模块 ✅
+- `docs/P9_FRONTEND_MODULARIZATION.md` — 添加 I1 和 CHECK 记录 ✅
+- `docs/PROJECT_HEALTH_CHECK.md` — 添加 I1 和 CHECK 记录（本文档）✅
