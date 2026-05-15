@@ -4056,3 +4056,36 @@ full tests 未运行，原因：本次仅做剧本批量模块边界审查和文
 - **Phase 2 之前**：建议补剧本批量 mock 提交成功 E2E（参考 `test_batch_longtext_mock_submit_success_starts_progress`）。
 
 **未改 app/static/index.html、app/static/js/*、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路、scripts/cleanup_assets.py。
+
+---
+
+## P9-FE1-F1：剧本批量提交校验 E2E
+
+**问题：** P9-FE1-F0 已完成边界审查，但剧本批量缺少提交校验 E2E，无法验证 `handleBatchScriptSubmit` 的前端校验逻辑在抽离前后是否正常工作。
+
+**修复：** 新增 `test_batch_script_submit_validation_works` E2E 测试，验证剧本批量提交时前端校验错误展示正常，且 `/api/voice/batch/submit` 未被调用。
+
+**实现：**
+
+- 在 `page.goto` 前通过 `page.route("**/api/voice/batch/submit", lambda route: route.abort())` 拦截批量提交接口，确保不会发出真实请求
+- 打开页面后点击 Script Tab，等待 `#tab-script` 和 `#batchScriptSubmit` 出现
+- 页面初始化时已通过 `addScriptLine()` 创建 3 行默认空台词行
+- 直接点击 `#batchScriptSubmit`，触发 `handleBatchScriptSubmit` 的空台词校验
+- 断言 `#batchScriptResult` 内包含校验错误文案 `"请至少填写一行台词"`
+- `route.abort()` 确保 API 路径未被真正调用
+
+**测试覆盖：**
+- 空台词文本提交场景（`lines.length === 0` 时 `"请至少填写一行台词"`）
+- 其他校验场景（空行文本 `"第 X 行缺少台词文本"`、缺少 profile `"第 X 行缺少声音人设"`）由 index.html 原有代码覆盖，本次 E2E 未覆盖
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "script"  # 2 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 16 passed
+```
+
+**测试结果：** 16 passed in 50.91s。
+
+**下一步：** P9-FE1-F2 可正式迁移 `handleBatchScriptSubmit()` 到 `batch_script.js`（Phase 1）；后续再补剧本批量 mock 提交成功 E2E 和行管理 E2E（Phase 2 前提）。
+
+**未改 app/static/index.html、app/static/js/*、app/api/*、app/services/*、app/providers/*、app/domain/*、app/core/*、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。

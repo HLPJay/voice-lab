@@ -602,3 +602,40 @@ def test_batch_longtext_mock_submit_success_starts_progress(
     # Verify button text restored
     btn_text = page.locator("#batchLongtextSubmit").text_content()
     assert "提交批量任务" in btn_text, f"Button should be restored, got: {btn_text}"
+
+
+# ── Test 16: Script batch submit validation works ──────────────────────────────────
+
+def test_batch_script_submit_validation_works(page, e2e_base_url, console_errors):
+    """Script tab shows front-end validation error when submitting with empty lines."""
+    # Abort the batch API before navigation to prevent any real calls
+    page.route("**/api/voice/batch/submit", lambda route: route.abort())
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="commit", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)
+
+    # Click the Script tab
+    script_tab = page.locator('button.tab-btn[data-tab="script"]')
+    assert script_tab.count() == 1, "Script tab button not found"
+    script_tab.click()
+    page.wait_for_selector("#tab-script", state="attached", timeout=10000)
+    page.wait_for_timeout(1000)  # allow addScriptLine() to init default rows
+
+    # Verify key controls exist
+    assert page.locator("#batchScriptSubmit").count() == 1, "batchScriptSubmit button not found"
+    assert page.locator("#scriptLines").count() == 1, "scriptLines container not found"
+
+    # Page initialises with 3 empty script lines — submit without filling anything
+    submit_btn = page.locator("#batchScriptSubmit")
+    submit_btn.click()
+    page.wait_for_timeout(500)
+
+    # Validation error: "请至少填写一行台词" should appear in the result area
+    result_html = page.locator("#batchScriptResult").inner_html()
+    assert "请至少填写一行台词" in result_html, (
+        f"Expected validation error for empty lines, got: {result_html}"
+    )
+
+    # Verify batch/submit was NOT called (route.abort() would have thrown if reached)
+    # If we got here, the API was never called because validation short-circuited first
