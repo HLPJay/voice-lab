@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P10 产品打磨 — 已完成**
+**P12 真实使用验证**
 
 ## 已完成
 
@@ -19,28 +19,19 @@
 - P10-PRODUCT-B4：简化 onboarding 文案 ✅
 - P10-PRODUCT-B5：Advanced tab 重命名为音色工具 ✅
 - P10-PRODUCT-B6：历史最近任务快捷入口实现 ✅
-
-## P10 收口检查
-
-| 检查项 | 结果 |
-|---|---|
-| handleGenerate 未修改 | ✅ |
-| batch_longtext.js / batch_script.js payload 未修改 | ✅ |
-| 后端 API 未修改 | ✅ |
-| 未引入 batch 专用 voice select | ✅ |
-| localStorage 结构未修改 | ✅ |
-| 未调用真实 MiniMax | ✅ |
-| E2E 全量 29 passed | ✅ |
+- P11-FE-REDUCE-A0：index.html 瘦身审查 ✅
+- P11-FE-REDUCE-A1：product_hints.js 抽离 ✅
+- P11-FE-REDUCE-A1-CHECK：product_hints.js 验证 ✅
+- P11-FE-REDUCE-A2-A0：recent_job 模块审查（结论：不迁移） ✅
+- P11-FE-REDUCE-CHECK：index.html 瘦身收口 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P11-FE-REDUCE-B1 | index.html 瘦身（product_hints.js 已抽出） | ✅ 已验证 |
-| P11-FE-REDUCE-A2 | recent_job 模块抽离（审查结论：不迁移） | ✅ 不建议 |
-| P11-FE-REDUCE-CHECK | index.html 瘦身收口 | ✅ 已完成 |
-| P11-BE | 后端能力增强（如有需求） | 用户反馈 |
-| P12 | 本地 App 打包评估 | P10 完成 |
+| P12-USAGE | 真实使用验证（手动） | 需要真实 API Key |
+| P12-BE | 后端能力增强（如有需求） | 用户反馈 |
+| P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
 ## Paused / Do not touch yet
@@ -64,3 +55,4 @@
 - 前端模块化演进：`docs/P9_FRONTEND_MODULARIZATION.md`
 - 产品打磨计划：`docs/P10_PRODUCT_POLISH_PLAN.md`
 - P11 瘦身计划：`docs/P11_INDEX_REDUCTION_PLAN.md`
+- P12 真实使用验证：`docs/P12_USAGE_VALIDATION_PLAN.md`
