@@ -61,7 +61,9 @@
 * P14-CONTEXT-B3：长文本一键回填已完成 ✅
 * P14-CONTEXT-B3-CHECK：长文本一键回填复核已完成 ✅
 * P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查已完成 ✅
-* 当前下一阶段：P14-CONTEXT-C1-CHECK
+* P14-CONTEXT-C1：剧本 context 保存与详情查看实现已完成 ✅
+* P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核已完成 ✅（发现阻塞问题）
+* 当前下一阶段：P14-CONTEXT-C1-FIX1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8158,6 +8160,50 @@ P14-CONTEXT-C1-A0 审查结论确认 batch_script.js 已具备接入条件，Con
 ### 阶段状态
 
 P14-CONTEXT-C1 完成。
+
+## P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核
+
+### 背景
+
+P14-CONTEXT-C1 已实现剧本 context 保存与 SampleSidebar 详情查看。本阶段对实现进行复核。
+
+### 复核结果
+
+**通过项：**
+- 确认 `batch_script.js` 在 `resp.ok` 且 `data.batch_id` 存在后调用 `ContextStore.pushContext`
+- 确认保存字段完整：`context_id`、`type='script'`、`source='batch_script_merged'`、`lines`、`provider`、`silence_between_ms`、`output_format='hex'`、`audio_format`、`need_subtitle`、`batch_id`
+- 确认 `context_id = data.batch_id` 且回填到 `_batchSampleContextById[data.batch_id]`
+- 确认写入发生在 `showBatchProgress` 和 `startBatchPoll` 之前
+- 确认 try/catch fail-safe，catch 不 throw、不显示失败、不阻塞 batch 生成
+- 确认 submit payload 未改变（mode: 'script' / script / provider / silence_between_ms / output_format: 'hex' / audio_format / need_subtitle / confirm_cost: false）
+- 确认 ContextStore / SampleStore schema 未修改
+- 确认 `renderScriptLinesDetail(context)` 存在且被 `showSampleDetail` 调用
+- 确认 script 详情展示行数、provider、audio_format、need_subtitle、silence_between_ms
+- 确认每行展示：行号、角色、台词文本、profile_id，均使用 `esc()` 转义
+- 确认 `context.type === 'script'` 不显示"恢复到长文本"按钮
+- 确认 `context.type === 'script'` 不调用 restoreLongtextContext / fillTextInput / addScriptLine / removeScriptLine
+- 确认 longtext 详情和恢复未破坏
+- 确认旧样本无 context_id 时不影响播放/下载/复制/删除
+- 确认 CSS 新增 `.sample-detail-actions`、`.sample-detail-restore-btn`、`.sample-detail-lines-wrap`、`.sample-detail-script-line` 及其子元素样式
+
+**阻塞问题（C1-FIX1）：**
+- `showSampleDetail` script 分支（lines 716-727）中，`renderScriptLinesDetail` 返回的 HTML 片段包含 `<div class="sample-detail-text-label">` 和 `<div class="sample-detail-lines-wrap">`，但这些元素被拼入未关闭的 `<div class="sample-detail-meta">` 内部。`sample-detail-meta` 的 closing `</div>` 从未出现，导致 `text-label` 和 `lines-wrap` 在语义上属于 meta div 的子元素而非其兄弟元素。
+- 对比 longtext 分支（lines 676-707）：显式在 `panel.innerHTML +=` 中放置 `</div>`（line 703）再添加 `sample-detail-text-label` 和 `sample-detail-text-wrap`。
+- script 分支缺少这一 `</div>`，且 `renderScriptLinesDetail` 返回的文本标签和行列表被放在 meta div 内部，而非作为 meta 的兄弟元素。
+- 这导致 CSS 样式可能因选择器 `.sample-detail-meta > .sample-detail-text-label` 而失效（如果后续引入这类选择器），且 HTML 结构不合规范。
+
+### 测试结果
+
+- test_sample_sidebar_static.py + test_context_store_script_integration_static.py：202 passed
+- test_sample_store_batch_integration_static.py + test_existing_function_regression_static.py：161 passed
+
+### 非阻塞观察项
+
+- C1-OBS-001：用户已反馈更多菜单收纳不方便；建议 C1-FIX1 后优先进入 P14-SIDEBAR-ACTIONS-B1-UXFIX1，再进入 C2。
+
+### 阶段状态
+
+P14-CONTEXT-C1-CHECK 发现阻塞问题（script detail panel HTML 结构），建议进入 **P14-CONTEXT-C1-FIX1**。
 
 
 

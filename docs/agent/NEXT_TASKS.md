@@ -2,11 +2,11 @@
 
 ## 当前阶段
 
-**P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复**
+**P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核 — 未通过**
 
 ## 已完成（续）
 
-- P14-SIDEBAR-ACTIONS-B1-UXFIX1：侧边栏操作按钮平铺恢复 ✅
+- P14-CONTEXT-C1-CHECK：剧本 context 保存与详情查看复核 ✅ (发现阻塞问题)
 - P14-CONTEXT-C1：剧本 context 保存与详情查看实现 ✅
 - P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查 ✅
 - P14-CONTEXT-B3-CHECK：长文本一键回填复核 ✅
@@ -110,8 +110,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-C1-CHECK | verify script context save and detail view | P14-CONTEXT-C1 完成 |
-| P14-CONTEXT-C2 | script one-click restore | P14-CONTEXT-C1-CHECK 完成 |
+| P14-CONTEXT-C1-FIX1 | 修复 script detail panel HTML 结构 | P14-CONTEXT-C1-CHECK 发现阻塞 bug |
+| P14-CONTEXT-C2 | script one-click restore | P14-CONTEXT-C1-FIX1 完成 |
 | P14-PRODUCT-B0 | design global SampleSidebar visibility | P14-CONTEXT-B1-CLOSE 完成 |
 | P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-CONTEXT-B1-CLOSE 完成 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
