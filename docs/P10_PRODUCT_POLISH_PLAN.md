@@ -312,3 +312,114 @@ P10 打磨过程如需改动 JS 逻辑，应在当前 index.html 架构内修改
 - ✅ 音色选择/试听工作站（P8-2）
 - ✅ 前端信息架构重组（P8-1）
 - ✅ 声音克隆/设计/导入模块抽离（P9-FE1）
+
+---
+
+## P10-PRODUCT-B0：Workspace 音色快捷选择区边界审查
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不改业务代码，不新增 UI，不迁移模块
+
+---
+
+### B0 审查范围
+
+- Workspace tab 当前 DOM 结构
+- profile / provider / textInput / generate button 位置关系
+- 当前选中音色状态的来源
+- B1 最小实现方案边界
+
+---
+
+### 当前 Workspace tab DOM 结构
+
+```
+tab-workspace
+├── hint card ("创作工作台" 说明)
+├── card: "文案输入" — textarea#textInput
+└── card: "配置"
+    ├── profileSelect — 人设下拉（绑定 voice 用的 profile）
+    ├── providerSelect
+    ├── audioFormat
+    ├── outputFormat
+    ├── 语音参数（speed/vol/pitch/emotion）
+    ├── 生成模式（单条/异步/流式/多版本）
+    └── needSubtitle
+```
+
+**注意：** Audition workstation（auditionSelectedBanner / auditionSelected）不在 workspace tab 内，而是渲染在 voices tab（`#voiceListResults` 内部）。
+
+---
+
+### 两个独立的音色选择系统
+
+| 系统 | 用途 | 状态变量 | 所在 tab |
+|---|---|---|---|
+| Profile binding | Workspace 生成音频 | `profileSelect.value` | workspace |
+| Voice audition | Voices tab 试听预览 | `window._auditionSelectedVoiceId` | voices |
+
+**关键发现：**
+
+- `handleGenerate`（workspace 生成）使用 `profileSelect.value`，该 profile 需先绑定 voice
+- 用户需要在 voices tab 用 `bindVoiceToProfile` 将 voice 绑定到 profile
+- Audition workstation 的 `_auditionSelectedVoiceId` 是试听系统，和 workspace 生成流程是不同的概念
+- Workspace tab 内无任何当前选中音色的视觉提示
+
+---
+
+### 当前音色绑定流程
+
+```
+workspace：选择 profile（需已有 voice 绑定）
+voices tab：选择 voice → 点击"绑定到人设" → 绑定 voice 到 profile
+workspace：选择该 profile → 生成音频
+```
+
+用户常见困惑：选了 profile 后不知道还需要绑定 voice，或者不知道去哪绑定 voice。
+
+---
+
+### B1 最小实现方案
+
+**不改：**
+- `handleGenerate` — 使用 `profileSelect.value`，无需改动
+- `bindVoiceToProfile` — 已完整可用
+- 后端 API — 无需改动
+- voice list / voice table — 不改动
+
+**只新增（workspace "配置" card 内）：**
+- 在 `profileSelect` 下方增加轻量"当前音色"提示区
+- 显示当前选中 profile 已绑定的 voice（从 `_voiceBindMap` 读取）
+- 无 voice 绑定时显示"该人设尚未绑定音色"
+- 增加"去选择音色"按钮，点击切换到 voices tab
+
+**按钮实现：**
+```javascript
+document.querySelector('.tab-btn[data-tab="voices"]').click();
+```
+不新增跨 tab 状态联动，不改 `window._auditionSelectedVoiceId`。
+
+**B1 验收标准：**
+1. workspace 的"配置"区显示当前 profile 绑定的 voice（如果有）
+2. "去选择音色"按钮切换到 voices tab
+3. `handleGenerate` 行为不变
+4. 不调用真实 MiniMax API
+
+**B1 E2E 需求：** 可选（聚焦展示，不改生成链路）
+
+---
+
+### B1 影响范围
+
+| 文件 | 改动 |
+|---|---|
+| `app/static/index.html` | 仅在 workspace "配置" card 的 `profileSelect` 下方增加提示区 HTML 和事件绑定 |
+| 后端 API | 无 |
+| E2E | 可选 |
+
+---
+
+### B0 审查结论
+
+B1 可按上述最小方案执行，不改生成链路，不改 voice list，不改后端。主要是增加 UI 引导，减少用户困惑。

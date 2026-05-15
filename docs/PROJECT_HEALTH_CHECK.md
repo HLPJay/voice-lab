@@ -4853,3 +4853,40 @@ P10 产品打磨**不依赖**前端模块化，可以独立推进。两者无依
 - `docs/P10_PRODUCT_POLISH_PLAN.md` — 新增产品打磨计划
 - `docs/agent/NEXT_TASKS.md` — 更新当前阶段为 P10
 - `docs/PROJECT_HEALTH_CHECK.md` — 更新状态摘要（本文档）
+
+## P10-PRODUCT-B0：Workspace 音色快捷选择区边界审查
+
+**审查时间：** 2026-05-15
+
+### 关键发现：两个独立的音色选择系统
+
+| 系统 | 用途 | 状态变量 | 所在 tab |
+|---|---|---|---|
+| Profile binding | Workspace 生成音频 | `profileSelect.value` | workspace |
+| Voice audition | Voices tab 试听预览 | `window._auditionSelectedVoiceId` | voices |
+
+**结论：**
+- `handleGenerate` 使用 `profileSelect.value`，workspace 生成依赖 profile 绑定 voice
+- `window._auditionSelectedVoiceId` 是试听系统，与 workspace 生成流程无关
+- workspace "配置" card 内无当前绑定 voice 的提示
+
+### B1 最小实现方案
+
+**不改：** `handleGenerate`、后端 API、voice list、`_voiceBindMap`
+
+**只做：** 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区
+
+- 显示当前 profile 绑定的 voice（从 `_voiceBindMap` 读取）
+- 无 voice 时显示"该人设尚未绑定音色"
+- "去选择音色"按钮切换到 voices tab（`document.querySelector('.tab-btn[data-tab="voices"]').click()`）
+
+### B1 验收标准
+
+1. workspace 的"配置"区显示当前 profile 绑定的 voice（如果有）
+2. "去选择音色"按钮切换到 voices tab
+3. `handleGenerate` 行为不变
+4. 不调用真实 MiniMax API
+
+### B0 审查结论
+
+B1 可按最小方案执行，不改生成链路，不改后端，只增 UI 引导。

@@ -9,24 +9,35 @@
 - P9-FE1：voice_clone.js、voice_import.js、voice_design.js 抽离 ✅
 - P9-FE2-A0：index.html 剩余逻辑边界审查 ✅
 - P10-PRODUCT-A0：产品打磨优先级审查 ✅
+- P10-PRODUCT-B0：Workspace 音色快捷选择区边界审查 ✅
 
-## P10-PRODUCT-A0 审查结论
+## P10-PRODUCT-B0 审查结论
 
-### 用户主流程问题
+### 关键发现
 
-| 问题 | 优先级 | 说明 |
-|---|---|---|
-| Workspace 音色入口不直观 | 1 | 音色选择隐藏在 audition workstation，需要跳转 |
-| Voices tab 孤立于创作流程 | 2 | 选音色后要跳转到 workspace 继续 |
-| Batch tab 音色选择需跨 tab | 3 | 长文本/剧本需要跳转选音色 |
-| 没有 first-time guidance | 4 | 新用户不知道从哪开始 |
-| Advanced tab 入口深 | 5 | clone/design/import 入口不明确 |
+**两个独立的音色选择系统：**
+- **Profile binding**：workspace 生成用 `profileSelect.value`，需先在 voices tab 绑定 voice 到 profile
+- **Voice audition**：voices tab 试听用 `window._auditionSelectedVoiceId`，是不同系统
+
+**问题本质：** workspace "配置"区无当前绑定 voice 的提示，用户不知道 profile 需要绑定 voice，也不知道去哪绑定。
+
+### B1 最小实现方案
+
+**不改：** `handleGenerate`、后端 API、voice list
+
+**只做：** 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区，显示当前 profile 绑定的 voice + "去选择音色"按钮（切换到 voices tab）
+
+详见：`docs/P10_PRODUCT_POLISH_PLAN.md` P10-PRODUCT-B0 节
+
+## Next
+
+1. **P10-PRODUCT-B1** — Workspace 音色快捷选择区（不改生成链路，只增 UI 引导）
 
 ### P10 任务排序
 
 | 优先级 | 任务 | 风险 |
 |---|---|---|
-| 1 | Workspace 音色快捷选择区 | 低 |
+| 1 | B1: Workspace 音色快捷选择区 | 低 |
 | 2 | Voices tab 快速创作联动 | 中 |
 | 3 | Batch tab 音色快速选择 | 中 |
 | 4 | 简化 onboarding 文案 | 极低 |
@@ -42,10 +53,6 @@
 - 桌面 App 打包
 
 详见：`docs/P10_PRODUCT_POLISH_PLAN.md`
-
-## Next
-
-1. **P10-PRODUCT-B1** — Workspace 音色快捷选择区（优先级 1）
 
 ## Paused / Do not touch yet
 
