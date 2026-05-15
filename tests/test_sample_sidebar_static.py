@@ -356,6 +356,44 @@ class TestRefreshButton:
         assert 'sampleSidebarRefreshBtn' in body, \
             'empty state must also include refresh button'
 
+    def test_render_binds_events_before_empty_state_return(self):
+        c = read()
+        body = func_body('render', c)
+        # ensureActionEventsBound must be called BEFORE the total===0 early return
+        ensure_idx = body.find('ensureActionEventsBound(root)')
+        empty_idx = body.find('if (total === 0)')
+        assert ensure_idx >= 0, 'render must call ensureActionEventsBound'
+        assert empty_idx >= 0, 'render must have total===0 branch'
+        assert ensure_idx < empty_idx, \
+            'ensureActionEventsBound must be called before empty state return'
+
+
+# ── ensureActionEventsBound ───────────────────────────────────────────────────
+
+class TestEnsureActionEventsBound:
+    def test_ensureActionEventsBound_exists(self):
+        c = read()
+        assert 'function ensureActionEventsBound' in c, \
+            'ensureActionEventsBound must exist'
+
+    def test_calls_bindActionEvents(self):
+        c = read()
+        body = func_body('ensureActionEventsBound', c)
+        assert 'bindActionEvents' in body, \
+            'ensureActionEventsBound must call bindActionEvents'
+
+    def test_guards_against_double_bind(self):
+        c = read()
+        body = func_body('ensureActionEventsBound', c)
+        assert '_eventsBound' in body, \
+            'ensureActionEventsBound must check _eventsBound to avoid double binding'
+
+    def test_no_new_listener_on_repeat_calls(self):
+        c = read()
+        # The function should check _eventsBound before calling bindActionEvents
+        body = func_body('ensureActionEventsBound', c)
+        assert '_eventsBound' in body and 'bindActionEvents' in body
+
 
 # ── clear confirm ─────────────────────────────────────────────────────────────
 

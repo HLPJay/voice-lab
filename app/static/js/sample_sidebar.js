@@ -218,9 +218,18 @@
 
   // ── render ─────────────────────────────────────────────────────────
 
+  function ensureActionEventsBound(root) {
+    if (!_eventsBound && root) {
+      bindActionEvents(root);
+      _eventsBound = true;
+    }
+  }
+
   function render() {
     var root = getRoot();
     if (!root) return;
+
+    ensureActionEventsBound(root);
 
     var allSamples = getSamplesSafe();
     var visibleSamples = allSamples.slice(0, MAX_VISIBLE);
@@ -255,12 +264,6 @@
     html += '</div></div>';
 
     root.innerHTML = html;
-
-    // Bind action events once (event delegation on root)
-    if (!_eventsBound) {
-      bindActionEvents(root);
-      _eventsBound = true;
-    }
   }
 
   // ── event binding (delegated) ───────────────────────────────────────

@@ -21,6 +21,7 @@
 * P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正已完成 ✅
 * P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正已完成 ✅
 * P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正已完成 ✅
+* P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正已完成 ✅
 * 当前下一阶段：P13-CREATION-B4-CHECK sample sidebar UI 复核
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
@@ -6150,3 +6151,30 @@ B4-CHECK-FIX2 修复了 attribute escape、下载按钮和 metadata 展示。继
 ### 阶段状态
 
 B4-CHECK-FIX3 完成后，进入 B4-CHECK。
+
+## P13-CREATION-B4-CHECK-FIX4：sample sidebar 空状态事件绑定修正
+
+### 背景
+
+B4-CHECK-FIX3 为空状态添加了刷新按钮，但 `render()` 在 `total === 0` 分支提前 return，导致 `bindActionEvents(root)` 从未被调用。刷新按钮点击无效。
+
+### 修正内容
+
+- 新增 `ensureActionEventsBound(root)` helper
+- `render()` 在获取 root 后立即调用，早于空状态判断
+- 空状态和非空状态都统一绑定事件，避免重复绑定
+- 删除非空路径末尾的冗余绑定调用
+- 补强静态契约测试
+
+### 阶段边界
+
+- 不改 index.html
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX4 完成后，进入 B4-CHECK。
