@@ -8053,5 +8053,66 @@ P14-CONTEXT-B3 完成。
 
 P14-CONTEXT-B3-CHECK 通过。
 
+## P14-CONTEXT-C1-A0：剧本 context 保存与详情查看前置审查
+
+### 背景
+
+P14-CONTEXT-B3 已完成长文本 context 的保存与一键回填。P14-CONTEXT-C1-A0 在此基础上审查剧本（script）context 的保存与详情查看前置条件，评估 C1 实现阶段的可行性和风险。
+
+### 当前代码事实
+
+**batch_script.js 现状：**
+- `handleBatchScriptSubmit` 在 `resp.ok` 后创建 `_batchSampleContextById[data.batch_id]`
+- 当前未调用 `ContextStore.pushContext()`
+- 提交成功后调用 `showBatchProgress` / `startBatchPoll` / `loadRuntimeStatus`
+
+**ContextStore 现状：**
+- `normalizeScriptContext` 已支持：`lines[]`、`provider`、`silence_between_ms`、`output_format`、`audio_format`、`need_subtitle`
+- `MAX_SCRIPT_LINES = 200`
+- 行级 `params` 固定为空对象（当前 script UI 无行级 params 输入，不阻塞 C1）
+
+**sample_store.js 现状：**
+- `normalizeSample` 支持 `context_id`
+- `safePushBatchSample` 已通过 `extra.context_id` 透传，无需修改
+
+**SampleSidebar 现状：**
+- `showSampleDetail` 可读取 `ContextStore.getContext(contextId)`
+- 当前无 `context.type === 'script'` 的 lines 渲染逻辑
+
+### C1 建议保存字段
+
+| 字段 | 来源 |
+|------|------|
+| `context_id` | `data.batch_id` |
+| `type` | `'script'` |
+| `source` | `'batch_script_merged'` |
+| `lines` | 当前提交的 lines |
+| `provider` | `#batchScriptProvider.value` |
+| `silence_between_ms` | `#batchScriptSilence.value` |
+| `output_format` | `'hex'`（固定） |
+| `audio_format` | `#batchScriptOutputFormat.value` |
+| `need_subtitle` | `#batchScriptNeedSubtitle.checked` |
+| `batch_id` | `data.batch_id` |
+
+### C1 建议保存位置
+
+参考 longtext B2 模式：在 `batch_script.js` 的 `resp.ok` 块中，`showBatchProgress` 调用前增加 `ContextStore.pushContext`，try/catch fail-safe。
+
+### C1 不修改范围
+
+- 不修改 batch submit payload
+- 不修改 `ContextStore` schema
+- 不修改 `SampleStore` schema
+- 不实现剧本回填（C2）
+- 不调用真实 MiniMax
+
+### A0 结论
+
+**P14-CONTEXT-C1 可以进入实现阶段。** 详细设计见 `docs/P14_CONTEXT_C1_A0_SCRIPT_CONTEXT_AUDIT.md`。
+
+### 阶段状态
+
+P14-CONTEXT-C1-A0 完成，建议进入 P14-CONTEXT-C1。
+
 
 
