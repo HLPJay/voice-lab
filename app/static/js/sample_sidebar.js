@@ -87,6 +87,22 @@
   }
 
   /**
+   * URL safety check for audio sources.
+   * Rejects: blob:, javascript:, data:
+   * Allows: /api/..., http://..., https://...
+   */
+  function isSafeAudioUrl(url) {
+    if (!url) return false;
+    var s = String(url).trim().toLowerCase();
+    if (s.indexOf('blob:') === 0) return false;
+    if (s.indexOf('javascript:') === 0) return false;
+    if (s.indexOf('data:') === 0) return false;
+    return s.indexOf('/api/') === 0 ||
+           s.indexOf('http://') === 0 ||
+           s.indexOf('https://') === 0;
+  }
+
+  /**
    * Map source tag to human-readable label. Receives raw source string.
    * Returns escaped label for display.
    */
@@ -120,8 +136,8 @@
     var profileNameRaw = sample.profile_name || sample.profile_id || '';
     var voiceNameRaw = sample.voice_name || sample.voice_id || '';
     var downloadUrl = sample.download_url || '';
-    var canPlay = downloadUrl && downloadUrl.indexOf('blob:') !== 0;
-    var canDownload = downloadUrl && downloadUrl.indexOf('blob:') !== 0;
+    var canPlay = isSafeAudioUrl(downloadUrl);
+    var canDownload = isSafeAudioUrl(downloadUrl);
 
     // Escaped display values
     var idAttr = attr(idRaw);
@@ -216,6 +232,7 @@
         '<div class="sample-sidebar-card">' +
           '<div class="sample-sidebar-header">' +
             '<span class="sample-sidebar-title">最近样本</span>' +
+            '<button class="sample-btn-refresh" id="sampleSidebarRefreshBtn" title="刷新">↻</button>' +
           '</div>' +
           '<div class="sample-sidebar-empty">暂无样本</div>' +
         '</div>';
@@ -312,7 +329,7 @@
       return;
     }
     var downloadUrl = sample.download_url;
-    if (!downloadUrl || String(downloadUrl).indexOf('blob:') === 0) {
+    if (!isSafeAudioUrl(downloadUrl)) {
       return;
     }
 

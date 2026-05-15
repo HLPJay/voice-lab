@@ -61,12 +61,13 @@
 - P13-CREATION-B4：sample_sidebar.js + index.html 容器 UI 实现 ✅
 - P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正 ✅
 - P13-CREATION-B4-CHECK-FIX2：sample sidebar UI 安全与 metadata 修正 ✅
+- P13-CREATION-B4-CHECK-FIX3：sample sidebar empty refresh 与 URL safety 修正 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-CREATION-B4-CHECK | Review B4 implementation | B4-CHECK-FIX2 完成 |
+| P13-CREATION-B4-CHECK | Review B4 implementation | B4-CHECK-FIX3 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

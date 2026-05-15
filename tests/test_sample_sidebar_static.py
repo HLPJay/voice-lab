@@ -259,15 +259,72 @@ class TestDownloadButton:
     def test_download_button_rejects_blob_url(self):
         c = read()
         body = func_body('buildCard', c)
-        # canDownload must be gated on non-blob
-        assert 'blob:' not in body or ('canDownload' in body and 'blob:' in body), \
-            'download button must not allow blob: URLs'
+        # canDownload gated by isSafeAudioUrl which rejects blob:
+        assert 'isSafeAudioUrl' in body, \
+            'download button must use isSafeAudioUrl()'
 
     def test_download_button_does_not_call_backend(self):
         c = read()
         body = func_body('buildCard', c)
         assert 'fetch(' not in body
         assert 'guardedJsonFetch' not in body
+
+
+# ── URL safety ─────────────────────────────────────────────────────────────────
+
+class TestUrlSafety:
+    def test_isSafeAudioUrl_exists(self):
+        c = read()
+        assert 'function isSafeAudioUrl' in c, \
+            'isSafeAudioUrl() must exist'
+
+    def test_isSafeAudioUrl_rejects_blob(self):
+        c = read()
+        body = func_body('isSafeAudioUrl', c)
+        assert "'blob:'" in body or '"blob:"' in body, \
+            'isSafeAudioUrl must reject blob:'
+
+    def test_isSafeAudioUrl_rejects_javascript(self):
+        c = read()
+        body = func_body('isSafeAudioUrl', c)
+        assert "'javascript:'" in body or '"javascript:"' in body, \
+            'isSafeAudioUrl must reject javascript:'
+
+    def test_isSafeAudioUrl_rejects_data(self):
+        c = read()
+        body = func_body('isSafeAudioUrl', c)
+        assert "'data:'" in body or '"data:"' in body, \
+            'isSafeAudioUrl must reject data:'
+
+    def test_isSafeAudioUrl_allows_api(self):
+        c = read()
+        body = func_body('isSafeAudioUrl', c)
+        assert "'/api/'" in body or '"/api/"' in body, \
+            'isSafeAudioUrl must allow /api/'
+
+    def test_isSafeAudioUrl_allows_http(self):
+        c = read()
+        body = func_body('isSafeAudioUrl', c)
+        assert "'http://'" in body or '"http://"' in body, \
+            'isSafeAudioUrl must allow http://'
+
+    def test_isSafeAudioUrl_allows_https(self):
+        c = read()
+        body = func_body('isSafeAudioUrl', c)
+        assert "'https://'" in body or '"https://"' in body, \
+            'isSafeAudioUrl must allow https://'
+
+    def test_buildCard_uses_isSafeAudioUrl(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'isSafeAudioUrl(downloadUrl)' in body, \
+            'buildCard must use isSafeAudioUrl for canPlay/canDownload'
+
+    def test_playSample_uses_isSafeAudioUrl(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'isSafeAudioUrl' in body, \
+            'playSample must use isSafeAudioUrl()'
 
 
 # ── outer card wrapper ────────────────────────────────────────────────────────
@@ -291,6 +348,13 @@ class TestRefreshButton:
         c = read()
         body = func_body('bindActionEvents', c)
         assert 'sampleSidebarRefreshBtn' in body
+
+    def test_empty_state_has_refresh_button(self):
+        c = read()
+        body = func_body('render', c)
+        # The total===0 empty state branch must also include the refresh button
+        assert 'sampleSidebarRefreshBtn' in body, \
+            'empty state must also include refresh button'
 
 
 # ── clear confirm ─────────────────────────────────────────────────────────────
@@ -333,10 +397,11 @@ class TestPlaySampleInCard:
         body = func_body('playSample', c)
         assert 'getSamplesSafe()' in body
 
-    def test_playSample_blocks_blob(self):
+    def test_playSample_blocks_unsafe_url(self):
         c = read()
         body = func_body('playSample', c)
-        assert 'blob:' in body
+        assert 'isSafeAudioUrl(downloadUrl)' in body, \
+            'playSample must use isSafeAudioUrl to block unsafe URLs'
 
     def test_playSample_renders_audio_controls(self):
         c = read()
