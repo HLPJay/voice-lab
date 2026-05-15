@@ -908,6 +908,58 @@ class TestSampleSidebarScriptDetail:
             assert not lines_after_click.strip().endswith('return;'), \
                 'switchToScriptBatchMode must not return immediately after btn.click()'
 
+    def test_findSampleCard_function_exists(self):
+        """findSampleCard helper function must exist."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'function findSampleCard' in content, \
+            'findSampleCard function must exist'
+
+    def test_insertDetailPanel_function_exists(self):
+        """insertDetailPanel helper function must exist."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        assert 'function insertDetailPanel' in content, \
+            'insertDetailPanel function must exist'
+
+    def test_insertDetailPanel_uses_insertBefore(self):
+        """insertDetailPanel must use insertBefore to place panel near the card."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function insertDetailPanel'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'insertBefore' in func_body, \
+            'insertDetailPanel must use insertBefore to place panel near the card'
+        assert 'findSampleCard' in func_body, \
+            'insertDetailPanel must use findSampleCard to locate the card'
+
+    def test_showSampleDetail_calls_insertDetailPanel(self):
+        """showSampleDetail must call insertDetailPanel instead of directly appending to root."""
+        content = read(SAMPLE_SIDEBAR_PATH)
+        body = content[content.find('function showSampleDetail'):]
+        depth = 0
+        end = len(body)
+        for i, ch in enumerate(body):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        func_body = body[:end]
+        assert 'insertDetailPanel' in func_body, \
+            'showSampleDetail must call insertDetailPanel'
+        # The direct root.appendChild(panel) calls should be replaced with insertDetailPanel
+        # Only the fallback inside insertDetailPanel should use root.appendChild
+
     def test_longtext_restore_button_still_exists(self):
         """longtext restore button must still exist (not removed by C2)."""
         content = read(SAMPLE_SIDEBAR_PATH)

@@ -2,10 +2,12 @@
 
 ## 当前阶段
 
-**P14-PRODUCT-B0：全局 SampleSidebar 可见性与过滤策略设计**
+**P14-CONTEXT-C2-FIX2：SampleSidebar 详情面板插入位置修复**
 
 ## 已完成（续）
 
+- P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置 ✅
+- P14-CONTEXT-C2-FIX2-CHECK：SampleSidebar 详情面板插入位置修复复核 ✅
 - P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口 ✅
 - P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核 ✅
 - P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板 ✅
@@ -118,7 +120,7 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-PRODUCT-B0 | design global SampleSidebar visibility and filtering | P14-CONTEXT-C2-CLOSE 完成 |
+| P14-PRODUCT-B0 | design global SampleSidebar visibility and filtering | P14-CONTEXT-C2-FIX2-CHECK 完成 |
 | P14-PRODUCT-B1 | design preview/detail behavior for long samples | P14-PRODUCT-B0 完成 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

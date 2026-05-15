@@ -788,6 +788,36 @@
     }, 0);
   }
 
+  // ── helper: find sample card element ────────────────────────────────
+
+  function findSampleCard(root, sampleId) {
+    if (!root || !sampleId) return null;
+    var cards = root.querySelectorAll ? root.querySelectorAll('.sample-card') : [];
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].getAttribute && cards[i].getAttribute('data-sample-id') === sampleId) {
+        return cards[i];
+      }
+    }
+    return null;
+  }
+
+  // ── helper: insert detail panel near the clicked card ─────────────────
+
+  function insertDetailPanel(root, sampleId, panel) {
+    var card = findSampleCard(root, sampleId);
+    if (card && card.parentNode) {
+      card.parentNode.insertBefore(panel, card.nextSibling);
+      if (typeof panel.scrollIntoView === 'function') {
+        try {
+          panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } catch (e) {}
+      }
+      return;
+    }
+    // Fallback: append to root
+    root.appendChild(panel);
+  }
+
   // ── showSampleDetail ─────────────────────────────────────────────────
 
   function showSampleDetail(sampleId) {
@@ -832,7 +862,7 @@
         '<div class="sample-detail-body">' +
           '<div class="sample-detail-empty">完整上下文不可用</div>' +
         '</div>';
-      root.appendChild(panel);
+      insertDetailPanel(root, sampleId, panel);
       var closeBtn = panel.querySelector('.sample-detail-close');
       if (closeBtn) closeBtn.addEventListener('click', function () { panel.remove(); });
       return;
@@ -924,7 +954,7 @@
         '</div>';
     }
 
-    root.appendChild(panel);
+    insertDetailPanel(root, sampleId, panel);
 
     var closeBtn = panel.querySelector('.sample-detail-close');
     if (closeBtn) closeBtn.addEventListener('click', function () { panel.remove(); });
