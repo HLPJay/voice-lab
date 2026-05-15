@@ -11,6 +11,7 @@
 - P10-PRODUCT-A0：产品打磨优先级审查 ✅
 - P10-PRODUCT-B0：Workspace 音色快捷选择区边界审查 ✅
 - P10-PRODUCT-B1：Workspace 音色快捷选择区实现 ✅
+- P10-PRODUCT-B2-A0：Voices tab 快速创作联动边界审查 ✅
 
 ## P10-PRODUCT-B1 实现总结
 
@@ -28,14 +29,15 @@
 
 ## Next
 
-1. **P10-PRODUCT-B2** — Voices tab 快速创作联动
+1. **P10-PRODUCT-B2** — Voices tab 快速创作联动实现（添加"去创作"按钮）
 
 ### P10 任务排序
 
 | 优先级 | 任务 | 状态 |
 |---|---|---|
 | 1 | B1: Workspace 音色快捷选择区 | ✅ 已完成 |
-| 2 | B2: Voices tab 快速创作联动 | 待做 |
+| 2 | B2-A0: Voices tab 快速创作联动边界审查 | ✅ 已完成 |
+| 3 | B2: Voices tab 快速创作联动实现 | 待做 |
 | 3 | B3: Batch tab 音色快速选择 | 待做 |
 | 4 | B4: 简化 onboarding 文案 | 待做 |
 | 5 | B5: Advanced tab 重命名 | 待做 |

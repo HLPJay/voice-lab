@@ -466,3 +466,92 @@ B1 可按上述最小方案执行，不改生成链路，不改 voice list，不
 ### E2E 输出
 
 - `tests/e2e/test_frontend_capabilities.py` — 新增 Test 26
+
+---
+
+## P10-PRODUCT-B2：Voices tab 快速创作联动 — 边界审查
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不改业务代码，不迁移模块
+
+---
+
+### B2 审查范围
+
+- Voices tab 现有绑定成功后的提示流程
+- `quickBindVoice` 成功消息文本（line 3894）
+- 绑定成功后用户是否需要手动切换到 workspace tab
+- B2 最小实现方案边界
+
+---
+
+### 当前绑定成功后的流程
+
+`quickBindVoice`（line 3894）绑定成功后显示：
+```
+✓ 绑定成功。现在可以回到创作工作台，选择该声音人设进行生成。
+```
+
+**问题：**
+- 只有文本提示，没有可点击的"去创作"按钮
+- 用户需要自己切换到 workspace tab
+- 引导路径断裂
+
+---
+
+### B2 最小实现方案
+
+**不改：**
+- `handleGenerate` — 不改生成链路
+- `bindVoiceToProfile` — 已完整可用
+- 后端 API — 无需改动
+- voice list / voice table — 不改动
+
+**只新增（quickBindVoice 成功消息中）：**
+- 在成功消息文本后增加"去创作"按钮
+- 点击切换到 workspace tab
+
+**实现方式：**
+```javascript
+// 成功消息中增加按钮（line 3894 附近）
+msgEl.innerHTML = `<div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:6px;padding:8px 10px;font-size:0.78rem;color:#2f855a">
+  ✓ 绑定成功。现在可以回到创作工作台，选择该声音人设进行生成。
+  <button type="button" id="quickBindGoCreateBtn" style="margin-left:8px;font-size:0.75rem;padding:2px 8px;cursor:pointer">去创作</button>
+</div>`;
+// 绑定按钮事件
+document.getElementById('quickBindGoCreateBtn').addEventListener('click', function() {
+  var wsBtn = document.querySelector('.tab-btn[data-tab="workspace"]');
+  if (wsBtn) wsBtn.click();
+});
+```
+
+**验收标准：**
+1. 绑定成功后显示"去创作"按钮
+2. 点击"去创作"切换到 workspace tab
+3. `handleGenerate` 行为不变
+4. 不调用真实 MiniMax API
+
+---
+
+### B2 影响范围
+
+| 文件 | 改动 |
+|---|---|
+| `app/static/index.html` | 仅在 quickBindVoice 成功消息内增加按钮和事件绑定 |
+| 后端 API | 无 |
+| E2E | 可选（聚焦展示，不改生成链路） |
+
+---
+
+### B0 审查结论
+
+B2 可按上述最小方案执行，不改生成链路，不改绑定逻辑。主要是将文本提示升级为可点击按钮，减少用户操作步骤。
+
+---
+
+## P10-PRODUCT-B2-A0：Voices tab 快速创作联动 — 边界审查（简化版）
+
+**审查时间：** 2026-05-15
+
+**结论：** B2 可行，方案已在上节确定。实现时仅在 quickBindVoice 成功消息中增加"去创作"按钮，点击切换到 workspace tab。
