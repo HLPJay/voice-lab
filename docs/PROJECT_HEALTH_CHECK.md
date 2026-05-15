@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P9-FE1-I0：
+截至 P9-FE2-A0：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4732,3 +4732,75 @@ inline script    → 第 1596 行起
 - `docs/agent/FRONTEND_MODULE_MAP.md` — voice_design.js 移入已抽离模块 ✅
 - `docs/P9_FRONTEND_MODULARIZATION.md` — 添加 I1 和 CHECK 记录 ✅
 - `docs/PROJECT_HEALTH_CHECK.md` — 添加 I1 和 CHECK 记录（本文档）✅
+
+## P9-FE2-A0：剩余前端边界审查
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不迁移代码，不跑 E2E
+
+### 审查范围
+
+index.html inline script 中剩余未模块化的前端逻辑（约 60 个函数）。
+
+### 审查结论
+
+**建议暂停前端模块化，转产品功能打磨。**
+
+### 候选模块评估
+
+#### voice_list.js（优先级 1，可小步抽离）
+
+**候选函数：**
+- `handleListVoices` (line 3553) — 音色列表查询
+- `loadVoices` (line 1703) — voice 加载缓存，需暴露为 `window.loadVoices`
+- `filterVoiceList` (line 3599) — 本地过滤
+- `renderVoiceTable` (line 3623) — 渲染表格
+- `handlePageSizeChange` / `handlePrevPage` / `handleNextPage` — 分页
+
+**window helpers：** `window.loadProfiles` ✅ `window.populateProfileSelect` ✅ `window.bindVoiceToProfile` ✅ `window.refreshVoiceBindStatus` ✅ `guardedJsonFetch` ✅ `esc` ✅
+
+**需先添加：** `window.loadVoices`
+
+**DOM ids：** `voiceProvider`, `voiceType`, `voiceSearch`, `listVoicesBtn`, `voiceListResults`
+
+**API：** `GET /api/voice/provider-voices?provider=...`
+
+**E2E 现状：** 无专门测试（`test_audition_records_module_and_voices_tab_open` 仅覆盖 tab 打开）
+
+**风险：** 中等（`_cachedVoices` 被 clone/design import 共用）
+
+#### audition_workstation.js（优先级 2，强耦合，不建议抽）
+
+**问题：**
+- `renderAuditionWorkstation` 强耦合 `handleGenerate` 单条生成链路
+- `handleGenerateAudition` → `handleGenerate` → `startStreamGenerate` / `startAsyncPolling`
+- 单独抽离无意义，需整体考虑
+
+#### profile_binding.js（优先级 3，依赖太广）
+
+**问题：**
+- `populateProfileSelect` 被 batch_script.js 的 `addScriptLine`、clone/design/import result panel 共用
+- `_cachedProfiles` 是隐含全局状态
+- 强行拆出导致所有调用方都要改
+
+**现状：** window 出口已暴露（`loadProfiles`, `populateProfileSelect`, `renderInlineCreateProfile`, `bindVoiceToProfile`, `refreshVoiceBindStatus`），够用
+
+#### error_helpers.js（优先级 4，收益小）
+
+**Call sites：** 12+（voice_clone, voice_import, voice_design, batch_longtext, batch_script）
+
+**建议：** shared helpers 仍在 index.html，模块通过 IIFE 直接调用，不强制拆分
+
+#### batch_shared.js（优先级 5，shared state 冲突，极高风险）
+
+**问题：**
+- `_batchPollTimer` / `_currentBatchId` / `_currentBatchPanelId` / `_batchTimeline` 被长文本和剧本批量共用
+- 两批量交替提交会覆盖 shared state
+- 需统一状态管理设计
+
+### 最终建议
+
+- **暂停前端模块化**，聚焦产品功能打磨
+- 如继续模块化，唯一合理候选是 `voice_list.js`（需先补 E2E）
+- batch_shared.js 需作为独立任务，单独设计状态管理方案

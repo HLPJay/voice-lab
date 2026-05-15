@@ -1095,3 +1095,205 @@ inline script             ← index.html 第 1593 行开始
 - onclick 入口可用：`onclick="handleDesignVoice()"` 等
 - E2E 25 passed
 - 已更新文档：NEXT_TASKS.md、FRONTEND_MODULE_MAP.md、P9_FRONTEND_MODULARIZATION.md（本文档）、PROJECT_HEALTH_CHECK.md
+
+## P9-FE2-A0：剩余前端边界审查（文档记录）
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不迁移代码
+
+### 剩余函数清单（index.html inline script）
+
+共 ~60 个函数，按职责分组：
+
+**Tab 切换（不应抽）：**
+- `switchAdvancedSubtab` + event listeners — 涉及所有 Tab DOM visibility
+
+**Voice List（候选抽离）：**
+- `handleListVoices` (line 3553) — 查询音色列表，调用 `GET /api/voice/provider-voices`
+- `loadVoices` (line 1703) — per-provider voice 缓存加载，未暴露 window
+- `filterVoiceList` (line 3599) — 本地过滤
+- `renderVoiceTable` (line 3623) — 渲染音色表格
+- `handlePageSizeChange` / `handlePrevPage` / `handleNextPage` — 分页控制
+
+**Profile / Binding helpers（当前 window 已暴露，不急抽）：**
+- `loadProfiles` → `window.loadProfiles`
+- `populateProfileSelect` → `window.populateProfileSelect`
+- `renderInlineCreateProfile` → `window.renderInlineCreateProfile`
+- `bindVoiceToProfile` → `window.bindVoiceToProfile`
+- `refreshVoiceBindStatus` (line 3244)
+- `handleVoiceDeleteFromList` (line 3260)
+- `handleDeleteVoice` (line 3889)
+- `loadAllBindings` (line 3861)
+- `handleListBindings` (line 3945)
+- `handleCreateBinding` (line 3991)
+- `handleCreateProfile` (line 4039)
+- `handleDeleteBinding` (line 4086)
+- `populateVoiceSelect` (line 1733)
+- `refreshBindingVoiceSelect` (line 3205)
+
+**Audition workstation（强耦合生成链路，不应抽）：**
+- `renderAuditionWorkstation` (line 3287) — 强耦合 `handleGenerate`
+- `updateAuditionSelected` (line 3334)
+- `setupAuditionWorkstation` (line 3370)
+- `handleGenerateAudition` (line 3460) — 调用 `handleGenerate`
+- `checkBindingStatus` (line 3174)
+
+**单条生成链路（强耦合 tab，不应抽）：**
+- `handleGenerate` (line 2556)
+- `startStreamGenerate` (line 2645)
+- `renderStreamResult` (line 2745)
+- `startAsyncPolling` (line 2799)
+- `pollAsyncJob` (line 2823)
+- `updateAsyncPollStatus` (line 2926)
+- `renderAsyncFailed` (line 2935)
+- `renderAsyncResult` (line 2952)
+- `renderResults` (line 3004)
+- Result player / timeline / format helpers
+
+**Shared batch 函数（两批量共用，不应抽）：**
+- `showBatchProgress`, `startBatchPoll`, `stopBatchPoll`, `pollBatchStatus`
+- `getBatchPanelDom`, `renderBatchResultPlayer`, `renderBatchSubtitleList`
+- `updateBatchSubtitleHighlight`, `renderBatchStatus`
+- `handleBatchPlay`, `handleBatchRetry`
+- `showBatchLongtextResult` → `window.showBatchLongtextResult`
+- `clearBatchLongtextResult` → `window.clearBatchLongtextResult`
+
+**Script line 管理（强耦合事件委托，不应抽）：**
+- `addScriptLine` (line 4133)
+- `removeScriptLine` (line 4168)
+- `updateScriptLineLimitState` (line 4124)
+
+**Shared helpers（收益小，不急）：**
+- `esc`, `escJs`, `copyJobId`, `showToast`
+- `guardedJsonFetch`, `parseApiError`, `formatApiError`, `friendlyErrorMessage`
+- `renderApiError`, `renderValidationError`, `extractErrorMessage`
+- `confirmHighCostVoiceAction`
+- `operationLabel`, `resourceLimitExtraHint`
+- State helpers: `setLoading`, `statusLabel`, `statusClass`
+- Time helpers: `parseBackendTime`, `formatLocalDateTime`, `utcTitle`
+
+**Recent job helpers：**
+- `updateCostHint`, `populateAllProfiles`, `showProfileRetry`
+- `safeTextPreview`, `extractJobId`, `extractAudioAssetId`
+- `buildRecentJobPayload`, `saveRecentJob`, `loadRecentJob`, `clearRecentJob`
+- `renderRecentJobRestore`, `restoreRecentJob`, `renderRecoveredJob`
+
+### 剩余状态变量
+
+| 变量 | 作用域 | 用途 | 风险 |
+|---|---|---|---|
+| `_cachedProfiles` | 全局 | profile 缓存 | 高：被 profile/binding 所有函数共用 |
+| `_cachedVoices` | 全局 | per-provider voice 缓存 | 中：被 voice list 和 clone/design import 引用 |
+| `window._voicePagination` | window | 音色列表分页 | 低：voice list 专用 |
+| `_auditionSelectedVoiceId` | 全局 | 试听选中音色 | 中：audition workstation 和 quick preview 共用 |
+| `_auditionDelegated` | 全局 | audition 事件委托守卫 | 低：audition 内部 |
+| `_scriptRows` | 全局 | 剧本行状态 | 高：强耦合事件委托 |
+| `_batchPollTimer` | 全局 | 批量轮询 timer | 极高：两批量共用 |
+| `_currentBatchId` | 全局 | 当前 batch id | 极高：两批量共用 |
+| `_currentBatchPanelId` | 全局 | 当前 panel id | 极高：两批量共用 |
+| `_batchTimeline` | 全局 | 批量字幕时间线 | 高：两批量共用 |
+
+### 候选模块详细评估
+
+#### 1. voice_list.js（优先级 1，可小步抽离）
+
+**候选迁移内容：**
+- `handleListVoices` — 音色列表查询（line 3553）
+- `loadVoices` — voice 加载缓存（line 1703，需暴露为 `window.loadVoices`）
+- `filterVoiceList` — 本地过滤（line 3599）
+- `renderVoiceTable` — 渲染（line 3623）
+- `handlePageSizeChange` / `handlePrevPage` / `handleNextPage` — 分页
+
+**依赖的 window helpers：**
+- `window.loadProfiles` ✅ 已暴露
+- `window.populateProfileSelect` ✅ 已暴露
+- `window.bindVoiceToProfile` ✅ 已暴露
+- `window.refreshVoiceBindStatus` ✅ 已暴露
+- `guardedJsonFetch` ✅ 直接使用
+- `esc` ✅ 直接使用
+
+**需先暴露的 window 入口：**
+- `window.loadVoices` — 目前未暴露，需添加
+
+**DOM ids：**
+- `voiceProvider`, `voiceType`, `voiceSearch`, `listVoicesBtn`, `voiceListResults`
+- `voicePageSize`, `voicePrevPage`, `voiceNextPage`
+- `voiceTableBody`, `voicePaginationInfo` 等（renderVoiceTable 动态创建）
+
+**API：**
+- `GET /api/voice/provider-voices?provider=...`
+
+**风险：**
+- `_cachedVoices` 被 clone import 和 design import 的快速预览功能共用
+- voice_design.js 和 voice_import.js 调用 `handleListVoices(true)` 刷新列表
+- 迁移后需确保 `_cachedVoices` 状态仍可被各模块访问
+
+**E2E 现状：**
+- 无 voice list 专门 E2E（`test_audition_records_module_and_voices_tab_open` 仅覆盖 tab 打开）
+- 建议先补 `test_voice_list_loads` E2E，再迁移
+
+#### 2. audition_workstation.js（优先级 2，强耦合，不建议抽）
+
+**问题：**
+- `renderAuditionWorkstation` 强耦合 `handleGenerate` 单条生成链路
+- `handleGenerateAudition` → `handleGenerate` → `startStreamGenerate` / `startAsyncPolling`
+- audition generation 和 voice selection / binding 深度交织
+- 单独抽离 voice 无关部分价值不大
+
+**结论：** audition workstation 需和单条生成链路整体考虑，当前阶段不应单独抽。
+
+#### 3. profile_binding.js（优先级 3，依赖太广，不建议抽）
+
+**问题：**
+- `populateProfileSelect` 被 batch_script.js 的 `addScriptLine`、clone/design/import result panel 的快速绑定共用
+- `_cachedProfiles` 是隐含全局状态
+- 强行拆出导致所有调用方都要改
+
+**当前 window 出口已够用：**
+- `window.loadProfiles` ✅
+- `window.populateProfileSelect` ✅
+- `window.renderInlineCreateProfile` ✅
+- `window.bindVoiceToProfile` ✅
+- `window.refreshVoiceBindStatus` ✅
+
+**建议：** 保持现状，不强制拆分为独立模块文件。
+
+#### 4. error_helpers.js（优先级 4，收益小）
+
+**Call sites（12+）：**
+- voice_clone.js: `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `renderApiError`, `renderValidationError`
+- voice_import.js: `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `renderValidationError`
+- voice_design.js: `parseApiError`, `formatApiError`, `friendlyErrorMessage`, `renderApiError`, `renderValidationError`
+- batch_longtext.js: `guardedJsonFetch`（内部已含错误处理）
+- batch_script.js: `guardedJsonFetch`（内部已含错误处理）
+
+**风险：** 12+ call sites 需要批量更新 import 路径；shared helpers 仍在 index.html，拆分收益有限
+
+**建议：** 当前 shared helpers 直接在 index.html 中定义，模块通过 IIFE 作用域直接调用，不强制拆分。
+
+#### 5. batch_shared.js（优先级 5，shared state 冲突，极高风险）
+
+**问题：**
+- `_batchPollTimer` / `_currentBatchId` / `_currentBatchPanelId` / `_batchTimeline` 被长文本和剧本批量共用
+- 长文本批量先提交后，剧本批量再提交会覆盖这些状态
+- 反之亦然（已有风险，但尚未触发）
+- 统一状态管理需要重新设计两批量的状态隔离方案
+
+**建议：** 当前阶段不应动 shared batch state，需在产品功能稳定后单独设计状态管理方案。
+
+### P9-FE2-A0 最终结论
+
+**建议暂停前端模块化，转产品功能打磨。**
+
+**理由：**
+1. **voice_list.js 可抽但优先级低**：`handleListVoices` 可独立迁移，但 voice list 本身不是高内聚业务逻辑，拆分价值有限
+2. **audition_workstation.js 不应单独抽**：强耦合单条生成链路，单独抽离无意义
+3. **profile_binding.js 当前 window 出口已够用**：无需独立模块文件
+4. **error_helpers.js 收益小**：12+ call sites 迁移成本大，但 shared helpers 仍在 index.html，拆分收益有限
+5. **batch_shared.js 需统一设计**：shared state 冲突需要重新架构，当前阶段不应动
+
+**下一步建议：**
+- 暂停前端模块化，聚焦产品功能打磨
+- 如继续模块化，唯一合理候选是 `voice_list.js`（需先补 E2E）
+- batch_shared.js 需作为独立任务，单独设计状态管理方案
