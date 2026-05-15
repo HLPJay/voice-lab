@@ -52,9 +52,10 @@
 * P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核已完成 ✅
 * P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复已完成 ✅
 * P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口已完成 ✅
-* P14-CONTEXT-B2：长文本 context 保存与详情查看已完成，待复核
+* P14-CONTEXT-B2：长文本 context 保存与详情查看已完成 ✅
 * P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B2-CLOSE
+* P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口已完成 ✅
+* 当前下一阶段：P14-SIDEBAR-ACTIONS-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7807,3 +7808,41 @@ P14-CONTEXT-B2 已实现长文本 context 保存、SampleStore context_id 关联
 ### 阶段状态
 
 P14-CONTEXT-B2-CHECK 通过，建议进入 P14-CONTEXT-B2-CLOSE。
+
+## P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口
+
+### 背景
+
+P14-CONTEXT-B2 已实现长文本 context 保存与详情查看，P14-CONTEXT-B2-CHECK 已通过复核。本阶段正式收口。
+
+### 最终能力确认
+
+- `context_store.js` 已按 `sample_store.js` → `context_store.js` → `sample_sidebar.js` 顺序加载
+- `batch_longtext.js` 提交成功后保存 longtext context
+- `context_id = batch_id`（一一对应，v1 简化策略）
+- `_batchSampleContextById[data.batch_id].context_id` 在 polling 前写入
+- `safePushBatchSample` 已透传 `context_id`
+- `SampleStore.normalizeSample` 支持 `context_id`
+- SampleSidebar 支持详情按钮（ⓘ）和详情面板
+- 详情面板展示 `full_text`，使用 `esc()` HTML 转义，`white-space: pre-wrap`，`max-height: 300px`，`overflow-y: auto`
+- 旧样本无 `context_id` 时不影响播放 / 下载 / 复制 / 删除
+- ContextStore 写入失败不阻塞 batch 提交流程
+
+### 阶段边界
+
+- 未实现长文本一键回填
+- 未实现剧本 context
+- 未实现剧本回填
+- 未修改后端 API
+- 未修改数据库
+- 未修改 batch submit payload
+- 未调用真实 MiniMax
+- 未进入 SaaS / 多用户 / 移动端 H5
+
+### 测试结果
+
+结果：570 passed。
+
+### 阶段状态
+
+P14-CONTEXT-B2 已完成并收口。
