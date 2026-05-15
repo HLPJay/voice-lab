@@ -3977,4 +3977,34 @@ git diff --check  # 无错误
 
 **测试结果：** 14 passed in 42s。full tests 未运行，原因：本次仅迁移前端长文本批量提交函数，未改后端 API、Provider Adapter、生成链路、数据库、资产清理链路；已运行前端 E2E 覆盖模块加载与前端校验。
 
+---
+
+## P9-FE1-E2-FIX：长文本批量 mock 提交成功 E2E
+
+**目标：** 添加 `test_batch_longtext_mock_submit_success_starts_progress` E2E 测试，验证 `handleBatchLongtextSubmit` 在 mock 环境下可完成完整提交流程，不调用真实 MiniMax。
+
+**实现：**
+
+- 路由注册在 `page.goto` 之前（Playwright 要求路由在请求发出前注册）
+- 设置 `batchProvider` 为 `'mock'` 以绕过 `guardedJsonFetch` 的 `confirm()` 弹窗（`provider=minimax` 时 `highRisk` 操作会触发确认对话框）
+- 使用 Playwright `page.route` 拦截 `POST /api/voice/batch/submit`（返回 fake `batch_id`）和 `GET /api/voice/batch/e2e_batch_longtext_001/status`（返回 processing 状态）
+- 直接点击 `#batchLongtextSubmit` 按钮，触发 `onclick="handleBatchLongtextSubmit()"`
+- 断言：`submit_called["yes"]` 为 True（路由被触发）、progress panel 出现、button text 恢复
+
+**关键技术点：**
+
+- `page.route` 必须注册在 `page.goto` 之前，否则无法拦截页面内发出的请求
+- `guardedJsonFetch` 对 `provider=minimax` + `highRisk=true` 会调用 `confirm()` 弹窗，自动化测试中会 cancel 导致 `USER_CANCELLED` 错误；设置 `provider=mock` 可绕过此检查
+- `batchProvider` 默认值为 `minimax`（不是 `mock`），需在点击前显式设置为 `mock`
+- `handleBatchLongtextSubmit` 内部读取 `document.getElementById('batchProvider').value` 获取 provider
+
+**E2E 验证：**
+
+```bash
+python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "batch_longtext"  # 3 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q  # 15 passed
+```
+
+**测试结果：** 15 passed in 46.66s。
+
 **未改 app/api、app/services、app/providers、app/domain、admin.html、app/static/js/provider_capabilities.js、app/static/js/runtime_status.js、app/static/js/history.js、app/static/js/audition_records.js、Provider Adapter、CapabilityValidator、Capability Registry、生成链路、数据库、资产清理链路。

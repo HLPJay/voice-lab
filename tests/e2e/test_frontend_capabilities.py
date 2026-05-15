@@ -11,6 +11,7 @@ Tests cover:
 7. Admin capabilities failure does not crash other regions.
 """
 
+import json
 import pytest
 
 
@@ -518,3 +519,86 @@ def test_batch_longtext_module_is_loaded_and_submit_validation_works(
     assert "请输入待分段文本" in result_html, (
         f"Expected validation error for empty text, got: {result_html}"
     )
+
+
+# ── Test 15: Batch longtext mock submit success starts progress ──────────────────
+
+def test_batch_longtext_mock_submit_success_starts_progress(
+    page, e2e_base_url, console_errors
+):
+    """Mock batch/submit + status so handleBatchLongtextSubmit completes without real MiniMax."""
+    submit_called = {}
+
+    def handle_submit(route):
+        submit_called["yes"] = True
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "batch_id": "e2e_batch_longtext_001",
+                "status": "queued"
+            }),
+        )
+
+    def handle_status(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "batch_id": "e2e_batch_longtext_001",
+                "status": "processing",
+                "total_segments": 1,
+                "completed_segments": 0,
+                "failed_segments": 0,
+                "segments": [{
+                    "index": 0,
+                    "text_preview": "test",
+                    "status": "processing",
+                    "role": None,
+                    "duration_ms": None,
+                    "error_message": None,
+                }]
+            }),
+        )
+
+    # Register routes BEFORE navigation (routes must be registered before page.goto)
+    page.route("**/api/voice/batch/submit", handle_submit)
+    page.route("**/api/voice/batch/e2e_batch_longtext_001/status", handle_status)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Navigate to Longtext tab
+    page.locator('button.tab-btn[data-tab="longtext"]').click()
+    page.wait_for_selector("#tab-longtext", state="attached", timeout=10000)
+    page.wait_for_timeout(500)
+
+    # Fill in the text field
+    page.locator("#batchText").fill("这是一段用于长文本批量提交E2E的测试文本。")
+
+    # Inject profile option and set provider to mock to bypass confirm dialog
+    # (provider defaults to 'minimax' which triggers guardedJsonFetch's confirm dialog)
+    page.evaluate(""" () => {
+        const sel = document.getElementById('batchProfile');
+        sel.innerHTML = '<option value="e2e_test_profile">E2E Test Profile</option>';
+        sel.value = 'e2e_test_profile';
+        const providerSel = document.getElementById('batchProvider');
+        if (providerSel) {
+            providerSel.value = 'mock';
+        }
+    } """)
+
+    # Click submit
+    page.locator("#batchLongtextSubmit").click()
+    page.wait_for_timeout(2000)
+
+    # Verify submit was called
+    assert submit_called.get("yes"), f"batch/submit should have been called: {submit_called}"
+
+    # Verify progress panel is shown
+    progress_panel = page.locator("#batchProgressPanel")
+    assert progress_panel.count() == 1, "batchProgressPanel should exist"
+
+    # Verify button text restored
+    btn_text = page.locator("#batchLongtextSubmit").text_content()
+    assert "提交批量任务" in btn_text, f"Button should be restored, got: {btn_text}"
