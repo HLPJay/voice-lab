@@ -110,17 +110,30 @@
       // Quick bind panel
       html += '<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">' +
         '<div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-          '<div id="importProfileWrap" style="display:flex;gap:8px;align-items:center;flex:1;min-width:0"></div>' +
-          '<select id="importBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-            '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
-            '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
-            '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
-            '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
-          '</select>' +
-          '<button class="btn-primary" id="importBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          '<div id="importProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<select id="importBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
+              '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
+              '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
+              '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
+              '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
+            '</select>' +
+            '<button class="btn-primary" id="importBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
+          '</div>' +
         '</div>' +
         '<div id="importBindResult" style="margin-top:6px;font-size:0.82rem"></div>' +
+      '</div>';
+
+      // Quick preview block
+      html += '<div style="margin-top:12px;padding:12px;background:#f0fff4;border-radius:8px">' +
+        '<div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速试听</div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+          '<input type="text" id="importQuickText" placeholder="输入试听文本" value="你好，这是一段测试语音。"' +
+            ' style="flex:1;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem">' +
+          '<button class="btn-primary" id="importQuickBtn" style="margin:0;white-space:nowrap">试听</button>' +
+        '</div>' +
+        '<div id="importQuickResult" style="margin-top:8px"></div>' +
       '</div>';
 
       resultsEl.innerHTML = html;
@@ -129,7 +142,7 @@
         var profileWrap = document.getElementById('importProfileWrap');
         var sel = document.createElement('select');
         sel.id = 'importBindProfile';
-        sel.style.cssText = 'flex:1;min-width:0;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
+        sel.style.cssText = 'min-width:180px;max-width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
         profileWrap.appendChild(sel);
         window.populateProfileSelect(sel);
         window.renderInlineCreateProfile(profileWrap, sel, 'import');
@@ -142,12 +155,56 @@
             var resultDiv = document.getElementById('importBindResult');
             try {
               await window.bindVoiceToProfile(data.provider_voice_id, provider, profileId, bindModel);
-              resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+              resultDiv.innerHTML = '<div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:6px;padding:8px 10px;font-size:0.78rem;color:#2f855a">✓ 绑定成功。可回到创作工作台，选择该声音人设进行生成。 <button type="button" id="importBindGoCreateBtn" style="margin-left:8px;font-size:0.75rem;padding:2px 8px;cursor:pointer">去创作</button></div>';
+              var goBtn = document.getElementById('importBindGoCreateBtn');
+              if (goBtn) {
+                goBtn.addEventListener('click', function () {
+                  var wsBtn = document.querySelector('.tab-btn[data-tab="workspace"]');
+                  if (wsBtn) wsBtn.click();
+                });
+              }
               await window.refreshVoiceBindStatus(data.provider_voice_id);
             } catch (e) {
               resultDiv.innerHTML = '<span style="color:#e53e3e">绑定失败: ' + esc(e.message) + '</span>';
             }
           };
+        }
+        var quickBtn = document.getElementById('importQuickBtn');
+        if (quickBtn) {
+          quickBtn.addEventListener('click', function () {
+            var text = document.getElementById('importQuickText').value.trim();
+            if (!text) return;
+            var resultDiv = document.getElementById('importQuickResult');
+            var profileId = document.getElementById('importBindProfile').value;
+            if (!profileId) {
+              resultDiv.innerHTML = '<span style="color:#ed8936;font-size:0.82rem">请先在上方绑定到人设后再试听</span>';
+              return;
+            }
+            resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
+            fetch('/api/voice/render', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: text, profile_id: profileId, provider: provider }),
+            }).then(function (r) {
+              return r.json().then(function (rd) {
+                if (!r.ok) {
+                  resultDiv.innerHTML = '<span style="color:#e53e3e;font-size:0.82rem">试听失败: ' + esc(rd.error && rd.error.message ? rd.error.message : JSON.stringify(rd)) + '</span>';
+                  return;
+                }
+                if (rd.audio_asset && rd.audio_asset.url) {
+                  var _dur = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
+                  resultDiv.innerHTML = (_dur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_dur ? ' · 时长 ' + _dur : '') + '</div>' : '') +
+                    '<audio class="audio-player" controls autoplay preload="metadata">' +
+                    '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
+                  '</audio>';
+                } else {
+                  resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';
+                }
+              });
+            }).catch(function (e) {
+              resultDiv.innerHTML = '<span style="color:#e53e3e;font-size:0.82rem">网络错误: ' + esc(e.message) + '</span>';
+            });
+          });
         }
       }, 0);
 

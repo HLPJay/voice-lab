@@ -103,15 +103,17 @@
       // Quick bind panel
       html += '<div style="margin-top:12px;padding:12px;background:#f7fafc;border-radius:8px">' +
         '<div style="font-size:0.85rem;font-weight:600;margin-bottom:8px">快速绑定到人设</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-          '<div id="designProfileWrap" style="display:flex;gap:8px;align-items:center;flex:1;min-width:0"></div>' +
-          '<select id="designBindModel" style="width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-            '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
-            '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
-            '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
-            '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
-          '</select>' +
-          '<button class="btn-primary" id="designBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          '<div id="designProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<select id="designBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
+              '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
+              '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
+              '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
+              '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
+            '</select>' +
+            '<button class="btn-primary" id="designBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
+          '</div>' +
         '</div>' +
         '<div id="designBindResult" style="margin-top:6px;font-size:0.82rem"></div>' +
       '</div>';
@@ -134,7 +136,7 @@
         var profileWrap = document.getElementById('designProfileWrap');
         var sel = document.createElement('select');
         sel.id = 'designBindProfile';
-        sel.style.cssText = 'flex:1;min-width:0;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
+        sel.style.cssText = 'min-width:180px;max-width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px';
         profileWrap.appendChild(sel);
         window.populateProfileSelect(sel);
         window.renderInlineCreateProfile(profileWrap, sel, 'design');
@@ -147,7 +149,14 @@
             var resultDiv = document.getElementById('designBindResult');
             try {
               await window.bindVoiceToProfile(data.voice_id, provider, profileId, model);
-              resultDiv.innerHTML = '<span style="color:#2f855a">绑定成功!</span>';
+              resultDiv.innerHTML = '<div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:6px;padding:8px 10px;font-size:0.78rem;color:#2f855a">✓ 绑定成功。可回到创作工作台，选择该声音人设进行生成。 <button type="button" id="designBindGoCreateBtn" style="margin-left:8px;font-size:0.75rem;padding:2px 8px;cursor:pointer">去创作</button></div>';
+              var goBtn = document.getElementById('designBindGoCreateBtn');
+              if (goBtn) {
+                goBtn.addEventListener('click', function () {
+                  var wsBtn = document.querySelector('.tab-btn[data-tab="workspace"]');
+                  if (wsBtn) wsBtn.click();
+                });
+              }
               await window.refreshVoiceBindStatus(data.voice_id);
             } catch (e) {
               resultDiv.innerHTML = '<span style="color:#e53e3e">绑定失败: ' + esc(e.message) + '</span>';

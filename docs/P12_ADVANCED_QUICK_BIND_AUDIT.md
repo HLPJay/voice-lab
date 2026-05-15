@@ -202,6 +202,43 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "clone or design 
 
 ---
 
+## 6. UX4-B1 实施记录
+
+**实施时间：** 2026-05-15
+
+**修改文件：**
+- `app/static/js/voice_clone.js`
+- `app/static/js/voice_design.js`
+- `app/static/js/voice_import.js`
+
+**改动点：**
+
+1. **三处 quick bind 面板改为纵向布局**
+   - 原：所有控件（profileWrap + model select + bind button）挤在同一横向行
+   - 改：第一行 profileWrap，第二行 model select + bind button
+   - `profileWrap` 移除 `flex:1;min-width:0`（导致压缩的根因）
+
+2. **profile select CSS 修复**
+   - 原：`sel.style.cssText = 'flex:1;min-width:0;...'`
+   - 改：`sel.style.cssText = 'min-width:180px;max-width:100%;...'`
+   - 三处统一：cloneBindProfile / designBindProfile / importBindProfile
+
+3. **绑定成功后增加「去创作」按钮**
+   - 三处 resultDiv 改为：`✓ 绑定成功。可回到创作工作台，选择该声音人设进行生成。[去创作按钮]`
+   - `去创作`按钮：`document.querySelector('.tab-btn[data-tab="workspace"]').click()`
+
+4. **import 面板补齐快速试听区**
+   - 新增 `importQuickText` / `importQuickBtn` / `importQuickResult`
+   - 复用 `/api/voice/render` 接口，逻辑与 clone/design 一致
+   - 显示 `rd.audio_asset.duration_ms` 时长（如有）
+
+**未改：**
+- 不改 `bindVoiceToProfile()` / `populateProfileSelect()` / `renderInlineCreateProfile()`
+- 不改克隆/设计/导入请求 payload
+- 不改后端 API
+
+---
+
 ## 7. 审查结论
 
 | 问题 | 严重程度 | 根因 | 是否本次修复 |
@@ -218,5 +255,5 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q -k "clone or design 
 
 | 任务 | 内容 | 前提 |
 |---|---|---|
-| UX4-B1 | 统一 clone/design/import 快速绑定面板布局为纵向堆叠，增加"去创作"按钮 | 本审查完成后 |
+| UX4-B1 ✅ | 已在 UX4-B1 实施记录中完成 | — |
 | P13-CREATION-A0 | design sample observation sidebar | P10 完成 |
