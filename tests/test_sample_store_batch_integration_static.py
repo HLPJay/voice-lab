@@ -61,6 +61,47 @@ def func_body(name, content):
     return content[start:end]
 
 
+def func_body_after_paren(name, content):
+    """Return the full body of a named function, handling = {} in params.
+
+    Finds the function, then skips to the first { that appears after
+    the closing ) of the parameter list, then uses depth counting.
+    """
+    marker = 'function ' + name
+    start = content.find(marker)
+    assert start >= 0, name + ' function must exist'
+    # Find the closing ) of the parameter list
+    paren_start = content.find('(', start)
+    depth = 0
+    i = paren_start
+    while i < len(content):
+        c = content[i]
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+            if depth == 0:
+                body_start = i + 1
+                break
+        i += 1
+    # Now find the opening { of the function body
+    while i < len(content):
+        if content[i] == '{':
+            body_start = i + 1
+            break
+        i += 1
+    depth = 1
+    end = body_start
+    while end < len(content) and depth > 0:
+        c = content[end]
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+        end += 1
+    return content[start:end]
+
+
 # ── isSafeBatchAudioUrl ────────────────────────────────────────────────────────
 
 class TestIsSafeBatchAudioUrl:
@@ -98,43 +139,47 @@ class TestSafePushBatchSample:
     def test_function_exists(self):
         assert 'function safePushBatchSample' in read_html()
 
+    def test_extra_has_default_empty_object(self):
+        body = func_body_after_paren('safePushBatchSample', read_html())
+        assert 'extra = {}' in body
+
     def test_is_fail_safe(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'try' in body and 'catch' in body
 
     def test_calls_SampleStore_pushSample(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'SampleStore.pushSample' in body
 
     def test_no_direct_localStorage(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'localStorage.getItem' not in body
         assert 'localStorage.setItem' not in body
 
     def test_rejects_non_success_status(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert "data.status !== 'success'" in body or 'data.status !== "success"' in body
 
     def test_rejects_missing_batch_id(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert '!data.batch_id' in body or '!batch_id' in body
 
     def test_rejects_missing_merged_audio_id(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert '!audio.id' in body or '!merged_audio.id' in body or 'audio.id' in body
 
     def test_rejects_missing_audio_url(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'isSafeBatchAudioUrl' in body
 
     def test_download_url_uses_batch_api(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert '/api/voice/batch/' in body
         assert 'encodeURIComponent(batchId)' in body or 'encodeURIComponent(data.batch_id)' in body
 
     def test_download_url_is_not_merged_audio_url(self):
         """download_url must use batch API, not merged_audio.url directly."""
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         # Should NOT use audio.url as the download_url value
         assert 'downloadUrl = audio.url' not in body
         # Should have batch download URL construction
@@ -142,7 +187,7 @@ class TestSafePushBatchSample:
 
     def test_no_asset_fallback_in_download_url(self):
         """Must not fall back to /api/voice/assets/ as download_url."""
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         # The function should not have a fallback path for download_url to assets
         # Check that downloadUrl is set to batch API only
         assert 'downloadUrl = ' in body
@@ -165,40 +210,40 @@ class TestSafePushBatchSample:
         assert 'batch_script_merged' in body
 
     def test_segment_id_is_null(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'segment_id: null' in body
 
     def test_tags_batch_and_merged(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert "'batch'" in body or '"batch"' in body
         assert "'merged'" in body or '"merged"' in body
 
     def test_model_is_null(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'model: null' in body
 
     def test_voice_id_is_null(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'voice_id: null' in body
 
     def test_voice_name_is_null(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'voice_name: null' in body
 
     def test_anti_duplicate_mechanism(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert '_batchSamplePushedByKey' in body
 
     def test_calls_SampleSidebar_refresh_after_push(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'SampleSidebar.refresh' in body
 
     def test_extra_text_preview_fallback(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'text_preview' in body
 
     def test_segments_first_text_preview_fallback(self):
-        body = func_body('safePushBatchSample', read_html())
+        body = func_body_after_paren('safePushBatchSample', read_html())
         assert 'segments' in body and 'text_preview' in body
 
 

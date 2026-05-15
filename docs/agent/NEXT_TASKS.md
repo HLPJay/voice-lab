@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store**
+**P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核**
 
 ## 已完成（续）
 
@@ -10,6 +10,8 @@
 - P13-CREATION-B5-A0-CODE-CHECK-FIX：batch A0 文档代码事实校验修正 ✅
 - P13-CREATION-B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧 ✅
 - P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检 ✅
+- P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store ✅
+- P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正 ✅
 
 ## 已完成
 
@@ -78,7 +80,7 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P13-CREATION-B5-MVP1 | connect batch merged audio to sample_store | B5-A0-CODE-CHECK-FIX2 完成 |
+| P13-CREATION-B5-CHECK | review batch merged audio sample_store integration | B5-MVP1-CHECK-FIX1 完成 |
 | P12-BE | 后端能力增强（如有需求） | 用户反馈 |
 | P12-APP | 本地 App 打包评估 | P10 完成 |
 | 后续 | SaaS / 多用户 | 产品验证后 |

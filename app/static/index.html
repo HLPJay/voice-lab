@@ -4746,7 +4746,7 @@ function handleStopAsyncPolling() {
            s.indexOf('https://') === 0;
   }
 
-  function safePushBatchSample(source, data, extra) {
+  function safePushBatchSample(source, data, extra = {}) {
     try {
       if (!window.SampleStore || typeof window.SampleStore.pushSample !== 'function') return null;
       if (!data || data.status !== 'success') return null;

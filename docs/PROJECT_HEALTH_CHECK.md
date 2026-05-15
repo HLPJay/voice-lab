@@ -31,7 +31,8 @@
 * P13-CREATION-B5-A0-CODE-CHECK-FIX2：batch MVP1 前置条件与 download_url 策略收紧已完成 ✅
 * P13-PRE-B5-REGRESSION-CHECK：已有功能回归自检已完成 ✅
 * P13-CREATION-B5-MVP1：batch merged audio 接入 sample_store 已完成，待 B5-CHECK 复核 ✅
-* 当前下一阶段：P13-CREATION-B5-CHECK
+* P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正已完成 ✅
+* 当前下一阶段：P13-CREATION-B5-CHECK batch merged audio sample_store 接入复核
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6700,3 +6701,30 @@ submit 成功后保存 `window._batchSampleContextById[data.batch_id]`，包含 
 ### 阶段状态
 
 B5-MVP1 完成，待 B5-CHECK 复核。
+
+## P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正
+
+### 背景
+
+B5-MVP1 实现后复核发现两个小问题：`docs/agent/NEXT_TASKS.md` 仍停留在 B5-MVP1，未切换到 B5-CHECK；`safePushBatchSample(source, data, extra)` 未给 `extra` 设置默认 `{}`，虽当前调用路径传入了 fallback object，但 helper 契约不够稳。
+
+### 修正内容
+
+- `safePushBatchSample(source, data, extra)` 改为 `safePushBatchSample(source, data, extra = {})`
+- 补充静态契约测试 `test_extra_has_default_empty_object`
+- `NEXT_TASKS.md` 当前阶段切换到 P13-CREATION-B5-CHECK
+- 标记 B5-MVP1 已完成
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 batch submit context
+- 不改 sample_sidebar sourceLabel
+- 不接 segment samples
+- 不接 history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B5-MVP1-CHECK-FIX1 完成后，进入 B5-CHECK。
