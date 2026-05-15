@@ -4287,3 +4287,31 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 19 pas
 **未改关键链路：** 未改后端 API、Provider Adapter、Capability Registry、CapabilityValidator、生成链路、数据库、资产清理链路。测试 fixture `console_errors` 新增对 "400" 的允许规则（来自 E2E mock 拦截的预期 400 响应）。
 
 **下一步建议：** 补 `test_voice_design_mock_submit_success`（验证设计成功 + demo audio 展示），再迁移 `voice_clone.js`。
+
+---
+
+## P9-FE1-G2：补声音设计 mock submit success E2E
+
+**时间：** 2026-05-15
+
+**问题：** G1 已补 clone 错误展示 E2E，但 design 成功链路仍缺少 E2E。后续拆分 voice_clone / voice_design 前需要验证 design mock success 流程。
+
+**修复：** 新增 `test_voice_design_mock_submit_success`，验证 mock `POST /api/voice/design/create` 返回成功时，前端展示成功结果和 voice_id，按钮正确恢复。
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py::test_voice_design_mock_submit_success -v  # 1 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 20 passed
+```
+
+**mock 方案：**
+- 拦截 `GET /api/voice/capabilities`，返回 `mock` provider + `voice_design.supported: true`
+- 拦截 `POST /api/voice/design/create`（regex pattern），返回 HTTP 200 + `{"voice_id": "e2e_design_voice_001", "message": "声音设计成功创建", "trial_audio_url": null}`
+- 使用 `provider=mock` 绕过 highRisk confirm
+- 使用 `page.evaluate("document.getElementById('designBtn').click()")` 触发 onclick
+
+**测试结果：** 20 passed in 67.33s。
+
+**未改关键链路：** 未改 app/static/js/*、后端 API、Provider Adapter、Capability Registry、CapabilityValidator、生成链路、数据库、资产清理链路。
+
+**下一步建议：** P9-FE1-G1（clone 错误）+ P9-FE1-G2（design 成功）已完成，可进入 helper window 暴露前置任务或 `voice_clone.js` 抽离。

@@ -894,3 +894,101 @@ def test_voice_clone_error_insufficient_balance_is_displayed(
     assert "insufficient balance" in result_html or "余额不足" in result_html, (
         f"Expected 'insufficient balance' or '余额不足' in cloneResult, got: {result_html}"
     )
+
+
+# ── Test 20: Voice design mock submit success ─────────────────────────────────
+
+def test_voice_design_mock_submit_success(
+    page, e2e_base_url, console_errors
+):
+    """Mock design/create to return success; verify design success result and button restore."""
+
+    design_called = {}
+
+    # Mock capabilities so mock provider advertises voice_design support
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "voice_design": {
+                        "supported": True,
+                        "prompt_max": 2000,
+                        "preview_text_max": 500
+                    }
+                }]
+            }),
+        )
+
+    # Mock design/create to return success
+    def handle_design_create(route):
+        design_called["yes"] = True
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "voice_id": "e2e_design_voice_001",
+                "message": "声音设计成功创建",
+                "trial_audio_url": None
+            }),
+        )
+
+    # Register routes BEFORE navigation
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/design/create.*"), handle_design_create)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Wait for capabilities to be loaded
+    page.wait_for_timeout(1000)
+
+    # Navigate to Advanced tab
+    page.locator('button.tab-btn[data-tab="advanced"]').click()
+    page.wait_for_selector("#tab-advanced", state="attached", timeout=10000)
+
+    # Switch to Design subtab
+    page.locator('button.advanced-subtab-btn[data-advanced-subtab="design"]').click()
+    page.wait_for_selector("#designResult", state="attached", timeout=5000)
+
+    # Verify design form elements
+    page.wait_for_selector("#designProvider", state="attached", timeout=5000)
+    page.wait_for_selector("#designPrompt", state="attached", timeout=5000)
+    page.wait_for_selector("#designPreviewText", state="attached", timeout=5000)
+    page.wait_for_selector("#designBtn", state="attached", timeout=5000)
+
+    # Set provider to mock and trigger capability re-apply
+    page.evaluate(""" () => {
+        document.getElementById('designProvider').value = 'mock';
+        document.getElementById('designProvider').dispatchEvent(new Event('change'));
+    } """)
+
+    # Fill design form (prompt and previewText are required; voiceId is optional)
+    page.locator("#designPrompt").fill("温暖，自然，适合旁白的男声")
+    page.locator("#designPreviewText").fill("这是一段用于声音设计E2E的试听文本")
+
+    # Verify design button is enabled
+    design_btn_disabled = page.locator("#designBtn").get_attribute("disabled")
+    assert not design_btn_disabled, "designBtn should be enabled with valid inputs and mock capability"
+
+    # Click design button via JS click
+    page.evaluate("document.getElementById('designBtn').click()")
+    page.wait_for_timeout(1500)
+
+    # Verify API was called
+    assert design_called.get("yes"), f"design/create should have been called: {design_called}"
+
+    # Verify success message appears in designResult
+    result_html = page.locator("#designResult").inner_html()
+    assert "设计成功" in result_html, (
+        f"Expected '设计成功' in designResult, got: {result_html}"
+    )
+    assert "e2e_design_voice_001" in result_html, (
+        f"Expected voice_id 'e2e_design_voice_001' in designResult, got: {result_html}"
+    )
+
+    # Verify button text is restored
+    btn_text = page.locator("#designBtn").text_content()
+    assert "生成设计" in btn_text, f"Button should be restored, got: {btn_text}"
