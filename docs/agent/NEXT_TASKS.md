@@ -28,6 +28,7 @@
 - P12-USAGE-UX1：compact advanced tool hints ✅
 - P12-USAGE-FIX2：check initial workspace binding status ✅
 - P12-USAGE-FIX3：sync batch binding hints ✅
+- P12-USAGE-FIX3B：add status to bind map entries ✅
 
 ## Next
 

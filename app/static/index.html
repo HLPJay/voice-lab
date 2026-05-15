@@ -3929,6 +3929,7 @@ function handleStopAsyncPolling() {
                 profile_name: p.name,
                 provider: b.provider,
                 model: b.model,
+                status: b.status || 'available',
                 binding_id: b.id,
                 priority: b.priority,
               });

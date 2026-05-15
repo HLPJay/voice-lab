@@ -95,3 +95,18 @@
 **验证方式：**
 - targeted E2E（batch_longtext_voice_binding_hint / batch_script_line_voice_binding_hint）：2 passed ✅
 - git diff --check：无 whitespace 错误 ✅
+
+**P12-USAGE-FIX3B：loadAllBindings() 缺少 status 字段**
+
+**问题描述：**
+- FIX3 后仍有问题：binding 确实存在，但 hint 仍显示"未绑定"
+
+**原因：**
+- product_hints.js 的 updateBatchVoiceBindingHint() 判断绑定时要求 `b.status === 'available'`
+- loadAllBindings() 虽然只收集 available binding，但写入 voiceBindMap 时没有包含 status 字段
+
+**修复方案：**
+- 在 loadAllBindings() 的 push object 中增加 `status: b.status || 'available'`
+
+**验证方式：**
+- targeted E2E：2 passed ✅
