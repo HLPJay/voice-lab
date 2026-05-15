@@ -1351,3 +1351,81 @@ def test_voice_import_module_is_loaded_and_exports_available(
     # Verify window.handleImportRemoteVoice is a function
     is_fn = page.evaluate("typeof window.handleImportRemoteVoice === 'function'")
     assert is_fn, "window.handleImportRemoteVoice should be a function"
+
+
+# ── Test 26: Workspace voice binding hint switches to voices tab ─────────────────
+
+def test_workspace_voice_binding_hint_switches_to_voices(
+    page, e2e_base_url, console_errors
+):
+    """Verify workspace config card shows voice binding hint and '去选择音色' button switches to voices tab."""
+
+    # Mock profiles
+    def handle_profiles(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([
+                {"id": "e2e_profile_001", "name": "E2E 测试人设"}
+            ]),
+        )
+
+    # Mock capabilities to avoid real requests during page init
+    def handle_capabilities(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "providers": [{
+                    "provider": "mock",
+                    "t2a": {"supported": True}
+                }]
+            }),
+        )
+
+    # Mock bindings for the profile (no voice bound — "尚未绑定音色" case)
+    def handle_bindings(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([]),
+        )
+
+    page.route("**/api/voice/profiles", handle_profiles)
+    page.route("**/api/voice/capabilities", handle_capabilities)
+    page.route(re.compile(r"http://127\.0\.0\.1:\d+/api/voice/profiles/e2e_profile_001/bindings.*"), handle_bindings)
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Wait for profiles to load
+    page.wait_for_timeout(500)
+
+    # Verify hint area exists (displayed since profile is selected)
+    hint_el = page.locator("#workspaceVoiceBindingHint")
+    assert hint_el.count() == 1, "workspaceVoiceBindingHint should exist"
+
+    # Verify hint shows "尚未绑定音色" (no binding in _voiceBindMap since voices tab never visited)
+    hint_html = hint_el.inner_html()
+    assert "尚未绑定音色" in hint_html, f"Hint should show '尚未绑定音色', got: {hint_html}"
+
+    # Verify "去选择音色" button exists
+    btn = page.locator("#workspaceVoiceBindingHint button")
+    assert btn.count() == 1, "去选择音色 button should exist in hint"
+
+    # Verify clicking the button switches to voices tab
+    btn.click()
+    page.wait_for_timeout(300)
+
+    # Check that voices tab is now active
+    voices_tab = page.locator(".tab-btn[data-tab='voices']")
+    assert voices_tab.count() == 1
+    is_active = voices_tab.evaluate("el => el.classList.contains('active')")
+    assert is_active, "voices tab should be active after clicking '去选择音色'"
+
+    # Verify hint is no longer displayed in voices tab context
+    # (hint only exists in workspace tab, so it should be hidden)
+    # The hint element itself may not be in the voices tab DOM, verify tab switched
+    active_tab = page.locator(".tab-btn.active")
+    active_tab_name = active_tab.get_attribute("data-tab")
+    assert active_tab_name == "voices", f"Active tab should be 'voices', got: {active_tab_name}"

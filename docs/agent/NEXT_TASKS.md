@@ -10,28 +10,36 @@
 - P9-FE2-A0：index.html 剩余逻辑边界审查 ✅
 - P10-PRODUCT-A0：产品打磨优先级审查 ✅
 - P10-PRODUCT-B0：Workspace 音色快捷选择区边界审查 ✅
+- P10-PRODUCT-B1：Workspace 音色快捷选择区实现 ✅
 
-## P10-PRODUCT-B0 审查结论
+## P10-PRODUCT-B1 实现总结
 
-### 关键发现
+**实现内容：**
+- 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区 `#workspaceVoiceBindingHint`
+- `updateWorkspaceVoiceBindingHint()` 读取 `_voiceBindMap`，显示当前绑定 voice 或"尚未绑定音色"
+- 无绑定时显示"去选择音色"按钮，点击切换到 voices tab
+- profileSelect change / providerSelect change / populateAllProfiles / workspace tab 切换时更新提示
 
-**两个独立的音色选择系统：**
-- **Profile binding**：workspace 生成用 `profileSelect.value`，需先在 voices tab 绑定 voice 到 profile
-- **Voice audition**：voices tab 试听用 `window._auditionSelectedVoiceId`，是不同系统
+**E2E：** `test_workspace_voice_binding_hint_switches_to_voices` — 验证 hint 显示"尚未绑定音色"、点击按钮切换到 voices tab
 
-**问题本质：** workspace "配置"区无当前绑定 voice 的提示，用户不知道 profile 需要绑定 voice，也不知道去哪绑定。
+**E2E 结果：** 26 passed
 
-### B1 最小实现方案
-
-**不改：** `handleGenerate`、后端 API、voice list
-
-**只做：** 在 workspace "配置" card 的 `profileSelect` 下方增加轻量提示区，显示当前 profile 绑定的 voice + "去选择音色"按钮（切换到 voices tab）
-
-详见：`docs/P10_PRODUCT_POLISH_PLAN.md` P10-PRODUCT-B0 节
+详见：`docs/P10_PRODUCT_POLISH_PLAN.md` P10-PRODUCT-B1 节
 
 ## Next
 
-1. **P10-PRODUCT-B1** — Workspace 音色快捷选择区（不改生成链路，只增 UI 引导）
+1. **P10-PRODUCT-B2** — Voices tab 快速创作联动
+
+### P10 任务排序
+
+| 优先级 | 任务 | 状态 |
+|---|---|---|
+| 1 | B1: Workspace 音色快捷选择区 | ✅ 已完成 |
+| 2 | B2: Voices tab 快速创作联动 | 待做 |
+| 3 | B3: Batch tab 音色快速选择 | 待做 |
+| 4 | B4: 简化 onboarding 文案 | 待做 |
+| 5 | B5: Advanced tab 重命名 | 待做 |
+| 6 | B6: 历史最近任务快捷入口 | 待做 |
 
 ### P10 任务排序
 

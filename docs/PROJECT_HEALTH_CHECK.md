@@ -2,7 +2,7 @@
 
 ## 当前最新状态摘要
 
-截至 P10-PRODUCT-A0：
+截至 P10-PRODUCT-B1：
 
 * 当前工作分支：dev
 * 当前产品定位：本地 Web App / 单用户 AI 音频创作工作台
@@ -4890,3 +4890,21 @@ P10 产品打磨**不依赖**前端模块化，可以独立推进。两者无依
 ### B0 审查结论
 
 B1 可按最小方案执行，不改生成链路，不改后端，只增 UI 引导。
+
+## P10-PRODUCT-B1：Workspace 音色快捷选择区实现
+
+**执行时间：** 2026-05-15
+
+**实现内容：**
+- 新增 DOM：`#workspaceVoiceBindingHint`（workspace "配置" card 的 `profileSelect` 下方）
+- 新增函数：`updateWorkspaceVoiceBindingHint()`
+- 从 `_voiceBindMap` 读取当前 profile+provider 的绑定状态
+- 无绑定时显示"去选择音色"按钮，点击切换到 voices tab
+
+**E2E：** `test_workspace_voice_binding_hint_switches_to_voices`（Test 26），mock profiles/bindings/capabilities
+
+**E2E 结果：** 26 passed
+
+**输出文件：**
+- `app/static/index.html` — 新增 hint DOM 和 `updateWorkspaceVoiceBindingHint` 函数
+- `tests/e2e/test_frontend_capabilities.py` — 新增 Test 26

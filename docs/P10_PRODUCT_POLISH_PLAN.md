@@ -423,3 +423,46 @@ document.querySelector('.tab-btn[data-tab="voices"]').click();
 ### B0 审查结论
 
 B1 可按上述最小方案执行，不改生成链路，不改 voice list，不改后端。主要是增加 UI 引导，减少用户困惑。
+
+---
+
+## P10-PRODUCT-B1：Workspace 音色快捷选择区实现
+
+**执行时间：** 2026-05-15
+
+### 实现内容
+
+**新增 DOM：** `#workspaceVoiceBindingHint`（位于 workspace "配置" card 的 `profileSelect` 下方）
+
+**新增函数：** `updateWorkspaceVoiceBindingHint()`
+- 读取 `profileSelect.value` 和 `providerSelect.value`
+- 从 `window._voiceBindMap` 查找当前 profile 在当前 provider 下是否有已绑定 voice
+- 有绑定：显示"当前音色：voice_id (model)"
+- 无绑定：显示"该人设尚未绑定音色" + "去选择音色"按钮
+
+**事件绑定：**
+- `profileSelect.addEventListener('change')` → `updateWorkspaceVoiceBindingHint()`
+- `providerSelect.addEventListener('change')` → `updateWorkspaceVoiceBindingHint()`
+- `populateAllProfiles()` 末尾调用 `updateWorkspaceVoiceBindingHint()`
+- workspace tab 切换回调：`loadProfiles(true).then(...).then(updateWorkspaceVoiceBindingHint)`
+
+**按钮实现：** 使用 `addEventListener` 动态绑定，不使用内联 `onclick`（避免 HTML 属性中转义引号问题）
+
+### B1 验收结果
+
+| 验收项 | 结果 |
+|---|---|
+| workspace 的"配置"区显示当前 profile 绑定的 voice（如果有） | ✅ |
+| 无绑定时显示"该人设尚未绑定音色" | ✅ |
+| "去选择音色"按钮切换到 voices tab | ✅ |
+| `handleGenerate` 行为不变 | ✅ |
+| 不调用真实 MiniMax API | ✅ |
+
+### E2E
+
+- `test_workspace_voice_binding_hint_switches_to_voices` — mock profiles/bindings/capabilities，验证 hint 显示"尚未绑定音色"，点击"去选择音色"切换到 voices tab
+- **结果：26 passed**
+
+### E2E 输出
+
+- `tests/e2e/test_frontend_capabilities.py` — 新增 Test 26
