@@ -34,7 +34,8 @@
 * P13-CREATION-B5-MVP1-CHECK-FIX1：safePushBatchSample 默认参数与任务状态修正已完成 ✅
 * P13-CREATION-B5-CHECK：batch merged audio sample_store 接入复核已完成 ✅
 * P13-CREATION-B5-CLOSE：batch merged audio sample_store 阶段收口已完成 ✅
-* 当前下一阶段：P13-FINAL-CHECK P13 最近样本系统最终验收
+* P13-FINAL-CHECK：P13 最近样本系统最终验收已完成 ✅
+* 当前下一阶段：P13-CLOSE / P13-ARCHIVE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6917,3 +6918,69 @@ B5-MVP1 只将 batch merged audio 写入统一 SampleStore：
 ### 阶段状态
 
 B5 已收口。下一阶段进入 P13-FINAL-CHECK。
+
+## P13-FINAL-CHECK：P13 最近样本系统最终验收
+
+### 背景
+
+P13 已完成最近样本系统主线：sample_store.js、workspace 接入、audition 接入、sample_sidebar UI、batch merged audio 接入。本阶段对 P13 全链路做最终验收。
+
+### 验收范围
+
+- `sample_store.js`
+- workspace samples
+- audition samples
+- batch merged samples
+- sample_sidebar UI
+- tab layout 回归
+- existing function regression
+- P13 产品边界
+- P13 遗留项
+
+### 验收结果
+
+- SampleStore 契约通过
+- Workspace sample 接入通过
+- Audition sample 接入通过
+- Batch merged sample 接入通过
+- SampleSidebar 展示与操作契约通过
+- Tab layout 回归测试通过
+- Existing function regression 测试通过
+- 未发现 P13 主线阻塞问题
+
+### 测试结果
+
+结果：364 passed。
+
+### 产品边界确认
+
+当前 SampleSidebar 是统一最近样本观察面板，不是跨 tab 配置恢复系统。
+
+当前支持：
+
+- workspace sample（sync / async / stream / variant）
+- audition sample
+- batch_longtext_merged sample
+- batch_script_merged sample
+
+当前不支持：
+
+- 长文本 tab 独立侧边栏
+- 剧本 tab 独立侧边栏
+- 一键恢复长文本完整配置
+- 一键恢复剧本完整角色行与参数
+- segment samples
+- partial batch result samples
+- history sample_store
+- 后端 sample library
+- 多用户 / SaaS
+
+### 遗留项
+
+- `P13-HISTORY-SECURITY-FIX1`：History textSnippet escape 安全债
+- `P13-UI-POLISH-LATER`：Workspace spacing 与 sample sidebar button visual consistency
+- `P14-CREATION-CONTEXT-RESTORE`：跨 tab 配置恢复能力评估
+
+### 阶段状态
+
+P13-FINAL-CHECK 通过，可以进入 P13-CLOSE / P13-ARCHIVE。
