@@ -18,7 +18,7 @@
   'use strict';
 
   var ROOT_ID = 'sampleSidebarRoot';
-  var STORAGE_KEY = 'voice_lab_recent_samples_v1';
+  var MAX_VISIBLE = 20;
 
   var _storageListener = null;
   var _eventsBound = false;
@@ -27,6 +27,28 @@
 
   function getRoot() {
     return document.getElementById(ROOT_ID);
+  }
+
+  /**
+   * HTML escape helper — prevents untrusted text from becoming code.
+   * Uses a detached div so it works in all browsers without regex munging.
+   */
+  function esc(s) {
+    var div = document.createElement('div');
+    div.textContent = s == null ? '' : String(s);
+    return div.innerHTML;
+  }
+
+  /**
+   * Get samples exclusively through SampleStore — never read localStorage directly.
+   */
+  function getSamplesSafe() {
+    try {
+      if (!window.SampleStore || typeof window.SampleStore.getSamples !== 'function') return [];
+      return window.SampleStore.getSamples();
+    } catch (e) {
+      return [];
+    }
   }
 
   function formatDuration(ms) {
@@ -48,7 +70,7 @@
       workspace_variant: '多版本',
       audition: '试听',
     };
-    return map[source] || source || '';
+    return map[source] || esc(source) || '';
   }
 
   function truncateText(text, maxLen) {
@@ -60,16 +82,18 @@
   // ── card builder ────────────────────────────────────────────────────
 
   function buildCard(sample) {
-    var id = sample.sample_id || '';
-    var text = truncateText(sample.text_preview || '', 60);
-    var profileName = sample.profile_name || sample.profile_id || '';
-    var voiceName = sample.voice_name || sample.voice_id || '';
-    var source = sample.source || '';
+    var id = esc(sample.sample_id || '');
+    var textRaw = sample.text_preview || '';
+    var text = esc(truncateText(textRaw, 60));
+    var textTitle = esc(textRaw);
+    var profileName = esc(sample.profile_name || sample.profile_id || '');
+    var voiceName = esc(sample.voice_name || sample.voice_id || '');
+    var source = esc(sample.source || '');
+    var sourceBadge = sourceLabel(source);
     var duration = formatDuration(sample.duration_ms);
+    var durationEsc = esc(duration);
     var downloadUrl = sample.download_url || '';
     var canPlay = downloadUrl && downloadUrl.indexOf('blob:') !== 0;
-
-    var sourceBadge = sourceLabel(source);
 
     var html = '<div class="sample-card" data-sample-id="' + id + '">';
 
@@ -80,14 +104,14 @@
         html += '<span class="sample-source-badge">' + sourceBadge + '</span>';
       }
       if (duration) {
-        html += '<span class="sample-duration">' + duration + '</span>';
+        html += '<span class="sample-duration">' + durationEsc + '</span>';
       }
       html += '</div>';
     }
 
     // Text preview
     if (text) {
-      html += '<div class="sample-text" title="' + (sample.text_preview || '') + '">' + text + '</div>';
+      html += '<div class="sample-text" title="' + textTitle + '">' + text + '</div>';
     }
 
     // Profile + voice
@@ -102,13 +126,13 @@
       html += '</div>';
     }
 
-    // Action buttons
+    // Action buttons — play uses data-id (not data-url) for in-card playback
     html += '<div class="sample-card-actions">';
     if (canPlay) {
-      html += '<button class="sample-btn-play" data-url="' + encodeURIComponent(downloadUrl) + '" title="播放">▶</button>';
+      html += '<button class="sample-btn-play" data-id="' + id + '" title="播放">▶</button>';
     }
-    html += '<button class="sample-btn-copy" data-text="' + encodeURIComponent(sample.text_preview || '') + '" title="复制文本">⎘</button>';
-    html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(sample.text_preview || '') + '" title="填入工作台">↓</button>';
+    html += '<button class="sample-btn-copy" data-text="' + encodeURIComponent(textRaw) + '" title="复制文本">⎘</button>';
+    html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(textRaw) + '" title="填入工作台">↓</button>';
     html += '<button class="sample-btn-delete" data-id="' + id + '" title="删除">✕</button>';
     html += '</div>';
 
@@ -122,30 +146,36 @@
     var root = getRoot();
     if (!root) return;
 
-    var samples = [];
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        samples = JSON.parse(raw);
-        if (!Array.isArray(samples)) samples = [];
-      }
-    } catch (e) {
-      samples = [];
-    }
+    var allSamples = getSamplesSafe();
+    var visibleSamples = allSamples.slice(0, MAX_VISIBLE);
+    var total = allSamples.length;
+    var showing = visibleSamples.length;
 
-    if (samples.length === 0) {
-      root.innerHTML = '<div class="sample-sidebar-empty">暂无样本</div>';
+    if (total === 0) {
+      root.innerHTML =
+        '<div class="sample-sidebar-card">' +
+          '<div class="sample-sidebar-header">' +
+            '<span class="sample-sidebar-title">最近样本</span>' +
+          '</div>' +
+          '<div class="sample-sidebar-empty">暂无样本</div>' +
+        '</div>';
       return;
     }
 
-    var html = '<div class="sample-sidebar-header">';
-    html += '<span class="sample-sidebar-title">最近样本 <em>(' + samples.length + ')</em></span>';
-    html += '<button class="sample-btn-clear" id="sampleSidebarClearBtn">清空</button>';
-    html += '</div>';
+    var html =
+      '<div class="sample-sidebar-card">' +
+        '<div class="sample-sidebar-header">' +
+          '<span class="sample-sidebar-title">最近样本 <em>(' + showing + '/' + total + ')</em></span>' +
+          '<button class="sample-btn-refresh" id="sampleSidebarRefreshBtn" title="刷新">↻</button>' +
+          '<button class="sample-btn-clear" id="sampleSidebarClearBtn">清空</button>' +
+        '</div>' +
+        '<div class="sample-sidebar-list">';
 
-    for (var i = 0; i < samples.length; i++) {
-      html += buildCard(samples[i]);
+    for (var i = 0; i < visibleSamples.length; i++) {
+      html += buildCard(visibleSamples[i]);
     }
+
+    html += '</div></div>';
 
     root.innerHTML = html;
 
@@ -163,13 +193,12 @@
       var target = e.target || e.srcElement;
       if (!target || target === root) return;
 
-      var url = target.getAttribute ? target.getAttribute('data-url') : null;
       var text = target.getAttribute ? target.getAttribute('data-text') : null;
       var sampleId = target.getAttribute ? target.getAttribute('data-id') : null;
 
-      // Play
-      if (target.classList.contains('sample-btn-play') && url) {
-        playSample(decodeURIComponent(url));
+      // Play — uses data-id to find sample and render in-card audio
+      if (target.classList.contains('sample-btn-play') && sampleId) {
+        playSample(sampleId);
         return;
       }
 
@@ -191,6 +220,12 @@
         return;
       }
 
+      // Refresh
+      if (target.id === 'sampleSidebarRefreshBtn') {
+        render();
+        return;
+      }
+
       // Clear all
       if (target.id === 'sampleSidebarClearBtn') {
         clearSamples();
@@ -199,20 +234,55 @@
     });
   }
 
-  // ── playSample ─────────────────────────────────────────────────────
+  // ── playSample(sampleId) — in-card audio ───────────────────────────
 
-  function playSample(url) {
-    if (!url) return;
-    // Reuse the shared audio player in index.html if available
-    if (window._sharedAudioPlayer) {
-      window._sharedAudioPlayer(url);
+  function playSample(sampleId) {
+    if (!sampleId) return;
+
+    var samples = getSamplesSafe();
+    var sample = null;
+    for (var i = 0; i < samples.length; i++) {
+      if (samples[i] && samples[i].sample_id === sampleId) {
+        sample = samples[i];
+        break;
+      }
+    }
+    if (!sample) {
+      window.alert && window.alert('未找到该样本');
       return;
     }
-    // Fallback: create a temporary audio element
-    var audio = new Audio(url);
-    audio.play().catch(function () {
-      // fail silently — browser autoplay policy may block
-    });
+    var downloadUrl = sample.download_url;
+    if (!downloadUrl || String(downloadUrl).indexOf('blob:') === 0) {
+      return;
+    }
+
+    // Find the card element
+    var card = null;
+    var allCards = (getRoot() && getRoot().querySelectorAll) ? getRoot().querySelectorAll('.sample-card') : [];
+    for (var j = 0; j < allCards.length; j++) {
+      if (allCards[j].getAttribute && allCards[j].getAttribute('data-sample-id') === sampleId) {
+        card = allCards[j];
+        break;
+      }
+    }
+    if (!card) return;
+
+    // Toggle: if player already exists, remove it
+    var existing = card.querySelector('.sample-card-player');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    // Build in-card audio player
+    var player = document.createElement('div');
+    player.className = 'sample-card-player';
+    var audioSrc = esc(downloadUrl);
+    player.innerHTML =
+      '<audio controls autoplay style="width:100%;height:32px;margin-top:8px">' +
+        '<source src="' + audioSrc + '" type="audio/mpeg">' +
+        '您的浏览器不支持音频播放</audio>';
+    card.appendChild(player);
   }
 
   // ── copyText ───────────────────────────────────────────────────────
@@ -241,7 +311,6 @@
     if (input) {
       input.value = text;
       input.focus();
-      // Trigger input event so char-count updates
       if (typeof Event === 'function') {
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }
@@ -260,6 +329,7 @@
   // ── clearSamples ───────────────────────────────────────────────────
 
   function clearSamples() {
+    if (!window.confirm || !window.confirm('确定清空最近样本？')) return;
     if (!window.SampleStore || typeof window.SampleStore.clearSamples !== 'function') return;
     window.SampleStore.clearSamples();
     render();
@@ -279,7 +349,7 @@
     // Listen for cross-tab storage changes
     if (window.addEventListener && !_storageListener) {
       _storageListener = function (e) {
-        if (e && e.key === STORAGE_KEY) {
+        if (e && e.key === 'voice_lab_recent_samples_v1') {
           render();
         }
       };

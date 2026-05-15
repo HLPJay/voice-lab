@@ -18,7 +18,7 @@
 * P13-CREATION-B2-CHECK：workspace sample_store 接入复核已完成 ✅
 * P13-CREATION-B3：audition_records 接入 sample_store 已复核通过 ✅
 * P13-CREATION-B3-CHECK：audition_records sample_store 接入复核已完成 ✅
-* 当前下一阶段：P13-CREATION-B4 sample_sidebar.js + index.html 容器 UI
+* 当前下一阶段：P13-CREATION-B4-CHECK-FIX sample sidebar UI 契约修正
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -6064,3 +6064,32 @@ B3 已完成 Voices tab audition 成功结果接入 sample_store，并经过 B3-
 ### 阶段状态
 
 B3 已收口，可以开始 P13-CREATION-B4。
+
+## P13-CREATION-B4-CHECK-FIX：sample sidebar UI 契约修正
+
+### 背景
+
+B4 初版实现完成后复核发现 sidebar UI 存在若干契约问题：render 直接读取 localStorage 而非 SampleStore.getSamples，样本文本未做 HTML escape，清空缺少确认，未提供刷新按钮，播放未在 card 内展示 audio 控件，且未限制初版展示 20 条。
+
+### 修正内容
+
+- `render()` 改为通过 `SampleStore.getSamples()` 读取样本
+- 增加 HTML escape helper，避免样本文本直接进入 innerHTML
+- sidebar 增加 `sample-sidebar-card` 外层容器
+- 增加刷新按钮
+- 清空样本前增加 confirm
+- 初版只展示最近 20 条
+- `playSample(sampleId)` 改为按 sample_id 查找并在当前 sample card 内渲染 `<audio controls autoplay>`
+- 补强静态契约测试
+
+### 阶段边界
+
+- 不改 sample_store.js
+- 不改 workspace / audition sample 写入逻辑
+- 不接 batch / history sample_store
+- 不改后端 API / 数据库
+- 不调用真实 MiniMax
+
+### 阶段状态
+
+B4-CHECK-FIX 完成后，再进入 B4-CHECK。

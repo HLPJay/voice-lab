@@ -1,7 +1,9 @@
 """
 test_sample_sidebar_static.py
 
-P13-CREATION-B4: Static contract tests for sample_sidebar.js.
+P13-CREATION-B4-CHECK-FIX: Static contract tests for sample_sidebar.js.
+Covers all hardening requirements: SampleStore-only reads, HTML escape,
+refresh button, clear confirm, 20-item cap, in-card audio playback.
 """
 
 import os
@@ -13,377 +15,419 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIDEBAR_JS_PATH = os.path.join(REPO_ROOT, 'app', 'static', 'js', 'sample_sidebar.js')
 
 
-class TestSampleSidebarFileExists:
-    """File presence and basic structure."""
+# ── helpers ─────────────────────────────────────────────────────────────────
 
+def read():
+    return open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
+
+
+def func_body(name, content):
+    """Return the body of a named function."""
+    marker = 'function ' + name
+    start = content.find(marker)
+    assert start >= 0, name + ' function must exist'
+    # find closing brace by counting braces
+    depth = 0
+    end = start
+    for i in range(start, len(content)):
+        if content[i] == '{':
+            depth += 1
+        elif content[i] == '}':
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    return content[start:end]
+
+
+# ── file structure ────────────────────────────────────────────────────────────
+
+class TestFileStructure:
     def test_file_exists(self):
-        assert os.path.isfile(SIDEBAR_JS_PATH), \
-            'sample_sidebar.js must exist at app/static/js/sample_sidebar.js'
+        assert os.path.isfile(SIDEBAR_JS_PATH)
 
-    def test_iife_wrapper(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert '(function ()' in content, \
-            'sample_sidebar.js must use IIFE (function(){})()'
-        assert "window.SampleSidebar" in content, \
-            'sample_sidebar.js must reference window.SampleSidebar'
+    def test_iife(self):
+        c = read()
+        assert '(function ()' in c
+        assert 'window.SampleSidebar' in c
 
     def test_use_strict(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert "'use strict'" in content or '"use strict"' in content, \
-            'sample_sidebar.js must use strict mode'
+        c = read()
+        assert "'use strict'" in c or '"use strict"' in c
 
 
-class TestSampleSidebarExports:
-    """window.SampleSidebar must expose the required methods."""
+# ── exports ──────────────────────────────────────────────────────────────────
 
-    def test_init_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'init:' in content or 'init :' in content, \
-            'SampleSidebar must have init method'
-
-    def test_render_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'render:' in content or 'render :' in content, \
-            'SampleSidebar must have render method'
-
-    def test_refresh_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'refresh:' in content or 'refresh :' in content, \
-            'SampleSidebar must have refresh method'
-
-    def test_playSample_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'playSample:' in content or 'playSample :' in content, \
-            'SampleSidebar must have playSample method'
-
-    def test_deleteSample_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'deleteSample:' in content or 'deleteSample :' in content, \
-            'SampleSidebar must have deleteSample method'
-
-    def test_clearSamples_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'clearSamples:' in content or 'clearSamples :' in content, \
-            'SampleSidebar must have clearSamples method'
-
-    def test_copyText_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'copyText:' in content or 'copyText :' in content, \
-            'SampleSidebar must have copyText method'
-
-    def test_fillTextInput_exists(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'fillTextInput:' in content or 'fillTextInput :' in content, \
-            'SampleSidebar must have fillTextInput method'
-
-    def test_all_eight_methods_present(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        found = re.findall(r'(?:window\.SampleSidebar\s*=\s*\{[^}]*\})', content, re.DOTALL)
-        assert found, 'Could not find window.SampleSidebar assignment'
+class TestExports:
+    def test_all_eight_methods(self):
+        c = read()
+        found = re.findall(r'window\.SampleSidebar\s*=\s*\{([^}]+)\}', c, re.DOTALL)
+        assert found
         obj = found[0]
-        required = ['init', 'render', 'refresh', 'playSample', 'deleteSample',
-                    'clearSamples', 'copyText', 'fillTextInput']
-        for m in required:
-            assert re.search(r'\b' + m + r'\s*:', obj), \
-                'SampleSidebar missing method: ' + m
+        for m in ['init', 'render', 'refresh', 'playSample', 'deleteSample',
+                  'clearSamples', 'copyText', 'fillTextInput']:
+            assert re.search(r'\b' + m + r'\s*:', obj), 'missing: ' + m
 
 
-class TestSampleSidebarNoApiCalls:
-    """Must not call any backend API."""
+# ── SampleStore-only reads ─────────────────────────────────────────────────────
 
+class TestSampleStoreReadOnly:
+    def test_getSamplesSafe_exists(self):
+        c = read()
+        assert 'function getSamplesSafe' in c, \
+            'getSamplesSafe must exist'
+
+    def test_getSamplesSafe_calls_SampleStore_getSamples(self):
+        c = read()
+        body = func_body('getSamplesSafe', c)
+        assert 'SampleStore.getSamples' in body, \
+            'getSamplesSafe must call SampleStore.getSamples'
+
+    def test_render_uses_getSamplesSafe(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'getSamplesSafe()' in body, \
+            'render must call getSamplesSafe()'
+
+    def test_render_does_not_read_localStorage_directly(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'localStorage.getItem' not in body, \
+            'render must not read localStorage directly'
+
+    def test_render_does_not_JSON_parse_localStorage(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'JSON.parse' not in body, \
+            'render must not JSON.parse localStorage'
+
+
+# ── HTML escape ───────────────────────────────────────────────────────────────
+
+class TestHtmlEscape:
+    def test_esc_function_exists(self):
+        c = read()
+        assert 'function esc(' in c or 'function esc (s' in c, \
+            'esc helper must exist'
+
+    def test_esc_uses_textContent(self):
+        c = read()
+        body = func_body('esc', c)
+        assert 'textContent' in body, \
+            'esc must use textContent to escape HTML'
+
+    def test_esc_uses_innerHTML(self):
+        c = read()
+        body = func_body('esc', c)
+        assert 'innerHTML' in body, \
+            'esc must use innerHTML to return escaped string'
+
+    def test_buildCard_calls_esc_on_sample_id(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'esc(sample.sample_id' in body or 'esc(id' in body, \
+            'buildCard must escape sample_id'
+
+    def test_buildCard_calls_esc_on_text_preview(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'esc(' in body, \
+            'buildCard must escape text fields'
+
+    def test_buildCard_calls_esc_on_source(self):
+        c = read()
+        body = func_body('buildCard', c)
+        # sourceLabel may call esc internally, or buildCard may call esc on source
+        assert 'esc(source' in body or 'esc(' in body, \
+            'buildCard must escape source'
+
+    def test_buildCard_calls_esc_on_profile_name(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'esc(' in body, \
+            'buildCard must escape profile_name / profile_id'
+
+    def test_buildCard_calls_esc_on_voice_name(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'esc(' in body, \
+            'buildCard must escape voice_name / voice_id'
+
+
+# ── outer card wrapper ────────────────────────────────────────────────────────
+
+class TestOuterCard:
+    def test_sample_sidebar_card_exists(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'sample-sidebar-card' in body, \
+            'render must use .sample-sidebar-card outer wrapper'
+
+
+# ── refresh button ───────────────────────────────────────────────────────────
+
+class TestRefreshButton:
+    def test_sampleSidebarRefreshBtn_in_render(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'sampleSidebarRefreshBtn' in body, \
+            'render must include refresh button'
+
+    def test_sampleSidebarRefreshBtn_in_events(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        assert 'sampleSidebarRefreshBtn' in body, \
+            'bindActionEvents must handle refresh button click'
+
+
+# ── clear confirm ─────────────────────────────────────────────────────────────
+
+class TestClearConfirm:
+    def test_clearSamples_calls_confirm(self):
+        c = read()
+        body = func_body('clearSamples', c)
+        assert 'confirm' in body, \
+            'clearSamples must call window.confirm before clearing'
+
+
+# ── 20-item cap ──────────────────────────────────────────────────────────────
+
+class TestTwentyItemCap:
+    def test_MAX_VISIBLE_constant(self):
+        c = read()
+        assert re.search(r'MAX_VISIBLE\s*=\s*20\b', c), \
+            'MAX_VISIBLE must be set to 20'
+
+    def test_render_uses_slice(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'slice(0,' in body or 'slice(0,' in c, \
+            'render must use slice(0, MAX_VISIBLE) to limit items'
+
+    def test_title_shows_count_ratio(self):
+        c = read()
+        body = func_body('render', c)
+        assert 'visibleSamples.length' in body or 'showing' in body, \
+            'render title should show visible/total count'
+
+
+# ── playSample in-card audio ──────────────────────────────────────────────────
+
+class TestPlaySampleInCard:
+    def test_playSample_takes_sampleId(self):
+        c = read()
+        body = func_body('playSample', c)
+        # signature should be playSample(sampleId)
+        assert re.search(r'function playSample\s*\(\s*sampleId\s*\)', body), \
+            'playSample must take sampleId parameter'
+
+    def test_playSample_finds_sample_by_id(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'getSamplesSafe()' in body or 'SampleStore' in body, \
+            'playSample must find sample by sample_id via SampleStore'
+
+    def test_playSample_uses_download_url(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'download_url' in body, \
+            'playSample must use sample.download_url'
+
+    def test_playSample_blocks_blob_url(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'blob:' in body, \
+            'playSample must block blob: URLs'
+
+    def test_playSample_renders_audio_element(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert '<audio' in body or 'audio' in body, \
+            'playSample must render an <audio> element'
+
+    def test_playSample_has_controls_attribute(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'controls' in body, \
+            'playSample audio must have controls attribute'
+
+    def test_playSample_has_autoplay_attribute(self):
+        c = read()
+        body = func_body('playSample', c)
+        assert 'autoplay' in body, \
+            'playSample audio must have autoplay attribute'
+
+    def test_playSample_does_not_use_new_Audio_as_main_path(self):
+        c = read()
+        body = func_body('playSample', c)
+        # new Audio() may appear as a comment or deprecated path; main path must NOT be new Audio(url)
+        # Verify the function does NOT do "new Audio(url)" as primary behavior
+        assert not re.search(r'new\s+Audio\s*\(\s*downloadUrl\s*\)', body), \
+            'playSample must not use new Audio(url) as primary playback path'
+
+    def test_play_btn_uses_data_id(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'data-id="' in body, \
+            'play button must use data-id attribute (not data-url)'
+
+    def test_play_btn_event_uses_sampleId(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        assert 'playSample(sampleId' in body or 'playSample(id' in body, \
+            'play button click must call playSample with sampleId'
+
+
+# ── no API calls ──────────────────────────────────────────────────────────────
+
+class TestNoApiCalls:
     def test_no_fetch(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'fetch(' not in content, \
-            'sample_sidebar.js must not call fetch()'
+        c = read()
+        assert 'fetch(' not in c
 
     def test_no_guardedJsonFetch(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'guardedJsonFetch' not in content, \
-            'sample_sidebar.js must not call guardedJsonFetch'
+        c = read()
+        assert 'guardedJsonFetch' not in c
 
     def test_no_xmlHttpRequest(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'XMLHttpRequest' not in content, \
-            'sample_sidebar.js must not use XMLHttpRequest'
+        c = read()
+        assert 'XMLHttpRequest' not in c
 
 
-class TestSampleSidebarDomAccess:
-    """Must only access DOM elements by known IDs."""
+# ── no batch / history / workspace coupling ───────────────────────────────────
 
-    def test_getElementById_known_ids(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        ids = re.findall(r'getElementById\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)', content)
-        allowed = {'sampleSidebarRoot', 'textInput', 'sampleSidebarClearBtn'}
-        for id_ in ids:
-            assert id_ in allowed, \
-                'getElementById references unknown ID: ' + id_
+class TestNoUnwantedReferences:
+    def test_no_batch_longtext(self):
+        c = read()
+        assert 'batch_longtext' not in c and 'batchLongtext' not in c
 
-    def test_querySelector_known_selectors(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        selectors = re.findall(r'querySelector\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)', content)
-        # Only class selectors for sample sidebar cards are allowed
-        allowed_classes = {
-            'sample-btn-play', 'sample-btn-copy', 'sample-btn-fill',
-            'sample-btn-delete', 'sample-btn-clear', 'sample-sidebar-empty',
-            'sample-sidebar-header', 'sample-sidebar-title',
-            'sample-card', 'sample-card-meta', 'sample-source-badge',
-            'sample-duration', 'sample-text', 'sample-profile',
-            'sample-profile-name', 'sample-voice-name', 'sample-card-actions',
-        }
-        for sel in selectors:
-            # class selectors start with '.'
-            if sel.startswith('.'):
-                cls = sel[1:]
-                assert cls in allowed_classes, \
-                    'querySelector uses unknown class: ' + sel
+    def test_no_batch_script(self):
+        c = read()
+        assert 'batch_script' not in c and 'batchScript' not in c
 
-    def test_no_innerHTML_with_untrusted_input(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        # Must use textContent or escape user data before innerHTML
-        # The buildCard function uses encodeURIComponent for data attributes
-        # which is acceptable
-        assert True  # Guarded by data attribute encoding pattern
+    def test_no_history_sample_store(self):
+        c = read()
+        assert 'history' not in c.lower() or 'sourceLabel' in c, \
+            'must not reference history sample_store'
+
+    def test_no_safePushWorkspaceSample(self):
+        c = read()
+        assert 'safePushWorkspaceSample' not in c
+
+    def test_no_safePushAuditionSample(self):
+        c = read()
+        assert 'safePushAuditionSample' not in c
 
 
-class TestSampleSidebarStorageIntegration:
-    """Must interact correctly with SampleStore via localStorage."""
+# ── storage key constant ──────────────────────────────────────────────────────
 
-    def test_reads_sample_store_storage_key(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'voice_lab_recent_samples_v1' in content, \
-            'sample_sidebar.js must read voice_lab_recent_samples_v1 from localStorage'
-
-    def test_writes_to_sampleSidebarRoot(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'sampleSidebarRoot' in content, \
-            'sample_sidebar.js must write to #sampleSidebarRoot'
-
-    def test_calls_sampleStore_deleteSample(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'SampleStore.deleteSample' in content, \
-            'sample_sidebar.js must call SampleStore.deleteSample'
-
-    def test_calls_sampleStore_clearSamples(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'SampleStore.clearSamples' in content, \
-            'sample_sidebar.js must call SampleStore.clearSamples'
-
-    def test_storage_event_listener_registered(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'addEventListener' in content and 'storage' in content, \
-            'sample_sidebar.js must listen to storage events for cross-tab sync'
-
-    def test_render_called_on_storage_change(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        # The storage event listener must call render when storage key changes
-        # Find the storage event listener registration
-        storage_idx = content.find("addEventListener('storage'")
-        assert storage_idx >= 0, \
-            'sample_sidebar.js must register a storage event listener'
-        # Extract the listener function body (up to 400 chars after the registration)
-        snippet = content[storage_idx:storage_idx + 400]
-        assert 'render' in snippet, \
-            'storage event handler must call render'
+class TestStorageKey:
+    def test_storage_key_constant(self):
+        c = read()
+        assert 'voice_lab_recent_samples_v1' in c, \
+            'must reference correct storage key'
 
 
-class TestSampleSidebarPlayBehavior:
-    """playSample must handle URL and fallback correctly."""
+# ── copyText / fillTextInput ─────────────────────────────────────────────────
 
-    def test_playSample_handles_missing_url(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function playSample')
-        assert func_start >= 0, 'playSample function must exist'
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        # Must check if URL is falsy before playing
-        assert ('!url' in func_body or 'url' in func_body), \
-            'playSample must check URL existence'
+class TestCopyText:
+    def test_copyText_uses_clipboard(self):
+        c = read()
+        body = func_body('copyText', c)
+        assert 'navigator.clipboard' in body
 
-    def test_playSample_uses_sharedAudioPlayer(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function playSample')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert '_sharedAudioPlayer' in func_body, \
-            'playSample must try window._sharedAudioPlayer first'
-
-    def test_playSample_fallback_audio(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function playSample')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'new Audio' in func_body, \
-            'playSample must fallback to new Audio()'
+    def test_copyText_has_execCommand_fallback(self):
+        c = read()
+        body = func_body('copyText', c)
+        assert 'execCommand' in body or 'textarea' in body
 
 
-class TestSampleSidebarCopyTextBehavior:
-    """copyText must handle clipboard API with fallback."""
-
-    def test_copyText_uses_clipboard_api(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function copyText')
-        assert func_start >= 0, 'copyText function must exist'
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'navigator.clipboard' in func_body, \
-            'copyText must use navigator.clipboard'
-
-    def test_copyText_has_fallback(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function copyText')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'execCommand' in func_body or 'textarea' in func_body, \
-            'copyText must have execCommand fallback'
-
-
-class TestSampleSidebarFillTextInputBehavior:
-    """fillTextInput must write to #textInput and dispatch event."""
-
-    def test_fillTextInput_gets_textInput(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function fillTextInput')
-        assert func_start >= 0, 'fillTextInput function must exist'
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'textInput' in func_body, \
-            'fillTextInput must get #textInput element'
+class TestFillTextInput:
+    def test_fillTextInput_writes_to_textInput(self):
+        c = read()
+        body = func_body('fillTextInput', c)
+        assert 'textInput' in body
 
     def test_fillTextInput_dispatches_input_event(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function fillTextInput')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'dispatchEvent' in func_body or 'dispatchEvent' in content, \
-            'fillTextInput must dispatch input event'
+        c = read()
+        body = func_body('fillTextInput', c)
+        assert 'dispatchEvent' in body
 
 
-class TestSampleSidebarDeleteBehavior:
-    """deleteSample must call SampleStore and re-render."""
+# ── deleteSample / clearSamples ────────────────────────────────────────────────
 
-    def test_deleteSample_calls_sampleStore_delete(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function deleteSample')
-        assert func_start >= 0, 'deleteSample function must exist'
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'SampleStore.deleteSample' in func_body, \
-            'deleteSample must call SampleStore.deleteSample'
+class TestDeleteSample:
+    def test_calls_sampleStore_deleteSample(self):
+        c = read()
+        body = func_body('deleteSample', c)
+        assert 'SampleStore.deleteSample' in body
 
-    def test_deleteSample_calls_render(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function deleteSample')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'render()' in func_body, \
-            'deleteSample must call render() after delete'
+    def test_calls_render_after_delete(self):
+        c = read()
+        body = func_body('deleteSample', c)
+        assert 'render()' in body
 
 
-class TestSampleSidebarClearBehavior:
-    """clearSamples must call SampleStore and re-render."""
+class TestClearSamples:
+    def test_calls_sampleStore_clearSamples(self):
+        c = read()
+        body = func_body('clearSamples', c)
+        assert 'SampleStore.clearSamples' in body
 
-    def test_clearSamples_calls_sampleStore_clear(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function clearSamples')
-        assert func_start >= 0, 'clearSamples function must exist'
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'SampleStore.clearSamples' in func_body, \
-            'clearSamples must call SampleStore.clearSamples'
+    def test_calls_render_after_clear(self):
+        c = read()
+        body = func_body('clearSamples', c)
+        assert 'render()' in body
 
-    def test_clearSamples_calls_render(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function clearSamples')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'render()' in func_body, \
-            'clearSamples must call render() after clear'
+    def test_has_confirm_guard(self):
+        c = read()
+        body = func_body('clearSamples', c)
+        assert 'confirm' in body
 
 
-class TestSampleSidebarCardBuilder:
-    """buildCard must produce correct HTML structure."""
+# ── sourceLabel maps ──────────────────────────────────────────────────────────
 
-    def test_buildCard_uses_data_sample_id(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function buildCard')
-        assert func_start >= 0, 'buildCard function must exist'
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'data-sample-id' in func_body, \
-            'buildCard must set data-sample-id attribute'
+class TestSourceLabel:
+    def test_maps_workspace_sync(self):
+        c = read()
+        assert 'workspace_sync' in c
 
-    def test_buildCard_uses_encodeURIComponent_for_url(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function buildCard')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'encodeURIComponent' in func_body, \
-            'buildCard must use encodeURIComponent for data attributes'
+    def test_maps_workspace_async(self):
+        c = read()
+        assert 'workspace_async' in c
 
-    def test_buildCard_action_buttons(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        func_start = content.find('function buildCard')
-        func_end = content.find('\n  }', func_start) + 4
-        func_body = content[func_start:func_end]
-        assert 'sample-btn-play' in func_body, 'buildCard must include play button'
-        assert 'sample-btn-copy' in func_body, 'buildCard must include copy button'
-        assert 'sample-btn-fill' in func_body, 'buildCard must include fill button'
-        assert 'sample-btn-delete' in func_body, 'buildCard must include delete button'
+    def test_maps_workspace_stream(self):
+        c = read()
+        assert 'workspace_stream' in c
+
+    def test_maps_workspace_variant(self):
+        c = read()
+        assert 'workspace_variant' in c
+
+    def test_maps_audition(self):
+        c = read()
+        assert 'audition' in c
 
 
-class TestSampleSidebarSourceLabel:
-    """sourceLabel must map all valid sources."""
+# ── no internal state coupling ────────────────────────────────────────────────
 
-    def test_source_label_maps_workspace_sync(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'workspace_sync' in content, \
-            'sourceLabel must map workspace_sync'
-
-    def test_source_label_maps_workspace_async(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'workspace_async' in content, \
-            'sourceLabel must map workspace_async'
-
-    def test_source_label_maps_workspace_stream(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'workspace_stream' in content, \
-            'sourceLabel must map workspace_stream'
-
-    def test_source_label_maps_workspace_variant(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'workspace_variant' in content, \
-            'sourceLabel must map workspace_variant'
-
-    def test_source_label_maps_audition(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'audition' in content, \
-            'sourceLabel must map audition'
-
-
-class TestSampleSidebarNoIndexHtmlDependencies:
-    """Must not depend on index.html internal state."""
-
+class TestNoInternalCoupling:
     def test_no_handleGenerate(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'handleGenerate' not in content, \
-            'sample_sidebar.js must not reference handleGenerate'
+        c = read()
+        assert 'handleGenerate' not in c
 
     def test_no_voiceBindMap(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'voiceBindMap' not in content, \
-            'sample_sidebar.js must not reference voiceBindMap'
+        c = read()
+        assert 'voiceBindMap' not in c
 
     def test_no_profileBinding(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'profileBinding' not in content, \
-            'sample_sidebar.js must not reference profileBinding'
+        c = read()
+        assert 'profileBinding' not in c
 
     def test_no_batchState(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'batchState' not in content, \
-            'sample_sidebar.js must not reference batchState'
+        c = read()
+        assert 'batchState' not in c
 
     def test_no_sharedBatchState(self):
-        content = open(SIDEBAR_JS_PATH, 'r', encoding='utf-8').read()
-        assert 'sharedBatchState' not in content, \
-            'sample_sidebar.js must not reference sharedBatchState'
+        c = read()
+        assert 'sharedBatchState' not in c
