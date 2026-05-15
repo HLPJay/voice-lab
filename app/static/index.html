@@ -1695,6 +1695,7 @@
     _cachedProfiles = await res.json();
     return _cachedProfiles;
   }
+  window.loadProfiles = loadProfiles;
 
   async function loadVoices(provider, forceRefresh = false) {
     if (!provider) return [];
@@ -1724,6 +1725,7 @@
       selectEl.appendChild(opt);
     });
   }
+  window.populateProfileSelect = populateProfileSelect;
 
   async function populateVoiceSelect(selectEl, provider, selectedVoiceId = '') {
     selectEl.innerHTML = '<option value="">加载音色中…</option>';
@@ -1761,6 +1763,7 @@
     if (!resp.ok) throw new Error(data.detail || JSON.stringify(data));
     return data;
   }
+  window.bindVoiceToProfile = bindVoiceToProfile;
 
   // ============================================================
   // Hide mock options unless ?dev=1
@@ -2153,6 +2156,7 @@
     }
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   }
+  window.hexToBlobUrl = hexToBlobUrl;
 
   // P8-FIX7: High-cost action confirmation helper
   function confirmHighCostVoiceAction(actionName) {
@@ -3782,6 +3786,7 @@ function handleStopAsyncPolling() {
       }
     });
   }
+  window.renderInlineCreateProfile = renderInlineCreateProfile;
 
   async function quickBindVoice(voiceId, voiceName, provider) {
     const existingPanel = document.getElementById('quickBindPanel');
@@ -3987,6 +3992,7 @@ function handleStopAsyncPolling() {
   function isValidVoiceId(value) {
     return /^[a-zA-Z](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(value) && value.length >= 8 && value.length <= 256;
   }
+  window.isValidVoiceId = isValidVoiceId;
 
   function updateCloneBtnState() {
     const btn = document.getElementById('cloneBtn');

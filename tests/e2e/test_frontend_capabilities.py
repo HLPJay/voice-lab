@@ -992,3 +992,49 @@ def test_voice_design_mock_submit_success(
     # Verify button text is restored
     btn_text = page.locator("#designBtn").text_content()
     assert "生成设计" in btn_text, f"Button should be restored, got: {btn_text}"
+
+
+# ── Test 21: Voice helper window exports are available ───────────────────────────
+
+def test_voice_helper_window_exports_are_available(
+    page, e2e_base_url, console_errors
+):
+    """Verify that voice clone/design migration helpers are exposed as window.* entries."""
+
+    page.goto(f"{e2e_base_url}/static/index.html", wait_until="load", timeout=30000)
+    page.wait_for_selector("#providerSelect", state="attached", timeout=10000)
+
+    # Verify all required window helpers are functions
+    helpers_ok = page.evaluate(""" () => {
+        const required = [
+            'isValidVoiceId',
+            'loadProfiles',
+            'populateProfileSelect',
+            'bindVoiceToProfile',
+            'renderInlineCreateProfile',
+            'hexToBlobUrl'
+        ];
+        const results = {};
+        for (const name of required) {
+            results[name] = typeof window[name] === 'function';
+        }
+        return results;
+    } """)
+
+    for name, is_fn in helpers_ok.items():
+        assert is_fn, f"window.{name} should be a function, got: {type(window[name]).__name__ if name in globals() else 'undefined'}"
+
+    # Verify isValidVoiceId basic behavior
+    voice_id_valid = page.evaluate("window.isValidVoiceId('e2e_clone_voice_001')")
+    assert voice_id_valid is True, "isValidVoiceId should return true for valid voice_id 'e2e_clone_voice_001'"
+
+    # Verify invalid voice_ids are rejected
+    invalid_cases = page.evaluate(""" () => {
+        return [
+            window.isValidVoiceId('abc'),           // too short
+            window.isValidVoiceId('123abc'),        // starts with number
+            window.isValidVoiceId('abc-'),           // ends with hyphen
+            window.isValidVoiceId(''),              // empty
+        ];
+    } """)
+    assert not any(invalid_cases), f"isValidVoiceId should return false for invalid IDs: {invalid_cases}"

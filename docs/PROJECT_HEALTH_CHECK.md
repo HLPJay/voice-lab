@@ -4315,3 +4315,33 @@ python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 20 pas
 **未改关键链路：** 未改 app/static/js/*、后端 API、Provider Adapter、Capability Registry、CapabilityValidator、生成链路、数据库、资产清理链路。
 
 **下一步建议：** P9-FE1-G1（clone 错误）+ P9-FE1-G2（design 成功）已完成，可进入 helper window 暴露前置任务或 `voice_clone.js` 抽离。
+
+---
+
+## P9-FE1-G3：暴露 voice clone/design 迁移所需 helper 为 window.*
+
+**时间：** 2026-05-15
+
+**问题：** 后续迁移 `voice_clone.js` / `voice_import.js` / `voice_design.js` 前需要调用 index.html 内部 helper，但这些 helper 未暴露为 window 入口。
+
+**修复：** 在 `app/static/index.html` 中新增以下 window 暴露语句：
+- `window.isValidVoiceId = isValidVoiceId`（第 3995 行）
+- `window.loadProfiles = loadProfiles`（第 1698 行）
+- `window.populateProfileSelect = populateProfileSelect`（第 1728 行）
+- `window.bindVoiceToProfile = bindVoiceToProfile`（第 1767 行）
+- `window.renderInlineCreateProfile = renderInlineCreateProfile`（第 3788 行）
+- `window.hexToBlobUrl = hexToBlobUrl`（第 2159 行）
+
+函数原有实现完全不变，仅添加 window 赋值语句。
+
+**E2E 验证：**
+```
+python -m pytest tests/e2e/test_frontend_capabilities.py::test_voice_helper_window_exports_are_available -v  # 1 passed
+python -m pytest tests/e2e/test_frontend_capabilities.py -q             # 21 passed
+```
+
+**测试结果：** 21 passed in 68.90s。
+
+**未改关键链路：** 未迁移 clone/design/import 业务函数、未改 app/static/js/*、未改后端 API、Provider Adapter、CapabilityValidator、生成链路、数据库、资产清理链路。
+
+**下一步建议：** `voice_clone.js` 迁移所需的前置 helper 已就绪，可进入 `voice_clone.js` 抽离任务。
