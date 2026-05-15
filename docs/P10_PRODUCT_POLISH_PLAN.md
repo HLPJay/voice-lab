@@ -593,3 +593,176 @@ document.getElementById('quickBindGoCreateBtn').addEventListener('click', functi
 ### E2E 输出
 
 - `tests/e2e/test_frontend_capabilities.py` — 新增 Test 27
+
+---
+
+## P10-PRODUCT-B3-A0：Batch tab 音色快速选择边界审查
+
+**审查时间：** 2026-05-15
+
+**性质：** 文档记录，不改业务代码，不新增 UI，不迁移模块
+
+---
+
+### B3 审查范围
+
+- longtext tab 当前 profile / provider / voice 相关 DOM
+- script tab 当前 profile / provider / voice 相关 DOM
+- batch_longtext.js 与 batch_script.js 提交 payload 结构
+- 是否存在 batch 专用 voice 选择字段
+- profile binding 与 batch 生成之间的关系
+- 是否应该/如何在 batch tab 增加绑定音色提示
+
+---
+
+### 当前 Batch tab 音色选择机制
+
+#### longtext tab（`#tab-longtext`）
+
+| 元素 | ID | 用途 |
+|---|---|---|
+| profile select | `#batchProfile` | 选择人设（绑定 voice 用） |
+| provider select | `#batchProvider` | 选择 provider |
+
+**提交 payload（batch_longtext.js line 48）：**
+```javascript
+guardedJsonFetch('/api/voice/batch/submit', {
+  mode: 'longtext',
+  profile_id: profileId,   // ← 只传 profile_id，voice 由后端从 binding 解析
+  provider: provider,
+  ...
+})
+```
+
+**关键结论：longtext tab 只传 `profile_id`，不传 `voice_id`。Voice 由后端从 profile 的绑定关系解析。**
+
+#### script tab（`#tab-script`）
+
+| 元素 | ID | 用途 |
+|---|---|---|
+| provider select | `#batchScriptProvider` | 全局 provider |
+| 每行 profile select | `#scriptProfile_${id}` | 每行独立选择人设 |
+
+**提交 payload（batch_script.js line 48）：**
+```javascript
+script: [
+  { role, text, profile_id: state.profileId, params: {} },
+  // 每行独立 profile_id，voice 由后端从 binding 解析
+]
+```
+
+**关键结论：script tab 每行只传 `profile_id`，不传 `voice_id`。Voice 由后端从 profile 的绑定关系解析。**
+
+---
+
+### 两个独立音色选择系统的再次确认
+
+| 系统 | 用途 | 字段 | 所在 tab |
+|---|---|---|---|
+| Profile binding | Workspace / longtext / script 生成 | `profile_id` | 所有生成 tab |
+| Voice audition | Voices tab 试听预览 | `window._auditionSelectedVoiceId` | voices |
+
+Batch tab 生成**只依赖 profile binding**，不依赖 audition 系统。
+
+---
+
+### B3 建议结论
+
+#### 不应该做
+
+- **不新增 batch 专用 voice select** — batch payload 只接受 `profile_id`，voice 由后端解析；新增第二套 voice 选择会与 binding 系统冲突
+- **不改 batch 提交 payload** — batch_longtext.js 和 batch_script.js 的 `profile_id` 字段不能被 `voice_id` 替代（后端按 profile_id 解析 binding）
+- **不改 shared batch state** — shared batch state 风险极高，当前阶段不动
+- **不改后端 API** — 后端已稳定
+
+#### 应该做（轻量提示方案）
+
+在 longtext tab 和 script tab 的 profile select 附近增加**绑定音色提示**（与 B1 相同的提示模式）：
+
+```
+该人设尚未绑定音色 → [去选择音色] 按钮 → 跳转 voices tab
+```
+
+**理由：** batch tab 用户选了一个 profile 后，同样不知道该 profile 是否已绑定 voice、绑定的哪个 voice。提示逻辑与 B1 完全一致。
+
+#### 实现拆分建议
+
+| 任务 | 范围 | 改动文件 |
+|---|---|---|
+| B3-longtext | longtext tab 增加绑定音色提示 | `index.html` |
+| B3-script | script tab 每行 profile select 下方增加提示 | `index.html` |
+
+Script tab 每行有独立 profile select（`#scriptProfile_${id}`），提示需要动态注入到每行 DOM 中，较 longtext 稍复杂。建议分开两个任务。
+
+---
+
+### B3-longtext 最小实现方案
+
+**新增 DOM：** `#batchVoiceBindingHint`（位于 `#batchProfile` select 下方）
+
+**新增函数：** `updateBatchVoiceBindingHint()`
+- 读取 `#batchProfile.value` 和 `#batchProvider.value`
+- 从 `window._voiceBindMap` 查找当前 profile 在当前 provider 下是否有绑定 voice
+- 有绑定：显示"当前音色：voice_id"
+- 无绑定：显示"该人设尚未绑定音色" + "去选择音色"按钮
+
+**事件绑定：**
+- `#batchProfile.addEventListener('change')` → `updateBatchVoiceBindingHint()`
+- `#batchProvider.addEventListener('change')` → `updateBatchVoiceBindingHint()`
+
+**按钮实现：**
+```javascript
+document.getElementById('batchVoiceBindingSwitchBtn').addEventListener('click', function() {
+  var voicesBtn = document.querySelector('.tab-btn[data-tab="voices"]');
+  if (voicesBtn) voicesBtn.click();
+});
+```
+
+**验收标准：**
+1. longtext tab 的 profile select 下方显示当前绑定 voice（如果有）
+2. 无绑定时显示"该人设尚未绑定音色" + "去选择音色"按钮
+3. batch 提交行为不变（只改显示提示）
+
+---
+
+### B3-script 最小实现方案
+
+**挑战：** script tab 每行有独立 profile select，且行是动态添加的。
+
+**方案 A（推荐）：** 仅在行添加时在 `#scriptProfile_${id}` 下方注入 hint span，通过事件委托监听行内按钮点击。
+
+**方案 B（更简单）：** 不在每行动态注入 hint，而是在 script tab 顶部（"台词列表" label 附近）增加一个全局提示，显示当前选中的多个 profile 中是否有未绑定 voice 的。
+
+**建议采用方案 A**（与 longtext 一致），但需要处理动态行的 hint 注入/更新。
+
+**每行动态 hint 更新：**
+- `addScriptLine()` 在创建行 DOM 后，注入 hint span 并调用 `updateScriptLineVoiceHint(id)`
+- `updateScriptLineVoiceHint(id)` 读取 `#scriptProfile_${id}.value` 和 `#batchScriptProvider.value`，从 `_voiceBindMap` 查询绑定
+- 行删除时 hint 随行移除
+
+**事件绑定：**
+- script tab 切换到前台时，遍历所有 `_scriptRows` 更新每行 hint
+- 每行 profile select 的 `change` 事件（通过事件委托）触发对应行 hint 更新
+
+**验收标准：**
+1. script tab 每行 profile select 下方显示该人设的绑定 voice 状态
+2. 无绑定时显示提示 + "去选择音色"按钮
+3. batch 提交行为不变
+
+---
+
+### B3 影响范围
+
+| 文件 | 改动 |
+|---|---|
+| `app/static/index.html` | 在 longtext tab 和 script tab 的 profile select 附近增加提示区 HTML 和事件绑定 |
+| `app/static/js/batch_longtext.js` | 无 |
+| `app/static/js/batch_script.js` | 无 |
+| 后端 API | 无 |
+| shared batch state | 无 |
+
+---
+
+### B0 审查结论
+
+B3 可行，方案已在上节确定。Batch tab 只在 profile select 附近增加绑定音色提示，与 B1 模式一致。不新增 batch 专用 voice select，不改 batch 提交 payload，不动 shared batch state。建议拆成 B3-longtext 和 B3-script 两个小任务。
