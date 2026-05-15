@@ -35,6 +35,7 @@
 - P14-CONTEXT-B2：长文本 context 保存与详情查看实现 ✅
 - P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核 ✅
 - P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口 ✅
+- P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计 ✅
 
 ## 已完成
 
@@ -103,8 +104,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-SIDEBAR-ACTIONS-A0 | design SampleSidebar action visibility strategy | P14-CONTEXT-B2-CLOSE 完成 |
-| P14-CONTEXT-B3 | longtext one-click restore | P14-SIDEBAR-ACTIONS-A0 完成 |
+| P14-SIDEBAR-ACTIONS-B1 | implement SampleSidebar action visibility/menu strategy | P14-SIDEBAR-ACTIONS-A0 完成 |
+| P14-CONTEXT-B3 | longtext one-click restore (detail panel) | P14-SIDEBAR-ACTIONS-B1 完成 |
 | P14-CONTEXT-C1-A0 | audit script context save/detail prerequisites | P14-SIDEBAR-ACTIONS-A0 完成 |
 | P14-CONTEXT-C1 | script context save and detail view | P14-CONTEXT-C1-A0 完成 |
 | P14-CONTEXT-C2 | script one-click restore | P14-CONTEXT-C1 完成 |

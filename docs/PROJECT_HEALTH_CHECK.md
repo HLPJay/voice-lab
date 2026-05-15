@@ -55,7 +55,8 @@
 * P14-CONTEXT-B2：长文本 context 保存与详情查看已完成 ✅
 * P14-CONTEXT-B2-CHECK：长文本 context 保存与详情查看复核已完成 ✅
 * P14-CONTEXT-B2-CLOSE：长文本 context 保存与详情查看阶段收口已完成 ✅
-* 当前下一阶段：P14-SIDEBAR-ACTIONS-A0
+* P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计已完成 ✅
+* 当前下一阶段：P14-SIDEBAR-ACTIONS-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7846,3 +7847,49 @@ P14-CONTEXT-B2 已实现长文本 context 保存与详情查看，P14-CONTEXT-B2
 ### 阶段状态
 
 P14-CONTEXT-B2 已完成并收口。
+
+## P14-SIDEBAR-ACTIONS-A0：侧边栏按钮显示策略设计
+
+### 背景
+
+P14-CONTEXT-B2 已实现长文本 context 保存与详情查看，SampleSidebar 当前有 6 个平铺按钮（播放、下载、详情、复制文本、填入工作台、删除）。后续 P14-CONTEXT-B3 将增加长文本一键回填按钮，不先设计按钮显示策略会导致操作区拥挤。本阶段只做设计审查，不实现代码。
+
+### 审查结论
+
+**当前按钮事实**：
+
+| 按钮 | 显示条件 | 触发 |
+|------|---------|------|
+| 播放 ▶ | `isSafeAudioUrl(download_url)` | `playSample(sampleId)` |
+| 下载 ⇩ | 同播放条件 | `<a download>` |
+| 详情 ⓘ | `sample.context_id` 存在 | `showSampleDetail(sampleId)` |
+| 复制文本 ⎘ | 无条件 | `copyText(text)` |
+| 填入工作台 ↓ | 无条件 | `fillTextInput(text)` → `#textInput` |
+| 删除 ✕ | 无条件 | `deleteSample(sampleId)` |
+
+**问题识别**：
+- 6 个平铺按钮已达上限，B3 增加回填会到 7 个，无法接受
+- 复制 / 填入语义重叠，填入对 longtext/script 样本无意义
+- 删除与其他操作视觉权重相同，危险操作未降权
+- 移动端 / 窄屏下按钮可用性下降
+
+### 推荐方案
+
+**v1 按钮分层 + 详情面板内回填**：
+
+1. **平铺按钮上限 4 个**：播放、详情、下载、"更多"
+2. **"更多"菜单**收纳：复制文本、填入工作台、删除
+3. **回填不新增平铺按钮**：B3/C2 的回填放在详情面板底部
+4. **填入工作台**对 longtext/script 样本不显示（无意义）
+5. **删除**在更多菜单内，视觉低权重
+
+### 后续阶段
+
+- `P14-SIDEBAR-ACTIONS-B1`：侧边栏按钮分层与更多菜单实现
+- `P14-CONTEXT-B3`：长文本一键回填（详情面板内）
+- `P14-CONTEXT-C1-A0`：剧本 context 前置审查
+
+### 阶段状态
+
+P14-SIDEBAR-ACTIONS-A0 完成，建议进入 P14-SIDEBAR-ACTIONS-B1。
+
