@@ -48,7 +48,8 @@
 * P14-SCRIPT-UX-B1-CHECK：剧本 UX hints 实现复核已完成 ✅
 * P14-SCRIPT-UX-B1-CLOSE：剧本 UX hints 阶段收口已完成 ✅
 * P14-CONTEXT-B0：可恢复创作上下文 ContextStore 设计已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B1 / P14-PRODUCT-B0 待选择
+* P14-CONTEXT-B1：context_store.js 基础模块已完成，待复核
+* 当前下一阶段：P14-CONTEXT-B1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7564,3 +7565,38 @@ P13 已完成最近样本系统（SampleStore + SampleSidebar），P14 已完成
 ### 阶段状态
 
 P14-CONTEXT-B0 完成，建议进入 P14-CONTEXT-B1（实现 context_store.js 基础模块）。
+
+## P14-CONTEXT-B1：context_store.js 基础模块实现
+
+### 背景
+
+P14-CONTEXT-B0 已完成 ContextStore 设计。本阶段新增独立前端存储模块 `context_store.js`，为后续长文本 / 剧本详情查看和一键回填提供基础能力。
+
+### 实现内容
+
+- 新增 `app/static/js/context_store.js`
+- 新增 localStorage key `voice_lab_sample_context_v1`
+- 新增 `{version, contexts}` 存储结构（兼容 legacy flat array）
+- 新增 `pushContext`、`getContext`、`getContexts`、`deleteContext`、`clearContexts`、`normalizeContext`、`trimContexts`
+- longtext context 规范化：full_text 截断 50000、字段 clamp、strategy/output_format/audio_format fallback
+- script context 规范化：lines 过滤空 text、200 行上限、silence clamp
+- 50 条上限与 created_at 倒序 LRU 淘汰
+- fail-safe localStorage 读写（QuotaExceededError 不抛错）
+- 新增 39 项测试
+
+### 阶段边界
+
+- 未接入生成链路
+- 未修改 SampleStore / SampleSidebar
+- 未修改 index.html
+- 未实现详情弹层
+- 未实现一键回填
+- 未调用真实 MiniMax
+
+### 测试结果
+
+结果：506 passed（新增 39 项 context_store 测试）。
+
+### 阶段状态
+
+B1 完成，待 B1-CHECK 复核。
