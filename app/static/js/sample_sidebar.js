@@ -211,6 +211,9 @@
     if (canDownload) {
       html += '<a class="sample-btn-download" href="' + downloadUrlAttr + '" download="' + downloadName + '" title="下载">⇩</a>';
     }
+    if (sample.context_id) {
+      html += '<button class="sample-btn-detail" data-id="' + idAttr + '" title="详情">ⓘ</button>';
+    }
     html += '<button class="sample-btn-copy" data-text="' + encodeURIComponent(textRaw) + '" title="复制文本">⎘</button>';
     html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(textRaw) + '" title="填入工作台">↓</button>';
     html += '<button class="sample-btn-delete" data-id="' + idAttr + '" title="删除">✕</button>';
@@ -301,6 +304,12 @@
       // Delete single sample
       if (target.classList.contains('sample-btn-delete') && sampleId) {
         deleteSample(sampleId);
+        return;
+      }
+
+      // Detail view
+      if (target.classList.contains('sample-btn-detail') && sampleId) {
+        showSampleDetail(sampleId);
         return;
       }
 
@@ -425,6 +434,103 @@
     render();
   }
 
+  // ── showSampleDetail ─────────────────────────────────────────────────
+
+  function showSampleDetail(sampleId) {
+    if (!sampleId) return;
+    var samples = getSamplesSafe();
+    var sample = null;
+    for (var i = 0; i < samples.length; i++) {
+      if (samples[i] && samples[i].sample_id === sampleId) {
+        sample = samples[i];
+        break;
+      }
+    }
+    if (!sample) return;
+    var contextId = sample.context_id;
+    if (!contextId) return;
+
+    var context = null;
+    try {
+      if (window.ContextStore && typeof window.ContextStore.getContext === 'function') {
+        context = window.ContextStore.getContext(contextId);
+      }
+    } catch (e) {
+      context = null;
+    }
+
+    var root = getRoot();
+    if (!root) return;
+
+    // Remove any existing detail panel
+    var existing = root.querySelector('.sample-detail-panel');
+    if (existing) existing.remove();
+
+    var panel = document.createElement('div');
+    panel.className = 'sample-detail-panel';
+
+    if (!context) {
+      panel.innerHTML =
+        '<div class="sample-detail-header">' +
+          '<span class="sample-detail-title">详情</span>' +
+          '<button class="sample-detail-close" title="关闭">✕</button>' +
+        '</div>' +
+        '<div class="sample-detail-body">' +
+          '<div class="sample-detail-empty">完整上下文不可用</div>' +
+        '</div>';
+      root.appendChild(panel);
+      var closeBtn = panel.querySelector('.sample-detail-close');
+      if (closeBtn) closeBtn.addEventListener('click', function () { panel.remove(); });
+      return;
+    }
+
+    var sourceEsc = esc(context.source || '');
+    var createdAtEsc = esc(formatCreatedAt(context.created_at));
+    var providerEsc = esc(context.provider || '');
+    var profileIdEsc = esc(context.profile_id || '');
+    var fullTextEsc = esc(context.full_text || '');
+    var charCount = context.full_text ? context.full_text.length : 0;
+    var sourceLabelText = sourceLabel(context.source || '');
+    var sourceBadgeEsc = esc(sourceLabelText);
+
+    panel.innerHTML =
+      '<div class="sample-detail-header">' +
+        '<span class="sample-detail-title">详情</span>' +
+        '<button class="sample-detail-close" title="关闭">✕</button>' +
+      '</div>' +
+      '<div class="sample-detail-meta">' +
+        '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">来源:</span>' +
+          '<span class="sample-detail-meta-value">' + sourceBadgeEsc + '</span>' +
+        '</div>' +
+        (createdAtEsc ? '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">创建:</span>' +
+          '<span class="sample-detail-meta-value">' + createdAtEsc + '</span>' +
+        '</div>' : '') +
+        (providerEsc ? '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">Provider:</span>' +
+          '<span class="sample-detail-meta-value">' + providerEsc + '</span>' +
+        '</div>' : '') +
+        (profileIdEsc ? '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">Profile:</span>' +
+          '<span class="sample-detail-meta-value">' + profileIdEsc + '</span>' +
+        '</div>' : '') +
+        '<div class="sample-detail-meta-row">' +
+          '<span class="sample-detail-meta-label">字数:</span>' +
+          '<span class="sample-detail-meta-value">' + esc(String(charCount)) + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sample-detail-text-label">完整文本</div>' +
+      '<div class="sample-detail-text-wrap">' +
+        '<div class="sample-detail-text">' + fullTextEsc + '</div>' +
+      '</div>';
+
+    root.appendChild(panel);
+
+    var closeBtn = panel.querySelector('.sample-detail-close');
+    if (closeBtn) closeBtn.addEventListener('click', function () { panel.remove(); });
+  }
+
   // ── init ────────────────────────────────────────────────────────────
 
   function init() {
@@ -452,6 +558,7 @@
     clearSamples: clearSamples,
     copyText: copyText,
     fillTextInput: fillTextInput,
+    showSampleDetail: showSampleDetail,
   };
 
 })();

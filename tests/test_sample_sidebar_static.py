@@ -586,3 +586,89 @@ class TestSourceLabel:
     def test_maps_audition(self):
         c = read()
         assert 'audition' in c
+
+
+# ── detail view (P14-CONTEXT-B2) ─────────────────────────────────────────────
+
+class TestDetailView:
+    def test_showSampleDetail_function_exists(self):
+        c = read()
+        assert re.search(r'function showSampleDetail\s*\(', c), \
+            'showSampleDetail function must exist'
+
+    def test_showSampleDetail_exposed_on_window_sample_sidebar(self):
+        c = read()
+        assert re.search(r'showSampleDetail\s*:', c), \
+            'showSampleDetail must be exposed on window.SampleSidebar'
+
+    def test_detail_button_in_buildCard(self):
+        c = read()
+        body = func_body('buildCard', c)
+        assert 'sample-btn-detail' in body, \
+            'buildCard must include sample-btn-detail button'
+
+    def test_detail_button_conditional_on_context_id(self):
+        c = read()
+        body = func_body('buildCard', c)
+        idx = body.find('sample-btn-detail')
+        assert idx >= 0
+        region = body[max(0, idx - 150):idx + 50]
+        assert 'context_id' in region, \
+            'detail button must be added only when sample.context_id exists'
+
+    def test_detail_event_handler_calls_showSampleDetail(self):
+        c = read()
+        body = func_body('bindActionEvents', c)
+        assert 'sample-btn-detail' in body, \
+            'bindActionEvents must handle sample-btn-detail click'
+        assert 'showSampleDetail' in body, \
+            'detail click must call showSampleDetail'
+
+    def test_showSampleDetail_calls_context_store_getContext(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'ContextStore.getContext' in body, \
+            'showSampleDetail must call ContextStore.getContext'
+
+    def test_showSampleDetail_escapes_displayed_text(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        # Must escape displayed values
+        assert 'esc(' in body, \
+            'showSampleDetail must escape text with esc()'
+
+    def test_showSampleDetail_no_fetch(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'fetch(' not in body, \
+            'showSampleDetail must not call fetch'
+
+    def test_showSampleDetail_no_localStorage_write(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'localStorage.setItem' not in body, \
+            'showSampleDetail must not write to localStorage'
+
+    def test_showSampleDetail_no_fill_back(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'fillTextInput' not in body, \
+            'showSampleDetail must not implement fill/restore'
+
+    def test_detail_panel_close_button(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'sample-detail-close' in body, \
+            'detail panel must have close button'
+
+    def test_detail_panel_removes_existing_panel(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'sample-detail-panel' in body, \
+            'showSampleDetail must manage .sample-detail-panel element'
+
+    def test_context_not_found_shows_graceful_message(self):
+        c = read()
+        body = func_body('showSampleDetail', c)
+        assert 'sample-detail-empty' in body or '不可用' in body, \
+            'showSampleDetail must show graceful message when context not found'

@@ -1049,6 +1049,92 @@
     text-align: center;
   }
 
+  .sample-detail-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .sample-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .sample-detail-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  .sample-detail-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.80rem;
+    color: #94a3b8;
+    padding: 2px 4px;
+  }
+
+  .sample-detail-close:hover {
+    color: #475569;
+  }
+
+  .sample-detail-meta {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .sample-detail-meta-row {
+    display: flex;
+    gap: 6px;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: #64748b;
+  }
+
+  .sample-detail-meta-label {
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+
+  .sample-detail-meta-value {
+    color: #475569;
+    word-break: break-all;
+  }
+
+  .sample-detail-text-label {
+    padding: 6px 10px 2px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  .sample-detail-text-wrap {
+    padding: 0 10px 10px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .sample-detail-text {
+    font-size: 0.80rem;
+    color: #334155;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+  }
+
+  .sample-detail-empty {
+    font-size: 0.80rem;
+    color: #94a3b8;
+    padding: 16px 10px;
+    text-align: center;
+  }
+
   @media (max-width: 1024px) {
     .workspace-layout {
       grid-template-columns: 1fr;
@@ -1896,6 +1982,7 @@
 <script src="/static/js/voice_import.js"></script>
 <script src="/static/js/voice_design.js"></script>
 <script src="/static/js/sample_store.js"></script>
+<script src="/static/js/context_store.js"></script>
 <script src="/static/js/sample_sidebar.js"></script>
 <script>
   window.SampleSidebar.init();
@@ -5128,6 +5215,7 @@ function handleStopAsyncPolling() {
         audio_format: extra.audio_format || null,
         status: 'completed',
         tags: ['batch', 'merged'],
+        context_id: extra.context_id || null,
       });
       window._batchSamplePushedByKey[pushKey] = true;
       if (window.SampleSidebar && typeof window.SampleSidebar.refresh === 'function') {

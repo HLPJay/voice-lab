@@ -120,6 +120,34 @@ class TestSampleStoreStatic:
         assert not found, \
             f'Forbidden DOM references found: {found}'
 
+    def test_normalizeSample_has_context_id_field(self):
+        content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
+        assert 'context_id:' in content, \
+            'normalizeSample must have context_id field'
+
+    def test_normalizeSample_context_id_from_input(self):
+        content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
+        idx = content.find('context_id:')
+        assert idx >= 0, 'context_id field must exist'
+        field_region = content[idx:idx + 100]
+        assert 'input.context_id' in field_region, \
+            'context_id must read from input.context_id'
+
+    def test_normalizeSample_context_id_null_fallback(self):
+        content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
+        idx = content.find('context_id:')
+        field_region = content[idx:idx + 100]
+        assert 'null' in field_region, \
+            'context_id must default to null when missing'
+
+    def test_no_context_store_reference(self):
+        content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
+        lower = content.lower()
+        forbidden = ['contextstore', 'context_store', 'context store']
+        found = [kw for kw in forbidden if kw in lower]
+        assert not found, \
+            f'sample_store.js must not reference ContextStore: {found}'
+
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -346,3 +374,42 @@ class TestSampleStoreBehavior:
         """)
         assert rc == 0, f"Node error: {stderr}"
         assert "same:true" in stdout
+
+    def test_context_id_round_trip(self):
+        stdout, stderr, rc = self._eval_in_vm("""
+        _store.clearSamples();
+        var s = _store.pushSample({ source: 'test', text_preview: 'ctx-test', context_id: 'my-ctx-456' });
+        var retrieved = _store.getSamples().find(function(x){ return x.sample_id === s.sample_id; });
+        console.log(JSON.stringify({ stored: retrieved ? retrieved.context_id : null }));
+        """)
+        assert rc == 0, f'Node error: {stderr}'
+        assert '"stored":"my-ctx-456"' in stdout, \
+            'context_id must round-trip through pushSample/getSamples'
+
+    def test_context_id_null_when_not_provided(self):
+        stdout, stderr, rc = self._eval_in_vm("""
+        _store.clearSamples();
+        var s = _store.pushSample({ source: 'test', text_preview: 'no-ctx' });
+        console.log(JSON.stringify({ ctxId: s.context_id }));
+        """)
+        assert rc == 0, f'Node error: {stderr}'
+        assert '"ctxId":null' in stdout, \
+            'context_id must be null when not provided'
+
+    def test_context_id_does_not_affect_sample_id_generation(self):
+        # Verify that context_id is not used in the sample_id generation logic.
+        # We test this by checking the normalizeSample source code does not reference
+        # input.context_id when generating sample_id.
+        content = open(SAMPLE_STORE_PATH, 'r', encoding='utf-8').read()
+        # Find the normalizeSample function body
+        idx = content.find('function normalizeSample')
+        func_body = content[idx:idx + 1500]
+        # sample_id generation should use sample_id or crypto.randomUUID / Date.now
+        # It should NOT incorporate context_id
+        sample_id_line = ''
+        for line in func_body.split('\n'):
+            if 'sample_id:' in line:
+                sample_id_line = line
+                break
+        assert 'context_id' not in sample_id_line, \
+            'sample_id generation must not reference context_id: ' + sample_id_line

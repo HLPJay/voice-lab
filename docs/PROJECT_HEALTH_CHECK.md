@@ -52,7 +52,8 @@
 * P14-CONTEXT-B1-CHECK：context_store.js 基础模块复核已完成 ✅
 * P14-CONTEXT-B1-CHECK-FIX1：ContextStore 默认值与注释修复已完成 ✅
 * P14-CONTEXT-B1-CLOSE：context_store.js 基础模块阶段收口已完成 ✅
-* 当前下一阶段：P14-CONTEXT-B2-A0
+* P14-CONTEXT-B2：长文本 context 保存与详情查看已完成，待复核
+* 当前下一阶段：P14-CONTEXT-B2-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -7722,3 +7723,46 @@ P14-CONTEXT-B1 已新增独立前端存储模块 `context_store.js`，并经 B1-
 ### 阶段状态
 
 P14-CONTEXT-B1 已完成并收口。
+
+## P14-CONTEXT-B2：长文本 context 保存与详情查看实现
+
+### 背景
+
+P14-CONTEXT-B2-A0 已完成长文本 context 保存与详情查看接入前置审查。本阶段实现长文本 batch context 保存、SampleStore context_id 关联、SampleSidebar 长文本详情查看。
+
+### 实现内容
+
+- `index.html` 新增 `<script src="/static/js/context_store.js">`，位于 `sample_store.js` 之后、`sample_sidebar.js` 之前
+- `SampleStore.normalizeSample` 增加 `context_id` 字段（`input.context_id != null ? String(input.context_id) : null`）
+- `batch_longtext.js` 提交成功后调用 `ContextStore.pushContext()`，使用 `batch_id` 作为 `context_id`
+- `ContextStore.pushContext` 调用包含完整 longtext 字段：`type`、`source`、`full_text`、`provider`、`profile_id`、`segment_strategy`、`max_segment_chars`、`silence_between_ms`、`output_format`、`audio_format`、`need_subtitle`、`params`、`batch_id`
+- `ContextStore.pushContext` 调用包含 try/catch fail-safe，写入失败不阻塞提交流程
+- `context_id` 同步写入 `_batchSampleContextById[data.batch_id].context_id`，供 `safePushBatchSample` 使用
+- `safePushBatchSample` 透传 `extra.context_id` 到 `SampleStore.pushSample`
+- `SampleSidebar` 卡片在 `sample.context_id` 存在时增加详情按钮（ⓘ）
+- `SampleSidebar` 新增 `showSampleDetail(sampleId)` 函数，暴露在 `window.SampleSidebar.showSampleDetail`
+- `showSampleDetail` 调用 `ContextStore.getContext(context_id)` 获取完整 context
+- 详情面板渲染：`source`、`created_at`、`provider`、`profile_id`、字数、`full_text`
+- `full_text` 使用 `white-space: pre-wrap` 保留换行，`max-height: 300px; overflow-y: auto` 滚动
+- 所有展示文本使用 `esc()` HTML 转义
+- context 不存在时显示"完整上下文不可用"提示
+- 详情面板包含关闭按钮
+
+### 测试结果
+
+结果：570 passed（含新增集成测试）。
+
+### 阶段边界
+
+- 未实现长文本一键回填
+- 未实现剧本 context
+- 未实现剧本回填
+- 未修改后端 API
+- 未修改数据库
+- 未调用真实 MiniMax
+- 未修改 batch submit payload
+
+### 阶段状态
+
+P14-CONTEXT-B2 完成，待 B2-CHECK 复核。
+

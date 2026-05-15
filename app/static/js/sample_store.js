@@ -99,6 +99,7 @@
       audio_format: input.audio_format || 'mp3',
       status: input.status || 'completed',
       tags: Array.isArray(input.tags) ? input.tags : [],
+      context_id: input.context_id != null ? String(input.context_id) : null,
     };
   }
 
