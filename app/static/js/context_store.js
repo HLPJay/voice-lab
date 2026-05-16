@@ -242,6 +242,13 @@
 
     out.voice_name = input.voice_name != null ? String(input.voice_name) : null;
 
+    // P16-PROVIDER-MODEL-BINDING-B1: binding info fields
+    out.binding_id = input.binding_id != null ? String(input.binding_id) : null;
+
+    out.provider_voice_id = input.provider_voice_id != null
+      ? String(input.provider_voice_id)
+      : (input.voice_id != null ? String(input.voice_id) : null);
+
     // gen_mode
     var gm = input.gen_mode;
     if (gm !== 'single' && gm !== 'async' && gm !== 'stream' && gm !== 'variants') {

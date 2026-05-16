@@ -99,7 +99,8 @@
 * P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查已完成 ✅
 * P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核已完成 ✅
 * P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计已完成 ✅
-* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-B1
+* P16-PROVIDER-MODEL-BINDING-B1：实现最小 model/binding 可见性与恢复增强已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-B1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成

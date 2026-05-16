@@ -95,6 +95,8 @@
       model: input.model != null ? input.model : null,
       voice_id: input.voice_id != null ? input.voice_id : null,
       voice_name: input.voice_name != null ? input.voice_name : null,
+      binding_id: input.binding_id != null ? input.binding_id : null,
+      provider_voice_id: input.provider_voice_id != null ? input.provider_voice_id : (input.voice_id != null ? input.voice_id : null),
       duration_ms: input.duration_ms != null ? input.duration_ms : null,
       audio_format: input.audio_format || 'mp3',
       status: input.status || 'completed',
