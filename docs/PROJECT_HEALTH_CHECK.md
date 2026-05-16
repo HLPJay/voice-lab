@@ -86,10 +86,11 @@
 * P16-WORKSPACE-RESTORE-A0：Workspace 最近样本完整恢复方案审查已完成 ✅
 * P16-WORKSPACE-RESTORE-A0-CHECK：Workspace 最近样本完整恢复方案复核已完成 ✅
 * P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复已完成 ✅
-* P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核未通过 ⚠️ (发现阻塞问题)
+* P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核未通过 ⚠️ (发现阻塞问题，已在 FIX1 修复)
 * P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题已完成 ✅
 * P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1 已完成 ✅
-* 当前下一阶段：P16-WORKSPACE-RESTORE-CLOSE
+* P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口已完成 ✅
+* 当前下一阶段：NEXT-PRIORITY-REVIEW
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9310,4 +9311,76 @@ tests/test_cancel_confirmation_static.py 15 passed ✅
 ### 阶段状态
 
 P16-WORKSPACE-RESTORE-B1-FIX1-CHECK 通过。当前阶段推进到 P16-WORKSPACE-RESTORE-CLOSE。
+
+---
+
+## P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口
+
+### 收口结论
+
+**P16 workspace 最近样本完整恢复阶段完成。**
+
+### 阶段链路
+
+| 阶段 | 结论 | 关键产出 |
+|---|---|---|
+| P16-WORKSPACE-RESTORE-A0 | ✅ | Plan B：扩展 ContextStore，新增 type=workspace |
+| P16-WORKSPACE-RESTORE-A0-CHECK | ✅ 通过 | field completeness / old sample compat / B1 boundary |
+| P16-WORKSPACE-RESTORE-B1 | ✅ | ContextStore workspace normalize / buildWorkspaceRestoreContext / restoreWorkspaceContext |
+| P16-WORKSPACE-RESTORE-B1-CHECK | ⚠️ 未通过 | BLOCKER-1（variantCount ID）+ BLOCKER-2（NaN guard） |
+| P16-WORKSPACE-RESTORE-B1-FIX1 | ✅ 修复 | variantCount 改用真实 DOM ID + isNaN guard |
+| P16-WORKSPACE-RESTORE-B1-FIX1-CHECK | ✅ 通过 | 2 个 BLOCKER 均验证已修复 |
+
+### 最终产品能力
+
+右侧最近样本中的 workspace 样本支持完整恢复工作台配置。
+
+### 已实现恢复字段
+
+full_text / provider / profile_id / gen_mode / variant_count / audio_format / output_format / need_subtitle / speed / vol / pitch / emotion
+
+### 实现边界
+
+- 只恢复前端本地表单状态
+- 不自动提交 / 不调用 MiniMax
+- 不做跨设备同步
+- 不做服务端创作记录
+
+### 旧样本兼容
+
+无 context_id 的 workspace 样本降级为 fillTextInput(text)，只填入文本。
+
+### 已修复阻塞问题
+
+- BLOCKER-1（严重）：variantCount DOM ID 错误 — 修复为使用全局变量 variantCountInput 和 setValueIfPresent('variantCount', ...)
+- BLOCKER-2（低概率）：paramSpeed/vol/pitch NaN 未 guard — 修复为 isNaN 检查后赋值 null
+
+### 测试结果汇总
+
+```
+tests/test_workspace_restore_static.py     50 passed
+tests/test_sample_sidebar_static.py       256 passed
+tests/test_cancel_confirmation_static.py   15 passed
+```
+
+### 未修改范围
+
+ContextStore / SampleStore schema / 后端 API / Provider Mock / CostGuard / batch payload 均未修改
+
+### 后置观察项
+
+| 观察项 | 后置阶段 |
+|---|---|
+| Provider/Mock/Capability 边界 | P16-PROVIDER-BOUNDARY-A0 |
+| 服务端创作记录设计 | P17-CREATION-RECORD-A0 |
+| 历史文本安全 escaping | P13-HISTORY-SECURITY-FIX1 |
+| 多版本进度等待态 | P16-VARIANTS-UX-FIX1 |
+
+### 下一阶段建议
+
+NEXT-PRIORITY-REVIEW：确认下一优先项（P16-PROVIDER-BOUNDARY-A0 或 P16-VARIANTS-UX-FIX1 或其他）
+
+### 阶段状态
+
+P16-WORKSPACE-RESTORE-CLOSE 完成。当前阶段推进到 NEXT-PRIORITY-REVIEW。
 
