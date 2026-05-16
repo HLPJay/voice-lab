@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查**
+**P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核**
 
 ## 已完成（续）
 
+- P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查 ✅
 - NEXT-PRIORITY-REVIEW：下一阶段优先级确认 ✅
 - P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口 ✅
 - P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题 ✅

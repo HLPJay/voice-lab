@@ -91,7 +91,8 @@
 * P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1 已完成 ✅
 * P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口已完成 ✅
 * NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BOUNDARY-A0
+* P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BOUNDARY-A0-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9372,7 +9373,7 @@ ContextStore / SampleStore schema / 后端 API / Provider Mock / CostGuard / bat
 
 | 观察项 | 后置阶段 |
 |---|---|
-| Provider/Mock/Capability 边界 | P16-PROVIDER-BOUNDARY-A0 |
+| Provider/Mock/Capability 边界 | P16-PROVIDER-BOUNDARY-A0 ✅ 已审查 |
 | 服务端创作记录设计 | P17-CREATION-RECORD-A0 |
 | 历史文本安全 escaping | P13-HISTORY-SECURITY-FIX1 |
 | 多版本进度等待态 | P16-VARIANTS-UX-FIX1 |
@@ -9384,4 +9385,77 @@ NEXT-PRIORITY-REVIEW：确认下一优先项（P16-PROVIDER-BOUNDARY-A0 或 P16-
 ### 阶段状态
 
 P16-WORKSPACE-RESTORE-CLOSE 完成。当前阶段推进到 NEXT-PRIORITY-REVIEW。
+
+---
+
+## P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查
+
+### 阶段背景
+
+用户真实测试发现选择 Mock 后仍可能生成，页面提示 mock 无绑定但点击生成仍可能有结果。
+
+### 当前代码事实
+
+**前端 Provider 下拉**：`index.html` 静态硬编码 `mock/minimax`，运行时 `?dev=1` 隐藏 mock。`provider_capabilities.js` 从 `/api/voice/capabilities` 动态加载能力并驱动 UI，但 API 失败时降级为静态选项。
+
+**Provider Registry**：`app/providers/registry.py` 只注册 mock 和 minimax。
+
+**Capability Registry**：`app/providers/capability_registry.py` 只注册 mock 和 minimax。TTSCapability 支持 streaming/subtitle/emotion。Batch/script/clone/design/provider_voices 能力均已建模。
+
+**Mock Fallback**：`voice_profile_repo.resolve_binding()` 当 provider=mock 且无 binding 时，fallback 到 `settings.mock_fallback_provider`（默认 minimax），返回 `(binding, "minimax")`。
+
+**CostGuard**：`CostGuardService.require_confirmed()` 对 `provider=="mock"` 直接 return，不检查 HIGH_RISK_OPERATIONS。VoiceVariantService 在 resolve_binding 之前调用 CostGuard，使用 request.provider 而非 resolved_provider。
+
+**Binding 状态 UI**：`bindingStatus` 显示 .bound/.unbound，但不阻止生成按钮。
+
+### Mock Fallback 风险结论
+
+**P16-PROVIDER-RISK-001（高）**：用户选择 mock → resolve_binding fallback minimax → CostGuard 已对 mock 放行 → 真实 minimax 调用。CostGuard 以 resolved_provider 为准时风险可控，但 VoiceVariantService 等入口在 resolve_binding 之前调用 CostGuard 导致绕过。
+
+### CostGuard 风险结论
+
+**P16-PROVIDER-RISK-002（高）**：VoiceVariantService CostGuard 使用 request.provider 而非 resolved_provider。request.provider=mock 时 CostGuard 直接放行，后续实际 minimax 调用无确认。
+
+### 前端 Provider 适配结论
+
+provider_capabilities.js 具备完整 capability 驱动 UI 能力，但 API 失败时降级策略不健壮。Binding 状态 unbound 时不阻止生成。
+
+### Capability 模型结论
+
+TTSCapability / BatchCapability / VoiceCloneCapability / VoiceDesignCapability / ProviderVoicesCapability 模型完整。缺少 async / variants 独立 capability 字段（variants 是编排能力）。
+
+### 生成入口横向审查结论
+
+VoiceRenderService.render_voice 以 resolved_provider 调 CostGuard，链路正确。VoiceVariantService 在 resolve_binding 之前以 request.provider 调 CostGuard，链路有漏洞。clone/design quick preview 同理。
+
+### 新 Provider 接入 Checklist
+
+17 步 checklist：Adapter 注册 / Provider Registry / Capability 注册 / CostGuard 配置 / 能力边界明确 / 前端动态下拉 / CapabilityValidator / binding 拦截 / 成本确认原则 / 测试
+
+### 风险清单
+
+| ID | 风险 | 严重性 |
+|---|---|---|
+| P16-PROVIDER-RISK-001 | Mock fallback 到 minimax，用户无感知 | 高 |
+| P16-PROVIDER-RISK-002 | VoiceVariantService CostGuard 绕过于 request.provider | 高 |
+| P16-PROVIDER-RISK-003 | t2a sync 不在 HIGH_RISK，后端无二次防护 | 中 |
+| P16-PROVIDER-RISK-004 | 前端下拉硬编码，不适合新增 Provider | 中 |
+| P16-PROVIDER-RISK-005 | capability API 失败时降级不健壮 | 中 |
+| P16-PROVIDER-RISK-006 | binding unbound 时不阻止生成 | 中 |
+| P16-PROVIDER-RISK-007 | 缺少 async/variants 显式 capability | 低 |
+| P16-PROVIDER-RISK-008 | 新增 Provider 缺少统一 checklist | 低 |
+
+### 后续修复建议
+
+P16-PROVIDER-MOCK-FIX1：高优先级，修复 mock fallback 禁用 / VoiceVariantService CostGuard / binding unbound 阻止生成
+
+P16-PROVIDER-CAPABILITY-UI-B1：中优先级，修复 capability API 失败降级 / 前端动态下拉
+
+### 本阶段只改文档
+
+未修改功能代码 ✅ / 未调用真实 MiniMax ✅ / 未修改 Provider Registry ✅ / 未修改 Capability Registry ✅
+
+### 阶段状态
+
+P16-PROVIDER-BOUNDARY-A0 审查完成。当前阶段推进到 P16-PROVIDER-BOUNDARY-A0-CHECK。
 
