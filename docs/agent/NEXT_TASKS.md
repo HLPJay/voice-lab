@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P15-STATS-B1：轻量本地统计面板实现**
+**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
 
 ## 已完成（续）
 
@@ -14,6 +14,7 @@
 - P15-STATS-A0：后期统计能力设计 ✅
 - P15-STATS-A0-CHECK：后期统计能力设计复核 ✅
 - P15-STATS-B1-A0：轻量本地统计面板实现前置审查 ✅
+- P15-STATS-B1-PARK：统计面板实现延后，保留为后期待办 ✅
 - P14-CONTEXT-C2-CLOSE：P14 context restore 闭环阶段收口 ✅
 - P14-CONTEXT-C2-FIX1-CHECK：剧本恢复 Batch Script 面板切换修复复核 ✅
 - P14-CONTEXT-C2-FIX1：修复剧本恢复切换到正确 Batch Script 面板 ✅
@@ -127,8 +128,9 @@
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
 | P14-CONTEXT-C2-FIX3-CHECK | verify SampleSidebar detail panel flex shrink fix | P14-CONTEXT-C2-FIX3 完成 |
-| P15-STATS-B1 | implement lightweight local statistics panel | P15-STATS-B1-A0 完成 |
-| P15-STATS-B1-CHECK | verify lightweight local statistics panel | P15-STATS-B1 完成 |
+| NEXT-PRIORITY-REVIEW | choose next high-value product/dev task | P15-STATS-B1-PARK 完成 |
+| P15-STATS-B1 | implement lightweight local statistics panel | Backlog，产品需要时再启动 |
+| P15-SERVER-STATS-A0 | design server-side full statistics | Backlog，需要全量统计时再启动 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
