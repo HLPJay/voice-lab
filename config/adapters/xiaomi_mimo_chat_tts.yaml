@@ -16,8 +16,6 @@ tts:
   supported: true
   models:
     - "mimo-v2.5-tts"
-    - "mimo-v2.5-tts-voicedesign"
-    - "mimo-v2.5-tts-voiceclone"
   default_model: "mimo-v2.5-tts"
   max_text_chars: 5000
   audio_formats:

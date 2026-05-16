@@ -1789,7 +1789,9 @@
           </div>
           <div class="form-group">
             <label for="cloneModel">model（preview_text 有值时必填）</label>
-            <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-2.8-hd" oninput="updateCloneBtnState()">
+            <select id="cloneModel" onchange="updateCloneBtnState()">
+              <option value="">按 Provider 加载模型...</option>
+            </select>
           </div>
           <div class="form-group full-width">
             <div class="checkbox-row">
@@ -1832,10 +1834,7 @@
           <div class="form-group full-width">
             <label for="importCloneModel">model（验证试听时使用）</label>
             <select id="importCloneModel">
-              <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-              <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-              <option value="speech-2.6-hd">speech-2.6-hd</option>
-              <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+              <option value="">按 Provider 加载模型...</option>
             </select>
           </div>
           <div class="form-group full-width">
@@ -1906,10 +1905,7 @@
           <div class="form-group full-width">
             <label for="importDesignModel">model（验证试听时使用）</label>
             <select id="importDesignModel">
-              <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-              <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-              <option value="speech-2.6-hd">speech-2.6-hd</option>
-              <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+              <option value="">按 Provider 加载模型...</option>
             </select>
           </div>
           <div class="form-group full-width">
@@ -2000,12 +1996,7 @@
           <div class="form-group">
             <label for="newBindingModel">Model</label>
             <select id="newBindingModel" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px">
-              <option value="speech-2.8-hd" selected>speech-2.8-hd（高清）</option>
-              <option value="speech-2.8-turbo">speech-2.8-turbo（快速）</option>
-              <option value="speech-2.6-hd">speech-2.6-hd（低延迟高清）</option>
-              <option value="speech-2.6-turbo">speech-2.6-turbo（低延迟快速）</option>
-              <option value="speech-02-hd">speech-02-hd（经典高清）</option>
-              <option value="speech-02-turbo">speech-02-turbo（经典快速）</option>
+              <option value="">按 Provider 加载模型...</option>
             </select>
           </div>
           <div class="form-group">
@@ -2357,13 +2348,56 @@
   // ============================================================
   // Unified bindVoice function (used across multiple call sites)
   // ============================================================
-  async function bindVoiceToProfile(voiceId, provider, profileId, model = 'speech-2.8-hd') {
+  function getDefaultModelForProvider(provider) {
+    if (window.getDefaultTtsModel) {
+      return window.getDefaultTtsModel(provider);
+    }
+    var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
+    if (cap && cap.tts && cap.tts.default_model) return cap.tts.default_model;
+    if (cap && cap.default_model) return cap.default_model;
+    return '';
+  }
+
+  function getDefaultAudioFormatForProvider(provider) {
+    if (window.getDefaultAudioFormat) {
+      return window.getDefaultAudioFormat(provider);
+    }
+    var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
+    if (cap && cap.tts && cap.tts.audio_formats && cap.tts.audio_formats.length > 0) {
+      return cap.tts.audio_formats[0];
+    }
+    return 'wav';
+  }
+
+  function refreshBindingModelSelect(provider) {
+    const modelSel = document.getElementById('newBindingModel');
+    if (!modelSel) return;
+    if (window.refreshModelSelectForProvider) {
+      window.refreshModelSelectForProvider('newBindingModel', provider);
+    } else if (window.getModelOptionsHtml) {
+      modelSel.innerHTML = window.getModelOptionsHtml(provider);
+    }
+  }
+  window.refreshBindingModelSelect = refreshBindingModelSelect;
+  window.addEventListener('provider-capabilities-applied', () => {
+    const providerEl = document.getElementById('newBindingProvider');
+    if (providerEl) {
+      refreshBindingModelSelect(providerEl.value);
+      refreshBindingVoiceSelect(providerEl.value);
+    }
+  });
+
+  async function bindVoiceToProfile(voiceId, provider, profileId, model = null) {
+    const resolvedModel = model || getDefaultModelForProvider(provider);
+    if (!resolvedModel) {
+      throw new Error('当前 Provider 没有可用 TTS 模型，无法创建绑定');
+    }
     const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         provider: provider,
-        model: model,
+        model: resolvedModel,
         provider_voice_id: voiceId,
         params: {},
         priority: 1,
@@ -2440,7 +2474,8 @@
   async function updateCostHint() {
     const costHintEl = document.getElementById('costHint');
     if (!costHintEl) return;
-    if (providerSelect.value !== 'minimax') {
+    var selectedProvider = providerSelect.value;
+    if (!isRealCostProvider(selectedProvider)) {
       costHintEl.style.display = 'none';
       return;
     }
@@ -2449,11 +2484,12 @@
       costHintEl.style.display = 'none';
       return;
     }
+    var selectedModel = getDefaultModelForProvider(selectedProvider);
     try {
       const resp = await fetch('/api/voice/cost/estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'minimax', model: 'speech-2.8-hd', text, operation: 't2a' })
+        body: JSON.stringify({ provider: selectedProvider, model: selectedModel, text, operation: 't2a' })
       });
       if (!resp.ok) { costHintEl.style.display = 'none'; return; }
       const data = await resp.json();
@@ -4370,12 +4406,16 @@ function handleStopAsyncPolling() {
 
   document.getElementById('newBindingProvider').addEventListener('change', (e) => {
     delete _cachedVoices[e.target.value];
+    refreshBindingModelSelect(e.target.value);
     refreshBindingVoiceSelect(e.target.value);
   });
 
   // Initialize voice select for binding creation with current provider
   const initBindingProvider = document.getElementById('newBindingProvider').value;
-  if (initBindingProvider) refreshBindingVoiceSelect(initBindingProvider);
+  if (initBindingProvider) {
+    refreshBindingModelSelect(initBindingProvider);
+    refreshBindingVoiceSelect(initBindingProvider);
+  }
 
   // ============================================================
   // Clone Tab: default values
@@ -4384,7 +4424,8 @@ function handleStopAsyncPolling() {
   const clonePreviewTextInput = document.getElementById('clonePreviewText');
   // MiniMax 官方要求：当 preview_text 有值时，model 必填。
   if (cloneModelInput && !cloneModelInput.value) {
-    cloneModelInput.value = 'speech-2.8-hd';
+    const cloneProviderEl = document.getElementById('cloneProvider');
+    cloneModelInput.value = getDefaultModelForProvider(cloneProviderEl ? cloneProviderEl.value : 'minimax');
   }
   if (clonePreviewTextInput && !clonePreviewTextInput.value) {
     clonePreviewTextInput.value = '你好，这是一段声音克隆的试听文本，用于验证克隆效果。';
@@ -4444,7 +4485,10 @@ function handleStopAsyncPolling() {
     }
   }
 
-  function renderAuditionWorkstation() {
+  function renderAuditionWorkstation(provider) {
+    const modelOptions = window.getModelOptionsHtml
+      ? window.getModelOptionsHtml(provider)
+      : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>';
     return `<div id="voiceAuditionPanel" class="card" style="margin-bottom:12px">
       <div class="card-title">🎧 试听工作台</div>
 
@@ -4473,10 +4517,7 @@ function handleStopAsyncPolling() {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
         <div style="font-size:0.82rem">模型：</div>
         <select id="auditionModel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px">
-          <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-          <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-          <option value="speech-2.6-hd">speech-2.6-hd</option>
-          <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          ${modelOptions}
         </select>
         <button class="btn-primary" id="auditionGenBtn" style="margin:0;white-space:nowrap" title="调用当前 Provider 生成试听音频">▶ 生成试听</button>
       </div>
@@ -4602,6 +4643,10 @@ function handleStopAsyncPolling() {
     } // end of !_auditionDelegated guard
 
     // These run on every call (after innerHTML replacement recreates elements)
+    const provider = document.getElementById('voiceProvider')?.value || 'minimax';
+    if (window.refreshModelSelectForProvider) {
+      window.refreshModelSelectForProvider('auditionModel', provider);
+    }
     renderAuditionRecords();
     // Restore selected voice display if any
     if (window._auditionSelectedVoiceId) {
@@ -4633,17 +4678,19 @@ function handleStopAsyncPolling() {
       return;
     }
 
-    const model = document.getElementById('auditionModel')?.value || 'speech-2.8-hd';
+    const model = document.getElementById('auditionModel')?.value || getDefaultModelForProvider(provider);
+    const audioFormat = getDefaultAudioFormatForProvider(provider);
 
     resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
     try {
       const resp = await guardedJsonFetch(
         `/api/voice/provider-voices/preview?provider=${encodeURIComponent(provider)}`,
         {
+          provider,
           provider_voice_id: voiceId,
           model,
           text,
-          audio_format: 'mp3',
+          audio_format: audioFormat,
           output_format: 'hex',
           need_subtitle: false,
           confirm_cost: false,
@@ -4873,7 +4920,7 @@ function handleStopAsyncPolling() {
         </div>`;
     }
 
-    resultsEl.innerHTML = renderAuditionWorkstation() + tableHtml + paginationHtml;
+    resultsEl.innerHTML = renderAuditionWorkstation(provider) + tableHtml + paginationHtml;
     setupAuditionWorkstation();
   }
 
@@ -4986,7 +5033,7 @@ function handleStopAsyncPolling() {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="quickProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
         <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
-          ${window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>'}
+          ${window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : `<option value="${esc(getDefaultModelForProvider(provider))}" selected>${esc(getDefaultModelForProvider(provider))}</option>`}
         </select>
         <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
         <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>
@@ -4999,6 +5046,9 @@ function handleStopAsyncPolling() {
     document.getElementById('voiceListResults').appendChild(panel);
     populateProfileSelect(profileSelect);
     renderInlineCreateProfile(quickProfileWrap, profileSelect, 'quick');
+    if (window.refreshModelSelectForProvider) {
+      window.refreshModelSelectForProvider('quickBindModelSel', provider);
+    }
 
     document.getElementById('quickBindCancel').onclick = () => panel.remove();
     document.getElementById('quickBindConfirm').onclick = async () => {
@@ -5008,6 +5058,10 @@ function handleStopAsyncPolling() {
       const confirmBtn = document.getElementById('quickBindConfirm');
       if (!profileId) {
         msgEl.innerHTML = `<span style="color:#c53030;font-size:0.78rem">请先选择一个声音人设</span>`;
+        return;
+      }
+      if (!model) {
+        msgEl.innerHTML = '<span style="color:#c53030;font-size:0.78rem">请选择当前 Provider 支持的模型</span>';
         return;
       }
       confirmBtn.disabled = true;
@@ -5198,10 +5252,13 @@ function handleStopAsyncPolling() {
     const priority = parseInt(document.getElementById('newBindingPriority').value) || 1;
     const paramsStr = document.getElementById('newBindingParams').value.trim();
     const resultDiv = document.getElementById('createBindingResult');
+    const missingModelMessage = '<div class="error-msg">请选择当前 Provider 支持的模型</div>';
 
     if (!profileId) { resultDiv.innerHTML = '<div class="error-msg">请选择人设</div>'; return; }
     if (!provider) { resultDiv.innerHTML = '<div class="error-msg">请选择 Provider</div>'; return; }
     if (!voiceId) { resultDiv.innerHTML = '<div class="error-msg">请选择要绑定的音色</div>'; return; }
+
+    if (!model) { resultDiv.innerHTML = missingModelMessage; return; }
 
     let params = {};
     if (paramsStr) {

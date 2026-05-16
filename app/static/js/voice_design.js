@@ -31,6 +31,7 @@
     const voiceId = voiceIdInput || null;
     const prompt = document.getElementById('designPrompt').value.trim();
     const previewText = document.getElementById('designPreviewText').value.trim();
+    const audioFormat = window.getDefaultAudioFormat ? window.getDefaultAudioFormat(provider) : 'mp3';
     const resultsEl = document.getElementById('designResult');
     const btn = document.getElementById('designBtn');
 
@@ -137,6 +138,9 @@
         profileWrap.appendChild(sel);
         window.populateProfileSelect(sel);
         window.renderInlineCreateProfile(profileWrap, sel, 'design');
+        if (window.refreshModelSelectForProvider) {
+          window.refreshModelSelectForProvider('designBindModel', provider);
+        }
         var bindBtn = document.getElementById('designBindBtn');
         if (bindBtn) {
           bindBtn.onclick = async function () {
@@ -181,7 +185,7 @@
               var resp = await fetch('/api/voice/render', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
+        body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, audio_format: audioFormat, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
               });
               var rd = await resp.json();
               if (!resp.ok) {
@@ -192,7 +196,7 @@
                 var _qDurD = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
                 resultDiv.innerHTML = (_qDurD ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_qDurD ? ' · 时长 ' + _qDurD : '') + '</div>' : '') +
                   '<audio class="audio-player" controls autoplay preload="metadata">' +
-                  '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
+                  '<source src="' + esc(rd.audio_asset.url) + '" type="' + (window.getAudioMediaType ? window.getAudioMediaType(rd.audio_asset.format) : 'audio/mpeg') + '">' +
                 '</audio>';
               } else {
                 resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';

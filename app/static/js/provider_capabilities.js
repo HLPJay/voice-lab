@@ -19,8 +19,9 @@
 
   // ── capability loading ───────────────────────────────────────────────
 
-  window.loadProviderCapabilities = async function () {
-    if (window._capabilitiesLoadAttempted) return;
+  window.loadProviderCapabilities = async function (force) {
+    if (force === undefined) force = false;
+    if (window._capabilitiesLoadAttempted && !force) return;
     window._capabilitiesLoadAttempted = true;
     try {
       var resp = await fetch('/api/voice/capabilities');
@@ -40,9 +41,20 @@
       window._capabilitiesLoadFailed = false;
       window._capabilitiesFailureNotified = false;
 
-      ['providerSelect', 'batchProvider', 'batchScriptProvider', 'voiceProvider', 'cloneProvider', 'designProvider'].forEach(window.updateProviderSelectOptions);
+      [
+        'providerSelect',
+        'batchProvider',
+        'batchScriptProvider',
+        'voiceProvider',
+        'cloneProvider',
+        'designProvider',
+        'newBindingProvider',
+        'importCloneProvider',
+        'importDesignProvider'
+      ].forEach(window.updateProviderSelectOptions);
 
       window.applyAllProviderCapabilities();
+      window.dispatchEvent(new CustomEvent('provider-capabilities-applied'));
     } catch (err) {
       console.warn('loadProviderCapabilities failed', err);
       window._capabilitiesLoaded = false;
@@ -60,6 +72,42 @@
     if (!provider) return null;
     return window._providerCapabilitiesByName[provider] || null;
   }
+
+  window.getProviderCapability = getProviderCapability;
+
+  window.ensureProviderCapability = async function (provider) {
+    if (!provider) return null;
+    var existing = getProviderCapability(provider);
+    if (existing) return existing;
+
+    try {
+      var resp = await fetch('/api/voice/capabilities?provider=' + encodeURIComponent(provider));
+      if (!resp.ok) throw new Error('capability load failed');
+      var cap = await resp.json();
+      if (cap && cap.provider) {
+        window._providerCapabilitiesByName[cap.provider] = cap;
+        if (!Array.isArray(window._providerCapabilities)) {
+          window._providerCapabilities = [];
+        }
+        var replaced = false;
+        window._providerCapabilities = window._providerCapabilities.map(function (item) {
+          if (item && item.provider === cap.provider) {
+            replaced = true;
+            return cap;
+          }
+          return item;
+        });
+        if (!replaced) {
+          window._providerCapabilities.push(cap);
+        }
+        window.dispatchEvent(new CustomEvent('provider-capabilities-applied'));
+        return cap;
+      }
+    } catch (err) {
+      console.warn('ensureProviderCapability failed', provider, err);
+    }
+    return getProviderCapability(provider);
+  };
 
   // ── helper utilities ──────────────────────────────────────────────────
 
@@ -128,16 +176,65 @@
     }
   }
 
-  window.getModelOptionsHtml = function (provider) {
+  function getTtsModels(provider) {
     var cap = getProviderCapability(provider);
     if (cap && cap.tts && cap.tts.models && cap.tts.models.length > 0) {
-      var def = cap.tts.default_model || cap.tts.models[0];
-      return cap.tts.models.map(function (m) {
-        var sel = (m === def) ? ' selected' : '';
-        return '<option value="' + capEsc(m) + '"' + sel + '>' + capEsc(m) + '</option>';
-      }).join('');
+      return cap.tts.models;
     }
-    return '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>';
+    if (cap && cap.default_model) return [cap.default_model];
+    return [];
+  }
+
+  function getDefaultTtsModel(provider) {
+    var cap = getProviderCapability(provider);
+    if (cap && cap.tts && cap.tts.models && cap.tts.models.length > 0) {
+      return cap.tts.default_model || cap.default_model || cap.tts.models[0];
+    }
+    return getTtsModels(provider)[0];
+  }
+
+  function getAudioFormats(provider) {
+    var cap = getProviderCapability(provider);
+    if (cap && cap.tts && cap.tts.audio_formats && cap.tts.audio_formats.length > 0) {
+      return cap.tts.audio_formats;
+    }
+    return ['wav'];
+  }
+
+  function getDefaultAudioFormat(provider) {
+    return getAudioFormats(provider)[0];
+  }
+
+  function getAudioMediaType(format) {
+    if (format === 'wav') return 'audio/wav';
+    if (format === 'flac') return 'audio/flac';
+    return 'audio/mpeg';
+  }
+
+  function renderModelOptionsHtml(provider, selected) {
+    var models = getTtsModels(provider);
+    var def = selected || getDefaultTtsModel(provider);
+    return models.map(function (m) {
+      var sel = (m === def) ? ' selected' : '';
+      return '<option value="' + capEsc(m) + '"' + sel + '>' + capEsc(m) + '</option>';
+    }).join('');
+  }
+
+  function refreshModelSelectForProvider(selectId, provider, selected) {
+    var el = document.getElementById(selectId);
+    if (!el) return;
+    el.innerHTML = renderModelOptionsHtml(provider, selected);
+  }
+
+  window.getTtsModels = getTtsModels;
+  window.getDefaultTtsModel = getDefaultTtsModel;
+  window.getAudioFormats = getAudioFormats;
+  window.getDefaultAudioFormat = getDefaultAudioFormat;
+  window.getAudioMediaType = getAudioMediaType;
+  window.renderModelOptionsHtml = renderModelOptionsHtml;
+  window.refreshModelSelectForProvider = refreshModelSelectForProvider;
+  window.getModelOptionsHtml = function (provider) {
+    return renderModelOptionsHtml(provider);
   };
 
   window.setControlDisabled = function (id, disabled, title) {
@@ -159,7 +256,8 @@
         return '<option value="' + capEsc(cap.provider) + '">' + capEsc(cap.display_name || cap.provider) + '</option>';
       }).join('');
 
-    if (window._providerCapabilitiesByName[current]) {
+    var currentCap = window._providerCapabilitiesByName[current];
+    if (currentCap && currentCap.enabled) {
       el.value = current;
     }
   };
@@ -300,7 +398,7 @@
       setTextMaxLength('auditionText', pv.preview_text_max);
     }
 
-    updateSelectOptions('auditionModel', tts.models || ['speech-2.8-hd']);
+    refreshModelSelectForProvider('auditionModel', provider);
 
     setNumberRange('auditionSpeed', tts.speed, '语速');
     setNumberRange('auditionVol', tts.vol, '音量');
@@ -340,6 +438,16 @@
 
     if (clone.preview_text_max) {
       setTextMaxLength('clonePreviewText', clone.preview_text_max);
+    }
+
+    var cloneModel = document.getElementById('cloneModel');
+    if (cloneModel) {
+      var models = getTtsModels(provider);
+      refreshModelSelectForProvider(
+        'cloneModel',
+        provider,
+        models.indexOf(cloneModel.value) === -1 ? null : cloneModel.value
+      );
     }
 
     if (clone.voice_id) {
@@ -422,27 +530,32 @@
   }
 
   function applyImportVoiceCapability() {
-    var provider = getSelectValue('voiceProvider', getSelectValue('providerSelect', 'mock'));
-    var cap = getProviderCapability(provider);
-    if (!cap || !cap.provider_voices) return;
+    ['importClone', 'importDesign'].forEach(function (prefix) {
+      var provider = getSelectValue(prefix + 'Provider', getSelectValue('providerSelect', 'mock'));
+      var cap = getProviderCapability(provider);
+      if (!cap || !cap.provider_voices) return;
 
-    var pv = cap.provider_voices;
+      var pv = cap.provider_voices;
 
-    if (pv.preview_text_max) {
-      setTextMaxLength('importClonePreviewText', pv.preview_text_max);
-    }
+      if (pv.preview_text_max) {
+        setTextMaxLength(prefix + 'PreviewText', pv.preview_text_max);
+      }
 
-    var verify = document.getElementById('importCloneVerify');
-    if (verify && !pv.supports_import_remote_voice) {
-      verify.checked = false;
-      verify.disabled = true;
-      verify.title = '当前 Provider 不支持远端音色导入';
-    } else if (verify) {
-      verify.disabled = false;
-      verify.title = '';
-    }
+      refreshModelSelectForProvider(prefix + 'Model', provider);
+
+      var verify = document.getElementById(prefix + 'Verify');
+      if (verify && !pv.supports_import_remote_voice) {
+        verify.checked = false;
+        verify.disabled = true;
+        verify.title = 'current provider does not support remote voice import';
+      } else if (verify) {
+        verify.disabled = false;
+        verify.title = '';
+      }
+    });
+
+
   }
-
   // ── apply all + bind events ───────────────────────────────────────────
 
   window.applyAllProviderCapabilities = function () {
@@ -462,7 +575,10 @@
       'batchScriptProvider',
       'voiceProvider',
       'cloneProvider',
-      'designProvider'
+      'designProvider',
+      'newBindingProvider',
+      'importCloneProvider',
+      'importDesignProvider'
     ];
     ids.forEach(function (id) {
       var el = document.getElementById(id);

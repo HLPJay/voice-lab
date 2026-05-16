@@ -35,6 +35,7 @@
     const voiceId = document.getElementById(prefix + 'VoiceId').value.trim();
     const name = document.getElementById(prefix + 'Name').value.trim() || null;
     const model = document.getElementById(prefix + 'Model').value;
+    const audioFormat = window.getDefaultAudioFormat ? window.getDefaultAudioFormat(provider) : 'mp3';
     const previewText = document.getElementById(prefix + 'PreviewText').value.trim();
     const verify = document.getElementById(prefix + 'Verify').checked;
     const resultsEl = document.getElementById(prefix + 'Result');
@@ -62,6 +63,7 @@
         voice_type: isClone ? 'voice_cloning' : 'voice_generation',
         verify,
         model,
+        audio_format: audioFormat,
         preview_text: previewText,
         confirm_cost: false,
       };
@@ -98,7 +100,7 @@
         html += '<div style="margin-top:10px">' +
           (_dur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">导入试听' + (_dur ? ' · 时长 ' + _dur : '') + '</div>' : '') +
           '<audio class="audio-player" controls preload="metadata">' +
-            '<source src="' + esc(data.audio_asset.url) + '" type="audio/mpeg">' +
+            '<source src="' + esc(data.audio_asset.url) + '" type="' + (window.getAudioMediaType ? window.getAudioMediaType(data.audio_asset.format) : 'audio/mpeg') + '">' +
             '您的浏览器不支持音频播放</audio>' +
         '</div>';
       }
@@ -114,10 +116,7 @@
           '<div id="importProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
             '<select id="importBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-              '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
-              '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
-              '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
-              '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
+              (window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>') +
             '</select>' +
             '<button class="btn-primary" id="importBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
           '</div>' +
@@ -146,6 +145,9 @@
         profileWrap.appendChild(sel);
         window.populateProfileSelect(sel);
         window.renderInlineCreateProfile(profileWrap, sel, 'import');
+        if (window.refreshModelSelectForProvider) {
+          window.refreshModelSelectForProvider('importBindModel', provider);
+        }
         var bindBtn = document.getElementById('importBindBtn');
         if (bindBtn) {
           bindBtn.onclick = async function () {
@@ -189,7 +191,7 @@
             fetch('/api/voice/render', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
+              body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, audio_format: audioFormat, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
             }).then(function (r) {
               return r.json().then(function (rd) {
                 if (!r.ok) {
@@ -200,7 +202,7 @@
                   var _dur = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
                   resultDiv.innerHTML = (_dur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_dur ? ' · 时长 ' + _dur : '') + '</div>' : '') +
                     '<audio class="audio-player" controls autoplay preload="metadata">' +
-                    '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
+                    '<source src="' + esc(rd.audio_asset.url) + '" type="' + (window.getAudioMediaType ? window.getAudioMediaType(rd.audio_asset.format) : 'audio/mpeg') + '">' +
                   '</audio>';
                 } else {
                   resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';

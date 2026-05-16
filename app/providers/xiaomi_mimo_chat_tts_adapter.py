@@ -288,48 +288,24 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
             raise ProviderError("Xiaomi MiMo network error", str(exc)) from exc
 
     async def render_sync(self, plan: RenderPlan) -> ProviderRenderResult:
-        """Render TTS using Xiaomi MiMo OpenAI Chat Completions format.
+        """Render TTS using Xiaomi MiMo Chat Completions format.
 
-        Request format:
-        {
-            "model": "mimo-v2.5-tts",
-            "messages": [
-                {"role": "assistant", "content": "text to synthesize"}
-            ],
-            "audio": {"format": "wav", "voice": "voice_id"}
-        }
-
-        Response format:
-        {
-            "choices": [{
-                "message": {
-                    "audio": {"data": "<base64>", "format": "wav"},
-                    "content": ""
-                }
-            }]
-        }
-
-        Config hierarchy for model:
-        1. plan.model
-        2. ProviderConfig.default_model
-        3. AdapterConfig.default_model
-        4. Hardcoded fallback
+        Per official docs, message format:
+        - user message (optional): style/emotion instructions
+        - assistant message (required): text to synthesize
         """
-        # Determine model using config hierarchy
         model = self._get_model(plan)
-
-        # Determine voice
         voice = plan.provider_voice_id or "mimo_default"
 
-        # Build messages: the text to synthesize goes in role=assistant
-        messages = [
-            {"role": "assistant", "content": plan.processed_text or plan.text},
-        ]
+        messages: list[dict[str, str]] = []
+        # Optional user message for style/emotion control
+        style_instruction = plan.voice_params.get("emotion") or plan.voice_params.get("style")
+        if style_instruction:
+            messages.append({"role": "user", "content": str(style_instruction)})
+        messages.append({"role": "assistant", "content": plan.processed_text or plan.text})
 
-        # Xiaomi MiMo supports wav and pcm16; we default to wav
         audio_format = "wav"
 
-        # Build request payload
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
@@ -501,26 +477,28 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
     async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
         """Design a voice using MiMo voice design model.
 
-        Uses model=mimo-v2.5-tts-voicedesign.
-        - user message: voice description (prompt)
-        - assistant message: text to preview
-        - audio.voice: not required (model generates from description)
-
-        Returns dict with voice_id and trial_audio (base64).
+        Per official docs:
+        - model: mimo-v2.5-tts-voicedesign
+        - user message (required): voice description prompt
+        - assistant message: text to preview (optional if optimize_text_preview=true)
+        - audio object: format + optimize_text_preview, NO voice field
         """
         model = "mimo-v2.5-tts-voicedesign"
-        messages = [
+        messages: list[dict[str, str]] = [
             {"role": "user", "content": prompt},
-            {"role": "assistant", "content": preview_text},
         ]
+        if preview_text:
+            messages.append({"role": "assistant", "content": preview_text})
+
+        audio_obj: dict[str, Any] = {"format": "wav"}
+        if not preview_text:
+            audio_obj["optimize_text_preview"] = True
 
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
-            "audio": {"format": "wav"},
+            "audio": audio_obj,
         }
-        if voice_id:
-            payload["audio"]["voice"] = voice_id
 
         try:
             response = await self._request("POST", json=payload)
@@ -659,25 +637,36 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
 
         return result
 
+    @staticmethod
+    def _ext_to_mime(ext: str) -> str:
+        """Map file extension to MIME type for data URI (per MiMo docs)."""
+        ext = ext.lower().lstrip(".")
+        if ext in ("mp3", "mpeg"):
+            return "audio/mpeg"
+        return f"audio/{ext}"
+
     def _build_clone_audio_uri(self, request: dict) -> str:
-        """Build base64 data URI from clone request audio source."""
-        # Direct audio_data bytes provided
+        """Build base64 data URI from clone request audio source.
+
+        Per MiMo docs: data:{MIME_TYPE};base64,{BASE64_AUDIO}
+        Supported: audio/mpeg (mp3), audio/wav. Max 10MB base64.
+        """
         if "audio_data" in request and request["audio_data"]:
             raw_bytes = request["audio_data"]
             fmt = request.get("format", "mp3")
+            mime = self._ext_to_mime(fmt)
             b64 = base64.b64encode(raw_bytes).decode("ascii")
-            return f"data:audio/{fmt};base64,{b64}"
+            return f"data:{mime};base64,{b64}"
 
-        # file_path from upload_voice_file result
         file_path = request.get("file_path")
         if file_path:
             path = Path(file_path)
             if not path.exists():
                 raise ProviderError("Clone reference audio not found", f"path={file_path}")
             raw_bytes = path.read_bytes()
-            fmt = path.suffix.lstrip(".") or "mp3"
+            mime = self._ext_to_mime(path.suffix)
             b64 = base64.b64encode(raw_bytes).decode("ascii")
-            return f"data:audio/{fmt};base64,{b64}"
+            return f"data:{mime};base64,{b64}"
 
         raise ProviderError(
             "Xiaomi MiMo voice clone missing audio",
