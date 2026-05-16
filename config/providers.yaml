@@ -63,7 +63,7 @@ providers:
 
   - name: "mock_configured"
     display_name: "Mock Configured"
-    enabled: true
+    enabled: false
     adapter_type: "mock"
     real_cost: false
     api_key_env: null

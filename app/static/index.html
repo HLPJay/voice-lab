@@ -4554,7 +4554,7 @@ function handleStopAsyncPolling() {
     if (hint) hint.style.display = 'none';
     el.textContent = `${voiceId}${voiceName ? ` (${voiceName})` : ''}`;
 
-    const provider = document.getElementById('voiceProvider')?.value || 'minimax';
+    const provider = document.getElementById('voiceProvider')?.value || 'mock';
     const bindings = (window._voiceBindMap && window._voiceBindMap[voiceId] || [])
       .filter(b => !provider || b.provider === provider);
 
@@ -4643,7 +4643,7 @@ function handleStopAsyncPolling() {
     } // end of !_auditionDelegated guard
 
     // These run on every call (after innerHTML replacement recreates elements)
-    const provider = document.getElementById('voiceProvider')?.value || 'minimax';
+    const provider = document.getElementById('voiceProvider')?.value || 'mock';
     if (window.refreshModelSelectForProvider) {
       window.refreshModelSelectForProvider('auditionModel', provider);
     }

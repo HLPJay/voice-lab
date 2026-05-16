@@ -234,11 +234,10 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
             },
         )
 
-        # Dual auth: sk- prefix → Authorization Bearer, tp- prefix → api-key header
-        if api_key.startswith("sk-"):
-            headers = {"Authorization": f"Bearer {api_key}"}
-        else:
-            headers = {"api-key": api_key}
+        # Auth: api-key header works for both sk- and tp- prefix keys
+        # OpenAI SDK compat (Authorization: Bearer) also works, but api-key is
+        # the officially documented method for direct HTTP calls.
+        headers = {"api-key": api_key}
 
         client = await self._get_client()
         try:
