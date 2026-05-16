@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计**
 
 ## 已完成（续）
 
@@ -166,9 +166,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| NEXT-PRIORITY-REVIEW | choose next priority after provider config B1 | B1-CLOSE 完成 |
-| P16-DYNAMIC-PROVIDER-CONFIG-B2 | implement additional provider config enhancements | NEXT-PRIORITY-REVIEW 确认 |
-| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | NEXT-PRIORITY-REVIEW 确认 |
+| P16-ADAPTER-PLUGIN-CONFIG-B1 | implement AdapterConfig schema and adapter config loader | A0 设计完成 |
+| P16-DYNAMIC-PROVIDER-CONFIG-B2 | implement provider capability override enhancements | B1-CLOSE 后评估 |
+| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | B1 后评估 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
 | P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |

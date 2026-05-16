@@ -113,7 +113,8 @@
 * P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口已完成 ✅
-* 当前下一阶段：NEXT-PRIORITY-REVIEW
+* P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计已完成 ✅
+* 当前下一阶段：P16-ADAPTER-PLUGIN-CONFIG-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10555,3 +10556,54 @@ if config:
 
 无（cache 隔离已在测试中显式处理）
 
+## P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计
+
+### 设计目标
+
+基于已完成的第一层 Provider 配置化能力，设计第二层 AdapterConfig 拆分方案，实现：
+- Adapter 插件默认能力配置化
+- ProviderConfig + AdapterConfig 合并生成 ProviderCapability
+- Adapter 插件与 Provider 实例配置分离
+
+### 核心判断
+
+**Adapter 是固定代码插件，不是配置文件动态生成**。新增协议才需要改 adapter Python 代码，新增 provider 实例只需改 YAML。
+
+### 配置分层
+
+**Layer 1: ProviderConfig**（`config/providers.yaml`）
+- provider 实例级配置：name、display_name、enabled、adapter_type、real_cost、api_key_env
+- provider-level override
+
+**Layer 2: AdapterConfig**（`config/adapters/*.yaml`）
+- adapter 插件默认能力：default_base_url、endpoints、default_model、models、audio_formats、supports_*、max_text_chars 等
+- 不承担 provider 实例配置
+
+### 问题与处理
+
+| 问题 | 处理方案 | 后续阶段 |
+|---|---|---|
+| `providers.yaml` 同时承担 instance 和 adapter 默认职责 | 拆分为两层配置 | B2 |
+| capability_registry 仍依赖 Python builder | 支持 AdapterConfig 合成 | B2 |
+| adapter 尚未接收 ProviderRuntimeConfig | 改造 constructor 接收 runtime config | B2 |
+| MiniMax-first 协议痕迹 | OpenAI 接入时分析差异 | OpenAI A0 |
+| 模型通用能力过早抽象 | 多 Provider 接入后分析 | OpenAI A0 |
+
+### 接入规则
+
+- **情况 A**：已有 adapter plugin，新增模型 → 只改 `config/adapters/{type}.yaml`
+- **情况 B**：已有 adapter plugin，新增 Provider 实例 → 只改 `config/providers.yaml`
+- **情况 C**：新 Provider 兼容已有协议 → 新增 provider entry，override base_url/model
+- **情况 D**：新 Provider 是新协议 → 需新增 adapter class + config + provider entry + tests
+
+### 下一阶段
+
+**P16-ADAPTER-PLUGIN-CONFIG-B1**：实现 AdapterConfig schema、adapter_config_loader、config/adapters/mock.yaml、config/adapters/minimax.yaml，让 capability_registry 初步支持 ProviderConfig + AdapterConfig 合成。
+
+### 是否只改文档
+
+是（A0 设计阶段只改文档）
+
+### 是否调用真实外部 API
+
+否
