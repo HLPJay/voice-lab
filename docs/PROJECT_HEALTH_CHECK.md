@@ -111,7 +111,8 @@
 * P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核已完成 ✅
-* 当前下一阶段：P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE
+* P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口已完成 ✅
+* 当前下一阶段：NEXT-PRIORITY-REVIEW
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
