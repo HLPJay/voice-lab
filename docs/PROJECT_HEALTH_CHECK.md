@@ -117,8 +117,8 @@
 * P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载已完成 ✅
 * P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界已完成 ✅
 * P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口已完成 ✅
-* P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查已完成（文档访问受阻）⚠️
-* 当前下一阶段：P16-XIAOMI-MIMO-TTS-A0-DOCS-BLOCKED（等待用户提供文档正文）
+* P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查已完成 ✅
+* 当前下一阶段：P16-XIAOMI-MIMO-TTS-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10664,21 +10664,23 @@ P16-ADAPTER-PLUGIN-CONFIG-B1 实现后，复核发现 3 个边界问题需要修
 
 ### 下一阶段
 
-**P16-XIAOMI-MIMO-TTS-A0-DOCS-BLOCKED**：等待用户提供 Xiaomi MiMo 文档正文或截图
+**P16-XIAOMI-MIMO-TTS-B1**：实现 Xiaomi MiMo TTS adapter 最小可行路径
 
 **A0 执行结果摘要**：
-- 尝试访问 https://platform.xiaomimimo.com/docs/zh-CN/usage-guide/speech-synthesis-v2.5 失败
-- WebFetch 工具无法访问该域名（网络限制或安全策略）
-- 基于常见企业 TTS API 模式进行了初步分析
-- 设计了 7 个 probe 测试用例
-- 初步判断需要新增 xiaomi_mimo_tts adapter_type
+- 通过本地 HTML 文件成功获取完整 API 文档
+- 核心发现：Xiaomi MiMo 使用 **OpenAI Chat Completions API 格式**
+- 鉴权：使用 `api-key` header（不是 Bearer Token）
+- Base URL：`https://api.xiaomimimo.com/v1`
+- Endpoint：`/v1/chat/completions`
+- 支持三个模型：mimo-v2.5-tts / mimo-v2.5-tts-voicedesign / mimo-v2.5-tts-voiceclone
+- 预置音色：冰糖、茉莉、苏打、白桦、Mia、Chloe、Milo、Dean 等
+- 音频格式：wav（非流式）、pcm16（流式）
+- 流式是兼容模式，不适合当前系统
+- 结论：需要新增 xiaomi_mimo_tts adapter_type
 - 详细分析见 docs/P16_XIAOMI_MIMO_TTS_A0.md
 
-**阻塞原因**：
-- 官方文档无法通过工具自动解析
-- 需要用户提供文档正文、截图或复制文本
-
-**建议用户操作**：
-- 提供 https://platform.xiaomimimo.com/docs/zh-CN/usage-guide/speech-synthesis-v2.5 的文档正文
-- 或提供关键 API 的截图
-- 或告知 Xiaomi MiMo 是否与 MiniMax API 兼容
+**建议进入 B1 实现**：
+- 同步 TTS（render_sync）
+- 预置音色列表（list_voices）
+- 音色设计（design_voice via mimo-v2.5-tts-voicedesign）
+- mock transport 单元测试
