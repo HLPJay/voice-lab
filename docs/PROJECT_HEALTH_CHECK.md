@@ -104,7 +104,8 @@
 * P16-PROVIDER-MODEL-BINDING-CLOSE：Provider / Model / VoiceBinding 最小增强阶段收口已完成 ✅
 * NEXT-PRIORITY-REVIEW：选择 Provider-first profile/binding UI 设计已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2
+* P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI 已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9926,7 +9927,87 @@ model 下拉 / resolve_binding 重构 / binding_id 精确执行 / schema 改动 
 P16-PROVIDER-MODEL-BINDING-B1-A0 设计完成。下一阶段为 P16-PROVIDER-MODEL-BINDING-B1。
 
 
+## P16-PROVIDER-BINDING-UI-B2：Provider-first profile/binding UI
 
+### 任务背景
+
+当前 Workspace 配置区 `profileSelect` 在 `providerSelect` 之前，`populateProfileSelect()` 是共用函数且全量填充 profile，不按 provider 过滤；`providerSelect/profileSelect` 的 change 当前只触发 `checkBindingStatus()` 等刷新逻辑。
+
+B2 阶段目标：
+
+1. Provider 成为 Workspace 第一约束
+2. Provider 切换后，Workspace profile 下拉展示当前 Provider 下的 binding 可用性
+3. 当前 Provider 下无 binding 的 profile 不隐藏，而是标记"未绑定当前 Provider"
+4. 无 binding 时禁用语音参数区和生成按钮，并显示明确提示
+5. 有 binding 时恢复参数区和生成按钮
+6. 保留 handleGenerate guard 作为最后防线
+
+### 实现内容
+
+| 实现点 | 描述 | 文件 |
+|---|---|---|
+| 1 | Workspace 配置区调整为 Provider-first DOM 顺序 | `index.html` |
+| 2 | 新增 `getWorkspaceProfileBindingState(provider, profileId)` | `index.html` |
+| 3 | 新增 `refreshWorkspaceProfileAvailability()` | `index.html` |
+| 4 | `populateAllProfiles()` 使用 `refreshWorkspaceProfileAvailability()` | `index.html` |
+| 5 | 新增 `setWorkspaceBindingControlsEnabled(enabled, reason)` | `index.html` |
+| 6 | 新增 `updateWorkspaceBindingUiState(reasonOverride)` | `index.html` |
+| 7 | `checkBindingStatus()` 各分支集成 `updateWorkspaceBindingUiState()` | `index.html` |
+| 8 | Provider/Profile change 事件更新顺序 | `index.html` |
+| 9 | Workspace tab 切换调用 `refreshWorkspaceProfileAvailability()` | `index.html` |
+| 10 | CSS `.param-row.disabled-by-binding` | `index.html` |
+| 11 | 新增 `tests/test_provider_binding_ui_static.py` | `tests/test_provider_binding_ui_static.py` |
+
+### 修改文件
+
+- `app/static/index.html`
+- `tests/test_provider_binding_ui_static.py`（新增）
+
+### Provider-first 行为
+
+- Workspace 配置区 Provider 下拉出现在 Profile 下拉之前
+- Provider change 后先调用 `refreshWorkspaceProfileAvailability()` 刷新 profile 标记，再调用 `checkBindingStatus()`
+- Profile change 后调用 `checkBindingStatus()` 和 `updateWorkspaceBindingUiState()`
+- 不清空 textInput，不清空参数值
+
+### Profile 下拉标记策略
+
+- 方案 C：展示全部 profile，并标记"未绑定当前 Provider"
+- 不隐藏 profile
+- 不禁用 option
+- `dataset.bindingState` 标记为 `available` / `unbound` / `no-provider`
+
+### 参数区禁用策略
+
+- 无 binding 时 `setWorkspaceBindingControlsEnabled(false)` 禁用 paramSpeed/paramVol/paramPitch/paramEmotion
+- 不禁用 textInput
+- 不禁用 audioFormat/outputFormat
+- 不禁用 providerSelect/profileSelect
+- CSS `.param-row.disabled-by-binding { opacity: 0.55; }`
+
+### 生成按钮 / guard 策略
+
+- 无 binding 时禁用 generateBtn（title 提示原因）
+- 保留 `handleGenerate` 中的 `isWorkspaceBindingAvailable()` guard
+- guard 文案更新为"当前声音人设在所选 Provider 下没有可用绑定，请先到「绑定管理」创建绑定，或切换 Provider。"
+
+### 测试结果
+
+- 新增 `tests/test_provider_binding_ui_static.py` 覆盖 23 项静态检查
+- 回归：`tests/test_provider_model_binding_static.py`、`tests/test_provider_mock_boundary_static.py`、`tests/test_workspace_restore_static.py`、`tests/test_sample_sidebar_static.py`
+
+### 未纳入范围
+
+- 后端 API / schema 改动
+- model 下拉
+- Capability-driven 参数禁用
+- Batch / Script / Clone / Design / Audition 改动
+- binding_id 精确执行
+- 全局修改 `populateProfileSelect`
+
+### 是否调用真实 MiniMax
+
+否。所有 binding 状态检查通过 `fetch(/api/voice/profiles/${profileId}/bindings)`，E2E 测试必须 mock。
 
 
 

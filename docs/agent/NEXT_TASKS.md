@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI**
+**P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI**
 
 ## 已完成（续）
 
+- P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI ✅
 - P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider-first profile/binding UI 设计 ✅
 - P16-PROVIDER-MODEL-BINDING-CLOSE：Provider / Model / VoiceBinding 最小增强阶段收口 ✅
@@ -155,9 +156,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-BINDING-UI-B2 | implement provider-first profile/binding UI | B2-A0 完成 |
 | P16-PROVIDER-BINDING-UI-B2-CHECK | verify provider-first profile/binding UI | B2 完成 |
-| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | provider-first binding UI 后评估 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | B2-CHECK 后评估 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |

@@ -832,6 +832,9 @@
       border-radius: 6px;
       font-size: 0.85rem;
   }
+  .param-row.disabled-by-binding {
+      opacity: 0.55;
+  }
 
   /* Stream */
   .stream-progress {
@@ -1334,6 +1337,13 @@
       <div class="card-title">配置</div>
       <div class="config-grid">
         <div class="form-group">
+          <label for="providerSelect">Provider</label>
+          <select id="providerSelect">
+            <option value="mock">mock（模拟）</option>
+            <option value="minimax">minimax（正式）</option>
+          </select>
+        </div>
+        <div class="form-group">
           <div class="field-label-row">
             <label for="profileSelect">声音人设</label>
             <span id="bindingStatus" class="binding-status-inline"></span>
@@ -1342,13 +1352,6 @@
             <option value="">加载中…</option>
           </select>
           <div id="workspaceVoiceBindingHint" style="margin-top:6px;font-size:0.82rem;display:none"></div>
-        </div>
-        <div class="form-group">
-          <label for="providerSelect">Provider</label>
-          <select id="providerSelect">
-            <option value="mock">mock（模拟）</option>
-            <option value="minimax">minimax（正式）</option>
-          </select>
         </div>
         <div class="form-group">
           <label for="audioFormat">编码格式</label>
@@ -2111,6 +2114,7 @@
       if (tab === 'workspace') {
         loadProfiles(true).then(() => {
           populateProfileSelect(profileSelect);
+          refreshWorkspaceProfileAvailability();
           checkBindingStatus();
           updateWorkspaceVoiceBindingHint();
         });
@@ -2218,6 +2222,119 @@
     });
   }
   window.populateProfileSelect = populateProfileSelect;
+
+  // ============================================================
+  // P16-PROVIDER-BINDING-UI-B2: Workspace profile binding helpers
+  // ============================================================
+
+  function getWorkspaceProfileBindingState(provider, profileId) {
+    if (!provider) return { status: 'no-provider', binding: null };
+
+    if (!profileId) return { status: 'no-profile', binding: null };
+
+    if (!window._voiceBindMap) {
+      return { status: 'unbound', binding: null };
+    }
+
+    for (var voiceId in window._voiceBindMap) {
+      var bindings = window._voiceBindMap[voiceId] || [];
+      for (var i = 0; i < bindings.length; i += 1) {
+        var b = bindings[i];
+        if (
+          b &&
+          b.profile_id === profileId &&
+          b.provider === provider &&
+          b.status === 'available'
+        ) {
+          return { status: 'available', binding: b };
+        }
+      }
+    }
+
+    return { status: 'unbound', binding: null };
+  }
+
+  function refreshWorkspaceProfileAvailability() {
+    if (!profileSelect) return;
+
+    var provider = providerSelect?.value || '';
+    var currentValue = profileSelect.value;
+
+    profileSelect.innerHTML = '';
+
+    if (!_cachedProfiles || _cachedProfiles.length === 0) {
+      profileSelect.innerHTML = '<option value="">无可用人设</option>';
+      return;
+    }
+
+    _cachedProfiles.forEach(function (p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+
+      var state = getWorkspaceProfileBindingState(provider, p.id);
+
+      if (!provider) {
+        opt.textContent = p.name;
+        opt.dataset.bindingState = 'no-provider';
+      } else if (state.status === 'available') {
+        opt.textContent = p.name;
+        opt.dataset.bindingState = 'available';
+      } else {
+        opt.textContent = p.name + '（未绑定当前 Provider）';
+        opt.dataset.bindingState = 'unbound';
+      }
+
+      if (p.id === currentValue) opt.selected = true;
+      profileSelect.appendChild(opt);
+    });
+
+    // If current selection no longer exists, reset to empty rather than throwing
+    if (currentValue && !Array.from(profileSelect.options).some(function (o) { return o.value === currentValue; })) {
+      profileSelect.value = '';
+    }
+  }
+
+  function setWorkspaceBindingControlsEnabled(enabled, reason) {
+    var paramIds = ['paramSpeed', 'paramVol', 'paramPitch', 'paramEmotion'];
+    paramIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !enabled;
+    });
+
+    var paramRow = document.querySelector('.param-row');
+    if (paramRow) {
+      paramRow.classList.toggle('disabled-by-binding', !enabled);
+      paramRow.title = enabled ? '' : (reason || '当前 Provider 下无可用绑定');
+    }
+
+    if (generateBtn) {
+      generateBtn.disabled = !enabled;
+      generateBtn.title = enabled ? '' : (reason || '当前 Provider 下无可用绑定，无法生成');
+    }
+  }
+
+  function updateWorkspaceBindingUiState(reasonOverride) {
+    var provider = providerSelect?.value || '';
+    var profileId = profileSelect?.value || '';
+    var state = getWorkspaceProfileBindingState(provider, profileId);
+
+    if (!provider) {
+      setWorkspaceBindingControlsEnabled(false, '请先选择 Provider');
+      return;
+    }
+
+    if (!profileId) {
+      setWorkspaceBindingControlsEnabled(false, '请选择声音人设');
+      return;
+    }
+
+    if (state.status === 'available' || workspaceBindingAvailable === true) {
+      setWorkspaceBindingControlsEnabled(true, '');
+      return;
+    }
+
+    setWorkspaceBindingControlsEnabled(false, reasonOverride || '该人设未绑定当前 Provider，请到「绑定管理」创建绑定。');
+  }
 
   async function populateVoiceSelect(selectEl, provider, selectedVoiceId = '') {
     selectEl.innerHTML = '<option value="">加载音色中…</option>';
@@ -2381,6 +2498,7 @@
     // Remove any stale retry button on success
     document.getElementById('profileRetryBtn')?.remove();
     populateProfileSelect(profileSelect);
+    refreshWorkspaceProfileAvailability();
     populateProfileSelect(document.getElementById('bindingProfileSelect'));
     populateProfileSelect(document.getElementById('newBindingProfile'));
     populateProfileSelect(document.getElementById('batchProfile'));
@@ -2406,8 +2524,8 @@
   loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
 
   // T2A Tab: also load binding status when provider changes
-  providerSelect.addEventListener('change', () => { checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
-  profileSelect.addEventListener('change', () => { checkBindingStatus(); updateWorkspaceVoiceBindingHint(); });
+  providerSelect.addEventListener('change', () => { refreshWorkspaceProfileAvailability(); checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
+  profileSelect.addEventListener('change', () => { checkBindingStatus(); updateWorkspaceBindingUiState(); updateWorkspaceVoiceBindingHint(); });
 
   // Batch longtext tab: update voice binding hint on profile/provider change
   document.getElementById('batchProfile')?.addEventListener('change', updateBatchVoiceBindingHint);
@@ -4167,6 +4285,7 @@ function handleStopAsyncPolling() {
       currentWorkspaceBindingInfo = null;
       statusEl.className = 'binding-status-inline';
       statusEl.textContent = '';
+      updateWorkspaceBindingUiState();
       return;
     }
     try {
@@ -4205,6 +4324,7 @@ function handleStopAsyncPolling() {
           provider_voice_name: b.provider_voice_name || null,
           voice_name: b.provider_voice_name || b.voice_name || null,
         });
+        updateWorkspaceBindingUiState();
       } else {
         workspaceBindingAvailable = false;
         currentWorkspaceBindingInfo = null;
@@ -4218,6 +4338,7 @@ function handleStopAsyncPolling() {
             );
           }
         }
+        updateWorkspaceBindingUiState(`该人设未绑定 ${provider}，请到「绑定管理」创建绑定。`);
       }
       window.updateWorkspaceVoiceBindingHint?.();
     } catch (e) {
@@ -4225,6 +4346,7 @@ function handleStopAsyncPolling() {
       currentWorkspaceBindingInfo = null;
       statusEl.className = 'binding-status-inline error';
       statusEl.textContent = '绑定状态检查失败';
+      updateWorkspaceBindingUiState('绑定状态检查失败，请重试或切换 Provider。');
     }
   }
 
