@@ -162,6 +162,7 @@ class TestRealCall:
             ])
 
             assert mock_client.post.called
+            assert mock_client.post.call_count == 1, f"Expected 1 HTTP call, got {mock_client.post.call_count}"
 
     def test_real_call_without_key_blocked(self, temp_output_dir):
         """--real-call without API key is blocked."""

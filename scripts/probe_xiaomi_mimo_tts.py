@@ -466,19 +466,14 @@ async def run_probe(
     return metadata
 
 
-def print_real_call_banner(
-    api_key_source: str,
-    endpoint: str,
+def print_real_call_result(
     output_dir: Path,
     metadata: dict[str, Any],
 ) -> None:
-    """Print the result banner after real call."""
+    """Print the result after real call completes."""
     print()
     print("[REAL-CALL] Xiaomi MiMo TTS Real Probe")
     print("=" * 50)
-    print()
-    print(f"API Key: Found ({api_key_source})")
-    print(f"Making real API call to {endpoint}...")
     print()
 
     if metadata["success"]:
@@ -552,16 +547,11 @@ async def async_main(args: argparse.Namespace) -> int:
         print()
         return 1
 
-    print()
-    print("[REAL-CALL] Xiaomi MiMo TTS Real Probe")
-    print("=" * 50)
-    print()
-    print(f"API Key: Found ({api_key_source})")
-    print(f"Making real API call to {endpoint}...")
-    print()
-
     # Build payload
     payload = make_request_payload(model, text, voice, format)
+
+    print(f"Making real API call to {endpoint}...")
+    print()
 
     # Execute request
     metadata = await run_probe(
@@ -574,7 +564,7 @@ async def async_main(args: argparse.Namespace) -> int:
     )
 
     # Print result
-    print_real_call_banner(api_key_source, endpoint, output_dir, metadata)
+    print_real_call_result(output_dir, metadata)
 
     return 0 if metadata["success"] else 1
 

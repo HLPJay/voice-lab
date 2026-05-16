@@ -2,13 +2,14 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-PROBE-DUPLICATE-CALL-TRIAGE-D1：probe 日志重复打印问题排查（可选）**
+**P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3：adapter render_sync 真实调用验证（待用户授权）**
 
 ## 已完成（续）
 
 - P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1：执行小米 MiMo 真实 API 最小探测 ✅
 - P16-XIAOMI-MIMO-TTS-REAL-PROBE-B2：真实 API 探测执行（用户手动执行成功） ✅
 - P16-XIAOMI-MIMO-TTS-ADAPTER-TEST-TRIAGE-C0：adapter 测试失败排查 ✅
+- P16-XIAOMI-MIMO-TTS-CONFIG-AND-DUPLICATE-TRIAGE-D1：配置审查与重复 banner 修复 ✅
 - P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案 ✅
 - P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现 ✅
 - P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题 ✅
@@ -180,8 +181,7 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-XIAOMI-MIMO-TTS-PROBE-DUPLICATE-CALL-TRIAGE-D1 | probe 日志重复打印问题排查（可选） | 用户授权（可选） |
-| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3 | validate adapter render_sync with real API | D1 完成后评估 |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3 | validate adapter render_sync with real API | 用户授权 + MIMO_API_KEY |
 | P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | B3 成功后评估 |
 | P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | B3 成功后评估 |
 | P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |
@@ -193,6 +193,14 @@
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
 | P15-STATS-B1 | local statistics panel | Backlog |
 | P15-SERVER-STATS-A0 | server-side statistics | Backlog |
+
+## 长期规则
+
+每次新增 provider、adapter、probe 或环境变量时，必须同步检查：
+- `.env.example` 是否更新（新增变量注释占位）
+- `.gitignore` 是否忽略临时文件
+- `docs` 是否记录变量用途
+- `tests` 是否有对应测试覆盖
 
 ## Paused / Do not touch yet
 
