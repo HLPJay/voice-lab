@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现**
+**P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核**
 
 ## 已完成（续）
 
+- P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复 ✅
@@ -163,7 +164,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-DYNAMIC-PROVIDER-CONFIG-B1 | implement config-driven provider registry and cost guard | A0 设计完成 |
+| P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE | close provider config B1 implementation | B1-CHECK 完成 |
+| P16-DYNAMIC-PROVIDER-CONFIG-B2 | implement additional provider config enhancements | B1-CLOSE 后评估 |
+| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | B1-CLOSE 后评估 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
 | P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |

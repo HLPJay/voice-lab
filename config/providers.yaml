@@ -86,3 +86,28 @@ providers:
     metadata:
       mode: "mock_configured"
       configured_via_yaml: true
+
+  - name: "disabled_provider"
+    display_name: "Disabled Provider"
+    enabled: false
+    adapter_type: "mock"
+    real_cost: false
+    api_key_env: null
+    base_url_env: null
+    base_url: null
+    endpoints: {}
+    default_model: "mock-tts"
+    tts:
+      enabled: true
+    batch:
+      enabled: true
+    script:
+      enabled: true
+    voice_clone:
+      enabled: true
+    voice_design:
+      enabled: true
+    provider_voices:
+      enabled: true
+    metadata:
+      for_testing_only: true

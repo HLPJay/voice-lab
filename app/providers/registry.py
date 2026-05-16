@@ -51,6 +51,8 @@ def get_provider(name: str) -> SpeechProvider:
     # Try config-driven route first
     config = get_provider_config(name)
     if config:
+        if not config.enabled:
+            raise UnsupportedProvider(f"Provider {name} is not enabled", name)
         adapter_cls = get_adapter_type_adapter(config.adapter_type)
         return adapter_cls()
 

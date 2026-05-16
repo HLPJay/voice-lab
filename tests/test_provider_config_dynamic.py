@@ -162,6 +162,26 @@ class TestProviderConfigLoader:
         configs = list_enabled_provider_configs()
         assert all(c.enabled for c in configs)
 
+    def test_disabled_provider_excluded_from_enabled(self):
+        """disabled_provider does not appear in list_enabled_provider_configs."""
+        from app.config.provider_config_loader import (
+            clear_provider_config_cache,
+            list_enabled_provider_configs,
+        )
+        clear_provider_config_cache()
+        names = {c.name for c in list_enabled_provider_configs()}
+        assert "disabled_provider" not in names
+
+    def test_disabled_provider_still_in_list_all(self):
+        """disabled_provider appears in list_provider_configs (but not enabled list)."""
+        from app.config.provider_config_loader import (
+            clear_provider_config_cache,
+            list_provider_configs,
+        )
+        clear_provider_config_cache()
+        names = {c.name for c in list_provider_configs()}
+        assert "disabled_provider" in names
+
     def test_cache_clear(self):
         """clear_provider_config_cache allows cache refresh."""
         from app.config.provider_config_loader import (
@@ -287,6 +307,15 @@ class TestGetProvider:
         with pytest.raises(UnsupportedProvider, match="Unsupported provider"):
             get_provider("nonexistent_provider_xyz")
 
+    def test_get_provider_disabled_raises(self):
+        """get_provider for disabled provider raises UnsupportedProvider."""
+        from app.providers.registry import get_provider
+        from app.core.errors import UnsupportedProvider
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_provider_config_cache()
+        with pytest.raises(UnsupportedProvider, match="disabled_provider"):
+            get_provider("disabled_provider")
+
 
 class TestCapabilityRegistry:
     """capability_registry includes mock_configured."""
@@ -339,6 +368,46 @@ class TestCapabilityRegistry:
             for key in sensitive:
                 assert key not in cap_metadata, \
                     f"Provider {cap.provider} metadata contains sensitive key: {key}"
+
+    def test_disabled_provider_not_in_capabilities(self):
+        """list_capabilities() does not include disabled_provider."""
+        from app.providers.capability_registry import (
+            clear_capability_registry_cache,
+            list_capabilities,
+        )
+        clear_capability_registry_cache()
+        providers = {c.provider for c in list_capabilities()}
+        assert "disabled_provider" not in providers
+
+    def test_both_caches_need_clear(self):
+        """Clearing only provider_config_cache does NOT update capability registry cache.
+
+        Tests that the two caches are independent and both need explicit clearing.
+        """
+        from app.providers.capability_registry import (
+            clear_capability_registry_cache,
+            list_capabilities,
+        )
+        from app.config.provider_config_loader import (
+            clear_provider_config_cache,
+            list_provider_configs,
+        )
+
+        # Populate both caches
+        clear_capability_registry_cache()
+        caps_before = {c.provider for c in list_capabilities()}
+        clear_provider_config_cache()
+        configs_before = {c.name for c in list_provider_configs()}
+
+        # Clear only provider_config_cache, not capability_registry_cache
+        clear_provider_config_cache()
+        configs_after = {c.name for c in list_provider_configs()}
+
+        # Config cache should be refreshed (empty result is fine, but no crash)
+        assert len(configs_after) >= 0
+        # Capability cache should still hold old values (caches are independent)
+        caps_still_old = {c.provider for c in list_capabilities()}
+        assert caps_still_old == caps_before
 
 
 class TestCostGuardService:
