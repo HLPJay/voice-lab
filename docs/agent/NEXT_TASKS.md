@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计**
 
 ## 已完成（续）
 
+- NEXT-PRIORITY-REVIEW：选择 Provider-first profile/binding UI 设计 ✅
 - P16-PROVIDER-MODEL-BINDING-CLOSE：Provider / Model / VoiceBinding 最小增强阶段收口 ✅
 - P16-PROVIDER-MODEL-BINDING-B1-CHECK：验证最小 model/binding 可见性与恢复增强 ✅
 - P16-PROVIDER-MODEL-BINDING-B1：实现最小 model/binding 可见性与恢复增强 ✅
@@ -153,8 +154,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| NEXT-PRIORITY-REVIEW | choose next priority after provider/model/binding close | P16-PROVIDER-MODEL-BINDING-CLOSE 完成 |
-| P16-PROVIDER-BINDING-UI-B2-A0 | design provider-first profile/binding UI | 推荐优先候选 |
+| P16-PROVIDER-BINDING-UI-B2-A0 | design provider-first profile/binding UI | NEXT-PRIORITY-REVIEW 完成 |
+| P16-PROVIDER-BINDING-UI-B2 | implement provider-first profile/binding UI | B2-A0 完成 |
+| P16-PROVIDER-BINDING-UI-B2-CHECK | verify provider-first profile/binding UI | B2 完成 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | provider-first binding UI 后评估 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
