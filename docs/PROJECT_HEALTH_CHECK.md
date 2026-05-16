@@ -105,7 +105,8 @@
 * NEXT-PRIORITY-REVIEW：选择 Provider-first profile/binding UI 设计已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI 已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-CHECK
+* P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI 已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10009,6 +10010,73 @@ B2 阶段目标：
 
 否。所有 binding 状态检查通过 `fetch(/api/voice/profiles/${profileId}/bindings)`，E2E 测试必须 mock。
 
+## P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI
+
+### 复核结论
+
+**✅ 通过**（存在非阻塞观察项）
+
+### 提交范围
+
+| 文件 | 状态 |
+|---|---|
+| `app/static/index.html` | ✅ 未越界修改 |
+| `tests/test_provider_binding_ui_static.py`（新增） | ✅ 28 项测试 |
+| `docs/PROJECT_HEALTH_CHECK.md` | ✅ 更新 |
+| `docs/agent/NEXT_TASKS.md` | ✅ 更新 |
+
+### Provider-first DOM
+
+✅ Workspace 配置区已调整为 Provider-first 顺序
+
+### Workspace helper
+
+✅ `getWorkspaceProfileBindingState` / `refreshWorkspaceProfileAvailability` / `setWorkspaceBindingControlsEnabled` / `updateWorkspaceBindingUiState` 均正确实现
+
+### Profile 标记逻辑
+
+⚠️ **非阻塞观察项 OBS-1**: `_voiceBindMap` 不是全量缓存，`refreshWorkspaceProfileAvailability()` 可能将实际有 binding 的其他 profile 错误标记为"未绑定当前 Provider"。
+
+**不影响功能**: `handleGenerate` guard 保护，参数区/生成按钮状态由 `updateWorkspaceBindingUiState()` 基于准确的 `workspaceBindingAvailable` 控制。
+
+### Provider/Profile change 事件顺序
+
+✅ Provider change: `refreshWorkspaceProfileAvailability()` 先于 `checkBindingStatus()`
+
+⚠️ **非阻塞观察项 OBS-2**: `profileSelect` change 未 await `checkBindingStatus()`，可能导致短暂状态不同步。
+
+### 参数区禁用
+
+✅ `setWorkspaceBindingControlsEnabled` 正确禁用 paramSpeed/paramVol/paramPitch/paramEmotion，不禁用 textInput/audioFormat/outputFormat
+
+### generateBtn / setLoading
+
+✅ 无冲突：unbound 时 guard 先于 `setLoading()` 执行
+
+### handleGenerate guard
+
+✅ 保留，位置正确（confirm 和 setLoading 之前）
+
+### restore 后状态
+
+✅ restore 后触发 provider/profile change 事件，`checkBindingStatus()` 重新校验
+
+### 测试结果
+
+- B2 静态测试: 28 passed
+- 回归测试: 63 + 37 + 152 passed, 1 pre-existing failure
+- 额外测试: 26 passed
+
+### 阻塞问题
+
+无
+
+### 非阻塞观察项
+
+| 编号 | 描述 | 建议 |
+|---|---|---|
+| OBS-1 | `_voiceBindMap` 非全量导致标记可能不准确 | 后续在 workspace tab 加载时调用 `loadAllBindings()` 预填充，或限制标记为仅当前 profile |
+| OBS-2 | `profileSelect` change 未 await checkBindingStatus | 如需严格同步可加 await，否则可接受 |
 
 
 
