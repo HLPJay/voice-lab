@@ -62,6 +62,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
             audio_formats=a.audio_formats,
             supports_subtitle=a.supports_subtitle,
             supports_streaming=a.supports_streaming,
+            supports_async=a.supports_async,
             supports_emotion=a.supports_emotion,
             speed=_range_from_config(a.speed),
             vol=_range_from_config(a.vol),

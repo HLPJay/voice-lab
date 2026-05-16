@@ -32,6 +32,7 @@ tts:
     - "flac"
   supports_subtitle: true
   supports_streaming: true
+  supports_async: true
   supports_emotion: true
   speed:
     min: 0.5

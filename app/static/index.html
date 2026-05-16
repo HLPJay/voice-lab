@@ -1528,6 +1528,7 @@
           <label for="batchNeedSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
         </div>
       </div>
+      <div id="batchCapabilityHint" class="capability-hint"></div>
       <button class="btn-primary" id="batchLongtextSubmit" onclick="handleBatchLongtextSubmit()">提交批量任务</button>
     </div>
     <!-- Longtext batch result / error area -->
@@ -1614,6 +1615,7 @@
         <div class="batch-hint-warning" id="batchScriptProfileWarning" style="display:none"></div>
         <div class="batch-hint-subtitle" id="batchScriptSubtitleHint" style="display:none">已开启字幕，生成耗时可能增加。</div>
       </div>
+      <div id="scriptCapabilityHint" class="capability-hint"></div>
       <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
     <!-- Script batch result / progress area (populated after submit) -->
@@ -3126,7 +3128,7 @@
   function isRealCostProvider(provider) {
     var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
     if (cap && cap.metadata && cap.metadata.real_cost) return true;
-    return provider === 'minimax';
+    return false;
   }
 
   async function guardedJsonFetch(url, payload, options) {

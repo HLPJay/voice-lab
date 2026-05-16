@@ -22,6 +22,7 @@ tts:
     - "wav"
   supports_subtitle: false
   supports_streaming: false
+  supports_async: false
   supports_emotion: true
 
 batch:

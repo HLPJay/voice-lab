@@ -312,6 +312,14 @@
           if (single) single.checked = true;
         }
       }
+      if (radio.value === 'async') {
+        radio.disabled = !tts.supports_async;
+        radio.title = tts.supports_async ? '' : '当前 Provider 不支持异步生成';
+        if (!tts.supports_async && radio.checked) {
+          var single = document.querySelector('input[name="genMode"][value="single"]');
+          if (single) single.checked = true;
+        }
+      }
     });
   }
 
@@ -322,6 +330,14 @@
 
     var batch = cap.batch;
     var tts = cap.tts || {};
+
+    if (!batch.supported) {
+      window.setControlDisabled('batchLongtextSubmit', true, '当前 Provider 不支持长文本批量生成');
+      setHintText('batchCapabilityHint', '当前 Provider 不支持长文本批量生成。', 'error');
+      return;
+    }
+    window.setControlDisabled('batchLongtextSubmit', false, '');
+    setHintText('batchCapabilityHint', '', '');
 
     setTextMaxLength('batchText', batch.max_text_chars || 50000);
 
@@ -358,6 +374,14 @@
 
     var script = cap.script;
     var tts = cap.tts || {};
+
+    if (!script.supported) {
+      window.setControlDisabled('batchScriptSubmit', true, '当前 Provider 不支持剧本批量生成');
+      setHintText('scriptCapabilityHint', '当前 Provider 不支持剧本批量生成。', 'error');
+      return;
+    }
+    window.setControlDisabled('batchScriptSubmit', false, '');
+    setHintText('scriptCapabilityHint', '', '');
 
     // MAX_SCRIPT_LINES is a var on window (changed from let in index.html)
     if (typeof window.MAX_SCRIPT_LINES !== 'undefined') {
