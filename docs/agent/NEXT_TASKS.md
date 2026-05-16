@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口**
+**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
 
 ## 已完成（续）
 
+- P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计 ✅

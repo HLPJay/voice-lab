@@ -110,6 +110,7 @@
 * P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计已完成 ✅
+* P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口已完成 ✅
 * 当前下一阶段：NEXT-PRIORITY-REVIEW
