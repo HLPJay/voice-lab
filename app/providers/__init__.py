@@ -5,17 +5,17 @@ Primary registration path:
     -> load_adapter_plugins_from_config() -> register_adapter_type()
 
 Legacy fallback (do not add new adapters here):
-  register_adapter_type("mock", MockSpeechAdapter)
-  register_adapter_type("minimax", MiniMaxSpeechAdapter)
+  get_provider() falls back to PROVIDER_REGISTRY for backward compatibility
+  only when provider name is not found in config.
 
 For new adapters, add plugin.import_path to config/adapters/{adapter_type}.yaml
 instead of modifying this file.
 """
 
-from app.providers.adapter_type_registry import register_adapter_type
-from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
-from app.providers.mock_speech_adapter import MockSpeechAdapter
-
-# Legacy fallback registration — new adapters should use config-driven path
-register_adapter_type("mock", MockSpeechAdapter)
-register_adapter_type("minimax", MiniMaxSpeechAdapter)
+# No eager registration here.
+# All adapters are registered via config/adapters/*.yaml plugin.import_path
+# by calling load_adapter_plugins_from_config() at runtime.
+#
+# The legacy PROVIDER_REGISTRY in registry.py is kept as a backward-
+# compatibility fallback for hardcoded provider names not in config, but
+# mock/minimax are now config-driven only.

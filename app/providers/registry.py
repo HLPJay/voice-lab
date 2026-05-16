@@ -9,7 +9,6 @@ If no config is found, falls back to PROVIDER_REGISTRY (backward compatibility).
 from app.core.errors import UnsupportedProvider
 from app.providers.adapter_type_registry import (
     get_adapter_type_adapter,
-    _ensure_core_adapters_registered,
 )
 from app.providers.base import SpeechProvider
 from app.config.provider_config_loader import get_provider_config
@@ -33,7 +32,9 @@ def get_provider(name: str) -> SpeechProvider:
     """Look up a provider by name and return a new adapter instance.
 
     Resolution chain:
-      name -> ProviderConfig -> adapter_type -> ADAPTER_TYPE_REGISTRY -> Adapter class
+      name -> ProviderConfig -> adapter_type
+        -> get_adapter_type_adapter() [config discovery -> legacy fallback]
+        -> Adapter class
 
     Args:
         name: Provider name string (e.g. 'mock', 'minimax', 'mock_configured').
@@ -44,10 +45,6 @@ def get_provider(name: str) -> SpeechProvider:
     Raises:
         UnsupportedProvider: If provider name is not found in config or registry.
     """
-    # Ensure core adapters are registered (handles case where
-    # adapter_type_registry was imported directly without providers/__init__)
-    _ensure_core_adapters_registered()
-
     # Try config-driven route first
     config = get_provider_config(name)
     if config:

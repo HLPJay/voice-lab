@@ -119,7 +119,8 @@
 * P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口已完成 ✅
 * P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查已完成 ✅
 * P16-ADAPTER-PLUGIN-DISCOVERY-B1：Adapter 插件发现与配置化注册已完成 ✅
-* 当前下一阶段：P16-XIAOMI-MIMO-TTS-B1（基于 plugin discovery 机制）
+* P16-ADAPTER-PLUGIN-DISCOVERY-B1-CHECK-FIX1：修复 Adapter 插件发现主路径与错误处理已完成 ✅
+* 当前下一阶段：P16-XIAOMI-MIMO-TTS-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成

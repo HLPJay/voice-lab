@@ -239,6 +239,20 @@ class TestProviderConfigLoader:
 class TestAdapterTypeRegistry:
     """adapter_type_registry routes by adapter_type."""
 
+    def setup_method(self):
+        """Load adapter plugins from config before each test."""
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        from app.providers.adapter_type_registry import (
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        clear_adapter_type_registry_for_tests()
+        clear_adapter_config_cache()
+        clear_provider_config_cache()
+        load_adapter_plugins_from_config()
+
     def test_mock_adapter_type_registered(self):
         """'mock' adapter_type maps to MockSpeechAdapter."""
         from app.providers.adapter_type_registry import ADAPTER_TYPE_REGISTRY

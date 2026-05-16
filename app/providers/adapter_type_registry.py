@@ -101,11 +101,34 @@ def register_adapter_type_from_import_path(
     return cls
 
 
-def load_adapter_plugins_from_config() -> None:
+class AdapterPluginLoadError(Exception):
+    """Raised when a plugin.import_path fails to load."""
+
+    def __init__(self, adapter_type: str, import_path: str, cause: Exception):
+        self.adapter_type = adapter_type
+        self.import_path = import_path
+        self.cause = cause
+        super().__init__(
+            f"Failed to load adapter plugin for '{adapter_type}' "
+            f"from import_path '{import_path}': {type(cause).__name__}: {cause}"
+        )
+
+
+def load_adapter_plugins_from_config(*, strict: bool = True) -> None:
     """Load and register all adapter plugins from config/adapters/*.yaml.
 
     For each adapter config with a plugin.import_path, dynamically imports
     the adapter class and registers it in ADAPTER_TYPE_REGISTRY.
+
+    Args:
+        strict: If True (default), raise AdapterPluginLoadError when a
+            declared plugin.import_path fails to load. If False, silently
+            skip configs with invalid import_path (for backward compatibility
+            in tests only).
+
+    Raises:
+        AdapterPluginLoadError: When strict=True and a declared plugin.import_path
+            fails to load (module not found, class not found, not a SpeechProvider).
     """
     global _plugins_loaded
     if _plugins_loaded:
@@ -114,16 +137,20 @@ def load_adapter_plugins_from_config() -> None:
     from app.config.adapter_config_loader import list_adapter_configs
 
     configs = list_adapter_configs()
+    errors: list[AdapterPluginLoadError] = []
     for cfg in configs:
         if cfg.plugin and cfg.plugin.import_path:
             try:
                 register_adapter_type_from_import_path(
                     cfg.adapter_type, cfg.plugin.import_path
                 )
-            except (ValueError, ImportError, AttributeError, TypeError):
-                # Skip configs with invalid import_path - they may be
-                # intentionally incomplete or pending migration
-                pass
+            except (ValueError, ImportError, AttributeError, TypeError) as exc:
+                if strict:
+                    errors.append(AdapterPluginLoadError(cfg.adapter_type, cfg.plugin.import_path, exc))
+                # In non-strict mode, silently skip (legacy behavior for tests only)
+
+    if errors:
+        raise AdapterPluginLoadError(errors[0].adapter_type, errors[0].import_path, errors[0].cause)
 
     _plugins_loaded = True
 
@@ -131,11 +158,21 @@ def load_adapter_plugins_from_config() -> None:
 def clear_adapter_type_registry_for_tests() -> None:
     """Clear the adapter type registry and reset plugin loading state.
 
+    Also clears PROVIDER_REGISTRY in registry.py to ensure clean state for tests.
+
     Useful in tests when config state changes or to force re-discovery.
     """
     global _plugins_loaded
     ADAPTER_TYPE_REGISTRY.clear()
     _plugins_loaded = False
+
+    # Also clear the static provider registry to ensure clean test state
+    try:
+        from app.providers.registry import PROVIDER_REGISTRY
+        PROVIDER_REGISTRY.clear()
+    except Exception:
+        # If registry module not yet imported, that's fine
+        pass
 
 
 def get_adapter_type_adapter(adapter_type: str) -> type[SpeechProvider]:
@@ -200,7 +237,3 @@ def _ensure_core_adapters_registered() -> None:
 
         register_adapter_type("mock", MockSpeechAdapter)
         register_adapter_type("minimax", MiniMaxSpeechAdapter)
-
-
-# Eagerly register core adapter types on module import
-_ensure_core_adapters_registered()

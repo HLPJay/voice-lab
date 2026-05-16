@@ -424,3 +424,327 @@ class TestNoRealExternalAPICalls:
         with patch.object(httpx, "get") as mock_get:
             get_adapter_type_adapter("mock")
             mock_get.assert_not_called()
+
+
+class TestNoEagerRegistration:
+    """Verify no eager hardcoded registration on module import."""
+
+    def test_module_import_does_not_register_eagerly(self):
+        """Importing adapter_type_registry does NOT auto-register mock/minimax.
+
+        After a fresh import (with test clear), ADAPTER_TYPE_REGISTRY must be empty.
+        This ensures config discovery is the true primary path.
+        """
+        # Use a fresh import to test no-eager behavior
+        import importlib
+        import sys
+
+        # Remove from cache to force fresh import
+        mods_to_remove = [k for k in sys.modules if k.startswith("app.providers.adapter_type_registry")]
+        for mod in mods_to_remove:
+            del sys.modules[mod]
+
+        # Also clear the registry
+        from app.providers.adapter_type_registry import (
+            ADAPTER_TYPE_REGISTRY,
+            clear_adapter_type_registry_for_tests,
+        )
+        clear_adapter_type_registry_for_tests()
+
+        # Re-import the module
+        from app.providers import adapter_type_registry as atr
+
+        # Registry must be empty after fresh import — no eager registration
+        assert len(ADAPTER_TYPE_REGISTRY) == 0, (
+            f"Expected empty registry after import, got: {list(ADAPTER_TYPE_REGISTRY.keys())}"
+        )
+
+    def test_mock_minimax_from_config_after_load(self):
+        """mock and minimax are registered from config, not eager fallback.
+
+        After clear + load_adapter_plugins_from_config(), both must be registered
+        and traceable to plugin.import_path in the YAML files.
+        """
+        from app.providers.adapter_type_registry import (
+            ADAPTER_TYPE_REGISTRY,
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        clear_adapter_type_registry_for_tests()
+        assert len(ADAPTER_TYPE_REGISTRY) == 0
+
+        load_adapter_plugins_from_config()
+
+        assert "mock" in ADAPTER_TYPE_REGISTRY
+        assert "minimax" in ADAPTER_TYPE_REGISTRY
+        assert ADAPTER_TYPE_REGISTRY["mock"].__name__ == "MockSpeechAdapter"
+        assert ADAPTER_TYPE_REGISTRY["minimax"].__name__ == "MiniMaxSpeechAdapter"
+
+    def test_get_provider_goes_through_config_discovery(self):
+        """get_provider('mock') resolves via config discovery path.
+
+        Verifies that:
+        1. get_provider('mock') works after clearing
+        2. load_adapter_plugins_from_config() actually registers mock/minimax
+        3. The registration happens via config discovery, not eager fallback
+        """
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        from app.providers.adapter_type_registry import (
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        # Clear everything
+        clear_adapter_type_registry_for_tests()
+        clear_adapter_config_cache()
+        clear_provider_config_cache()
+
+        # load_adapter_plugins_from_config must register mock and minimax
+        load_adapter_plugins_from_config()
+
+        from app.providers.adapter_type_registry import ADAPTER_TYPE_REGISTRY
+
+        assert "mock" in ADAPTER_TYPE_REGISTRY
+        assert "minimax" in ADAPTER_TYPE_REGISTRY
+        assert ADAPTER_TYPE_REGISTRY["mock"].__name__ == "MockSpeechAdapter"
+        assert ADAPTER_TYPE_REGISTRY["minimax"].__name__ == "MiniMaxSpeechAdapter"
+
+        # get_provider("mock") must return a working adapter
+        from app.providers.registry import get_provider
+
+        adapter = get_provider("mock")
+        assert adapter.provider_name == "mock"
+
+
+class TestPluginLoadErrorNotSwallowed:
+    """Verify plugin.import_path errors are NOT silently swallowed."""
+
+    def test_bad_import_path_raises_on_strict_default(self):
+        """load_adapter_plugins_from_config raises when plugin.import_path is invalid.
+
+        With strict=True (default), an invalid import_path in config must raise
+        AdapterPluginLoadError, not silently pass.
+        """
+        import os
+        import tempfile
+        import yaml
+
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.adapter_type_registry import (
+            AdapterPluginLoadError,
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        # Create a temp adapter config dir with a bad import_path
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bad_config_path = os.path.join(tmpdir, "bad_adapter.yaml")
+            with open(bad_config_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump({
+                    "adapter_type": "bad_adapter",
+                    "plugin": {
+                        "import_path": "app.providers.nonexistent_module.BadClass"
+                    }
+                }, f)
+
+            clear_adapter_type_registry_for_tests()
+            clear_adapter_config_cache()
+
+            old_env = os.environ.get("VOICE_LAB_ADAPTER_CONFIG_DIR")
+            os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = tmpdir
+
+            try:
+                # Re-load configs from temp dir
+                clear_adapter_config_cache()
+
+                with pytest.raises(AdapterPluginLoadError) as exc_info:
+                    load_adapter_plugins_from_config()  # strict=True by default
+
+                # Error must mention the adapter_type and import_path
+                err_msg = str(exc_info.value)
+                assert "bad_adapter" in err_msg
+                assert "nonexistent_module" in err_msg
+            finally:
+                if old_env is None:
+                    os.environ.pop("VOICE_LAB_ADAPTER_CONFIG_DIR", None)
+                else:
+                    os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = old_env
+                clear_adapter_config_cache()
+
+    def test_bad_import_path_non_existent_class_raises(self):
+        """Non-existent class in import_path raises AdapterPluginLoadError."""
+        import os
+        import tempfile
+        import yaml
+
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.adapter_type_registry import (
+            AdapterPluginLoadError,
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bad_config_path = os.path.join(tmpdir, "bad_class.yaml")
+            with open(bad_config_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump({
+                    "adapter_type": "bad_class_adapter",
+                    "plugin": {
+                        "import_path": "app.providers.mock_speech_adapter.NonExistentClass"
+                    }
+                }, f)
+
+            clear_adapter_type_registry_for_tests()
+            clear_adapter_config_cache()
+
+            old_env = os.environ.get("VOICE_LAB_ADAPTER_CONFIG_DIR")
+            os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = tmpdir
+
+            try:
+                clear_adapter_config_cache()
+
+                with pytest.raises(AdapterPluginLoadError) as exc_info:
+                    load_adapter_plugins_from_config()
+
+                err_msg = str(exc_info.value)
+                assert "bad_class_adapter" in err_msg
+                assert "NonExistentClass" in err_msg
+            finally:
+                if old_env is None:
+                    os.environ.pop("VOICE_LAB_ADAPTER_CONFIG_DIR", None)
+                else:
+                    os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = old_env
+                clear_adapter_config_cache()
+
+    def test_non_speech_provider_class_raises(self):
+        """Non-SpeechProvider class in import_path raises AdapterPluginLoadError."""
+        import os
+        import tempfile
+        import yaml
+
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.adapter_type_registry import (
+            AdapterPluginLoadError,
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bad_config_path = os.path.join(tmpdir, "evil_adapter.yaml")
+            with open(bad_config_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump({
+                    "adapter_type": "evil_adapter",
+                    "plugin": {
+                        "import_path": "app.providers.base.StreamAudioChunk"
+                    }
+                }, f)
+
+            clear_adapter_type_registry_for_tests()
+            clear_adapter_config_cache()
+
+            old_env = os.environ.get("VOICE_LAB_ADAPTER_CONFIG_DIR")
+            os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = tmpdir
+
+            try:
+                clear_adapter_config_cache()
+
+                with pytest.raises(AdapterPluginLoadError) as exc_info:
+                    load_adapter_plugins_from_config()
+
+                err_msg = str(exc_info.value)
+                assert "evil_adapter" in err_msg
+                assert "StreamAudioChunk" in err_msg
+            finally:
+                if old_env is None:
+                    os.environ.pop("VOICE_LAB_ADAPTER_CONFIG_DIR", None)
+                else:
+                    os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = old_env
+                clear_adapter_config_cache()
+
+    def test_strict_false_skips_bad_import_path(self):
+        """load_adapter_plugins_from_config(strict=False) silently skips bad configs."""
+        import os
+        import tempfile
+        import yaml
+
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.adapter_type_registry import (
+            clear_adapter_type_registry_for_tests,
+            load_adapter_plugins_from_config,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bad_config_path = os.path.join(tmpdir, "skip_adapter.yaml")
+            with open(bad_config_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump({
+                    "adapter_type": "skip_adapter",
+                    "plugin": {
+                        "import_path": "app.providers.nonexistent_module.BadClass"
+                    }
+                }, f)
+
+            clear_adapter_type_registry_for_tests()
+            clear_adapter_config_cache()
+
+            old_env = os.environ.get("VOICE_LAB_ADAPTER_CONFIG_DIR")
+            os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = tmpdir
+
+            try:
+                clear_adapter_config_cache()
+
+                # Must NOT raise with strict=False
+                load_adapter_plugins_from_config(strict=False)  # Should not raise
+            finally:
+                if old_env is None:
+                    os.environ.pop("VOICE_LAB_ADAPTER_CONFIG_DIR", None)
+                else:
+                    os.environ["VOICE_LAB_ADAPTER_CONFIG_DIR"] = old_env
+                clear_adapter_config_cache()
+
+
+class TestProviderRoutingRegression:
+    """Regression tests after removing eager fallback."""
+
+    def setup_method(self):
+        """Reset all caches before each test."""
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        from app.providers.adapter_type_registry import clear_adapter_type_registry_for_tests
+        from app.providers.capability_registry import clear_capability_registry_cache
+
+        clear_adapter_type_registry_for_tests()
+        clear_adapter_config_cache()
+        clear_provider_config_cache()
+        clear_capability_registry_cache()
+
+    def test_get_provider_mock_still_works(self):
+        """get_provider('mock') still returns MockSpeechAdapter after fixes."""
+        from app.providers.registry import get_provider
+
+        adapter = get_provider("mock")
+        assert adapter.provider_name == "mock"
+
+    def test_get_provider_minimax_still_works(self):
+        """get_provider('minimax') still returns MiniMaxSpeechAdapter after fixes."""
+        from app.providers.registry import get_provider
+
+        adapter = get_provider("minimax")
+        assert adapter.provider_name == "minimax"
+
+    def test_get_provider_mock_configured_still_works(self):
+        """get_provider('mock_configured') still returns MockSpeechAdapter after fixes."""
+        from app.providers.registry import get_provider
+
+        adapter = get_provider("mock_configured")
+        assert adapter.provider_name == "mock"
+
+    def test_get_provider_disabled_still_raises(self):
+        """get_provider('disabled_provider') still raises UnsupportedProvider after fixes."""
+        from app.core.errors import UnsupportedProvider
+        from app.providers.registry import get_provider
+
+        with pytest.raises(UnsupportedProvider, match="disabled_provider"):
+            get_provider("disabled_provider")
+
