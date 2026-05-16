@@ -88,7 +88,8 @@
 * P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复已完成 ✅
 * P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核未通过 ⚠️ (发现阻塞问题)
 * P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题已完成 ✅
-* 当前下一阶段：P16-WORKSPACE-RESTORE-B1-FIX1-CHECK
+* P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1 已完成 ✅
+* 当前下一阶段：P16-WORKSPACE-RESTORE-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9239,4 +9240,74 @@ tests/test_cancel_confirmation_static.py 15 passed ✅
 ### 阶段状态
 
 P16-WORKSPACE-RESTORE-B1-FIX1 修复完成。当前阶段推进到 P16-WORKSPACE-RESTORE-B1-FIX1-CHECK。
+
+---
+
+## P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1
+
+### 阶段背景
+
+复核修复提交 `0b9a931 fix: repair workspace restore variant count and numeric guards`。
+
+### 远端提交核验
+
+```
+0b9a931 fix: repair workspace restore variant count and numeric guards
+8a9f404 docs: record workspace restore blockers
+4f75e84 feat: restore workspace context from recent samples
+```
+
+### 文件范围核验
+
+commit `0b9a931` 仅涉及 index.html / sample_sidebar.js / tests / docs ✅
+未触及 context_store.js / sample_store.js / API / core / providers ✅
+
+### BLOCKER-1 修复复核：variantCount 元素 ID
+
+- HTML 元素 ID = `variantCount`（无 Input 后缀）✅
+- 全局变量 `variantCountInput = document.getElementById('variantCount')` ✅
+- `buildWorkspaceRestoreContext` 使用 `variantCountInput && variantCountInput.value` ✅
+- 不再使用 `document.getElementById('variantCountInput')` ✅
+- `restoreWorkspaceContext` 使用 `setValueIfPresent('variantCount', ...)` ✅
+- 不再使用 `setValueIfPresent('variantCountInput', ...)` ✅
+- 用户选择 4 或 5 正确保存和恢复 ✅
+
+### BLOCKER-2 修复复核：NaN guard
+
+- `isNaN(speed)` guard ✅
+- `isNaN(vol)` guard ✅
+- `isNaN(pitch)` guard ✅
+- 非法数字不被存为 NaN ✅
+
+### 测试补强复核
+
+| 测试 | 状态 |
+|---|---|
+| test_buildWorkspaceRestoreContext_uses_real_variantCount_dom_id | ✅ |
+| test_restoreWorkspaceContext_uses_real_variantCount_dom_id | ✅ |
+| test_workspace_param_parse_has_nan_guard | ✅ |
+
+### 回归范围复核
+
+- context_store.js / sample_store.js 未修改 ✅
+- Provider/Mock 后端 API 未修改 ✅
+- workspace context 保存/恢复链路完整 ✅
+- 旧样本降级链路完整 ✅
+- longtext/script restore 未受影响 ✅
+
+### 测试结果
+
+```
+tests/test_workspace_restore_static.py  50 passed ✅
+tests/test_sample_sidebar_static.py    256 passed ✅
+tests/test_cancel_confirmation_static.py 15 passed ✅
+```
+
+### 复核结论
+
+**通过 —— 2 个 BLOCKER 均已彻底修复**
+
+### 阶段状态
+
+P16-WORKSPACE-RESTORE-B1-FIX1-CHECK 通过。当前阶段推进到 P16-WORKSPACE-RESTORE-CLOSE。
 
