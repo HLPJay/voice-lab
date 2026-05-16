@@ -124,7 +124,8 @@
 * P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题已完成 ✅
 * P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现已完成 ✅
 * P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案已完成 ✅
-* 当前下一阶段：P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1
+* P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1：执行小米 MiMo 真实 API 最小探测已完成 ✅
+* 当前下一阶段：P16-XIAOMI-MIMO-TTS-REAL-PROBE-B2
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * xiaomi_mimo 默认 disabled（enabled=false），Provider 下拉框默认不显示 Xiaomi 是预期行为
 * env_resolver 支持 VOICE_LAB_ENV_FILE 临时 env 文件
