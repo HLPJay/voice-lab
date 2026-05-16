@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-CANCEL-FIX1：修复取消确认语义和 loading 状态**
+**P16-CANCEL-FIX1-CHECK：复核取消确认语义和 loading 状态修复**
 
 ## 已完成（续）
 
+- P16-CANCEL-FIX1：修复取消确认语义和 loading 状态 ✅
 - P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置 ✅
 - P14-CONTEXT-C2-FIX2-CHECK：SampleSidebar 详情面板插入位置修复复核 ✅
 - P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切 ✅
@@ -130,7 +131,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-CANCEL-FIX1 | fix cancellation semantics and loading state | P16-CANCEL-A0-CHECK 完成 |
 | P16-CANCEL-FIX1-CHECK | verify cancellation semantics and loading state fix | P16-CANCEL-FIX1 完成 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | P16-CANCEL-FIX1 完成或并入 |
 | P16-WORKSPACE-RESTORE-A0 | audit workspace sample full restore | P16-CANCEL-FIX1 完成 |

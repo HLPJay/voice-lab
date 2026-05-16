@@ -2840,7 +2840,16 @@
     batch_script: '剧本批量生成会调用云端 TTS，可能产生较高费用，是否继续？',
     async_render: '异步生成会调用云端 TTS，可能产生费用，是否继续？',
     stream_render: '流式生成会调用云端 TTS，可能产生费用，是否继续？',
+    t2a: '同步生成会调用云端 TTS，可能产生费用，是否继续？',
   };
+
+  // Standalone confirm helper — returns true if confirmed, false if cancelled.
+  // Does NOT mutate any UI state.
+  function confirmHighRiskOperation(operation) {
+    var msg = _OPERATION_MESSAGES[operation];
+    if (!msg) return true; // no confirm defined — proceed
+    return confirm(msg);
+  }
 
   async function guardedJsonFetch(url, payload, options) {
     const { provider, operation, highRisk } = options;
@@ -3217,6 +3226,19 @@ function handleStopAsyncPolling() {
     const pitch = document.getElementById('paramPitch').value;
     const emotion = document.getElementById('paramEmotion').value;
 
+    // Determine operation type BEFORE confirm — needed for confirm check
+    let operation;
+    if (isStream) { operation = 'stream_render'; }
+    else if (isAsync) { operation = 'async_render'; }
+    else if (isVariant) { operation = 'voice_variants'; }
+    else { operation = 't2a'; }
+
+    // Confirm BEFORE any side effects (P16-CANCEL-FIX1)
+    if (provider === 'minimax' && !confirmHighRiskOperation(operation)) {
+      return; // cancel: no UI mutation, no request
+    }
+
+    // Only on confirm: stop old polling, set loading, clear results
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     stopAsyncPolling();
     setLoading(true);
@@ -3249,15 +3271,19 @@ function handleStopAsyncPolling() {
         ...(pitch ? { pitch: parseInt(pitch) } : {}),
         ...(emotion ? { emotion } : {}),
         ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {}),
-        confirm_cost: false,
+        confirm_cost: true,
       };
 
-      let endpoint, operation;
-      if (isAsync) { endpoint = '/api/voice/render/async'; operation = 'async_render'; }
-      else if (isVariant) { endpoint = '/api/voice/variants/render'; operation = 'voice_variants'; }
-      else { endpoint = '/api/voice/render'; operation = 't2a'; }
+      let endpoint;
+      if (isAsync) { endpoint = '/api/voice/render/async'; }
+      else if (isVariant) { endpoint = '/api/voice/variants/render'; }
+      else { endpoint = '/api/voice/render'; }
 
-      const resp = await guardedJsonFetch(endpoint, payload, { provider, operation, highRisk: true });
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
       if (!resp.ok) {
         const err = await parseApiError(resp);
@@ -3281,9 +3307,7 @@ function handleStopAsyncPolling() {
         loadHistory(0);
       }
     } catch (e) {
-      if (e.message === 'USER_CANCELLED') {
-        resultsArea.innerHTML = '';
-      } else if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
+      if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
         resultsArea.innerHTML = renderApiError(e);
         resultsArea.classList.add('visible');
       } else {
@@ -3297,9 +3321,6 @@ function handleStopAsyncPolling() {
   }
 
   function startStreamGenerate(text, profileId, provider, subtitle, audioFormat, voiceParams) {
-    if (provider === 'minimax' && !confirm('流式生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
-      return;
-    }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${proto}//${location.host}/api/voice/ws/render`;
 
