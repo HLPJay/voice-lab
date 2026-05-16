@@ -95,7 +95,8 @@
 * P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核已完成 ✅ (发现 1 处表述需修正)
 * P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary 已完成 ✅
 * P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes 已完成 ✅
-* 当前下一阶段：P16-PROVIDER-MOCK-CLOSE
+* P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口已完成 ✅
+* 当前下一阶段：NEXT-PRIORITY-REVIEW
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9664,4 +9665,59 @@ docs/agent/NEXT_TASKS.md
 ### 阶段状态
 
 P16-PROVIDER-MOCK-FIX1-CHECK 复核通过。当前阶段推进到 P16-PROVIDER-MOCK-CLOSE。
+
+## P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口
+
+### 收口结论
+
+**Provider mock boundary 阶段完成 ✅**
+
+### 阶段链路
+
+| 阶段 | 结论 |
+|---|---|
+| `P16-PROVIDER-BOUNDARY-A0` | 发现 RISK-001/002/006 |
+| `P16-PROVIDER-BOUNDARY-A0-CHECK` | 通过 |
+| `P16-PROVIDER-MOCK-FIX1` | 完成代码修复 |
+| `P16-PROVIDER-MOCK-FIX1-CHECK` | 复核通过 |
+| `P16-PROVIDER-MOCK-CLOSE` | 本文档，阶段收口 |
+
+### 已修复风险
+
+- `P16-PROVIDER-RISK-001`：mock fallback minimax — ✅ 已修复（`mock_fallback_provider` 默认为 `None`）
+- `P16-PROVIDER-RISK-002`：VoiceVariantService CostGuard 绕过 — ✅ 已修复（`resolve_binding()` 在 `require_confirmed()` 之前）
+- `P16-PROVIDER-RISK-006`：前端 binding unbound 仍允许生成 — ✅ 已修复（`workspaceBindingAvailable` guard）
+
+### 最终行为语义
+
+- **mock Provider**：`mock_fallback_provider=None`，mock 为纯测试 Provider，无自动 fallback
+- **VoiceVariantService CostGuard**：`resolve_binding()` 返回的 `resolved_provider` 传入 `require_confirmed()`
+- **workspace 前端**：binding guard 在 `confirmHighRiskOperation()` 和 `setLoading(true)` 之前执行
+
+### 测试结果
+
+| 测试集 | 结果 |
+|---|---|
+| `test_provider_mock_boundary_static.py`（12 个） | ✅ 12 passed |
+| 回归测试（cancel + workspace restore，65 个） | ✅ 65 passed |
+| 全量测试 | 1379 passed, 29 failed, 1 error（29 failed 为既有 context_store node.js eval 问题，与本次无关） |
+
+### 未纳入范围
+
+完整 Capability 动态 UI / 新 Provider / Provider Registry 重构 / 普通 sync T2A 后端 require_confirmed / 多版本等待态 / 服务端创作记录 / 统计模块 / SaaS
+
+### 非阻塞观察项
+
+- `P16-PROVIDER-RISK-003`：普通 sync T2A 后端无 require_confirmed 强校验，后置
+- `P16-PROVIDER-OBS-DUP-RESOLVE`：重复 binding resolve，可接受
+- `P16-PROVIDER-OBS-RESTORE-BINDING`：workspace restore 后依赖 change 事件刷新 binding status，当前监听器已覆盖
+- `P16-PROVIDER-OBS-TEST-001`：行为测试可后补
+
+### 下一阶段建议
+
+推荐优先进入 `P16-PROVIDER-CAPABILITY-UI-B1`（capability-driven provider UI），理由：Provider 语义安全性已修复，应让前端由 Provider Capability 动态驱动，服务于后续新模型接入。
+
+### 阶段状态
+
+P16-PROVIDER-MOCK-CLOSE 收口完成。当前阶段推进到 NEXT-PRIORITY-REVIEW。
 
