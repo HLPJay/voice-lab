@@ -407,6 +407,7 @@ class CapabilityValidator:
         preview_text: str,
         verify: bool = False,
         model: str | None = None,
+        audio_format: str | None = None,
     ) -> None:
         cap = self.get_capability(provider)
 
@@ -439,6 +440,7 @@ class CapabilityValidator:
                     detail="IMPORT_VERIFY_NOT_SUPPORTED",
                 )
             self._validate_model(model, cap.tts.models if cap.tts else [])
+            self._validate_audio_format(audio_format, cap.tts.audio_formats if cap.tts else [])
 
 
 capability_validator = CapabilityValidator()

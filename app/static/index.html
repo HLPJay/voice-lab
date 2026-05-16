@@ -4486,9 +4486,10 @@ function handleStopAsyncPolling() {
   }
 
   function renderAuditionWorkstation(provider) {
+    const defModel = (window.getDefaultTtsModel ? window.getDefaultTtsModel(provider) : '') || '';
     const modelOptions = window.getModelOptionsHtml
-      ? window.getModelOptionsHtml(provider)
-      : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>';
+      ? (window.getModelOptionsHtml(provider) || (defModel ? '<option value="' + defModel + '" selected>' + defModel + '</option>' : ''))
+      : (defModel ? '<option value="' + defModel + '" selected>' + defModel + '</option>' : '');
     return `<div id="voiceAuditionPanel" class="card" style="margin-bottom:12px">
       <div class="card-title">🎧 试听工作台</div>
 
@@ -4785,6 +4786,8 @@ function handleStopAsyncPolling() {
     resultsEl.innerHTML = '';
 
     try {
+      if (window.ensureProviderCapability) await window.ensureProviderCapability(provider);
+
       const url = `/api/voice/provider-voices?provider=${encodeURIComponent(provider)}&voice_type=${encodeURIComponent(voiceType)}&refresh=true`;
       const resp = await fetch(url);
       const data = await resp.json();
@@ -4931,6 +4934,7 @@ function handleStopAsyncPolling() {
 
     resultsEl.innerHTML = renderAuditionWorkstation(provider) + tableHtml + paginationHtml;
     setupAuditionWorkstation();
+    if (window.applyAllProviderCapabilities) window.applyAllProviderCapabilities();
   }
 
   function handlePageSizeChange(newSize) {

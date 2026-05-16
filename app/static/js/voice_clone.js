@@ -256,7 +256,7 @@
           '<div id="cloneProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
             '<select id="cloneBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-              (window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>') +
+              (window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '') +
             '</select>' +
             '<button class="btn-primary" id="cloneBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
           '</div>' +

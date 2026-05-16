@@ -238,6 +238,27 @@ class TestCreateBinding:
             service.create_profile_binding(session, "test_profile", request)
         assert "not found or not available" in str(exc_info.value.message)
 
+    def test_create_rejects_enabled_provider_model_mismatch(self, session, seed_data, service):
+        upsert_provider_voice(
+            session,
+            provider="mock",
+            provider_voice_id="mock_voice_default",
+            voice_type="system",
+            name="Mock Voice",
+            status="available",
+        )
+        request = VoiceBindingCreate(
+            provider="mock",
+            model="speech-2.8-hd",
+            provider_voice_id="mock_voice_default",
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            service.create_profile_binding(session, "test_profile", request)
+
+        assert exc_info.value.detail == "UNSUPPORTED_MODEL"
+        assert service.list_profile_bindings(session, "test_profile") == []
+
 
 class TestUpdateBinding:
     def test_update_params_and_priority(self, session, seed_data, service):
@@ -472,7 +493,7 @@ class TestCloneThenBind:
         from app.domain.schemas import VoiceBindingCreate
         binding_req = VoiceBindingCreate(
             provider="mock",
-            model="speech-2.8-hd",
+            model="mock-tts",
             provider_voice_id="clone_for_bind_01",
             params={},
             priority=1,

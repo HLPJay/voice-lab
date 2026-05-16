@@ -50,7 +50,7 @@ class ProviderVoiceImportService:
                     provider_voice_id=request.provider_voice_id,
                     model=request.model,
                     text=request.preview_text,
-                    audio_format="mp3",
+                    audio_format=request.audio_format,
                     output_format="hex",
                     need_subtitle=False,
                     confirm_cost=request.confirm_cost,

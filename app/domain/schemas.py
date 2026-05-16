@@ -108,9 +108,9 @@ class ProviderVoiceListResponse(BaseModel):
 
 
 class VoiceBindingCreate(BaseModel):
-    provider: str
-    model: str
-    provider_voice_id: str
+    provider: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    provider_voice_id: str = Field(min_length=1)
     params: dict = Field(default_factory=dict)
     priority: int = 1
 
@@ -317,6 +317,7 @@ class ProviderVoiceImportRequest(BaseModel):
     description: str | None = None
     verify: bool = True
     model: str = "speech-2.8-hd"
+    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
     preview_text: str = Field(default="你好，这是导入音色试听。", min_length=1, max_length=1000)
     confirm_cost: bool = False
 
