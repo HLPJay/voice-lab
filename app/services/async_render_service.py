@@ -248,7 +248,7 @@ class AsyncRenderService:
         audio_path = storage_path("audio", f"{audio_id}.{fmt}")
 
         if file_url.startswith(("http://", "https://")):
-            async with httpx.AsyncClient(timeout=settings.minimax_timeout_seconds) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.get(file_url)
                 resp.raise_for_status()
                 audio_path.write_bytes(resp.content)

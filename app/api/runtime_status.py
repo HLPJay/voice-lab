@@ -299,7 +299,6 @@ def get_runtime_status(
         "current": {
             "default_provider": settings.voice_provider,
             "default_model": settings.minimax_default_model,
-            "default_ws_model": settings.minimax_ws_model,
             "default_audio_format": settings.default_audio_format,
         },
         "today": today,

@@ -9,10 +9,7 @@ class Settings(BaseSettings):
 
     voice_provider: str = "minimax"
     minimax_api_key: str | None = None
-    minimax_base_url: str = "https://api.minimaxi.com"
-    minimax_t2a_path: str = "/v1/t2a_v2"
     minimax_default_model: str = "speech-2.8-hd"
-    minimax_timeout_seconds: int = 120
 
     storage_dir: str = "./storage"
     default_audio_format: str = "mp3"
@@ -20,21 +17,11 @@ class Settings(BaseSettings):
     default_bitrate: int = 128000
     default_channel: int = 1
 
-    mock_fallback_provider: str | None = None  # None = mock is pure test, no auto-fallback to real providers
+    mock_fallback_provider: str | None = None
 
-    minimax_async_t2a_path: str = "/v1/t2a_async_v2"
-    minimax_async_query_path: str = "/v1/query/t2a_async_query_v2"
     async_poll_interval_seconds: int = 5
     async_max_wait_seconds: int = 600
 
-    minimax_file_upload_path: str = "/v1/files/upload"
-    minimax_voice_clone_path: str = "/v1/voice_clone"
-
-    minimax_voice_design_path: str = "/v1/voice_design"
-    minimax_delete_voice_path: str = "/v1/delete_voice"
-    minimax_ws_url: str = "wss://api.minimaxi.com/ws/v1/t2a_v2"
-    minimax_ws_model: str = "speech-2.8-hd"
-    minimax_ws_timeout_seconds: int = 120
     clone_audio_max_size_mb: int = 20
     batch_max_concurrency: int = 5
 
