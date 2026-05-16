@@ -107,7 +107,8 @@
 * P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口已完成 ✅
-* 当前下一阶段：NEXT-PRIORITY-REVIEW
+* NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-OBS-FIX1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10144,4 +10145,47 @@ Profile 是否可执行取决于当前 Provider 下是否存在 available bindin
 1. **P16-PROVIDER-BINDING-UI-B2-OBS-FIX1**：修复 B2 非阻塞观察项（基础稳定性补强）
 2. **P16-PROVIDER-CAPABILITY-UI-B1**：capability-driven provider/model UI（OBS-FIX1 后评估）
 
+## NEXT-PRIORITY-REVIEW：选择 Provider-first UI 观察项修复
 
+### 当前状态
+
+Provider-first profile/binding UI 阶段已收口，存在 2 个非阻塞观察项待后续处理。
+
+### 为什么不直接进入 Capability UI
+
+Capability UI 依赖 Provider-first UI 的可用性判断稳定。如果"当前 Provider 下哪些 profile/binding 可用"的标记不够准确，后续基于 provider/model capability 禁用参数和模式会更复杂。因此应先补强 Provider-first UI 的基础准确性，再进入 Capability UI。
+
+### 下一阶段推荐
+
+**P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项**
+
+### OBS-FIX1 目标
+
+补强 Provider-first UI 的状态准确性：
+1. 确保 workspace profile 标记基于可靠 binding 数据（`loadAllBindings()` 预填充全量 `_voiceBindMap`）
+2. 让 profile/provider change 的 binding 状态更新严格同步（async/await）
+
+### OBS-FIX1 建议范围
+
+**纳入**：
+- Workspace 初载时调用 `loadAllBindings()` 预填充全量 binding map
+- Provider change 前/后确保 binding map 可用于准确标记所有 profile
+- `profileSelect` change 改为 async/await
+- `providerSelect` change async 评估
+- 新增或补强静态测试
+
+**不纳入**：
+- Capability UI（`P16-PROVIDER-CAPABILITY-UI-B1`）
+- model 下拉
+- resolve_binding 修改
+- 后端/API 修改
+- VoiceBinding / ProviderVoice schema 修改
+- Batch / Script / Clone / Design / Audition 改造
+
+### 不纳入范围
+
+不直接进入 Capability UI：Provider-first UI 的 binding 可用性标记尚有观察项未修复，在不稳定基础上叠加新功能会积累技术债务。
+
+### 是否只改文档
+
+是（优先级确认文档）
