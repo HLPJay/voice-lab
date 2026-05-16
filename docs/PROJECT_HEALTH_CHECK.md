@@ -97,7 +97,8 @@
 * P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口已完成 ✅
 * NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
 * P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查已完成 ✅
-* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-A0-CHECK
+* P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-B1-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9828,6 +9829,49 @@ model 下拉 / resolve_binding 重构 / VoiceBinding schema 改 / ProviderVoice 
 ### 阶段状态
 
 P16-PROVIDER-MODEL-BINDING-A0 审查完成。下一阶段为 P16-PROVIDER-MODEL-BINDING-A0-CHECK。
+
+## P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核
+
+### 复核结论
+
+**通过（带修正项）✅**
+
+### 代码事实复核
+
+核心数据模型（VoiceBinding / ProviderVoice / resolve_binding / 执行层）的 A0 结论与代码事实一致。
+
+### 主要修正项
+
+| 位置 | A0 原文 | CHECK 修正 |
+|---|---|---|
+| SampleStore | "SampleStore 有 model" | schema 支持 model/voice_id/voice_name，但 binding_id 不保存；batch sample model 为 null |
+| ContextStore workspace | "保存 model/binding_id" | ContextStore 不保存 binding_id；restore 时 model 为 null（调用处未传） |
+| History/Admin | "已展示 model ✅" | VoiceJob 有 model 字段，但 history UI 不展示（仅搜索过滤） |
+| Clone/Design/Import | "使用 binding.model" | model 来自用户输入框，不是 binding.model |
+| Audition | audition_workstation.js | 文件不存在，audition 在 audition_records.js；model 来源是 capability |
+
+### 风险清单复核
+
+8 项 RISK 均成立，RISK-003/005 描述已修正为更准确表述。
+
+### B1 范围评估
+
+原 B1 建议范围过大（5 项），CHECK 建议收敛为：
+- 必须：workspace binding hint 展示 model；ContextStore 保存 binding_id；buildWorkspaceRestoreContext 补充 binding_id
+- 可选：history/admin 展示 model
+- 后置：audition model 来源统一
+
+### 非阻塞观察项
+
+- `P16-MODEL-BINDING-OBS-BATCH-MODEL`：batch sample model 为 null 是否可接受需产品确认
+- `P16-MODEL-BINDING-OBS-AUDITION-MODEL`：audition model 来源 capability 与 binding 语义不同，是否需要统一
+- `P16-MODEL-BINDING-OBS-DELETE-SCOPE`：deprecate_bindings_by_provider_voice 可能是设计意图
+
+### 阶段状态
+
+P16-PROVIDER-MODEL-BINDING-A0-CHECK 复核通过。下一阶段为 P16-PROVIDER-MODEL-BINDING-B1-A0。
+
+
 
 
 

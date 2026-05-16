@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核**
+**P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计**
 
 ## 已完成（续）
 
+- P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核 ✅
 - P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider / Model / VoiceBinding 全链路审查 ✅
 - P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes ✅
@@ -148,15 +149,15 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-MODEL-BINDING-A0-CHECK | verify provider/model/binding audit | P16-PROVIDER-MODEL-BINDING-A0 完成 |
-| P16-PROVIDER-MODEL-BINDING-B1 | implement minimal model/binding visibility and restore | A0-CHECK 完成后评估 |
-| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | MODEL-BINDING-B1 后评估 |
+| P16-PROVIDER-MODEL-BINDING-B1-A0 | design minimal model/binding visibility and restore | A0-CHECK 完成 |
+| P16-PROVIDER-MODEL-BINDING-B1 | implement minimal model/binding visibility and restore | B1-A0 完成 |
+| P16-PROVIDER-MODEL-BINDING-B1-CHECK | verify minimal model/binding visibility and restore | B1 完成 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | MODEL-BINDING-B1-CHECK 后评估 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
-| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
+| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
-| P15-STATS-B1 | implement lightweight local statistics panel | Backlog，产品需要时再启动 |
-| P15-SERVER-STATS-A0 | design server-side full statistics | Backlog，需要全量统计时再启动 |
-| 后续 | SaaS / 多用户 | 产品验证后 |
+| P15-STATS-B1 | local statistics panel | Backlog |
+| P15-SERVER-STATS-A0 | server-side full statistics | Backlog |
 
 ## Paused / Do not touch yet
 

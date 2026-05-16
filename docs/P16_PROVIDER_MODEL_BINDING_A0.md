@@ -216,8 +216,8 @@ RenderPlan(provider, model, provider_voice_id, voice_params, audio_params)
 | Workspace stream 生成 | index.html | voice_render_service | ✅ | ❌ | ✅ | ✅（VoiceJob） | ✅ | ✅ | ⚠️（binding.model） | ❌ | 同上 | 同上 |
 | Workspace variants | index.html | voice_variant_service | ✅ | ❌ | ✅ | ✅（VoiceJob） | ✅ | ✅ | ⚠️（binding.model） | ❌ | 同上 | 同上 |
 | Workspace binding hint | index.html | checkBindingStatus | ✅ | ⚠️（从 _voiceBindMap） | ✅ | ❌ | ⚠️（从 _voiceBindMap） | ✅ | ⚠️ | ❌ | hint 只显示 provider+voice_id，不展示 model | 升级 hint 展示 model |
-| Workspace SampleStore | sample_store.js | — | ✅ | ✅ | ✅ | ❌ | ✅ | — | ✅ | ⚠️（restore 时） | 不保存 binding_id | 保存 binding_id |
-| ContextStore workspace | context_store.js | — | ✅ | ⚠️（有值） | ✅ | ❌ | ⚠️（有值） | — | ✅ | ⚠️（有值） | 不保存 binding_id，无法精确恢复 | 保存 binding_id |
+| Workspace SampleStore | sample_store.js | — | ✅ | ✅ | ✅ | ❌ | ✅ | — | ✅ | ⚠️（workspace 有；batch sample 为 null） | binding_id 未保存（schema 无此字段） | 保存 binding_id |
+| ContextStore workspace | context_store.js | — | ✅ | ❌（restore 时为 null） | ✅ | ❌ | ❌ | — | ✅ | ❌ | ContextStore 无 binding_id 字段；restore 时 model 为 null（调用处未传） | 保存 binding_id + model |
 
 ### 6.2 Batch 系列
 
@@ -244,11 +244,11 @@ RenderPlan(provider, model, provider_voice_id, voice_params, audio_params)
 
 | 入口 | 前端文件 | 后端 | 选择 provider | 选择 model | 使用 profile_id | 使用 binding_id | 使用 provider_voice_id | 调用 resolve_binding | 保存 model | 恢复 model | 当前问题 | 建议 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Audition workstation | audition_workstation.js | voice_render_service | ✅ | ⚠️（model select） | ✅ | — | ✅ | ✅ | ✅ | — | model 下拉与 binding model 可能不一致 | 统一 model |
-| Voice clone preview | voice_clone.js | voice_clone API | ✅ | ⚠️（model 输入） | — | — | ✅ | — | ⚠️ | — | preview 可选发 model（payload.model）；bind 时用 bindModel | 统一 model 来源 |
-| Voice design preview | voice_design.js | voice_design API | ✅ | ❌ | — | — | ✅ | — | ⚠️ | — | preview 不发 model；bind 用 designBindModel | 统一 model |
-| Voice import | voice_import.js | voice_catalog_service | ✅ | ❌ | ✅（bind 时） | — | ✅ | — | ✅（binding） | — | 同上 | 同上 |
-| History / Admin | history.js | admin API | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | — | 已展示 model（VoiceJob 字段） | — |
+| Audition workstation | audition_records.js | voice_render_service | ✅ | ⚠️（capability tts.models） | ✅ | — | ✅ | ✅ | ✅ | — | model 来源是 capability（tts.models），不是 binding.model；可能与 binding 不一致 | 评估是否需要与 binding 统一 |
+| Voice clone preview | voice_clone.js | voice_clone API | ✅ | ⚠️（用户输入 cloneModel） | — | — | ✅ | — | ⚠️ | — | model 来自用户输入框，不是 binding.model；bind 用 cloneBindModel | 统一 model 来源 |
+| Voice design preview | voice_design.js | voice_design API | ✅ | ⚠️（用户输入 designBindModel） | — | — | ✅ | — | ⚠️ | — | model 来自用户输入框，不是 binding.model | 统一 model |
+| Voice import | voice_import.js | voice_catalog_service | ✅ | ⚠️（用户输入 importBindModel） | ✅（bind 时） | — | ✅ | — | ✅ | — | model 来自用户输入框，不是 binding.model | 统一 model |
+| History / Admin | history.js | admin API | ✅ | ✅（搜索过滤） | ✅ | ✅ | — | — | ✅ | — | VoiceJob 有 model 字段，但 history UI 不展示（仅搜索过滤可用） | 展示 model |
 
 ## 7. 字段流转表
 
@@ -283,8 +283,8 @@ RenderPlan(provider, model, provider_voice_id, voice_params, audio_params)
 
 ### P16-MODEL-BINDING-RISK-003
 **严重性**：中
-**描述**：Voices tab 试音 model（auditionModel select）与绑定 model 可能不一致；clone/design/import 的 model 输入由用户手输，缺少统一约束。
-**当前状态**：audition 有 model select，clone 有 model 输入，design bind 用 model 输入，但来源和一致性未验证。
+**描述**：Voices tab 试音 model 与绑定 model 可能不一致；clone/design/import 的 model 输入由用户手输，缺少统一约束。
+**当前状态**：audition model 来源是 capability（`tts.models`）；clone model 来源是用户输入 `cloneModel`；design/import bind model 来源是用户输入 `designBindModel`/`importBindModel`。三者来源独立，无统一约束。
 **建议**：统一 model 来源，从 binding 或 ProviderVoice 推导。
 
 ### P16-MODEL-BINDING-RISK-004
@@ -333,13 +333,13 @@ RenderPlan(provider, model, provider_voice_id, voice_params, audio_params)
 
 1. **Workspace binding hint 升级**：展示 `provider + model + voice_name`（当前只展示 provider + voice_id）
 
-2. **Workspace SampleStore 保存 binding_id + model + provider_voice_id**：sample_store.js 的 `normalizeSample` 已有 model 字段（✅），补充 binding_id 和 provider_voice_id
+2. **Workspace SampleStore 保存 binding_id**：sample_store.js 的 `normalizeSample` schema 无 binding_id 字段，需补充；model 已有
 
-3. **Workspace ContextStore 保存 binding_id**：buildWorkspaceSampleContext / buildWorkspaceRestoreContext 补充 binding_id
+3. **Workspace ContextStore 保存 binding_id**：`buildWorkspaceRestoreContext` 当前无 binding_id；buildWorkspaceRestoreContext 调用处需补充传入 binding_id；model 在 restore 时为 null（extra.model 未传）
 
-4. **Workspace restore 展示 binding 详情**：restore 后 UI 展示 binding 的 model 和 voice_name，不自动重新 resolve
+4. **Workspace restore 展示 binding 详情**：restore 后 UI 展示 binding 的 model 和 voice_name（当前 restore 时 model 为 null）
 
-5. **History/Admin model 展示**：VoiceJob 已有 model 字段（✅），确认 history.js 是否展示
+5. **History/Admin model 展示**：VoiceJob 已有 model 字段，history UI 不展示（仅搜索过滤用），可选小改动展示
 
 6. **Audition model 统一**：audition model 下拉来源改为从当前 profile 的 resolved binding model 回填
 
@@ -352,6 +352,7 @@ RenderPlan(provider, model, provider_voice_id, voice_params, audio_params)
 - 不重构 Batch script per-line binding
 - 不做 Capability UI
 - 不新增 Provider
+- 后置：audition model 来源统一（涉及 capability 语义，需 A0 评估后决定）
 
 ### 9.3 后续 B2 考虑
 
@@ -386,8 +387,13 @@ RenderPlan(provider, model, provider_voice_id, voice_params, audio_params)
 - 数据层（VoiceBinding）完整表达 `profile_id + provider + model + provider_voice_id`
 - 创建层（create_binding）已把 model 当成一等字段
 - 执行层（RenderPlan / VoiceJob）已使用 model 和 binding_id
-- **缺口**：解析层（resolve_binding）无 model 参数；UI 层（workspace/batch）无 model 选择和展示；恢复层（ContextStore/SampleStore）不保存 binding_id
+- **缺口**：解析层（resolve_binding）无 model 参数；UI 层（workspace/batch）无 model 选择和展示；恢复层（ContextStore/SampleStore）不保存 binding_id；Clone/Design/Import 的 model 来自用户输入而非 binding
 
-**横向一致性**：workspace / batch / script / voices / audition / clone / design / import 各模块对 provider/model/binding_id 的表达程度不一，部分有 provider 无 model，部分不保存 binding_id。
+**横向一致性（CHECK 修正后）**：
+- workspace：UI 无 model 下拉；SampleStore schema 支持 model 但无 binding_id；ContextStore workspace 不保存 binding_id，restore 时 model 为 null
+- batch：longtext/script context 不保存 model/binding_id
+- voices/audition：model 来源不一（capability 或用户输入），均不经过 binding
+- clone/design/import：model 来自用户输入，不使用 binding.model
+- history：admin：有 model 字段但 UI 不展示
 
 **下一阶段**：A0-CHECK 复核后进入 B1（最小可见性与恢复增强）。
