@@ -142,6 +142,14 @@
     );
   }
 
+  // P16-WORKSPACE-RESTORE-B1: check if source is a workspace sample
+  function isWorkspaceSource(source) {
+    return source === 'workspace_sync' ||
+           source === 'workspace_async' ||
+           source === 'workspace_stream' ||
+           source === 'workspace_variant';
+  }
+
   // ── card builder ────────────────────────────────────────────────────
 
   function buildCard(sample) {
@@ -231,7 +239,13 @@
     }
     html += '<button class="sample-btn-copy" data-text="' + encodeURIComponent(textRaw) + '" title="复制">⎘</button>';
     if (canShowFill(sourceRaw)) {
-      html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(textRaw) + '" title="填入工作台">↓</button>';
+      // P16-WORKSPACE-RESTORE-B1: workspace with context_id → restore full context
+      if (isWorkspaceSource(sourceRaw) && sample.context_id) {
+        html += '<button class="sample-btn-fill" data-context-id="' + attr(String(sample.context_id)) + '" title="恢复工作台">↓</button>';
+      } else {
+        // legacy: fill text only (no context_id or non-workspace source)
+        html += '<button class="sample-btn-fill" data-text="' + encodeURIComponent(textRaw) + '" title="填入工作台">↓</button>';
+      }
     }
     html += '<button class="sample-btn-delete" data-id="' + idAttr + '" title="删除">✕</button>';
     html += '</div>';
@@ -299,6 +313,7 @@
 
       var text = target.getAttribute ? target.getAttribute('data-text') : null;
       var sampleId = target.getAttribute ? target.getAttribute('data-id') : null;
+      var contextId = target.getAttribute ? target.getAttribute('data-context-id') : null;
 
       // Play — uses data-id to find sample and render in-card audio
       if (target.classList.contains('sample-btn-play') && sampleId) {
@@ -312,9 +327,14 @@
         return;
       }
 
-      // Fill text input
-      if (target.classList.contains('sample-btn-fill') && text) {
-        fillTextInput(decodeURIComponent(text));
+      // Fill text input — P16-WORKSPACE-RESTORE-B1: also handle data-context-id
+      if (target.classList.contains('sample-btn-fill')) {
+        if (contextId) {
+          // Restore full workspace context
+          restoreWorkspaceContextById(contextId);
+        } else if (text) {
+          fillTextInput(decodeURIComponent(text));
+        }
         return;
       }
 
@@ -785,6 +805,98 @@
       // Close detail panel
       var panel = document.querySelector('.sample-detail-panel');
       if (panel) panel.remove();
+    }, 0);
+  }
+
+  // P16-WORKSPACE-RESTORE-B1: switch to workspace tab
+  function switchToWorkspaceTab() {
+    var btn = document.querySelector('.tab-btn[data-tab="workspace"]');
+    if (btn && typeof btn.click === 'function') {
+      btn.click();
+    } else {
+      // fallback: manually show workspace tab
+      document.querySelectorAll('.tab-btn[data-tab]').forEach(function (b) {
+        b.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-content').forEach(function (c) {
+        c.classList.remove('active');
+      });
+      if (btn) btn.classList.add('active');
+      var panel = document.getElementById('tab-workspace');
+      if (panel) panel.classList.add('active');
+    }
+  }
+
+  // P16-WORKSPACE-RESTORE-B1: restore workspace context by context_id
+  function restoreWorkspaceContextById(contextId) {
+    if (!contextId) return;
+    var ctx = null;
+    try {
+      if (window.ContextStore && typeof window.ContextStore.getContext === 'function') {
+        ctx = window.ContextStore.getContext(contextId);
+      }
+    } catch (e) {
+      ctx = null;
+    }
+    if (!ctx) {
+      // Fallback: try fillTextInput for old samples without context
+      return;
+    }
+    restoreWorkspaceContext(ctx);
+  }
+
+  // P16-WORKSPACE-RESTORE-B1: apply workspace context to form and switch tab
+  function restoreWorkspaceContext(context) {
+    if (!context || context.type !== 'workspace') return;
+    switchToWorkspaceTab();
+    setTimeout(function () {
+      // Restore full text
+      setValueIfPresent('textInput', context.full_text);
+      // Restore provider
+      var providerEl = document.getElementById('providerSelect');
+      if (providerEl) {
+        providerEl.value = context.provider || '';
+        dispatchInputChange(providerEl);
+      }
+      // Restore profile (async: set twice to handle loading)
+      var profileEl = document.getElementById('profileSelect');
+      if (profileEl) {
+        profileEl.value = context.profile_id || '';
+        setTimeout(function () {
+          profileEl.value = context.profile_id || '';
+          dispatchInputChange(profileEl);
+        }, 0);
+      }
+      // Restore audio format
+      setValueIfPresent('audioFormat', context.audio_format);
+      // Restore output format
+      setValueIfPresent('outputFormat', context.output_format);
+      // Restore need subtitle
+      setCheckedIfPresent('needSubtitle', context.need_subtitle);
+      // Restore gen mode
+      var genMode = context.gen_mode || 'single';
+      var modeRadio = document.querySelector('input[name="genMode"][value="' + genMode + '"]');
+      if (modeRadio) {
+        modeRadio.checked = true;
+        dispatchInputChange(modeRadio);
+      }
+      // Restore variant count
+      setValueIfPresent('variantCountInput', context.variant_count);
+      // Restore voice params
+      var params = context.params || {};
+      setValueIfPresent('paramSpeed', params.speed);
+      setValueIfPresent('paramVol', params.vol);
+      setValueIfPresent('paramPitch', params.pitch);
+      setValueIfPresent('paramEmotion', params.emotion);
+      // Toast feedback
+      if (window.showToast && typeof window.showToast === 'function') {
+        window.showToast('已恢复工作台配置，可继续编辑后重新提交', 'success');
+      } else if (typeof showToast === 'function') {
+        showToast('已恢复工作台配置，可继续编辑后重新提交', 'success');
+      }
+      // Focus text input
+      var textEl = document.getElementById('textInput');
+      if (textEl) textEl.focus();
     }, 0);
   }
 

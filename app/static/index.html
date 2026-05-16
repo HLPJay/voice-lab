@@ -2492,6 +2492,83 @@
     return ctx;
   }
 
+  // Build full workspace restore context (P16-WORKSPACE-RESTORE-B1)
+  function buildWorkspaceRestoreContext(data, source, extra) {
+    extra = extra || {};
+    var text = '';
+    try { text = document.getElementById('textInput').value || ''; } catch (e) { text = ''; }
+    var profileId = '';
+    var profileName = '';
+    try {
+      profileId = document.getElementById('profileSelect').value || '';
+      profileName = getSelectedProfileName() || '';
+    } catch (e) { profileId = ''; profileName = ''; }
+    var provider = '';
+    try { provider = document.getElementById('providerSelect').value || ''; } catch (e) { provider = ''; }
+    var genMode = 'single';
+    try {
+      var checked = document.querySelector('input[name="genMode"]:checked');
+      if (checked) genMode = checked.value || 'single';
+    } catch (e) { genMode = 'single'; }
+    var variantCount = null;
+    if (genMode === 'variants') {
+      try {
+        variantCount = parseInt(document.getElementById('variantCountInput').value, 10) || 3;
+        variantCount = Math.min(5, Math.max(1, variantCount));
+      } catch (e) { variantCount = 3; }
+    }
+    var audioFormat = 'mp3';
+    try { audioFormat = document.getElementById('audioFormat').value || 'mp3'; } catch (e) {}
+    var outputFormat = 'hex';
+    try { outputFormat = document.getElementById('outputFormat').value || 'hex'; } catch (e) {}
+    var needSubtitle = false;
+    try { needSubtitle = !!(document.getElementById('needSubtitle') && document.getElementById('needSubtitle').checked); } catch (e) {}
+    var speed = null;
+    try { var sp = document.getElementById('paramSpeed').value; if (sp) speed = parseFloat(sp); } catch (e) {}
+    var vol = null;
+    try { var vl = document.getElementById('paramVol').value; if (vl) vol = parseFloat(vl); } catch (e) {}
+    var pitch = null;
+    try { var pt = document.getElementById('paramPitch').value; if (pt) pitch = parseInt(pt, 10); } catch (e) {}
+    var emotion = '';
+    try { emotion = document.getElementById('paramEmotion').value || ''; } catch (e) {}
+
+    // Determine context_id: job_id > asset_id > generated
+    var contextId = null;
+    if (extra.job_id) {
+      contextId = String(extra.job_id);
+    } else if (extra.asset_id) {
+      contextId = String(extra.asset_id);
+    }
+
+    return {
+      context_id: contextId,
+      type: 'workspace',
+      source: source,
+      created_at: new Date().toISOString(),
+      full_text: text,
+      provider: provider || null,
+      profile_id: profileId || null,
+      profile_name: profileName || null,
+      model: extra.model || null,
+      voice_id: extra.voice_id || null,
+      voice_name: extra.voice_name || null,
+      gen_mode: genMode,
+      variant_count: variantCount,
+      audio_format: audioFormat,
+      output_format: outputFormat,
+      need_subtitle: needSubtitle,
+      params: {
+        speed: speed,
+        vol: vol,
+        pitch: pitch,
+        emotion: emotion,
+      },
+      job_id: extra.job_id || null,
+      asset_id: extra.asset_id || null,
+      download_url: extra.download_url || null,
+    };
+  }
+
   function safePushWorkspaceSample(source, data, extra) {
     try {
       extra = extra || {};
@@ -2533,6 +2610,7 @@
         audio_format: audioFormat,
         status: 'completed',
         tags: [source],
+        context_id: extra.context_id || null,  // P16-WORKSPACE-RESTORE-B1
       };
 
       return window.SampleStore.pushSample(sample);
@@ -3470,10 +3548,25 @@ function handleStopAsyncPolling() {
       </div>`;
     resultsArea.classList.add('visible');
     if (asset && asset.id) {
+      var streamAssetId = asset.id;
+      var streamJobId = completed.job_id || null;
+      var streamContextId = streamJobId || streamAssetId;
       safePushWorkspaceSample('workspace_stream', completed, {
-        asset_id: asset.id,
+        context_id: streamContextId,
+        asset_id: streamAssetId,
         duration_ms: asset.duration_ms || completed.total_duration_ms || null,
       });
+      // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+      try {
+        if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+          var wsc = buildWorkspaceRestoreContext(completed, 'workspace_stream', {
+            job_id: streamJobId,
+            asset_id: streamAssetId,
+          });
+          wsc.context_id = streamContextId;
+          window.ContextStore.pushContext(wsc);
+        }
+      } catch (e) { /* fail-safe */ }
     }
   }
 
@@ -3677,11 +3770,25 @@ function handleStopAsyncPolling() {
       html += `
       </div>`;
       if (audio && audio.id) {
+        var asyncJobId = data.job_id || null;
+        var asyncContextId = asyncJobId || audio.id;
         safePushWorkspaceSample('workspace_async', data, {
+          context_id: asyncContextId,
           asset_id: audio.id,
           duration_ms: audio.duration_ms || null,
-          job_id: data.job_id || null,
+          job_id: asyncJobId,
         });
+        // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+        try {
+          if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+            var wsc = buildWorkspaceRestoreContext(data, 'workspace_async', {
+              job_id: asyncJobId,
+              asset_id: audio.id,
+            });
+            wsc.context_id = asyncContextId;
+            window.ContextStore.pushContext(wsc);
+          }
+        } catch (e) { /* fail-safe */ }
       }
     }
 
@@ -3730,12 +3837,27 @@ function handleStopAsyncPolling() {
       resultsArea.classList.add('visible');
       data.variants.forEach(function(v) {
         if (!v.audio_asset_id) return;
+        var variantJobId = extractJobId(data) || null;
+        var variantContextId = variantJobId || v.audio_asset_id;
         safePushWorkspaceSample('workspace_variant', v, {
+          context_id: variantContextId,
           asset_id: v.audio_asset_id,
           duration_ms: v.duration_ms || null,
-          job_id: extractJobId(data),
+          job_id: variantJobId,
           model: v.model || data.model || null,
         });
+        // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+        try {
+          if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+            var wsc = buildWorkspaceRestoreContext(v, 'workspace_variant', {
+              job_id: variantJobId,
+              asset_id: v.audio_asset_id,
+              model: v.model || data.model || null,
+            });
+            wsc.context_id = variantContextId;
+            window.ContextStore.pushContext(wsc);
+          }
+        } catch (e) { /* fail-safe */ }
       });
     } else {
       const job = data;
@@ -3775,10 +3897,25 @@ function handleStopAsyncPolling() {
         html += `
       </div>`;
         if (audio && audio.id) {
+          var syncAssetId = audio.id;
+          var syncJobId = data.job_id || null;
+          var syncContextId = syncJobId || syncAssetId;
           safePushWorkspaceSample('workspace_sync', data, {
-            asset_id: audio.id,
+            context_id: syncContextId,
+            asset_id: syncAssetId,
             duration_ms: audio.duration_ms || null,
           });
+          // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+          try {
+            if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+              var wsc = buildWorkspaceRestoreContext(data, 'workspace_sync', {
+                job_id: syncJobId,
+                asset_id: syncAssetId,
+              });
+              wsc.context_id = syncContextId;
+              window.ContextStore.pushContext(wsc);
+            }
+          } catch (e) { /* fail-safe */ }
         }
       } else {
         // queued/pending/running/processing: no audio/download/subtitle sections

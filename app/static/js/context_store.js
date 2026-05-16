@@ -105,6 +105,8 @@
       normalizeLongtextContext(input, normalized);
     } else if (type === 'script') {
       normalizeScriptContext(input, normalized);
+    } else if (type === 'workspace') {
+      normalizeWorkspaceContext(input, normalized);
     }
     // unknown type: return minimal fields only
 
@@ -213,6 +215,77 @@
 
     // need_subtitle
     out.need_subtitle = !!input.need_subtitle;
+  }
+
+  function normalizeWorkspaceContext(input, out) {
+    // full_text — keep full, up to MAX_FULL_TEXT_LENGTH
+    var fullText = input.full_text;
+    if (fullText != null) {
+      fullText = String(fullText);
+      if (fullText.length > MAX_FULL_TEXT_LENGTH) {
+        fullText = fullText.substring(0, MAX_FULL_TEXT_LENGTH);
+      }
+    } else {
+      fullText = '';
+    }
+    out.full_text = fullText;
+
+    out.provider = input.provider != null ? String(input.provider) : null;
+
+    out.profile_id = input.profile_id != null ? String(input.profile_id) : null;
+
+    out.profile_name = input.profile_name != null ? String(input.profile_name) : null;
+
+    out.model = input.model != null ? String(input.model) : null;
+
+    out.voice_id = input.voice_id != null ? String(input.voice_id) : null;
+
+    out.voice_name = input.voice_name != null ? String(input.voice_name) : null;
+
+    // gen_mode
+    var gm = input.gen_mode;
+    if (gm !== 'single' && gm !== 'async' && gm !== 'stream' && gm !== 'variants') {
+      gm = 'single';
+    }
+    out.gen_mode = gm;
+
+    // variant_count — only for variants; null for other modes
+    if (gm === 'variants') {
+      var vc = parseInt(input.variant_count, 10);
+      if (isNaN(vc) || vc < 1) vc = 3;
+      else if (vc > 5) vc = 5;
+      out.variant_count = vc;
+    } else {
+      out.variant_count = null;
+    }
+
+    // audio_format
+    var af = input.audio_format;
+    if (af !== 'mp3' && af !== 'wav' && af !== 'flac') af = 'mp3';
+    out.audio_format = af;
+
+    // output_format
+    var of = input.output_format;
+    if (of !== 'hex' && of !== 'url') of = 'hex';
+    out.output_format = of;
+
+    // need_subtitle
+    out.need_subtitle = !!input.need_subtitle;
+
+    // params
+    var params = input.params;
+    if (!params || typeof params !== 'object') params = {};
+    out.params = {
+      speed: params.speed != null ? parseFloat(params.speed) : null,
+      vol: params.vol != null ? parseFloat(params.vol) : null,
+      pitch: params.pitch != null ? parseInt(params.pitch, 10) : null,
+      emotion: params.emotion != null ? String(params.emotion) : '',
+    };
+
+    // tracking fields
+    out.job_id = input.job_id != null ? String(input.job_id) : null;
+    out.asset_id = input.asset_id != null ? String(input.asset_id) : null;
+    out.download_url = input.download_url != null ? String(input.download_url) : null;
   }
 
   // ── trimContexts ──────────────────────────────────────────────────
