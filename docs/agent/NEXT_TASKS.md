@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查**
+**P16-XIAOMI-MIMO-TTS-A0-DOCS-BLOCKED：等待小米 MiMo 文档正文补充**
 
 ## 已完成（续）
 
+- P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查 ✅（文档访问受阻）
 - P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载 ✅

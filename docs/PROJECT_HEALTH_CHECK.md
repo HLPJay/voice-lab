@@ -117,7 +117,8 @@
 * P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载已完成 ✅
 * P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界已完成 ✅
 * P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口已完成 ✅
-* 当前下一阶段：P16-XIAOMI-MIMO-TTS-A0
+* P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查已完成（文档访问受阻）⚠️
+* 当前下一阶段：P16-XIAOMI-MIMO-TTS-A0-DOCS-BLOCKED（等待用户提供文档正文）
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10663,4 +10664,21 @@ P16-ADAPTER-PLUGIN-CONFIG-B1 实现后，复核发现 3 个边界问题需要修
 
 ### 下一阶段
 
-**P16-XIAOMI-MIMO-TTS-A0**（推荐）：只读分析小米 MiMo speech-synthesis-v2.5 API，判断是否需要新增 adapter plugin
+**P16-XIAOMI-MIMO-TTS-A0-DOCS-BLOCKED**：等待用户提供 Xiaomi MiMo 文档正文或截图
+
+**A0 执行结果摘要**：
+- 尝试访问 https://platform.xiaomimimo.com/docs/zh-CN/usage-guide/speech-synthesis-v2.5 失败
+- WebFetch 工具无法访问该域名（网络限制或安全策略）
+- 基于常见企业 TTS API 模式进行了初步分析
+- 设计了 7 个 probe 测试用例
+- 初步判断需要新增 xiaomi_mimo_tts adapter_type
+- 详细分析见 docs/P16_XIAOMI_MIMO_TTS_A0.md
+
+**阻塞原因**：
+- 官方文档无法通过工具自动解析
+- 需要用户提供文档正文、截图或复制文本
+
+**建议用户操作**：
+- 提供 https://platform.xiaomimimo.com/docs/zh-CN/usage-guide/speech-synthesis-v2.5 的文档正文
+- 或提供关键 API 的截图
+- 或告知 Xiaomi MiMo 是否与 MiniMax API 兼容
