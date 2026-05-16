@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案**
+**P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1：执行小米 MiMo 真实 API 最小探测**
 
 ## 已完成（续）
 
+- P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案 ✅
 - P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现 ✅
 - P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题 ✅
 - P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径 ✅
@@ -176,13 +177,13 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0 | design real Xiaomi MiMo API probe plan | B1-CHECK 完成 |
-| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1 | run manually authorized real API probe | 用户明确授权 + MIMO_API_KEY |
-| P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | real probe 后评估 |
-| P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | real probe 后评估 |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1 | run manually authorized real Xiaomi MiMo API probe | 用户明确授权 + MIMO_API_KEY |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B2 | validate adapter render_sync with real API | REAL-PROBE-B1 成功 |
+| P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | REAL-PROBE-B1 成功后评估 |
+| P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | REAL-PROBE-B1 成功后评估 |
 | P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |
 | P16-DYNAMIC-PROVIDER-CONFIG-B2 | provider capability override enhancements | 可后置 |
-| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | real probe 后评估 |
 | P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
