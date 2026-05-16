@@ -1,5 +1,10 @@
 # P16-CONFIG-DRIVEN-MIGRATION：全面配置驱动迁移 + 插件化注册 + 环境变量精简
 
+> **状态：已完成** (2026-05-16)
+>
+> 所有子任务 M1-M9 已实现并提交至 `p16/real-usage-issues` 分支。
+> 中间过程文档已归档至 `docs/archive/p16_config_driven/`。
+
 ## 背景
 
 当前系统存在三套配置体系并存的过渡态：
