@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-CANCEL-A0-CHECK：取消确认与生成状态问题复核**
 
 ## 已完成（续）
 
@@ -122,16 +122,20 @@
 - P13-CREATION-B4-CHECK：sample sidebar UI 复核 ✅
 - P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口 ✅
 - P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归 ✅
+- P15-STATS-B1-PARK：统计面板实现延后，保留为后期待办 ✅
+- P16-REAL-USAGE-ISSUES-A0：真实使用问题统一审查 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-C2-FIX3-CHECK | verify SampleSidebar detail panel flex shrink fix | P14-CONTEXT-C2-FIX3 完成 |
-| NEXT-PRIORITY-REVIEW | choose next high-value product/dev task | P15-STATS-B1-PARK 完成 |
+| P16-CANCEL-A0-CHECK | verify cancel/confirmation state-machine audit | P16-REAL-USAGE-ISSUES-A0 完成 |
+| P16-CANCEL-FIX1 | fix cancellation semantics and loading state | P16-CANCEL-A0-CHECK 完成 |
+| P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | P16-CANCEL-FIX1 完成或并入 |
+| P16-WORKSPACE-RESTORE-A0 | audit workspace sample full restore | P16-CANCEL-FIX1 完成 |
+| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
 | P15-STATS-B1 | implement lightweight local statistics panel | Backlog，产品需要时再启动 |
 | P15-SERVER-STATS-A0 | design server-side full statistics | Backlog，需要全量统计时再启动 |
-| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
 | 后续 | SaaS / 多用户 | 产品验证后 |
 
 ## Paused / Do not touch yet
