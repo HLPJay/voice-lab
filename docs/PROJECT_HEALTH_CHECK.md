@@ -107,8 +107,8 @@
 * P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口已完成 ✅
-* P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK
+* P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10238,3 +10238,48 @@ Capability UI 依赖 Provider-first UI 的可用性判断稳定。如果"当前 
 ### 是否调用真实 MiniMax
 
 否，只查询本地后端 `/api/voice/profiles/{id}/bindings`
+
+## P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复
+
+### 复核结论
+
+**通过** ✅
+
+### OBS-1 复核
+
+已修复。`refreshWorkspaceBindingMap()` 在 workspace 任何 binding 状态查询前调用 `loadAllBindings()` 生成全量 `_voiceBindMap`。
+
+验证点：
+- `refreshWorkspaceBindingMap()` 存在且调用 `loadAllBindings()` ✅
+- `window._voiceBindMap` 在成功后写入 ✅
+- 失败时返回已有 `window._voiceBindMap` ✅
+- 有 `workspaceBindingMapLoading` 并发保护 ✅
+- 不调用真实 MiniMax ✅
+
+### OBS-2 复核
+
+已修复。`providerSelect` 和 `profileSelect` change handler 改为 `async () => { await ... }`。
+
+验证点：
+- `providerSelect` change handler 是 `async` ✅
+- `providerSelect` 先 `await refreshWorkspaceBindingMap()` 再 `refreshWorkspaceProfileAvailability()` 再 `await checkBindingStatus()` ✅
+- `profileSelect` change handler 是 `async` ✅
+- `profileSelect` 先 `await checkBindingStatus()` 再 `updateWorkspaceBindingUiState()` ✅
+
+### handleGenerate guard 复核
+
+`isWorkspaceBindingAvailable()` guard 保留，位置正确：在 `confirmHighRiskOperation` 之前、`setLoading(true)` 之前、`fetch` 之前。✅
+
+### 测试结果
+
+- OBS-FIX1 静态测试: 22 passed ✅
+- B2 回归: 28 passed ✅
+- 其他回归: 252 passed, 1 pre-existing failure (`test_safePushWorkspaceSample_writes_context_id_to_sample`)
+
+### 阻塞问题
+
+无
+
+### 非阻塞观察项
+
+无
