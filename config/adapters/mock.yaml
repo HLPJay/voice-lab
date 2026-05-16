@@ -1,0 +1,48 @@
+adapter_type: "mock"
+
+default_model: "mock-tts"
+
+default_timeout_seconds: 30
+
+endpoints: {}
+
+tts:
+  models:
+    - "mock-tts"
+  default_model: "mock-tts"
+  max_text_chars: 10000
+  audio_formats:
+    - "mp3"
+    - "wav"
+    - "flac"
+  supports_subtitle: true
+  supports_streaming: true
+  supports_emotion: true
+
+batch:
+  max_text_chars: 50000
+  max_segments: 200
+
+script:
+  max_text_chars: 50000
+  max_segments: 200
+
+voice_clone:
+  preview_text_max: 1000
+  supports_noise_reduction: true
+  supports_volume_normalization: true
+  max_file_size_mb: 20
+
+voice_design:
+  prompt_max: 2000
+  preview_text_max: 500
+
+provider_voices:
+  supports_list_voices: true
+  supports_delete_voice: true
+  supports_import_remote_voice: true
+  preview_text_max: 1000
+
+metadata:
+  mode: "mock"
+  note: "Default mock adapter configuration"

@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载**
+**P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口**
 
 ## 已完成（续）
 
+- P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核 ✅
@@ -167,9 +168,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-ADAPTER-PLUGIN-CONFIG-B1 | implement AdapterConfig schema and adapter config loader | A0 设计完成 |
 | P16-DYNAMIC-PROVIDER-CONFIG-B2 | implement provider capability override enhancements | B1-CLOSE 后评估 |
-| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | B1 后评估 |
+| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | B1-CLOSE 后评估 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
 | P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
