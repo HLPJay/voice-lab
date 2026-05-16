@@ -166,6 +166,26 @@ class TestIndexBuildWorkspaceRestoreContext:
         body = func_body('buildWorkspaceRestoreContext', c)
         assert 'variantCount' in body
 
+    def test_buildWorkspaceRestoreContext_uses_real_variantCount_dom_id(self):
+        c = read_index()
+        body = func_body('buildWorkspaceRestoreContext', c)
+        # Must NOT use the wrong ID 'variantCountInput'
+        assert "getElementById('variantCountInput')" not in body
+        assert 'getElementById("variantCountInput")' not in body
+        # Must use the correct ID 'variantCount' (DOM element) or the global variable
+        assert (
+            "getElementById('variantCount')" in body
+            or 'getElementById("variantCount")' in body
+            or 'variantCountInput && variantCountInput.value' in body
+        )
+
+    def test_workspace_param_parse_has_nan_guard(self):
+        c = read_index()
+        body = func_body('buildWorkspaceRestoreContext', c)
+        assert 'isNaN(speed)' in body
+        assert 'isNaN(vol)' in body
+        assert 'isNaN(pitch)' in body
+
 
 # ── sample_sidebar.js workspace restore ─────────────────────────────────────────
 
@@ -233,6 +253,18 @@ class TestSidebarWorkspaceRestore:
         c = read_sidebar()
         body = func_body('restoreWorkspaceContext', c)
         assert 'variantCount' in body
+
+    def test_restoreWorkspaceContext_uses_real_variantCount_dom_id(self):
+        c = read_sidebar()
+        body = func_body('restoreWorkspaceContext', c)
+        # Must NOT use the wrong ID 'variantCountInput'
+        assert "setValueIfPresent('variantCountInput'" not in body
+        assert 'setValueIfPresent("variantCountInput"' not in body
+        # Must use the correct ID 'variantCount'
+        assert (
+            "setValueIfPresent('variantCount'" in body
+            or 'setValueIfPresent("variantCount"' in body
+        )
 
     def test_restoreWorkspaceContext_restores_voice_params(self):
         c = read_sidebar()

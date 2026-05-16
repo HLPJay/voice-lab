@@ -881,7 +881,7 @@
         dispatchInputChange(modeRadio);
       }
       // Restore variant count
-      setValueIfPresent('variantCountInput', context.variant_count);
+      setValueIfPresent('variantCount', context.variant_count);
       // Restore voice params
       var params = context.params || {};
       setValueIfPresent('paramSpeed', params.speed);

@@ -87,7 +87,8 @@
 * P16-WORKSPACE-RESTORE-A0-CHECK：Workspace 最近样本完整恢复方案复核已完成 ✅
 * P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复已完成 ✅
 * P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核未通过 ⚠️ (发现阻塞问题)
-* 当前下一阶段：P16-WORKSPACE-RESTORE-B1-FIX1
+* P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题已完成 ✅
+* 当前下一阶段：P16-WORKSPACE-RESTORE-B1-FIX1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9189,4 +9190,53 @@ P16-PROVIDER-OBS-001 继续后置，本阶段未展开 ✅
 ### 阶段状态
 
 P16-WORKSPACE-RESTORE-B1-CHECK 未通过，原因是发现 2 个阻塞问题。当前阶段推进到 P16-WORKSPACE-RESTORE-B1-FIX1。
+
+---
+
+## P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题
+
+### 修复 BLOCKER-1：variantCount 元素 ID 错误
+
+**index.html** `buildWorkspaceRestoreContext`:
+- 原错误代码：`parseInt(document.getElementById('variantCountInput').value, 10) || 3`
+- 修复：`parseInt(variantCountInput && variantCountInput.value, 10)` + `if (isNaN(variantCount)) variantCount = 3`
+- 使用全局变量 `variantCountInput`（已在 index.html:2311 定义为 `const variantCountInput = document.getElementById('variantCount')`）
+
+**sample_sidebar.js** `restoreWorkspaceContext`:
+- 原错误代码：`setValueIfPresent('variantCountInput', context.variant_count)`
+- 修复：`setValueIfPresent('variantCount', context.variant_count)`
+
+### 修复 BLOCKER-2：NaN guard
+
+**index.html** `buildWorkspaceRestoreContext`:
+- speed：`if (sp) { speed = parseFloat(sp); if (isNaN(speed)) speed = null; }`
+- vol：`if (vl) { vol = parseFloat(vl); if (isNaN(vol)) vol = null; }`
+- pitch：`if (pt) { pitch = parseInt(pt, 10); if (isNaN(pitch)) pitch = null; }`
+
+### 测试补强
+
+新增 3 项测试：
+- `test_buildWorkspaceRestoreContext_uses_real_variantCount_dom_id` — 验证不再使用错误 ID `variantCountInput`
+- `test_restoreWorkspaceContext_uses_real_variantCount_dom_id` — 验证 sidebar 不再使用错误 ID `variantCountInput`
+- `test_workspace_param_parse_has_nan_guard` — 验证 speed/vol/pitch 均有 `isNaN` 检查
+
+### 未修改内容确认
+
+- context_store.js 未改 ✅
+- sample_store.js 未改 ✅
+- 后端/API 未改 ✅
+- Provider/Mock/Capability 未改 ✅
+- Store schema 未改 ✅
+
+### 测试结果
+
+```
+tests/test_workspace_restore_static.py  50 passed (原47 + 新3) ✅
+tests/test_sample_sidebar_static.py    256 passed ✅
+tests/test_cancel_confirmation_static.py 15 passed ✅
+```
+
+### 阶段状态
+
+P16-WORKSPACE-RESTORE-B1-FIX1 修复完成。当前阶段推进到 P16-WORKSPACE-RESTORE-B1-FIX1-CHECK。
 

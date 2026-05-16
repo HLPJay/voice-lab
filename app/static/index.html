@@ -2513,7 +2513,8 @@
     var variantCount = null;
     if (genMode === 'variants') {
       try {
-        variantCount = parseInt(document.getElementById('variantCountInput').value, 10) || 3;
+        variantCount = parseInt(variantCountInput && variantCountInput.value, 10);
+        if (isNaN(variantCount)) variantCount = 3;
         variantCount = Math.min(5, Math.max(1, variantCount));
       } catch (e) { variantCount = 3; }
     }
@@ -2524,11 +2525,29 @@
     var needSubtitle = false;
     try { needSubtitle = !!(document.getElementById('needSubtitle') && document.getElementById('needSubtitle').checked); } catch (e) {}
     var speed = null;
-    try { var sp = document.getElementById('paramSpeed').value; if (sp) speed = parseFloat(sp); } catch (e) {}
+    try {
+      var sp = document.getElementById('paramSpeed').value;
+      if (sp) {
+        speed = parseFloat(sp);
+        if (isNaN(speed)) speed = null;
+      }
+    } catch (e) {}
     var vol = null;
-    try { var vl = document.getElementById('paramVol').value; if (vl) vol = parseFloat(vl); } catch (e) {}
+    try {
+      var vl = document.getElementById('paramVol').value;
+      if (vl) {
+        vol = parseFloat(vl);
+        if (isNaN(vol)) vol = null;
+      }
+    } catch (e) {}
     var pitch = null;
-    try { var pt = document.getElementById('paramPitch').value; if (pt) pitch = parseInt(pt, 10); } catch (e) {}
+    try {
+      var pt = document.getElementById('paramPitch').value;
+      if (pt) {
+        pitch = parseInt(pt, 10);
+        if (isNaN(pitch)) pitch = null;
+      }
+    } catch (e) {}
     var emotion = '';
     try { emotion = document.getElementById('paramEmotion').value || ''; } catch (e) {}
 

@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题**
+**P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1**
 
 ## 已完成（续）
 
+- P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题 ✅
 - P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核 ⚠️ (发现阻塞问题)
 - P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复 ✅
 - P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核 ✅
@@ -139,8 +140,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-WORKSPACE-RESTORE-B1-FIX1 | fix variantCount element ID mismatch + NaN guard | P16-WORKSPACE-RESTORE-B1-CHECK 未通过 |
 | P16-WORKSPACE-RESTORE-B1-FIX1-CHECK | verify workspace restore fix | P16-WORKSPACE-RESTORE-B1-FIX1 完成 |
+| P16-WORKSPACE-RESTORE-CLOSE | close workspace restore phase | P16-WORKSPACE-RESTORE-B1-FIX1-CHECK 完成 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
 | P16-PROVIDER-BOUNDARY-A0 | audit provider/mock/capability boundary | Backlog，Provider 问题专项 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
