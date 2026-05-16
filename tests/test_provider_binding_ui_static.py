@@ -324,7 +324,7 @@ class TestEventHandlers:
         content = read_file(INDEX_HTML_PATH)
         idx = content.find("tab === 'workspace'")
         assert idx >= 0, "tab === 'workspace' must exist"
-        ws_block = content[idx:idx + 200]
+        ws_block = content[idx:idx + 350]
         assert 'refreshWorkspaceProfileAvailability' in ws_block, \
             "Workspace tab switch must call refreshWorkspaceProfileAvailability"
 

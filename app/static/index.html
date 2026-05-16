@@ -2112,10 +2112,11 @@
         switchAdvancedSubtab('clone');
       }
       if (tab === 'workspace') {
-        loadProfiles(true).then(() => {
+        loadProfiles(true).then(async () => {
+          await refreshWorkspaceBindingMap();
           populateProfileSelect(profileSelect);
           refreshWorkspaceProfileAvailability();
-          checkBindingStatus();
+          await checkBindingStatus();
           updateWorkspaceVoiceBindingHint();
         });
       }
@@ -2494,16 +2495,17 @@
   updateGenerationModeHint(document.querySelector('input[name="genMode"]:checked')?.value || 'single');
 
   // Load profiles into cache and populate all profile selects
-  function populateAllProfiles() {
+  async function populateAllProfiles() {
     // Remove any stale retry button on success
     document.getElementById('profileRetryBtn')?.remove();
     populateProfileSelect(profileSelect);
+    await refreshWorkspaceBindingMap();
     refreshWorkspaceProfileAvailability();
+    await checkBindingStatus();
+    updateWorkspaceVoiceBindingHint();
     populateProfileSelect(document.getElementById('bindingProfileSelect'));
     populateProfileSelect(document.getElementById('newBindingProfile'));
     populateProfileSelect(document.getElementById('batchProfile'));
-    updateWorkspaceVoiceBindingHint();
-    checkBindingStatus();
   }
   function showProfileRetry() {
     // Remove any existing retry button before adding a new one
@@ -2524,8 +2526,8 @@
   loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
 
   // T2A Tab: also load binding status when provider changes
-  providerSelect.addEventListener('change', () => { refreshWorkspaceProfileAvailability(); checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
-  profileSelect.addEventListener('change', () => { checkBindingStatus(); updateWorkspaceBindingUiState(); updateWorkspaceVoiceBindingHint(); });
+  providerSelect.addEventListener('change', async () => { await refreshWorkspaceBindingMap(); refreshWorkspaceProfileAvailability(); await checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
+  profileSelect.addEventListener('change', async () => { await checkBindingStatus(); updateWorkspaceBindingUiState(); updateWorkspaceVoiceBindingHint(); });
 
   // Batch longtext tab: update voice binding hint on profile/provider change
   document.getElementById('batchProfile')?.addEventListener('change', updateBatchVoiceBindingHint);
@@ -5060,6 +5062,26 @@ function handleStopAsyncPolling() {
     } catch (e) {
       return window._voiceBindMap || {};
     }
+  }
+
+  // Workspace-specific binding map refresh with concurrency protection
+  let workspaceBindingMapLoading = null;
+  async function refreshWorkspaceBindingMap() {
+    if (workspaceBindingMapLoading) return workspaceBindingMapLoading;
+
+    workspaceBindingMapLoading = (async function () {
+      try {
+        const bindMap = await loadAllBindings();
+        window._voiceBindMap = bindMap || {};
+        return window._voiceBindMap;
+      } catch (e) {
+        return window._voiceBindMap || {};
+      } finally {
+        workspaceBindingMapLoading = null;
+      }
+    })();
+
+    return workspaceBindingMapLoading;
   }
 
   async function handleDeleteVoice() {

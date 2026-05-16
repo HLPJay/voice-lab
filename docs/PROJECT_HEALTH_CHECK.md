@@ -107,8 +107,8 @@
 * P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口已完成 ✅
-* NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-OBS-FIX1
+* P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10189,3 +10189,52 @@ Capability UI 依赖 Provider-first UI 的可用性判断稳定。如果"当前 
 ### 是否只改文档
 
 是（优先级确认文档）
+
+## P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项
+
+### 修复内容
+
+**OBS-1**：`_voiceBindMap` 非全量缓存导致 `refreshWorkspaceProfileAvailability()` 可能将实际有 binding 的 profile 错误标记为"未绑定当前 Provider"。
+
+**OBS-2**：`profileSelect` change 未 await `checkBindingStatus`，`updateWorkspaceBindingUiState()` 可能短暂使用旧 `workspaceBindingAvailable`。
+
+### 修复方案
+
+1. **新增 `refreshWorkspaceBindingMap()`**：带并发保护的 workspace binding map 刷新函数，内部调用 `loadAllBindings()` 预填充全量 `_voiceBindMap`
+2. **Workspace 初载预填充**：workspace tab 激活时 await `refreshWorkspaceBindingMap()` 再执行 `refreshWorkspaceProfileAvailability()`
+3. **`populateAllProfiles()` 预填充**：页面加载时先 await `refreshWorkspaceBindingMap()` 再刷新 workspace profile 可用性
+4. **`providerSelect` change async/await**：先刷新全量 binding map，再刷新 profile 标记，再 await checkBindingStatus
+5. **`profileSelect` change async/await**：await checkBindingStatus 完成后再 updateWorkspaceBindingUiState
+
+### 修改文件
+
+- `app/static/index.html`
+- `tests/test_provider_binding_ui_obs_fix_static.py`（新增）
+- `tests/test_provider_binding_ui_static.py`（测试块大小修复）
+
+### OBS-1 修复
+
+`refreshWorkspaceBindingMap()` 在 workspace 任何 binding 状态查询前调用 `loadAllBindings()` 生成全量 `provider_voice_id` keyed `_voiceBindMap`，确保 `getWorkspaceProfileBindingState()` 查表时数据完整。
+
+### OBS-2 修复
+
+`providerSelect` 和 `profileSelect` change handler 改为 `async () => { await ... }`，保证状态同步完成后再执行后续 UI 更新。
+
+### 测试结果
+
+- OBS-FIX1 静态测试: 22 passed
+- B2 回归: 28 passed
+- 其他回归: 252 passed, 1 pre-existing failure (`test_safePushWorkspaceSample_writes_context_id_to_sample`)
+
+### 未纳入范围
+
+- Capability UI
+- model 下拉
+- resolve_binding 修改
+- 后端/API 修改
+- VoiceBinding / ProviderVoice schema 修改
+- Batch / Script / Clone / Design / Audition 改造
+
+### 是否调用真实 MiniMax
+
+否，只查询本地后端 `/api/voice/profiles/{id}/bindings`

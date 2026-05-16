@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项**
+**P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复**
 
 ## 已完成（续）
 
+- P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider-first UI 观察项修复 ✅
 - P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口 ✅
 - P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI ✅
@@ -159,7 +160,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-BINDING-UI-B2-OBS-FIX1 | fix provider-first UI observations: full binding cache / async status sync | NEXT-PRIORITY-REVIEW 完成 |
 | P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK | verify provider-first UI observation fixes | OBS-FIX1 完成 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | OBS-FIX1-CHECK 后评估 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
