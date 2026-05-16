@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     default_bitrate: int = 128000
     default_channel: int = 1
 
-    mock_fallback_provider: str | None = "minimax"
+    mock_fallback_provider: str | None = None  # None = mock is pure test, no auto-fallback to real providers
 
     minimax_async_t2a_path: str = "/v1/t2a_async_v2"
     minimax_async_query_path: str = "/v1/query/t2a_async_query_v2"

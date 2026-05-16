@@ -93,7 +93,8 @@
 * NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
 * P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查已完成 ✅
 * P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核已完成 ✅ (发现 1 处表述需修正)
-* 当前下一阶段：P16-PROVIDER-MOCK-FIX1
+* P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary 已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MOCK-FIX1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9492,4 +9493,87 @@ P16-PROVIDER-BOUNDARY-A0 审查完成。当前阶段推进到 P16-PROVIDER-BOUND
 ### 阶段状态
 
 P16-PROVIDER-BOUNDARY-A0-CHECK 通过。A0 发现 1 处表述需修正（VoiceRenderService CostGuard 描述），已在新文档 `P16_PROVIDER_BOUNDARY_A0_CHECK.md` 中记录。当前阶段推进到 P16-PROVIDER-MOCK-FIX1。
+
+---
+
+## P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary
+
+### 修复内容
+
+#### 1. config.py：禁用 mock fallback 到 minimax
+
+`app/core/config.py`：
+
+```python
+# Before:
+mock_fallback_provider: str | None = "minimax"
+# After:
+mock_fallback_provider: str | None = None  # None = mock is pure test, no auto-fallback
+```
+
+语义：默认情况下 mock 是纯测试 Provider，不自动 fallback 到真实 Provider。
+
+#### 2. voice_variant_service.py：CostGuard 以 resolved_provider 为准
+
+`app/services/voice_variant_service.py`：
+
+```python
+# Before:
+provider = request.provider or "mock"
+self.cost_guard.require_confirmed(provider, "voice_variants", request.confirm_cost)
+
+# After:
+requested_provider = request.provider or "mock"
+_binding, provider = resolve_binding(session, request.profile_id, requested_provider)
+self.cost_guard.require_confirmed(provider, "voice_variants", request.confirm_cost)
+```
+
+效果：
+- binding 解析在 CostGuard 之前
+- CostGuard 使用 resolved_provider（minimax 或 mock）
+- 如果 mock 无 binding 且无 fallback，抛出 BindingNotFound，不调用 minimax
+
+#### 3. index.html：前端 binding unavailable 时阻止生成
+
+新增全局状态变量和 helper：
+```javascript
+let workspaceBindingAvailable = false;
+function isWorkspaceBindingAvailable() {
+  return workspaceBindingAvailable === true;
+}
+```
+
+`checkBindingStatus()` 在匹配/未匹配/异常三种情况下均维护 `workspaceBindingAvailable`。
+
+`handleGenerate()` 在 `confirmHighRiskOperation()` 之前增加前置 guard：
+```javascript
+if (!isWorkspaceBindingAvailable()) {
+  resultsArea.innerHTML = `<div class="card" style="border-left:4px solid #dd6b20">...无法生成...</div>`;
+  return;  // 不 setLoading，不发 fetch
+}
+```
+
+### 测试结果
+
+```
+tests/test_provider_mock_boundary_static.py  12 passed ✅
+tests/test_workspace_restore_static.py       50 passed ✅
+tests/test_sample_sidebar_static.py         256 passed ✅
+tests/test_cancel_confirmation_static.py      15 passed ✅
+```
+
+### 不纳入范围
+
+- 完整 Capability 动态 UI（→ P16-PROVIDER-CAPABILITY-UI-B1）
+- clone/design/import quick preview 的 resolved_provider 重构
+- 普通 sync T2A 后端 require_confirmed 强校验
+- 新增 Provider
+
+### 未修改范围
+
+Provider Registry / Capability Registry / CapabilityValidator / API / core / voice_clone.js / voice_design.js / voice_import.js 均未修改 ✅
+
+### 阶段状态
+
+P16-PROVIDER-MOCK-FIX1 修复完成。当前阶段推进到 P16-PROVIDER-MOCK-FIX1-CHECK。
 

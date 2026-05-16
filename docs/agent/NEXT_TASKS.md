@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary**
+**P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes**
 
 ## 已完成（续）
 
+- P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary ✅
 - P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核 ✅
 - P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查 ✅
 - NEXT-PRIORITY-REVIEW：下一阶段优先级确认 ✅

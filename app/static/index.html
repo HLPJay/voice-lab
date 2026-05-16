@@ -3245,6 +3245,8 @@
   }
 
   let pollTimer = null;
+  // P16-PROVIDER-MOCK-FIX1: track workspace binding availability
+  let workspaceBindingAvailable = false;
 
 // Async polling state (one active polling at a time)
 const asyncPollingState = {
@@ -3329,6 +3331,19 @@ function handleStopAsyncPolling() {
     else if (isAsync) { operation = 'async_render'; }
     else if (isVariant) { operation = 'voice_variants'; }
     else { operation = 't2a'; }
+
+    // P16-PROVIDER-MOCK-FIX1: block if no valid binding BEFORE any side effects
+    if (!isWorkspaceBindingAvailable()) {
+      resultsArea.innerHTML = `
+        <div class="card" style="border-left:4px solid #dd6b20">
+          <div class="result-label" style="color:#dd6b20">无法生成</div>
+          <p style="font-size:0.9rem;color:#4a5568;margin-top:8px">
+            当前声音人设在所选 Provider 下没有可用绑定，请先到「绑定管理」创建绑定。
+          </p>
+        </div>
+      `;
+      return;
+    }
 
     // Confirm BEFORE any side effects (P16-CANCEL-FIX1)
     if (provider === 'minimax' && !confirmHighRiskOperation(operation)) {
@@ -4039,12 +4054,19 @@ function handleStopAsyncPolling() {
   // ============================================================
   // TTS Tab: binding status check
   // ============================================================
+
+  // P16-PROVIDER-MOCK-FIX1: check if workspace has a valid binding before generation
+  function isWorkspaceBindingAvailable() {
+    return workspaceBindingAvailable === true;
+  }
+
   async function checkBindingStatus() {
     const profileId = profileSelect.value;
     const provider = providerSelect.value;
     const statusEl = document.getElementById('bindingStatus');
     if (!statusEl) return;
     if (!profileId || !provider) {
+      workspaceBindingAvailable = false;
       statusEl.className = 'binding-status-inline';
       statusEl.textContent = '';
       return;
@@ -4054,6 +4076,7 @@ function handleStopAsyncPolling() {
       const bindings = await resp.json();
       const matched = (bindings || []).filter(b => b.provider === provider && b.status === 'available');
       if (matched.length > 0) {
+        workspaceBindingAvailable = true;
         const b = matched[0];
         statusEl.className = 'binding-status-inline bound';
         statusEl.textContent = `✓ 已绑定: ${b.provider_voice_id} (${b.model})`;
@@ -4070,6 +4093,7 @@ function handleStopAsyncPolling() {
         if (!window._voiceBindMap[voiceId]) window._voiceBindMap[voiceId] = [];
         window._voiceBindMap[voiceId].push({profile_id: profileId, provider: provider, model: b.model, status: 'available'});
       } else {
+        workspaceBindingAvailable = false;
         statusEl.className = 'binding-status-inline unbound';
         statusEl.textContent = `✕ ${provider} 下无可用绑定，请到「绑定管理」创建`;
         // Remove stale binding for this profile+provider from _voiceBindMap
@@ -4083,6 +4107,7 @@ function handleStopAsyncPolling() {
       }
       window.updateWorkspaceVoiceBindingHint?.();
     } catch (e) {
+      workspaceBindingAvailable = false;
       statusEl.className = 'binding-status-inline error';
       statusEl.textContent = '绑定状态检查失败';
     }
