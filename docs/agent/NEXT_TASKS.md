@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计**
 
 ## 已完成（续）
 
@@ -162,9 +162,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| NEXT-PRIORITY-REVIEW | choose next priority after provider-first UI observation fixes | OBS-FIX1-CLOSE 完成 |
-| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 推荐候选：多 Provider 能力适配 |
-| P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 推荐候选：补齐人设生命周期管理 |
+| P16-DYNAMIC-PROVIDER-CONFIG-B1 | implement config-driven provider registry and cost guard | A0 设计完成 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
+| P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
