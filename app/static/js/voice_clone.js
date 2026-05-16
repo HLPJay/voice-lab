@@ -319,14 +319,14 @@
             resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
             try {
               // P16-CANCEL-FIX1: confirm before fetch — inline pattern matching handleGenerate
-              if (provider === 'minimax' && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否继续？')) {
+              if (window.isRealCostProvider && window.isRealCostProvider(provider) && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否继续？')) {
                 resultDiv.innerHTML = '';
                 return;
               }
               var r = await fetch('/api/voice/render', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, confirm_cost: provider === 'minimax' }),
+                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
               });
               var rd = await r.json();
               if (!r.ok) {

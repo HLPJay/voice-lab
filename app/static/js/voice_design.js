@@ -107,10 +107,7 @@
           '<div id="designProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
             '<select id="designBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-              '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
-              '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
-              '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
-              '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
+              (window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>') +
             '</select>' +
             '<button class="btn-primary" id="designBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
           '</div>' +
@@ -177,14 +174,14 @@
             resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
             try {
               // P16-CANCEL-FIX1: confirm before fetch — inline pattern matching handleGenerate
-              if (provider === 'minimax' && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否继续？')) {
+              if (window.isRealCostProvider && window.isRealCostProvider(provider) && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否继续？')) {
                 resultDiv.innerHTML = '';
                 return;
               }
               var resp = await fetch('/api/voice/render', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, confirm_cost: provider === 'minimax' }),
+                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
               });
               var rd = await resp.json();
               if (!resp.ok) {

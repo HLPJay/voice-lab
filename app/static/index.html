@@ -3086,9 +3086,16 @@
     return confirm(msg);
   }
 
+  window.isRealCostProvider = isRealCostProvider;
+  function isRealCostProvider(provider) {
+    var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
+    if (cap && cap.metadata && cap.metadata.real_cost) return true;
+    return provider === 'minimax';
+  }
+
   async function guardedJsonFetch(url, payload, options) {
     const { provider, operation, highRisk } = options;
-    if (provider === 'minimax' && highRisk && _OPERATION_MESSAGES[operation]) {
+    if (isRealCostProvider(provider) && highRisk && _OPERATION_MESSAGES[operation]) {
       if (!confirm(_OPERATION_MESSAGES[operation])) {
         throw new Error('USER_CANCELLED');
       }
@@ -3486,7 +3493,7 @@ function handleStopAsyncPolling() {
     }
 
     // Confirm BEFORE any side effects (P16-CANCEL-FIX1)
-    if (provider === 'minimax' && !confirmHighRiskOperation(operation)) {
+    if (isRealCostProvider(provider) && !confirmHighRiskOperation(operation)) {
       return; // cancel: no UI mutation, no request
     }
 
@@ -3602,7 +3609,7 @@ function handleStopAsyncPolling() {
             provider: provider,
             audio_format: audioFormat,
             need_subtitle: subtitle,
-            confirm_cost: provider === 'minimax',
+            confirm_cost: isRealCostProvider(provider),
             ...(speed ? { speed: parseFloat(speed) } : {}),
             ...(vol ? { vol: parseFloat(vol) } : {}),
             ...(pitch ? { pitch: parseInt(pitch) } : {}),
@@ -4979,10 +4986,7 @@ function handleStopAsyncPolling() {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="quickProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
         <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
-          <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-          <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-          <option value="speech-2.6-hd">speech-2.6-hd</option>
-          <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          ${window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>'}
         </select>
         <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
         <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>

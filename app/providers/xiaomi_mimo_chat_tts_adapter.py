@@ -3,24 +3,18 @@
 Uses OpenAI Chat Completions format for TTS.
 Reference: https://platform.xiaomimimo.com/docs/zh-CN/usage-guide/speech-synthesis-v2.5
 
-B1 scope:
+Supports:
 - render_sync with mimo-v2.5-tts model
+- voice design with mimo-v2.5-tts-voicedesign model
+- voice clone with mimo-v2.5-tts-voiceclone model (base64 data URI, no file upload)
 - static preset voice list via list_voices
-- wav non-streaming output
-- base64 audio parsing
-- mock transport for testing
-
-Not in B1:
-- render_stream
-- voice design
-- voice cloning
-- async tasks
+- wav/pcm16 output
+- dual auth: sk- prefix → Authorization Bearer, tp- prefix → api-key header
 """
 
 from __future__ import annotations
 
 import base64
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -50,18 +44,7 @@ _FALLBACK_ENDPOINT = "/v1/chat/completions"
 
 
 class XiaomiMiMoChatTTSAdapter(SpeechProvider):
-    """Xiaomi MiMo TTS adapter using OpenAI Chat Completions format.
-
-    Supports:
-    - sync TTS with mimo-v2.5-tts model
-    - static preset voice list
-    - wav output format (non-streaming)
-
-    B1 does NOT support:
-    - streaming (stream=true)
-    - voice design (mimo-v2.5-tts-voicedesign model)
-    - voice cloning (mimo-v2.5-tts-voiceclone model)
-    """
+    """Xiaomi MiMo TTS adapter using OpenAI Chat Completions format."""
 
     provider_name = "xiaomi_mimo"
 
@@ -251,12 +234,18 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
             },
         )
 
+        # Dual auth: sk- prefix → Authorization Bearer, tp- prefix → api-key header
+        if api_key.startswith("sk-"):
+            headers = {"Authorization": f"Bearer {api_key}"}
+        else:
+            headers = {"api-key": api_key}
+
         client = await self._get_client()
         try:
             response = await client.request(
                 method,
                 url,
-                headers={"api-key": api_key},
+                headers=headers,
                 timeout=request_timeout,
                 **kwargs,
             )
@@ -510,39 +499,187 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
         )
 
     async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
-        """Xiaomi MiMo voice design not supported in this adapter (B1).
+        """Design a voice using MiMo voice design model.
 
-        Use mimo-v2.5-tts-voicedesign model with OpenAI-compatible adapter for voice design.
+        Uses model=mimo-v2.5-tts-voicedesign.
+        - user message: voice description (prompt)
+        - assistant message: text to preview
+        - audio.voice: not required (model generates from description)
+
+        Returns dict with voice_id and trial_audio (base64).
         """
-        raise ProviderError(
-            "Voice design not supported in xiaomi_mimo_chat_tts adapter (B1)",
-            "Use mimo-v2.5-tts-voicedesign model with OpenAI-compatible adapter",
-        )
+        model = "mimo-v2.5-tts-voicedesign"
+        messages = [
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": preview_text},
+        ]
+
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "audio": {"format": "wav"},
+        }
+        if voice_id:
+            payload["audio"]["voice"] = voice_id
+
+        try:
+            response = await self._request("POST", json=payload)
+            response.raise_for_status()
+            body = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise ProviderError(
+                "Xiaomi MiMo voice design HTTP error",
+                f"status={exc.response.status_code}, detail={exc.response.text[:200]}",
+            ) from exc
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderError("Xiaomi MiMo voice design failed", str(exc)) from exc
+
+        choices = body.get("choices", [])
+        if not choices:
+            raise ProviderError("Xiaomi MiMo voice design response missing choices", f"response={body}")
+
+        message = choices[0].get("message", {})
+        audio_data = message.get("audio", {}).get("data")
+
+        result: dict[str, Any] = {
+            "voice_id": voice_id or body.get("id"),
+            "response_json": body,
+        }
+
+        if audio_data:
+            audio_bytes = base64.b64decode(audio_data)
+            audio_id = new_id("audio_file")
+            audio_path = storage_path("audio", f"{audio_id}.wav")
+            Path(audio_path).write_bytes(audio_bytes)
+            result["trial_audio_path"] = str(audio_path)
+            result["trial_audio_base64"] = audio_data
+
+        return result
 
     async def create_async_task(self, plan: RenderPlan) -> dict:
-        """Xiaomi MiMo API is synchronous - no async task support in B1."""
+        """Xiaomi MiMo API is synchronous only."""
         raise ProviderError(
             "Async tasks not supported",
-            "Xiaomi MiMo TTS API is synchronous in B1",
+            "Xiaomi MiMo TTS API is synchronous only",
         )
 
     async def query_async_task(self, provider_task_id: str) -> dict:
-        """Xiaomi MiMo API is synchronous - no async task support in B1."""
+        """Xiaomi MiMo API is synchronous only."""
         raise ProviderError(
             "Async tasks not supported",
-            "Xiaomi MiMo TTS API is synchronous in B1",
+            "Xiaomi MiMo TTS API is synchronous only",
         )
 
     async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
-        """Xiaomi MiMo voice cloning not supported in this adapter (B1)."""
-        raise ProviderError(
-            "Voice file upload not supported in xiaomi_mimo_chat_tts adapter (B1)",
-            "Use mimo-v2.5-tts-voiceclone model with OpenAI-compatible adapter",
-        )
+        """MiMo voice clone doesn't need file upload — audio is passed inline as base64 data URI.
+
+        This method stores the file locally and returns a reference for clone_voice to use.
+        """
+        audio_id = new_id("clone_ref")
+        ext = Path(filename).suffix.lstrip(".") or "mp3"
+        ref_path = storage_path("clone_ref", f"{audio_id}.{ext}")
+        Path(ref_path).write_bytes(file_data)
+
+        return {
+            "file_id": audio_id,
+            "file_path": str(ref_path),
+            "file_size": len(file_data),
+            "format": ext,
+        }
 
     async def clone_voice(self, request: dict) -> dict:
-        """Xiaomi MiMo voice cloning not supported in this adapter (B1)."""
+        """Clone a voice using MiMo voice clone model.
+
+        Uses model=mimo-v2.5-tts-voiceclone.
+        Audio is passed as base64 data URI in audio.voice field.
+        No separate file upload API needed.
+
+        request keys:
+        - file_id: local reference from upload_voice_file
+        - voice_id: desired voice identifier (for naming)
+        - preview_text: text to synthesize with cloned voice
+        - file_path: (optional) path to reference audio file
+        - audio_data: (optional) raw bytes of reference audio
+        """
+        model = "mimo-v2.5-tts-voiceclone"
+        preview_text = request.get("preview_text", "你好，这是语音克隆的测试。")
+
+        # Get reference audio as base64 data URI
+        audio_data_uri = self._build_clone_audio_uri(request)
+
+        messages = [
+            {"role": "assistant", "content": preview_text},
+        ]
+
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "audio": {
+                "format": "wav",
+                "voice": audio_data_uri,
+            },
+        }
+
+        try:
+            response = await self._request("POST", json=payload)
+            response.raise_for_status()
+            body = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise ProviderError(
+                "Xiaomi MiMo voice clone HTTP error",
+                f"status={exc.response.status_code}, detail={exc.response.text[:200]}",
+            ) from exc
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderError("Xiaomi MiMo voice clone failed", str(exc)) from exc
+
+        choices = body.get("choices", [])
+        if not choices:
+            raise ProviderError("Xiaomi MiMo voice clone response missing choices", f"response={body}")
+
+        message = choices[0].get("message", {})
+        audio_b64 = message.get("audio", {}).get("data")
+
+        result: dict[str, Any] = {
+            "voice_id": request.get("voice_id", body.get("id")),
+            "response_json": body,
+        }
+
+        if audio_b64:
+            audio_bytes = base64.b64decode(audio_b64)
+            audio_id = new_id("audio_file")
+            audio_path = storage_path("audio", f"{audio_id}.wav")
+            Path(audio_path).write_bytes(audio_bytes)
+            result["demo_audio_path"] = str(audio_path)
+            result["demo_audio_url"] = str(audio_path)
+            result["duration_ms"] = estimate_duration_ms(preview_text)
+
+        return result
+
+    def _build_clone_audio_uri(self, request: dict) -> str:
+        """Build base64 data URI from clone request audio source."""
+        # Direct audio_data bytes provided
+        if "audio_data" in request and request["audio_data"]:
+            raw_bytes = request["audio_data"]
+            fmt = request.get("format", "mp3")
+            b64 = base64.b64encode(raw_bytes).decode("ascii")
+            return f"data:audio/{fmt};base64,{b64}"
+
+        # file_path from upload_voice_file result
+        file_path = request.get("file_path")
+        if file_path:
+            path = Path(file_path)
+            if not path.exists():
+                raise ProviderError("Clone reference audio not found", f"path={file_path}")
+            raw_bytes = path.read_bytes()
+            fmt = path.suffix.lstrip(".") or "mp3"
+            b64 = base64.b64encode(raw_bytes).decode("ascii")
+            return f"data:audio/{fmt};base64,{b64}"
+
         raise ProviderError(
-            "Voice cloning not supported in xiaomi_mimo_chat_tts adapter (B1)",
-            "Use mimo-v2.5-tts-voiceclone model with OpenAI-compatible adapter",
+            "Xiaomi MiMo voice clone missing audio",
+            "Provide audio_data or file_path in clone request",
         )

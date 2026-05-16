@@ -16,6 +16,8 @@ tts:
   supported: true
   models:
     - "mimo-v2.5-tts"
+    - "mimo-v2.5-tts-voicedesign"
+    - "mimo-v2.5-tts-voiceclone"
   default_model: "mimo-v2.5-tts"
   max_text_chars: 5000
   audio_formats:
@@ -31,23 +33,29 @@ script:
   supported: false
 
 voice_clone:
-  supported: false
+  supported: true
+  preview_text_max: 5000
+  supports_noise_reduction: false
+  supports_volume_normalization: false
+  max_file_size_mb: 10
 
 voice_design:
-  supported: false
+  supported: true
+  prompt_max: 2000
+  preview_text_max: 5000
 
 provider_voices:
   supported: true
   supports_list_voices: true
   supports_delete_voice: false
   supports_import_remote_voice: false
-  preview_text_max: 1000
+  preview_text_max: 5000
   static_voices:
     - voice_id: "mimo_default"
       name: "MiMo-默认"
       language: "zh"
       gender: "neutral"
-      description: "默认音色"
+      description: "默认音色（中国集群=冰糖，其他=Mia）"
     - voice_id: "冰糖"
       name: "冰糖"
       language: "zh"
@@ -91,9 +99,13 @@ provider_voices:
 
 metadata:
   api_shape: "chat_completions_audio"
-  auth_header: "api-key"
-  non_stream_audio_path: "choices[0].message.audio.data"
-  supports_stream_compat_mode: true
-  stream_note: "stream=true returns once after full inference; not low-latency streaming"
-  default_sample_rate: 24000
-  note: "Xiaomi MiMo Chat TTS adapter - B1 minimal implementation"
+  sample_rate: 24000
+  sample_format: "pcm16le_mono"
+  auth_mode: "auto"
+  auth_note: "dual-prefix auth: session-key uses Bearer header, token-plan uses api-key header"
+  voice_clone_audio_formats:
+    - "mp3"
+    - "wav"
+  voice_clone_max_base64_mb: 10
+  voice_design_param: "optimize_text_preview"
+  stream_note: "stream=true is compat mode only, returns once after full inference"

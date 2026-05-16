@@ -128,6 +128,18 @@
     }
   }
 
+  window.getModelOptionsHtml = function (provider) {
+    var cap = getProviderCapability(provider);
+    if (cap && cap.tts && cap.tts.models && cap.tts.models.length > 0) {
+      var def = cap.tts.default_model || cap.tts.models[0];
+      return cap.tts.models.map(function (m) {
+        var sel = (m === def) ? ' selected' : '';
+        return '<option value="' + capEsc(m) + '"' + sel + '>' + capEsc(m) + '</option>';
+      }).join('');
+    }
+    return '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>';
+  };
+
   window.setControlDisabled = function (id, disabled, title) {
     if (title === undefined) title = '';
     var el = document.getElementById(id);

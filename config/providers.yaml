@@ -114,7 +114,7 @@ providers:
 
   - name: "xiaomi_mimo"
     display_name: "Xiaomi MiMo"
-    enabled: false
+    enabled: true
     adapter_type: "xiaomi_mimo_chat_tts"
     real_cost: true
     api_key_env: "MIMO_API_KEY"
@@ -130,9 +130,9 @@ providers:
     script:
       enabled: false
     voice_clone:
-      enabled: false
+      enabled: true
     voice_design:
-      enabled: false
+      enabled: true
     provider_voices:
       enabled: true
     metadata:
