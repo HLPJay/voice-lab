@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P16-CANCEL-A0-CHECK：取消确认与生成状态问题复核**
+**P16-CANCEL-FIX1：修复取消确认语义和 loading 状态**
 
 ## 已完成（续）
 
@@ -124,13 +124,14 @@
 - P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归 ✅
 - P15-STATS-B1-PARK：统计面板实现延后，保留为后期待办 ✅
 - P16-REAL-USAGE-ISSUES-A0：真实使用问题统一审查 ✅
+- P16-CANCEL-A0-CHECK：取消确认与生成状态问题复核 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-CANCEL-A0-CHECK | verify cancel/confirmation state-machine audit | P16-REAL-USAGE-ISSUES-A0 完成 |
 | P16-CANCEL-FIX1 | fix cancellation semantics and loading state | P16-CANCEL-A0-CHECK 完成 |
+| P16-CANCEL-FIX1-CHECK | verify cancellation semantics and loading state fix | P16-CANCEL-FIX1 完成 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | P16-CANCEL-FIX1 完成或并入 |
 | P16-WORKSPACE-RESTORE-A0 | audit workspace sample full restore | P16-CANCEL-FIX1 完成 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
