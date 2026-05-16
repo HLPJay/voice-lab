@@ -106,7 +106,8 @@
 * P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI 已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-CLOSE
+* P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口已完成 ✅
+* 当前下一阶段：NEXT-PRIORITY-REVIEW
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10078,5 +10079,69 @@ B2 阶段目标：
 | OBS-1 | `_voiceBindMap` 非全量导致标记可能不准确 | 后续在 workspace tab 加载时调用 `loadAllBindings()` 预填充，或限制标记为仅当前 profile |
 | OBS-2 | `profileSelect` change 未 await checkBindingStatus | 如需严格同步可加 await，否则可接受 |
 
+## P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口
+
+### 收口结论
+
+**Provider-first profile/binding UI 阶段完成** ✅
+
+### 阶段链路
+
+| 阶段 | 状态 |
+|---|---|
+| P16-PROVIDER-BINDING-UI-B2-A0 | ✅ 完成 |
+| P16-PROVIDER-BINDING-UI-B2 | ✅ 完成 |
+| P16-PROVIDER-BINDING-UI-B2-CHECK | ✅ 通过 |
+| P16-PROVIDER-BINDING-UI-B2-CLOSE | ✅ 完成 |
+
+### 已完成能力
+
+- Workspace 配置区 Provider-first 顺序
+- Profile 下拉标记"未绑定当前 Provider"（方案 C：不隐藏）
+- 无 binding 时参数区禁用（paramSpeed/paramVol/paramPitch/paramEmotion）
+- 无 binding 时生成按钮禁用
+- handleGenerate guard 保留作为最后防线
+- restore 后重新校验 binding 状态
+- 不全局修改 populateProfileSelect
+- 不影响绑定管理 / Batch / Script
+
+### 当前最终语义
+
+```
+Provider 是 Workspace 第一约束。
+Profile 是否可执行取决于当前 Provider 下是否存在 available binding。
+无 binding 时允许用户看到 profile，但不能生成。
+无 binding 时参数区禁用并提示绑定缺失。
+真实生成仍由 handleGenerate guard 做最后防线。
+```
+
+### 测试结果
+
+- B2 静态测试: 28 passed
+- 回归测试: 63 + 37 + 152 passed, 1 pre-existing failure
+- 额外测试: 26 passed
+
+### 未纳入范围
+
+- 后端/API 修改
+- VoiceBinding schema / ProviderVoice schema 修改
+- resolve_binding 修改
+- model 下拉
+- Capability-driven 参数禁用
+- Batch / Script / Clone / Design / Audition 改造
+
+### 非阻塞观察项
+
+| 编号 | 描述 |
+|---|---|
+| OBS-1 | `_voiceBindMap` 非全量导致 profile 标记可能不准确 |
+| OBS-2 | `profileSelect` change 未 await checkBindingStatus 导致短暂状态不同步 |
+
+### 下一阶段建议
+
+推荐优先级：
+
+1. **P16-PROVIDER-BINDING-UI-B2-OBS-FIX1**：修复 B2 非阻塞观察项（基础稳定性补强）
+2. **P16-PROVIDER-CAPABILITY-UI-B1**：capability-driven provider/model UI（OBS-FIX1 后评估）
 
 
