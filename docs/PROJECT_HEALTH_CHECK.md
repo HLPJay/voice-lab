@@ -85,7 +85,9 @@
 * P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核已完成 ✅
 * P16-WORKSPACE-RESTORE-A0：Workspace 最近样本完整恢复方案审查已完成 ✅
 * P16-WORKSPACE-RESTORE-A0-CHECK：Workspace 最近样本完整恢复方案复核已完成 ✅
-* 当前下一阶段：P16-WORKSPACE-RESTORE-B1
+* P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复已完成 ✅
+* P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核未通过 ⚠️ (发现阻塞问题)
+* 当前下一阶段：P16-WORKSPACE-RESTORE-B1-FIX1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9096,4 +9098,95 @@ P16-PROVIDER-OBS-001 记录，本阶段未展开 ✅
 ### 阶段状态
 
 P16-WORKSPACE-RESTORE-A0-CHECK 通过。当前阶段推进到 P16-WORKSPACE-RESTORE-B1。
+
+---
+
+## P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核
+
+### 阶段背景
+
+复核 P16-WORKSPACE-RESTORE-B1 实现提交 `4f75e84`。
+
+### 文件范围核验
+
+B1 commit 仅涉及：
+- `app/static/js/context_store.js` — normalizeWorkspaceContext ✅
+- `app/static/index.html` — buildWorkspaceRestoreContext + 4条保存路径 ✅
+- `app/static/js/sample_sidebar.js` — restoreWorkspaceContext 等 ✅
+- `docs/agent/NEXT_TASKS.md` ✅
+- `tests/test_workspace_restore_static.py` ✅
+
+未触及 API/core/providers/repositories ✅
+
+### ContextStore workspace type 复核
+
+所有字段规范化正确实现 ✅。params 空值返回 null 而非 NaN（当 parseFloat 失败时仍会返回 NaN，见下）。
+
+### index.html 保存链路复核
+
+四条路径（workspace_sync/async/stream/variant）均正确调用 ContextStore.pushContext ✅
+context_id 与 SampleStore 一致 ✅
+
+### SampleStore 轻量性复核
+
+仅写入 context_id，无 full_text 或完整 params ✅
+
+### SampleSidebar 恢复逻辑复核
+
+buildCard / bindActionEvents 逻辑正确 ✅
+旧样本降级 fillTextInput ✅
+
+### 存在阻塞问题
+
+**是 —— 2 个阻塞问题**
+
+#### BLOCKER-1：variantCount 元素 ID 错误（严重）
+
+**位置**：
+- `buildWorkspaceRestoreContext` (index.html:2516)：`document.getElementById('variantCountInput')`
+- `restoreWorkspaceContext` (sample_sidebar.js:884)：`setValueIfPresent('variantCountInput', ...)`
+
+**问题**：HTML 元素实际 ID 为 `variantCount`（无 Input 后缀）。`document.getElementById('variantCountInput')` 找不到元素，try/catch 始终进入 catch 分支，variant_count 始终为 3（默认值）。
+
+**影响**：variants 模式下用户选择 4 或 5 个版本，保存和恢复时均被强制设为 3。
+
+**修复方向**：
+- `buildWorkspaceRestoreContext`：`variantCountInput`（全局变量，已指向正确 DOM 元素）或 `document.getElementById('variantCount')`
+- `restoreWorkspaceContext`：`setValueIfPresent('variantCount', context.variant_count)`
+
+#### BLOCKER-2：paramSpeed/Vol/Pitch 非法值保存为 NaN（低概率）
+
+**位置**：`buildWorkspaceRestoreContext` (index.html:2527-2531)
+
+**问题**：`if (sp) speed = parseFloat(sp)` — 若 sp 为非数字字符串（如 "abc"），parseFloat 返回 NaN 存入 ContextStore。restore 时 `setValueIfPresent('paramSpeed', NaN)` → `el.value = "NaN"`。
+
+**注意**：`type="number"` 浏览器原生保护使正常用户操作无法触发此路径。
+
+**修复方向**：在 speed/vol/pitch parseFloat 后加 `if (isNaN(speed)) speed = null;`
+
+### 测试结果
+
+```
+tests/test_workspace_restore_static.py     47 passed ✅
+tests/test_sample_sidebar_static.py        256 passed ✅
+tests/test_cancel_confirmation_static.py   15 passed ✅
+```
+
+注：test_context_store_static.py 的 TestContextStoreBehavior（29项）因 jsdom 未安装失败 —— 与本次修改无关，是既有环境问题。
+
+**测试覆盖不足**：测试仅检查字符串 'variantCount' 存在于函数体，未验证 DOM 元素 ID 正确性，导致 BLOCKER-1 未被测试捕获。
+
+### 非阻塞观察项
+
+- OBS-1：`params.emotion` 空值时存 `''` 而非 `null`，语义不一致但可接受
+- OBS-2：`profile_name` 存入 ContextStore 但 restore 未使用
+- OBS-3：NaN 问题在正常用户操作中无法触发（type="number" 保护）
+
+### Provider / Mock 问题后置确认
+
+P16-PROVIDER-OBS-001 继续后置，本阶段未展开 ✅
+
+### 阶段状态
+
+P16-WORKSPACE-RESTORE-B1-CHECK 未通过，原因是发现 2 个阻塞问题。当前阶段推进到 P16-WORKSPACE-RESTORE-B1-FIX1。
 
