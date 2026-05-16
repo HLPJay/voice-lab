@@ -94,7 +94,8 @@
 * P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查已完成 ✅
 * P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核已完成 ✅ (发现 1 处表述需修正)
 * P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary 已完成 ✅
-* 当前下一阶段：P16-PROVIDER-MOCK-FIX1-CHECK
+* P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes 已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MOCK-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9576,4 +9577,91 @@ Provider Registry / Capability Registry / CapabilityValidator / API / core / voi
 ### 阶段状态
 
 P16-PROVIDER-MOCK-FIX1 修复完成。当前阶段推进到 P16-PROVIDER-MOCK-FIX1-CHECK。
+
+## P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes
+
+### 阶段背景
+
+- **复核 commit**：`b2e57d0`
+- **分支**：`p16/real-usage-issues`
+- **目标**：验证 RISK-001、RISK-002、RISK-006 是否已修复
+
+### 提交文件核验
+
+修改文件仅包含：
+
+```
+app/core/config.py
+app/services/voice_variant_service.py
+app/static/index.html
+tests/test_provider_mock_boundary_static.py
+docs/PROJECT_HEALTH_CHECK.md
+docs/agent/NEXT_TASKS.md
+```
+
+未越界修改 `app/providers/*`、`app/repositories/*`、`app/api/*`、`app/services/cost_guard_service.py`、`app/static/js/provider_capabilities.js` ✅
+
+### RISK-001 修复复核
+
+| 检查项 | 结果 |
+|---|---|
+| `mock_fallback_provider` 默认 `None` | ✅ `str \| None = None` |
+| `resolve_binding()` fallback 条件：`settings.mock_fallback_provider` 有值才触发 | ✅ 条件不变，默认不满足 |
+| mock 无 binding 默认不 fallback | ✅ 抛 `BindingNotFound` |
+
+**结论**：✅ RISK-001 已修复。
+
+### RISK-002 修复复核
+
+| 检查项 | 结果 |
+|---|---|
+| 已导入 `resolve_binding` | ✅ |
+| `requested_provider = request.provider or "mock"` | ✅ |
+| `resolve_binding()` 在 `require_confirmed()` 之前调用 | ✅ `binding_idx < require_idx` |
+| `require_confirmed(provider, ...)` 使用 resolved_provider | ✅ |
+| `VoiceRenderRequest(provider=provider)` 使用 resolved_provider | ✅ |
+
+**结论**：✅ RISK-002 已修复。
+
+### RISK-006 修复复核
+
+| 检查项 | 结果 |
+|---|---|
+| `workspaceBindingAvailable` 全局变量存在 | ✅ 初始值 `false` |
+| `isWorkspaceBindingAvailable()` 辅助函数存在 | ✅ |
+| `checkBindingStatus()` 在 matched>0 时设 `= true` | ✅ |
+| `checkBindingStatus()` 在无匹配/catch/无选择时设 `= false` | ✅ |
+| `handleGenerate()` 在 `confirmHighRiskOperation()` 之前调用 guard | ✅ guard 在 line 3335，confirm 在 3348 |
+| `handleGenerate()` 在 `setLoading(true)` 之前调用 guard | ✅ |
+| unbound guard 不 fetch | ✅ 只显示警告并 return |
+| `providerSelect`/`profileSelect` change 触发 `checkBindingStatus()` | ✅ 行 2409-2410 |
+
+**结论**：✅ RISK-006 已修复。
+
+### Guard 顺序验证
+
+```
+行 3335-3346：isWorkspaceBindingAvailable() guard → return
+行 3348-3351：confirmHighRiskOperation()           ✅ 在 guard 之后
+行 3353-3355：stopAsyncPolling()                   ✅ 在 guard 之后
+行 3356：setLoading(true)                          ✅ 在 guard 之后
+行 3360+：buildWorkspaceSampleContext(), fetch()   ✅ 在 guard 之后
+```
+
+### 测试结果
+
+| 测试集 | 结果 |
+|---|---|
+| `tests/test_provider_mock_boundary_static.py`（12 个） | ✅ 12 passed |
+| `tests/test_cancel_confirmation_static.py` + `test_workspace_restore_static.py`（65 个） | ✅ 65 passed |
+
+### 非阻塞观察项
+
+- `P16-PROVIDER-OBS-DUP-RESOLVE`：`render_variants()` 中存在一次重复 binding resolve，当前可接受，后续可优化
+- `P16-PROVIDER-OBS-RESTORE-BINDING`：workspace restore 后 binding status 依赖 change 事件触发，`providerSelect`/`profileSelect` change 监听器已覆盖
+- `P16-PROVIDER-OBS-TEST-001`：静态契约测试已覆盖关键路径，行为测试可后补
+
+### 阶段状态
+
+P16-PROVIDER-MOCK-FIX1-CHECK 复核通过。当前阶段推进到 P16-PROVIDER-MOCK-CLOSE。
 
