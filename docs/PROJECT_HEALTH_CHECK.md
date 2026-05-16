@@ -83,7 +83,8 @@
 * P16-CANCEL-A0-CHECK：取消确认与生成状态问题复核已完成 ✅
 * P16-CANCEL-FIX1：修复取消确认语义和 loading 状态已完成 ✅
 * P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核已完成 ✅
-* 当前下一阶段：P16-WORKSPACE-RESTORE-A0
+* P16-WORKSPACE-RESTORE-A0：Workspace 最近样本完整恢复方案审查已完成 ✅
+* 当前下一阶段：P16-WORKSPACE-RESTORE-A0-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8962,4 +8963,67 @@ tests/test_existing_function_regression_static.py 109 passed ✅
 ### 阶段状态
 
 P16-CANCEL-FIX1-CHECK 通过。当前阶段推进到 P16-WORKSPACE-RESTORE-A0。
+
+## P16-WORKSPACE-RESTORE-A0：Workspace 最近样本完整恢复方案审查
+
+### 阶段背景
+
+用户真实使用中发现：右侧最近样本点击 ↓ 后只能恢复文本，不能恢复工作台参数（provider / profile / speed / vol / pitch / emotion / genMode 等）。
+
+当前 `fillTextInput()` 只写入 `#textInput`，本质是"填入文本"而非"恢复工作台"。
+
+### 当前问题确认
+
+- fillTextInput 只写入 textInput，不恢复任何参数 ✅
+- sample-btn-fill 只携带 data-text，不传递 provider/profile_id/genMode 等 ✅
+- buildWorkspaceSampleContext 保存 text_preview（上限100字），不是完整文本 ✅
+- SampleStore 不保存 full_text / output_format / need_subtitle / genMode / speed/vol/pitch/emotion ✅
+
+结论：workspace 最近样本当前只能"填入文本"，不能"恢复工作台配置"。
+
+### SampleStore 当前字段
+
+已保存：sample_id / created_at / source / job_id / batch_id / segment_id / asset_id / download_url / text_preview（100字上限） / profile_id / profile_name / provider / model / voice_id / voice_name / duration_ms / audio_format / status / tags / context_id
+
+不保存：full_text / output_format / need_subtitle / genMode / variant_count / speed / vol / pitch / emotion / workspace_params
+
+### Workspace 样本写入链路
+
+buildWorkspaceSampleContext（index.html lines 2457-2493）保存：text_preview（100字截断）/ profile_id / profile_name / provider / model / job_id / audio_format / voice_id / voice_name
+
+safePushWorkspaceSample（index.html lines 2495-2543）写入 SampleStore 的字段相同。
+
+缺失：full_text / output_format / need_subtitle / genMode / variant_count / speed / vol / pitch / emotion
+
+### ContextStore 扩展可行性
+
+MAX_CONTEXTS=50，支持 type=longtext 和 type=script。不支持 type=workspace（未知 type 返回 minimal fields）。
+
+扩展可行性：ContextStore 可扩展，需新增 normalizeWorkspaceContext 和在 normalizeContext 中添加 workspace 分支。
+
+### 方案对比
+
+方案 A（扩展 SampleStore）：实现简单但 SampleStore 变重、与 longtext/script 机制不一致、100字 text_preview 仍无法解决完整文本。
+
+方案 B（扩展 ContextStore，推荐）：与 longtext/script 机制一致、SampleStore 保持轻量、full_text 可完整保存、职责清晰、扩展性好。
+
+### 推荐方案
+
+方案 B：扩展 ContextStore，新增 workspace context 类型。
+
+推荐 workspace context 字段：context_id / type=workspace / source / created_at / full_text / provider / profile_id / gen_mode / variant_count / audio_format / output_format / need_subtitle / params(speed/vol/pitch/emotion) / job_id / asset_id / download_url
+
+### 旧样本兼容策略
+
+旧样本（无 context_id）：保留 fillTextInput(text_preview)，行为不变。
+
+新样本（有 workspace_context_id）：按钮升级为"恢复工作台"，从 ContextStore 读取 workspace context 完整恢复。
+
+### Provider / Mock / 新大模型问题后置
+
+P16-PROVIDER-OBS-001：Provider / Mock / Capability / 新大模型适配属于 Provider 架构边界问题，后续单独启动 P16-PROVIDER-BOUNDARY-A0 处理。
+
+### 阶段状态
+
+P16-WORKSPACE-RESTORE-A0 完成。当前阶段推进到 P16-WORKSPACE-RESTORE-A0-CHECK。
 
