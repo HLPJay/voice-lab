@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计**
+**P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI**
 
 ## 已完成（续）
 
+- P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider-first profile/binding UI 设计 ✅
 - P16-PROVIDER-MODEL-BINDING-CLOSE：Provider / Model / VoiceBinding 最小增强阶段收口 ✅
 - P16-PROVIDER-MODEL-BINDING-B1-CHECK：验证最小 model/binding 可见性与恢复增强 ✅
@@ -154,7 +155,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-BINDING-UI-B2-A0 | design provider-first profile/binding UI | NEXT-PRIORITY-REVIEW 完成 |
 | P16-PROVIDER-BINDING-UI-B2 | implement provider-first profile/binding UI | B2-A0 完成 |
 | P16-PROVIDER-BINDING-UI-B2-CHECK | verify provider-first profile/binding UI | B2 完成 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | provider-first binding UI 后评估 |
