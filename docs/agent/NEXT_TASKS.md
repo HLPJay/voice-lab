@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计**
+**P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载**
 
 ## 已完成（续）
 
+- P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核 ✅
 - P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现 ✅
