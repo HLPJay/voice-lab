@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口**
+**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
 
 ## 已完成（续）
 
+- P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider-first UI 观察项修复 ✅
@@ -161,8 +162,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE | close provider-first UI observation fixes | OBS-FIX1-CHECK 完成 |
-| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | OBS-FIX1-CLOSE 后评估 |
+| NEXT-PRIORITY-REVIEW | choose next priority after provider-first UI observation fixes | OBS-FIX1-CLOSE 完成 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 推荐候选：多 Provider 能力适配 |
+| P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 推荐候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |

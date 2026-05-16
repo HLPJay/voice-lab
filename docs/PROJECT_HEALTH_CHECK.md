@@ -108,7 +108,8 @@
 * P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI 已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口已完成 ✅
 * P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复已完成 ✅
-* 当前下一阶段：P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE
+* P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口已完成 ✅
+* 当前下一阶段：NEXT-PRIORITY-REVIEW
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10283,3 +10284,90 @@ Capability UI 依赖 Provider-first UI 的可用性判断稳定。如果"当前 
 ### 非阻塞观察项
 
 无
+
+## P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口
+
+### 收口结论
+
+Provider-first UI 观察项修复阶段完成 ✅
+
+### 阶段链路
+
+| 阶段 | 状态 |
+|---|---|
+| P16-PROVIDER-BINDING-UI-B2-CLOSE | ✅ 完成 |
+| NEXT-PRIORITY-REVIEW | ✅ 完成 |
+| P16-PROVIDER-BINDING-UI-B2-OBS-FIX1 | ✅ 完成 |
+| P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK | ✅ 复核通过 |
+| P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE | ✅ 当前收口 |
+
+### OBS-1 修复
+
+已修复。`refreshWorkspaceBindingMap()` 在 workspace 任何 binding 状态查询前调用 `loadAllBindings()` 生成全量 `_voiceBindMap`，带并发保护，只查询本地后端 API。
+
+### OBS-2 修复
+
+已修复。`providerSelect` 和 `profileSelect` change handler 改为 `async () => { await ... }`，保证状态同步完成后再执行后续 UI 更新。
+
+### 当前最终语义
+
+```
+Provider 是 Workspace 第一约束。
+Profile 下拉的"未绑定当前 Provider"标记基于全量 binding map。
+Provider 切换后会先刷新 binding map，再刷新 profile 可用性标记。
+Profile 切换后等待 binding 状态检查完成，再更新参数区和生成按钮状态。
+无 binding 时参数区和生成按钮禁用。
+handleGenerate guard 仍作为最后防线。
+```
+
+### 测试结果
+
+- OBS-FIX1 专项测试: 22 passed ✅
+- B2 静态测试: 28 passed ✅
+- 合计: 50 passed ✅
+- 回归测试: 252 passed, 1 pre-existing failure (`test_safePushWorkspaceSample_writes_context_id_to_sample`)
+
+### 未纳入范围
+
+- Capability UI
+- model 下拉
+- resolve_binding 修改
+- 后端/API 修改
+- VoiceBinding / ProviderVoice schema 修改
+- Batch / Script / Clone / Design / Audition 改造
+- 声音人设删除/停用模块
+
+### 新发现：声音人设删除/停用模块缺失
+
+代码事实：
+```
+当前后端 voice_profiles API 只有 GET /profiles 和 POST /profiles。
+当前 VoiceProfileService 只有 list() 和 create()。
+list_profiles() 按 VoiceProfile.is_active == True 过滤，具备软删除字段基础。
+但还没有 delete/deactivate API 和前端入口。
+```
+
+后续候选：`P16-VOICE-PROFILE-DELETE-A0：声音人设删除/停用方案设计`
+
+建议：优先做"停用人设"而不是物理删除，VoiceProfile.is_active = False，关联 VoiceBinding 标记为 deprecated 或 unavailable，历史记录不删除。
+
+### 下一阶段候选
+
+| 后续阶段 | 内容 | 前提 |
+|---|---|---|
+| NEXT-PRIORITY-REVIEW | choose next priority after provider-first UI observation fixes | OBS-FIX1-CLOSE 完成 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 推荐候选：多 Provider 能力适配 |
+| P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 推荐候选：补齐人设生命周期管理 |
+| P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
+| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
+| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
+| P15-STATS-B1 | local statistics panel | Backlog |
+| P15-SERVER-STATS-A0 | server-side statistics | Backlog |
+
+### 是否只改文档
+
+是（本 CLOSE 阶段只改文档）
+
+### 是否调用真实 MiniMax
+
+否
