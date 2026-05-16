@@ -4,7 +4,7 @@ import json as _json
 import re
 import time
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator
 
 import httpx
 import websockets
@@ -22,6 +22,10 @@ from app.providers.base import AsyncTaskResult, AsyncTaskStatus, ProviderRenderR
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
+
+if TYPE_CHECKING:
+    from app.domain.adapter_config import AdapterConfig
+    from app.domain.provider_config import ProviderConfig
 
 _HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
 _provider_logger = get_logger("provider.minimax")
@@ -48,9 +52,52 @@ async def close_shared_http_client() -> None:
 class MiniMaxSpeechAdapter(SpeechProvider):
     provider_name = "minimax"
 
+    def __init__(
+        self,
+        provider_config: "ProviderConfig | None" = None,
+        adapter_config: "AdapterConfig | None" = None,
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
+        super().__init__(provider_config=provider_config, adapter_config=adapter_config)
+        self._http_client = http_client
+        self._owns_client = http_client is None
+
     @property
     def _base_url(self) -> str:
-        return get_settings().minimax_base_url.rstrip("/")
+        if self._provider_config and self._provider_config.resolved_base_url:
+            return self._provider_config.resolved_base_url.rstrip("/")
+        if self._adapter_config and self._adapter_config.default_base_url:
+            return self._adapter_config.default_base_url.rstrip("/")
+        return "https://api.minimaxi.com"
+
+    @property
+    def _api_key(self) -> str | None:
+        if self._provider_config:
+            return self._provider_config.resolved_api_key
+        return get_settings().minimax_api_key
+
+    @property
+    def _timeout(self) -> int:
+        if self._adapter_config:
+            return self._adapter_config.default_timeout_seconds
+        return 120
+
+    def _get_endpoint(self, name: str) -> str | None:
+        if self._provider_config and self._provider_config.endpoints:
+            val = getattr(self._provider_config.endpoints, name, None)
+            if val:
+                return val
+        if self._adapter_config and self._adapter_config.endpoints:
+            val = getattr(self._adapter_config.endpoints, name, None)
+            if val:
+                return val
+        return None
+
+    def _require_api_key(self) -> str:
+        key = self._api_key
+        if not key or key == "replace_me":
+            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY or use provider=mock")
+        return key
 
     async def _request(
         self,
@@ -68,8 +115,9 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         is written only once for the final result.
         """
         settings = get_settings()
+        api_key = self._require_api_key()
         url = f"{self._base_url}{path}"
-        request_timeout = timeout if timeout is not None else settings.minimax_timeout_seconds
+        request_timeout = timeout if timeout is not None else self._timeout
         max_attempts = settings.provider_retry_max_attempts
         backoff_base = settings.provider_retry_backoff_base
         retryable_exceptions = (httpx.TimeoutException, httpx.NetworkError)
@@ -103,7 +151,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                 response = await client.request(
                     method,
                     url,
-                    headers={"Authorization": f"Bearer {settings.minimax_api_key}"},
+                    headers={"Authorization": f"Bearer {api_key}"},
                     **kwargs,
                 )
                 attempt_duration_ms = round((time.monotonic() - attempt_start) * 1000)
@@ -414,9 +462,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         return timeline, metadata
 
     async def list_voices(self, voice_type: str = "all") -> list[ProviderVoiceRead]:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY or use provider=mock")
+        self._require_api_key()
 
         try:
             response = await self._request("POST", "/v1/get_voice", json={"voice_type": voice_type})
@@ -431,9 +477,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         return self._convert_voice_response(body)
 
     async def render_sync(self, plan: RenderPlan) -> ProviderRenderResult:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY or use provider=mock")
+        self._require_api_key()
 
         voice_setting = {"voice_id": plan.provider_voice_id, **plan.voice_params}
         if not voice_setting.get("emotion"):
@@ -450,7 +494,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "subtitle_type": plan.subtitle.type,
         }
         try:
-            response = await self._request("POST", settings.minimax_t2a_path, json=payload)
+            response = await self._request("POST", self._get_endpoint("t2a") or "/v1/t2a_v2", json=payload)
             response.raise_for_status()
             body = response.json()
         except Exception as exc:
@@ -482,7 +526,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         try:
             audio_path, fmt = await self._save_audio_from_data(
-                data, plan.output_format, plan.audio_params, settings.minimax_timeout_seconds
+                data, plan.output_format, plan.audio_params, self._timeout
             )
         except Exception as exc:
             err_detail = _json.dumps({
@@ -499,7 +543,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
         subtitle_file = data.get("subtitle") or data.get("subtitle_file")
         timeline, subtitle_meta = await self._extract_timeline_from_subtitle_file(
-            subtitle_file, settings.minimax_timeout_seconds
+            subtitle_file, self._timeout
         )
 
         duration_ms = extra.get("audio_length") or extra.get("duration_ms") or estimate_duration_ms(plan.processed_text)
@@ -524,9 +568,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         )
 
     async def create_async_task(self, plan: RenderPlan) -> AsyncTaskResult:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        self._require_api_key()
 
         voice_setting = {"voice_id": plan.provider_voice_id, **plan.voice_params}
         if not voice_setting.get("emotion"):
@@ -543,7 +585,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             "subtitle_type": plan.subtitle.type,
         }
         try:
-            response = await self._request("POST", settings.minimax_async_t2a_path, json=payload)
+            response = await self._request("POST", self._get_endpoint("t2a_async") or "/v1/t2a_async_v2", json=payload)
             response.raise_for_status()
             body = response.json()
         except Exception as exc:
@@ -567,12 +609,10 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         )
 
     async def query_async_task(self, provider_task_id: str) -> AsyncTaskStatus:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        self._require_api_key()
 
         try:
-            response = await self._request("GET", settings.minimax_async_query_path, params={"task_id": provider_task_id})
+            response = await self._request("GET", self._get_endpoint("query_async") or "/v1/query/t2a_async_query_v2", params={"task_id": provider_task_id})
             response.raise_for_status()
             body = response.json()
         except Exception as exc:
@@ -617,9 +657,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         return file_info.get("download_url")
 
     async def upload_voice_file(self, file_data: bytes, filename: str, purpose: str) -> dict:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        self._require_api_key()
 
         if purpose not in ("voice_clone", "prompt_audio"):
             raise ProviderError("Invalid purpose", f"purpose must be 'voice_clone' or 'prompt_audio', got '{purpose}'")
@@ -627,7 +665,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         try:
             response = await self._request(
                 "POST",
-                settings.minimax_file_upload_path,
+                self._get_endpoint("file_upload") or "/v1/files/upload",
                 data={"purpose": purpose},
                 files={"file": (filename, file_data)},
             )
@@ -650,9 +688,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         }
 
     async def clone_voice(self, request: dict) -> dict:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        self._require_api_key()
 
         payload = {
             "file_id": request["file_id"],
@@ -673,7 +709,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             payload["clone_prompt"] = {"prompt_audio": prompt_file_id, "prompt_text": prompt_text}
 
         try:
-            response = await self._request("POST", settings.minimax_voice_clone_path, json=payload)
+            response = await self._request("POST", self._get_endpoint("voice_clone") or "/v1/voice_clone", json=payload)
             response.raise_for_status()
             body = response.json()
         except Exception as exc:
@@ -732,16 +768,14 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         }
 
     async def design_voice(self, prompt: str, preview_text: str, voice_id: str | None = None) -> dict:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        self._require_api_key()
 
         payload: dict = {"prompt": prompt, "preview_text": preview_text}
         if voice_id is not None:
             payload["voice_id"] = voice_id
 
         try:
-            response = await self._request("POST", settings.minimax_voice_design_path, json=payload)
+            response = await self._request("POST", self._get_endpoint("voice_design") or "/v1/voice_design", json=payload)
             response.raise_for_status()
             body = response.json()
         except Exception as exc:
@@ -770,13 +804,11 @@ class MiniMaxSpeechAdapter(SpeechProvider):
         }
 
     async def delete_voice(self, provider_voice_id: str, voice_type: str = "voice_cloning") -> dict:
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        self._require_api_key()
 
         payload = {"voice_type": voice_type, "voice_id": provider_voice_id}
         try:
-            response = await self._request("POST", settings.minimax_delete_voice_path, json=payload)
+            response = await self._request("POST", self._get_endpoint("delete_voice") or "/v1/delete_voice", json=payload)
             response.raise_for_status()
             body = response.json()
         except Exception as exc:
@@ -790,12 +822,11 @@ class MiniMaxSpeechAdapter(SpeechProvider):
 
     async def render_stream(self, plan: RenderPlan) -> AsyncGenerator[StreamAudioChunk, None]:
         """Connect to MiniMax WebSocket and stream audio chunks."""
-        settings = get_settings()
-        if not settings.minimax_api_key or settings.minimax_api_key == "replace_me":
-            raise ProviderNotConfigured("MiniMax API key is missing", "Set MINIMAX_API_KEY")
+        api_key = self._require_api_key()
 
-        ws_url = settings.minimax_ws_url
-        headers = {"Authorization": f"Bearer {settings.minimax_api_key}"}
+        ws_url = (self._adapter_config.websocket.url if self._adapter_config and self._adapter_config.websocket else None) or "wss://api.minimaxi.com/ws/v1/t2a_v2"
+        ws_timeout = (self._adapter_config.websocket.timeout_seconds if self._adapter_config and self._adapter_config.websocket else None) or 120
+        headers = {"Authorization": f"Bearer {api_key}"}
         voice_params = plan.voice_params or {}
 
         voice_setting: dict = {
@@ -832,10 +863,9 @@ class MiniMaxSpeechAdapter(SpeechProvider):
                 ws_url,
                 additional_headers=headers,
                 close_timeout=10,
-                open_timeout=settings.minimax_ws_timeout_seconds,
+                open_timeout=ws_timeout,
             ) as ws:
-                # Wrap recv with timeout to avoid hanging indefinitely
-                recv_timeout = settings.minimax_ws_timeout_seconds
+                recv_timeout = ws_timeout
 
                 msg = _json.loads(await asyncio.wait_for(ws.recv(), timeout=recv_timeout))
                 if msg.get("event") != "connected_success":
@@ -901,7 +931,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             )
             self._save_call_log(
                 method="WS",
-                path=settings.minimax_ws_url,
+                path=ws_url,
                 status_code=200,
                 duration_ms=duration_ms,
                 error_type=None,
@@ -923,7 +953,7 @@ class MiniMaxSpeechAdapter(SpeechProvider):
             )
             self._save_call_log(
                 method="WS",
-                path=settings.minimax_ws_url,
+                path=ws_url,
                 status_code=None,
                 duration_ms=duration_ms,
                 error_type=type(exc).__name__,
