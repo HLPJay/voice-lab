@@ -81,7 +81,9 @@
 * P15-STATS-B1-PARK：统计面板实现延后并记录为后期待办 ✅
 * P16-REAL-USAGE-ISSUES-A0：真实使用问题统一审查已完成 ✅
 * P16-CANCEL-A0-CHECK：取消确认与生成状态问题复核已完成 ✅
-* 当前下一阶段：P16-CANCEL-FIX1
+* P16-CANCEL-FIX1：修复取消确认语义和 loading 状态已完成 ✅
+* P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核已完成 ✅
+* 当前下一阶段：P16-WORKSPACE-RESTORE-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -8881,5 +8883,83 @@ P16-REAL-USAGE-ISSUES-A0 完成。当前阶段推进到 P16-CANCEL-A0-CHECK。
 
 P16-CANCEL-A0-CHECK 通过。当前阶段推进到 P16-CANCEL-FIX1。
 
+## P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核
 
+### 复核结论
+
+**通过**。所有 P0 阻塞问题已修复。
+
+### 远端提交核验
+
+```
+22849ad fix: cancellation confirmation semantics and loading state (P16-CANCEL-FIX1)
+a7b1f7e docs: verify cancellation state-machine audit
+9e15521 docs: audit real usage issues
+```
+
+### 文件范围核验
+
+app/static/index.html | app/static/js/voice_clone.js | app/static/js/voice_design.js | app/static/js/voice_import.js | tests/test_cancel_confirmation_static.py | docs/*
+
+无后端/API 变更，无 Store schema 变更，无 batch submit payload 变更。
+
+### t2a 确认复核
+
+`_OPERATION_MESSAGES` 包含 `t2a: '同步生成会调用云端 TTS，可能产生费用，是否继续？'`
+
+普通单条 minimax TTS 现已弹出确认。✅
+
+### confirmHighRiskOperation helper 复核
+
+index.html lines 2848-2852：纯 confirm，返回 true/false，无 UI 变更，无网络请求，无 store 写入。
+
+调用方在 handleGenerate 中已做 `provider === 'minimax'` 判断。✅
+
+### handleGenerate 确认前置复核
+
+确认顺序正确：confirm → stopAsyncPolling → setLoading(true) → resultsArea.innerHTML = ''
+
+取消路径：无 setLoading，无 resultsArea 清空，无 stopAsyncPolling，无请求，无 store 写入。✅
+
+### stream 独立 confirm 移除复核
+
+`startStreamGenerate` 不再包含 `confirm(...)`，流式确认已在 `handleGenerate` 级别处理。✅
+
+### quick preview 确认复核
+
+voice_clone.js / voice_design.js / voice_import.js 三个 quick preview 均满足：minimax 时 confirm 在 fetch 之前，取消后 return，不发请求。✅
+
+### direct fetch 风险复核
+
+handleGenerate 改为 direct fetch 后，Content-Type / JSON.stringify / resp.ok 处理 / parseApiError / RESOURCE_LIMIT_EXCEEDED / setLoading(false) finally / renderResults / saveRecentJob / loadHistory / async startAsyncPolling 均保留。
+
+confirm_cost 硬编码为 true（非阻塞观察项 P16-CANCEL-OBS-001）。✅
+
+### 多版本等待态
+
+未实现，保留 P16-VARIANTS-UX-FIX1（非阻塞观察项 P16-CANCEL-OBS-003）。不影响取消语义修复通过。
+
+### 未纳入范围确认
+
+workspace 参数恢复、Store schema、后端 API、剧本扩展：均未修改。✅
+
+### 测试结果
+
+tests/test_cancel_confirmation_static.py 15 passed ✅
+tests/test_sample_sidebar_static.py 147 passed ✅
+tests/test_existing_function_regression_static.py 109 passed ✅
+
+### 非阻塞观察项
+
+- P16-CANCEL-OBS-001：workspace payload confirm_cost 硬编码 true，建议改为 provider === 'minimax'
+- P16-CANCEL-OBS-002：quick preview confirm 前显示"生成中…"，取消后清空 resultDiv，成本控制已修复但 UI 语义可优化
+- P16-CANCEL-OBS-003：多版本等待态未实现，保留 P16-VARIANTS-UX-FIX1
+
+### 存在阻塞问题
+
+**否**。
+
+### 阶段状态
+
+P16-CANCEL-FIX1-CHECK 通过。当前阶段推进到 P16-WORKSPACE-RESTORE-A0。
 

@@ -2,7 +2,11 @@
 
 ## 当前阶段
 
-**P16-CANCEL-FIX1-CHECK：复核取消确认语义和 loading 状态修复**
+**P16-WORKSPACE-RESTORE-A0：审查 workspace 最近样本完整恢复方案**
+
+## 已完成（续）
+
+- P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核 ✅
 
 ## 已完成（续）
 
@@ -131,9 +135,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-CANCEL-FIX1-CHECK | verify cancellation semantics and loading state fix | P16-CANCEL-FIX1 完成 |
-| P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | P16-CANCEL-FIX1 完成或并入 |
-| P16-WORKSPACE-RESTORE-A0 | audit workspace sample full restore | P16-CANCEL-FIX1 完成 |
+| P16-WORKSPACE-RESTORE-A0 | audit workspace sample full restore | P16-CANCEL-FIX1-CHECK 完成 |
+| P16-WORKSPACE-RESTORE-B1 | implement workspace sample full restore params | P16-WORKSPACE-RESTORE-A0 完成 |
+| P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可并入 P16-WORKSPACE-RESTORE 或后置 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
 | P15-STATS-B1 | implement lightweight local statistics panel | Backlog，产品需要时再启动 |
 | P15-SERVER-STATS-A0 | design server-side full statistics | Backlog，需要全量统计时再启动 |
