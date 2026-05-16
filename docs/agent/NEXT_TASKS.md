@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核**
+**P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary**
 
 ## 已完成（续）
 
+- P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核 ✅
 - P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查 ✅
 - NEXT-PRIORITY-REVIEW：下一阶段优先级确认 ✅
 - P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口 ✅
@@ -143,8 +144,8 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-BOUNDARY-A0-CHECK | verify provider boundary audit | P16-PROVIDER-BOUNDARY-A0 完成 |
-| P16-PROVIDER-MOCK-FIX1 | fix mock fallback / provider binding / cost boundary | P16-PROVIDER-BOUNDARY-A0-CHECK 完成 |
+| P16-PROVIDER-MOCK-FIX1-CHECK | verify mock/provider boundary fixes | P16-PROVIDER-MOCK-FIX1 完成 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider UI | P16-PROVIDER-MOCK-FIX1-CHECK 完成后评估 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
