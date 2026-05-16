@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径**
+**P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现**
 
 ## 已完成（续）
 
+- P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径 ✅
 - P16-ADAPTER-PLUGIN-DISCOVERY-B1-CHECK-FIX1：修复 Adapter 插件发现主路径与错误处理 ✅
 - P16-ADAPTER-PLUGIN-DISCOVERY-B1：Adapter 插件发现与配置化注册 ✅
 - P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查 ✅

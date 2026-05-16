@@ -111,3 +111,29 @@ providers:
       enabled: true
     metadata:
       for_testing_only: true
+
+  - name: "xiaomi_mimo"
+    display_name: "Xiaomi MiMo"
+    enabled: false
+    adapter_type: "xiaomi_mimo_chat_tts"
+    real_cost: true
+    api_key_env: "MIMO_API_KEY"
+    base_url_env: null
+    base_url: null
+    endpoints: {}
+    default_model: "mimo-v2.5-tts"
+    tts:
+      enabled: true
+    batch:
+      enabled: false
+    script:
+      enabled: false
+    voice_clone:
+      enabled: false
+    voice_design:
+      enabled: false
+    provider_voices:
+      enabled: true
+    metadata:
+      provider_family: "xiaomi_mimo"
+      api_shape: "chat_completions_audio"

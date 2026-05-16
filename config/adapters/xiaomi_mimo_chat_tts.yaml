@@ -1,0 +1,53 @@
+adapter_type: "xiaomi_mimo_chat_tts"
+
+plugin:
+  import_path: "app.providers.xiaomi_mimo_chat_tts_adapter.XiaomiMiMoChatTTSAdapter"
+
+default_base_url: "https://api.xiaomimimo.com"
+
+default_model: "mimo-v2.5-tts"
+
+default_timeout_seconds: 120
+
+endpoints:
+  tts: "/v1/chat/completions"
+
+tts:
+  supported: true
+  models:
+    - "mimo-v2.5-tts"
+  default_model: "mimo-v2.5-tts"
+  max_text_chars: 5000
+  audio_formats:
+    - "wav"
+  supports_subtitle: false
+  supports_streaming: false
+  supports_emotion: true
+
+batch:
+  supported: false
+
+script:
+  supported: false
+
+voice_clone:
+  supported: false
+
+voice_design:
+  supported: false
+
+provider_voices:
+  supported: true
+  supports_list_voices: true
+  supports_delete_voice: false
+  supports_import_remote_voice: false
+  preview_text_max: 1000
+
+metadata:
+  api_shape: "chat_completions_audio"
+  auth_header: "api-key"
+  non_stream_audio_path: "choices[0].message.audio.data"
+  supports_stream_compat_mode: true
+  stream_note: "stream=true returns once after full inference; not low-latency streaming"
+  default_sample_rate: 24000
+  note: "Xiaomi MiMo Chat TTS adapter - B1 minimal implementation"
