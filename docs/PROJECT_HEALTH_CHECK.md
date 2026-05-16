@@ -98,7 +98,8 @@
 * NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
 * P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查已完成 ✅
 * P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核已完成 ✅
-* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-B1-A0
+* P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9870,6 +9871,56 @@ P16-PROVIDER-MODEL-BINDING-A0 审查完成。下一阶段为 P16-PROVIDER-MODEL-
 ### 阶段状态
 
 P16-PROVIDER-MODEL-BINDING-A0-CHECK 复核通过。下一阶段为 P16-PROVIDER-MODEL-BINDING-B1-A0。
+
+## P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计
+
+### 阶段背景
+
+为 B1 实现确定最小范围、文件边界、数据字段、测试策略。纯设计文档，不修改功能代码。
+
+### B1 最小目标
+
+B1 是前端本地可见性与恢复增强，不是后端 binding 解析重构：
+1. 让 workspace 用户看到当前实际使用的 binding 的 model / voice_name
+2. 让 workspace SampleStore / ContextStore 保存 binding_id + model
+3. 让 workspace restore 时展示当时的 binding 信息
+
+### B1 必须纳入范围
+
+| 纳入项 | 目标文件 | 关键改动 |
+|---|---|---|
+| 1. binding hint 展示 model | `index.html` | checkBindingStatus bound 分支展示 model |
+| 2. buildWorkspaceRestoreContext 保存 binding info | `index.html` | 新增 `getCurrentWorkspaceBindingInfo()`，写入 binding_id/model/provider_voice_id/voice_name |
+| 3. ContextStore workspace 增加 binding_id | `context_store.js` | normalizeWorkspaceContext 增加 binding_id/provider_voice_id/voice_name 字段 |
+| 4. SampleStore workspace sample 增加 binding_id | `sample_store.js` | normalizeSample 增加 binding_id 字段 |
+
+### B1 可选纳入
+
+- History/Admin 展示 model（VoiceJob 字段已有，前端改动极小可纳入）
+
+### B1 不纳入
+
+model 下拉 / resolve_binding 重构 / binding_id 精确执行 / schema 改动 / batch 重构 / audition model 统一 / Capability UI / 新 Provider
+
+### 实现文件边界
+
+**可修改**：`index.html`、`context_store.js`、`sample_store.js`、`sample_sidebar.js`、`tests/test_provider_model_binding_static.py`
+
+**禁止修改**：`app/models/*`、`app/repositories/*`、`app/services/*`、`app/api/*`、`VoiceBinding schema`、`ProviderVoice schema`、`resolve_binding`
+
+### 测试策略
+
+新增 `tests/test_provider_model_binding_static.py`，覆盖 getCurrentWorkspaceBindingInfo / buildWorkspaceRestoreContext 字段 / normalizeSample binding_id / binding hint 含 model / 不修改 resolve_binding
+
+### 兼容策略
+
+旧 context/sample 无 binding_id 时降级，不报错；binding 为 null 时各字段为 null。
+
+### 阶段状态
+
+P16-PROVIDER-MODEL-BINDING-B1-A0 设计完成。下一阶段为 P16-PROVIDER-MODEL-BINDING-B1。
+
+
 
 
 

@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计**
+**P16-PROVIDER-MODEL-BINDING-B1：实现最小 model/binding 可见性与恢复增强**
 
 ## 已完成（续）
 
+- P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计 ✅
 - P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核 ✅
 - P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider / Model / VoiceBinding 全链路审查 ✅
@@ -149,7 +150,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-MODEL-BINDING-B1-A0 | design minimal model/binding visibility and restore | A0-CHECK 完成 |
 | P16-PROVIDER-MODEL-BINDING-B1 | implement minimal model/binding visibility and restore | B1-A0 完成 |
 | P16-PROVIDER-MODEL-BINDING-B1-CHECK | verify minimal model/binding visibility and restore | B1 完成 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | MODEL-BINDING-B1-CHECK 后评估 |
