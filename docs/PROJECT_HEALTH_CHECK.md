@@ -96,7 +96,8 @@
 * P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes 已完成 ✅
 * P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口已完成 ✅
 * NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
-* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-A0
+* P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-A0-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9764,6 +9765,69 @@ P16-PROVIDER-MODEL-BINDING-A0 → A0-CHECK
 ### 阶段状态
 
 NEXT-PRIORITY-REVIEW 完成。下一阶段为 P16-PROVIDER-MODEL-BINDING-A0。
+
+## P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查
+
+### 阶段背景
+
+审查所有音色绑定、选择音色、使用音色、恢复音色配置的入口，统一 Provider / Model / ProviderVoice / VoiceBinding 的数据关系。
+
+### 当前代码事实
+
+- **VoiceBinding**：包含 `provider / model / provider_voice_id` 三元组（✅ 数据层完整）
+- **ProviderVoice**：包含 `provider / provider_voice_id / voice_type`，**无 model 字段**（❌ 缺口）
+- **创建绑定**：`find_duplicate_binding()` 按 `profile_id + provider + model + provider_voice_id` 排重（✅）
+- **解析绑定**：`resolve_binding(profile_id, provider)` 无 model 参数（❌）
+- **执行使用**：`RenderPlan` 使用 `binding.model`（✅）；`VoiceJob` 保存 `binding_id`（✅）
+- **deprecate_bindings_by_provider_voice**：只按 `provider + provider_voice_id`，忽略 model（⚠️）
+
+### 数据模型结论
+
+- VoiceBinding 已是 `profile_id + provider + model + provider_voice_id` 四元组
+- ProviderVoice 无 model 字段，同一 voice_id 是否跨 model 可用未定义
+- 执行层已完整使用 model，但解析层、UI 层、恢复层尚未统一
+
+### 横向入口审查结论
+
+21 个入口中，存在不同程度 provider/model/binding_id 表达不一致：
+- workspace 系列：UI 无 model 下拉，ContextStore/SampleStore 不保存 binding_id
+- batch 系列：longtext context 不保存 model/binding_id；script per-line 无 provider/model/binding_id
+- voices/audition/clone/design/import：model 来源不一，部分手输
+- history/admin：已展示 model（VoiceJob 字段）
+
+### 字段流转结论
+
+- `binding_id`：存在于 VoiceBinding / VoiceJob，但不保存于 SampleStore / ContextStore
+- `model`：存在于 VoiceBinding / RenderPlan / VoiceJob / AudioAsset，但 workspace UI 不展示，batch context 不保存
+- `provider_voice_id`：存在于 ProviderVoice / VoiceBinding / RenderPlan，SampleStore 有，ContextStore 部分有
+
+### 风险清单（8 项）
+
+- RISK-001：workspace 无显式 model 选择，结果依赖 priority
+- RISK-002：resolve_binding 多 model 场景不透明
+- RISK-003：voices/audition/clone/design model 来源不统一
+- RISK-004：batch script per-line 无 provider/model/binding_id
+- RISK-005：SampleStore/ContextStore 不保存 binding_id，无法精确恢复
+- RISK-006：新增 Provider 后 provider-only UI 误导
+- RISK-007：provider_voice_id 是否跨 model 可用未定义
+- RISK-008：voice delete 按 provider+provider_voice_id deprecated，忽略 model
+
+### 推荐 B1 最小实现
+
+只做可见性与恢复增强：
+1. workspace binding hint 升级展示 model
+2. SampleStore/ContextStore 保存 binding_id + model
+3. restore 展示 binding 详情
+4. history/admin 展示 model
+5. audition model 来源统一
+
+### 不纳入范围
+
+model 下拉 / resolve_binding 重构 / VoiceBinding schema 改 / ProviderVoice schema 改 / Batch script 重构 / Capability UI
+
+### 阶段状态
+
+P16-PROVIDER-MODEL-BINDING-A0 审查完成。下一阶段为 P16-PROVIDER-MODEL-BINDING-A0-CHECK。
 
 
 

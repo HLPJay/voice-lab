@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查**
+**P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核**
 
 ## 已完成（续）
 
+- P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查 ✅
 - NEXT-PRIORITY-REVIEW：选择 Provider / Model / VoiceBinding 全链路审查 ✅
 - P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes ✅
 - P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary ✅
@@ -147,7 +148,6 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-PROVIDER-MODEL-BINDING-A0 | audit provider/model/voice binding full chain | NEXT-PRIORITY-REVIEW 完成 |
 | P16-PROVIDER-MODEL-BINDING-A0-CHECK | verify provider/model/binding audit | P16-PROVIDER-MODEL-BINDING-A0 完成 |
 | P16-PROVIDER-MODEL-BINDING-B1 | implement minimal model/binding visibility and restore | A0-CHECK 完成后评估 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | MODEL-BINDING-B1 后评估 |
