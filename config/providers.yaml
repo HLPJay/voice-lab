@@ -1,0 +1,88 @@
+# Voice Lab Provider Configuration
+# Each provider maps a provider name to its configuration.
+# The adapter_type determines which SpeechProvider adapter class is used.
+
+providers:
+  - name: "mock"
+    display_name: "Mock"
+    enabled: true
+    adapter_type: "mock"
+    real_cost: false
+    api_key_env: null
+    base_url_env: null
+    base_url: null
+    endpoints: {}
+    default_model: "mock-tts"
+    tts:
+      enabled: true
+    batch:
+      enabled: true
+    script:
+      enabled: true
+    voice_clone:
+      enabled: true
+    voice_design:
+      enabled: true
+    provider_voices:
+      enabled: true
+    metadata:
+      mode: "mock"
+
+  - name: "minimax"
+    display_name: "MiniMax"
+    enabled: true
+    adapter_type: "minimax"
+    real_cost: true
+    api_key_env: "MINIMAX_API_KEY"
+    base_url_env: null
+    base_url: "https://api.minimaxi.com"
+    endpoints:
+      t2a: "/v1/t2a_v2"
+      t2a_async: "/v1/t2a_async_v2"
+      query_async: "/v1/query/t2a_async_query_v2"
+      file_upload: "/v1/files/upload"
+      voice_clone: "/v1/voice_clone"
+      voice_design: "/v1/voice_design"
+      delete_voice: "/v1/delete_voice"
+    default_model: "speech-2.8-hd"
+    tts:
+      enabled: true
+    batch:
+      enabled: true
+    script:
+      enabled: true
+    voice_clone:
+      enabled: true
+    voice_design:
+      enabled: true
+    provider_voices:
+      enabled: true
+    metadata:
+      ws_model: "speech-2.8-hd"
+      clone_audio_max_size_mb: 20
+
+  - name: "mock_configured"
+    display_name: "Mock Configured"
+    enabled: true
+    adapter_type: "mock"
+    real_cost: false
+    api_key_env: null
+    base_url_env: null
+    base_url: null
+    endpoints: {}
+    default_model: "mock-tts"
+    tts:
+      enabled: true
+    batch:
+      enabled: true
+    script:
+      enabled: true
+    voice_clone:
+      enabled: true
+    voice_design:
+      enabled: true
+    provider_voices:
+      enabled: true
+    metadata:
+      mode: "mock_configured"
+      configured_via_yaml: true

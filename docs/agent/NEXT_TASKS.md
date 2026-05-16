@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计**
+**P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现**
 
 ## 已完成（续）
 
+- P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复 ✅
 - P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项 ✅
