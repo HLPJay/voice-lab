@@ -318,7 +318,7 @@ class TestGetProvider:
         """get_provider for unknown provider raises UnsupportedProvider."""
         from app.providers.registry import get_provider
         from app.core.errors import UnsupportedProvider
-        with pytest.raises(UnsupportedProvider, match="Unsupported provider"):
+        with pytest.raises(UnsupportedProvider, match="Unknown provider"):
             get_provider("nonexistent_provider_xyz")
 
     def test_get_provider_disabled_raises(self):

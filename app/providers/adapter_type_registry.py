@@ -1,14 +1,12 @@
 """Adapter type registry: maps adapter_type string to SpeechProvider adapter class.
 
-This decouples provider names from adapter classes, enabling config-driven
-provider routing without code changes per provider.
-
-Primary registration path:
+All registration is config-driven:
   config/adapters/*.yaml -> AdapterConfig.plugin.import_path
     -> importlib dynamic import -> register_adapter_type()
 
-Fallback (legacy):
-  _ensure_core_adapters_registered() registers mock/minimax hardcoded
+No hardcoded adapter registration. Adding a new adapter only requires:
+  1. Write the adapter class (implements SpeechProvider)
+  2. Add config/adapters/{type}.yaml with plugin.import_path
 """
 
 from __future__ import annotations
@@ -27,12 +25,7 @@ _plugins_loaded: bool = False
 
 
 def register_adapter_type(adapter_type: str, adapter_cls: type[SpeechProvider]) -> None:
-    """Register an adapter class for an adapter_type.
-
-    Args:
-        adapter_type: String key (e.g. 'mock', 'minimax', 'openai').
-        adapter_cls: SpeechProvider subclass.
-    """
+    """Register an adapter class for an adapter_type."""
     ADAPTER_TYPE_REGISTRY[adapter_type] = adapter_cls
 
 
@@ -43,26 +36,17 @@ def register_adapter_type_from_import_path(
 
     Dynamically imports the module and retrieves the adapter class.
 
-    Args:
-        adapter_type: String key (e.g. 'mock', 'minimax').
-        import_path: Python import path (e.g. 'app.providers.mock_speech_adapter.MockSpeechAdapter').
-
-    Returns:
-        The registered SpeechProvider class.
-
     Raises:
         ValueError: If import_path is invalid or not in app.providers. prefix.
         ImportError: If the module cannot be imported.
         AttributeError: If the class is not found in the module.
         TypeError: If the class is not a SpeechProvider subclass.
     """
-    # Security: only allow app.providers. prefix
     if not import_path.startswith("app.providers."):
         raise ValueError(
             f"import_path must start with 'app.providers.', got: {import_path}"
         )
 
-    # Parse module path and class name
     parts = import_path.rsplit(".", 1)
     if len(parts) != 2:
         raise ValueError(
@@ -70,7 +54,6 @@ def register_adapter_type_from_import_path(
         )
     module_path, class_name = parts
 
-    # Dynamically import the module
     try:
         module = importlib.import_module(module_path)
     except ImportError as exc:
@@ -78,7 +61,6 @@ def register_adapter_type_from_import_path(
             f"Failed to import module '{module_path}' for adapter_type '{adapter_type}': {exc}"
         ) from exc
 
-    # Get the class from the module
     try:
         cls = getattr(module, class_name)
     except AttributeError as exc:
@@ -87,7 +69,6 @@ def register_adapter_type_from_import_path(
             f"for adapter_type '{adapter_type}': {exc}"
         ) from exc
 
-    # Validate it's a SpeechProvider subclass
     from app.providers.base import SpeechProvider
 
     if not issubclass(cls, SpeechProvider):
@@ -96,7 +77,6 @@ def register_adapter_type_from_import_path(
             f"must be a SpeechProvider subclass, got: {cls.__mro__}"
         )
 
-    # Register the adapter
     register_adapter_type(adapter_type, cls)
     return cls
 
@@ -119,16 +99,6 @@ def load_adapter_plugins_from_config(*, strict: bool = True) -> None:
 
     For each adapter config with a plugin.import_path, dynamically imports
     the adapter class and registers it in ADAPTER_TYPE_REGISTRY.
-
-    Args:
-        strict: If True (default), raise AdapterPluginLoadError when a
-            declared plugin.import_path fails to load. If False, silently
-            skip configs with invalid import_path (for backward compatibility
-            in tests only).
-
-    Raises:
-        AdapterPluginLoadError: When strict=True and a declared plugin.import_path
-            fails to load (module not found, class not found, not a SpeechProvider).
     """
     global _plugins_loaded
     if _plugins_loaded:
@@ -147,7 +117,6 @@ def load_adapter_plugins_from_config(*, strict: bool = True) -> None:
             except (ValueError, ImportError, AttributeError, TypeError) as exc:
                 if strict:
                     errors.append(AdapterPluginLoadError(cfg.adapter_type, cfg.plugin.import_path, exc))
-                # In non-strict mode, silently skip (legacy behavior for tests only)
 
     if errors:
         raise AdapterPluginLoadError(errors[0].adapter_type, errors[0].import_path, errors[0].cause)
@@ -156,58 +125,27 @@ def load_adapter_plugins_from_config(*, strict: bool = True) -> None:
 
 
 def clear_adapter_type_registry_for_tests() -> None:
-    """Clear the adapter type registry and reset plugin loading state.
-
-    Also clears PROVIDER_REGISTRY in registry.py to ensure clean state for tests.
-
-    Useful in tests when config state changes or to force re-discovery.
-    """
+    """Clear the adapter type registry and reset plugin loading state."""
     global _plugins_loaded
     ADAPTER_TYPE_REGISTRY.clear()
     _plugins_loaded = False
-
-    # Also clear the static provider registry to ensure clean test state
-    try:
-        from app.providers.registry import PROVIDER_REGISTRY
-        PROVIDER_REGISTRY.clear()
-    except Exception:
-        # If registry module not yet imported, that's fine
-        pass
 
 
 def get_adapter_type_adapter(adapter_type: str) -> type[SpeechProvider]:
     """Look up an adapter class by adapter_type string.
 
-    Resolution chain:
+    Resolution:
       1. If already registered in ADAPTER_TYPE_REGISTRY, return it
       2. Try loading from config/adapters/*.yaml via plugin.import_path
-      3. Fall back to _ensure_core_adapters_registered() (legacy mock/minimax)
-      4. If still not found, raise UnsupportedProvider
-
-    Args:
-        adapter_type: The adapter type key.
-
-    Returns:
-        SpeechProvider subclass.
-
-    Raises:
-        UnsupportedProvider: If adapter_type is not registered.
+      3. If still not found, raise UnsupportedProvider
     """
     from app.core.errors import UnsupportedProvider
 
-    # Fast path: already registered
     cls = ADAPTER_TYPE_REGISTRY.get(adapter_type)
     if cls:
         return cls
 
-    # Try loading from config
     load_adapter_plugins_from_config()
-    cls = ADAPTER_TYPE_REGISTRY.get(adapter_type)
-    if cls:
-        return cls
-
-    # Fallback to core adapters (legacy mock/minimax)
-    _ensure_core_adapters_registered()
     cls = ADAPTER_TYPE_REGISTRY.get(adapter_type)
     if cls:
         return cls
@@ -220,20 +158,3 @@ def get_adapter_type_adapter(adapter_type: str) -> type[SpeechProvider]:
 def is_registered_adapter_type(adapter_type: str) -> bool:
     """Check if an adapter_type is registered."""
     return adapter_type in ADAPTER_TYPE_REGISTRY
-
-
-def _ensure_core_adapters_registered() -> None:
-    """Register core adapter types if not already registered.
-
-    Called on first use of get_adapter_type_adapter to ensure the registry
-    is populated even if providers/__init__.py was not imported.
-
-    NOTE: This is a legacy fallback. The primary registration path is
-    load_adapter_plugins_from_config() which reads from config/adapters/*.yaml.
-    """
-    if not ADAPTER_TYPE_REGISTRY:
-        from app.providers.mock_speech_adapter import MockSpeechAdapter
-        from app.providers.minimax_speech_adapter import MiniMaxSpeechAdapter
-
-        register_adapter_type("mock", MockSpeechAdapter)
-        register_adapter_type("minimax", MiniMaxSpeechAdapter)

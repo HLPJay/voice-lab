@@ -284,7 +284,7 @@ class TestProviderRoutingRegression:
         from app.providers.registry import get_provider
 
         adapter = get_provider("mock_configured")
-        assert adapter.provider_name == "mock"
+        assert adapter.provider_name == "mock_configured"
 
     def test_get_provider_disabled_raises(self):
         """get_provider('disabled_provider') raises UnsupportedProvider."""
@@ -738,7 +738,7 @@ class TestProviderRoutingRegression:
         from app.providers.registry import get_provider
 
         adapter = get_provider("mock_configured")
-        assert adapter.provider_name == "mock"
+        assert adapter.provider_name == "mock_configured"
 
     def test_get_provider_disabled_still_raises(self):
         """get_provider('disabled_provider') still raises UnsupportedProvider after fixes."""

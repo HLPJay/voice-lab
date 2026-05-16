@@ -1132,7 +1132,8 @@ class TestConfigDrivenBehavior:
 
         assert len(voices) == 9
 
-    def test_render_sync_uses_config_endpoint(self):
+    @pytest.mark.asyncio
+    async def test_render_sync_uses_config_endpoint(self):
         """render_sync uses endpoint from config hierarchy."""
         import base64
         from app.domain.render_plan import RenderPlan, SubtitlePlan
@@ -1176,8 +1177,7 @@ class TestConfigDrivenBehavior:
             language_boost="auto",
         )
 
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(adapter.render_sync(plan))
+        await adapter.render_sync(plan)
 
         # URL should include the configured base_url and endpoint
         assert "config-driven.xiaomimimo.com" in captured_url["url"]
@@ -1227,4 +1227,3 @@ class TestEnvResolverDotEnvFallback:
 
         value = resolve_env_value("NON_EXISTENT_KEY_12345")
         assert value is None
-

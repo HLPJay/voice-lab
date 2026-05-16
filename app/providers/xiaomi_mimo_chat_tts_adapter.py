@@ -67,24 +67,13 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
 
     def __init__(
         self,
-        http_client: httpx.AsyncClient | None = None,
         provider_config: "ProviderConfig | None" = None,
         adapter_config: "AdapterConfig | None" = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        """Initialize the adapter.
-
-        Args:
-            http_client: Optional httpx.AsyncClient for making HTTP requests.
-                         If not provided, a default client is used.
-            provider_config: Optional ProviderConfig for this provider.
-                             If not provided, loads from config/providers.yaml.
-            adapter_config: Optional AdapterConfig for this adapter type.
-                           If not provided, loads from config/adapters/xiaomi_mimo_chat_tts.yaml.
-        """
+        super().__init__(provider_config=provider_config, adapter_config=adapter_config)
         self._http_client = http_client
         self._owns_client = http_client is None
-        self._provider_config = provider_config
-        self._adapter_config = adapter_config
 
     def _get_provider_config(self) -> "ProviderConfig | None":
         """Get provider config, loading from registry if not injected."""

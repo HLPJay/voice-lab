@@ -33,7 +33,6 @@ class AdapterPluginConfig(BaseModel):
             raise ValueError("plugin.import_path must not be empty")
         if not self.import_path.startswith("app.providers."):
             raise ValueError("plugin.import_path must start with 'app.providers.'")
-        # Must be in format module.path.ClassName where ClassName starts with uppercase
         parts = self.import_path.rsplit(".", 1)
         if len(parts) != 2 or not parts[1]:
             raise ValueError(
@@ -62,6 +61,44 @@ class EndpointConfig(BaseModel):
     list_voices: str | None = None
 
 
+class NumericRangeConfig(BaseModel):
+    """Numeric range (min/max) for parameter constraints."""
+
+    min: float
+    max: float
+
+    @model_validator(mode="after")
+    def validate_range(self) -> NumericRangeConfig:
+        if self.min > self.max:
+            raise ValueError("NumericRangeConfig.min must be <= max")
+        return self
+
+
+class VoiceIdConfig(BaseModel):
+    """Voice ID format constraints."""
+
+    min_length: int = 8
+    max_length: int = 256
+    pattern: str | None = None
+    hint: str | None = None
+
+    @model_validator(mode="after")
+    def validate_lengths(self) -> VoiceIdConfig:
+        if self.min_length <= 0:
+            raise ValueError("VoiceIdConfig.min_length must be > 0")
+        if self.max_length < self.min_length:
+            raise ValueError("VoiceIdConfig.max_length must be >= min_length")
+        return self
+
+
+class WebSocketConfig(BaseModel):
+    """WebSocket connection configuration."""
+
+    url: str | None = None
+    model: str | None = None
+    timeout_seconds: int = 120
+
+
 class TTSCapabilityConfig(BaseModel):
     """TTS capability defaults for an adapter."""
 
@@ -73,6 +110,9 @@ class TTSCapabilityConfig(BaseModel):
     supports_subtitle: bool = False
     supports_streaming: bool = False
     supports_emotion: bool = False
+    speed: NumericRangeConfig | None = None
+    vol: NumericRangeConfig | None = None
+    pitch: NumericRangeConfig | None = None
 
 
 class BatchCapabilityConfig(BaseModel):
@@ -81,6 +121,11 @@ class BatchCapabilityConfig(BaseModel):
     supported: bool = True
     max_text_chars: int = 50000
     max_segments: int | None = None
+    segment_strategies: list[str] = Field(default_factory=list)
+    max_segment_chars: NumericRangeConfig | None = None
+    silence_between_ms: NumericRangeConfig | None = None
+    supports_merge_audio: bool = True
+    supports_merge_subtitle: bool = True
 
 
 class ScriptCapabilityConfig(BaseModel):
@@ -89,6 +134,11 @@ class ScriptCapabilityConfig(BaseModel):
     supported: bool = True
     max_text_chars: int = 50000
     max_segments: int | None = None
+    segment_strategies: list[str] = Field(default_factory=list)
+    max_segment_chars: NumericRangeConfig | None = None
+    silence_between_ms: NumericRangeConfig | None = None
+    supports_merge_audio: bool = True
+    supports_merge_subtitle: bool = True
 
 
 class VoiceCloneCapabilityConfig(BaseModel):
@@ -99,6 +149,7 @@ class VoiceCloneCapabilityConfig(BaseModel):
     supports_noise_reduction: bool = False
     supports_volume_normalization: bool = False
     max_file_size_mb: int | None = None
+    voice_id: VoiceIdConfig | None = None
 
 
 class VoiceDesignCapabilityConfig(BaseModel):
@@ -107,6 +158,7 @@ class VoiceDesignCapabilityConfig(BaseModel):
     supported: bool = False
     prompt_max: int | None = None
     preview_text_max: int | None = None
+    voice_id: VoiceIdConfig | None = None
 
 
 class StaticVoiceConfig(BaseModel):
@@ -160,6 +212,9 @@ class AdapterConfig(BaseModel):
     voice_clone: VoiceCloneCapabilityConfig | None = None
     voice_design: VoiceDesignCapabilityConfig | None = None
     provider_voices: ProviderVoicesCapabilityConfig | None = None
+
+    # WebSocket configuration
+    websocket: WebSocketConfig | None = None
 
     # Plugin for dynamic class loading
     plugin: AdapterPluginConfig | None = Field(default=None)
