@@ -2,12 +2,13 @@
 
 ## 当前阶段
 
-**P16-WORKSPACE-RESTORE-A0-CHECK：workspace 最近样本完整恢复方案复核**
+**P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复**
 
 ## 已完成（续）
 
 - P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核 ✅
 - P16-WORKSPACE-RESTORE-A0：workspace 最近样本完整恢复方案审查 ✅
+- P16-WORKSPACE-RESTORE-A0-CHECK：workspace 最近样本完整恢复方案复核 ✅
 
 ## 已完成（续）
 
@@ -136,8 +137,9 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-WORKSPACE-RESTORE-A0-CHECK | verify workspace sample full restore design | P16-WORKSPACE-RESTORE-A0 完成 |
 | P16-WORKSPACE-RESTORE-B1 | implement workspace context save/detail/restore | P16-WORKSPACE-RESTORE-A0-CHECK 完成 |
+| P16-WORKSPACE-RESTORE-B1-CHECK | verify workspace context save/detail/restore | P16-WORKSPACE-RESTORE-B1 完成 |
+| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
 | P16-PROVIDER-BOUNDARY-A0 | audit provider/mock/capability boundary | Backlog，Provider 问题专项 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |

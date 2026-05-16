@@ -84,7 +84,8 @@
 * P16-CANCEL-FIX1：修复取消确认语义和 loading 状态已完成 ✅
 * P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核已完成 ✅
 * P16-WORKSPACE-RESTORE-A0：Workspace 最近样本完整恢复方案审查已完成 ✅
-* 当前下一阶段：P16-WORKSPACE-RESTORE-A0-CHECK
+* P16-WORKSPACE-RESTORE-A0-CHECK：Workspace 最近样本完整恢复方案复核已完成 ✅
+* 当前下一阶段：P16-WORKSPACE-RESTORE-B1
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9026,4 +9027,73 @@ P16-PROVIDER-OBS-001：Provider / Mock / Capability / 新大模型适配属于 P
 ### 阶段状态
 
 P16-WORKSPACE-RESTORE-A0 完成。当前阶段推进到 P16-WORKSPACE-RESTORE-A0-CHECK。
+
+## P16-WORKSPACE-RESTORE-A0-CHECK：Workspace 最近样本完整恢复方案复核
+
+### 复核结论
+
+**通过**。A0 对所有代码事实判断准确。
+
+### SampleSidebar 事实复核
+
+- fillTextInput 只写 textInput.value，不恢复任何参数 ✅
+- sample-btn-fill 只有 data-text，无 provider/profile_id/genMode 等 ✅
+- bindActionEvents 只读 data-text 调 fillTextInput ✅
+
+### SampleStore 字段复核
+
+- normalizeSample 字段与 A0 描述完全一致 ✅
+- 缺失字段（full_text/genMode/speed/vol/pitch/emotion 等）A0 记录准确 ✅
+- text_preview 上限 100 字，A0 描述准确 ✅
+
+### Workspace 写入链路复核
+
+- buildWorkspaceSampleContext 无 full_text/完整参数字段 ✅
+- safePushWorkspaceSample 直接写入 SampleStore，无补充字段 ✅
+- 现有 _workspaceSampleContext 不适合作为完整恢复来源 ✅
+
+### ContextStore 扩展可行性复核
+
+- MAX_CONTEXTS=50 ✅
+- normalizeContext 对 longtext/script 有分支，对未知 type 返回 minimal fields ✅
+- 可新增 normalizeWorkspaceContext，方案 B 可行 ✅
+
+### 方案对比复核
+
+- 方案 A 缺点（A0 记录）：SampleStore 变重/100字限制/机制不一致 ✅
+- 方案 B 优点（A0 记录）：机制一致/SampleStore 轻量/full_text 可完整保存 ✅
+- 推荐方案 B 合理 ✅
+
+### workspace context 字段复核
+
+- context_id/type/source/created_at/full_text/provider/profile_id/gen_mode/variant_count/audio_format/output_format/need_subtitle/params(speed/vol/pitch/emotion)/job_id/asset_id/download_url 完整 ✅
+- model/voice_id/voice_name/profile_name 为可选追踪字段，不影响恢复 ✅
+
+### 旧样本兼容策略复核
+
+- 旧样本无 context_id → fillTextInput(text_preview)，行为不变 ✅
+- 新样本有 context_id → restoreWorkspaceContext，完整恢复 ✅
+- 不破坏 longtext/script 详情恢复和 batch 样本规则 ✅
+
+### UI 恢复流程复核
+
+17 步恢复流程覆盖所有参数，不自动提交，不调用 MiniMax ✅
+
+### B1 实现边界确认
+
+纳入：context_store.js workspace normalize / index.html 写入 ContextStore / sample_sidebar.js restoreWorkspaceContext / 旧样本降级 / 静态测试
+
+不纳入：后端 API / Provider Mock / Capability / 多版本等待态 / 剧本扩展 / 统计模块
+
+### Provider / Mock 问题后置确认
+
+P16-PROVIDER-OBS-001 记录，本阶段未展开 ✅
+
+### 存在阻塞问题
+
+**否**。
+
+### 阶段状态
+
+P16-WORKSPACE-RESTORE-A0-CHECK 通过。当前阶段推进到 P16-WORKSPACE-RESTORE-B1。
 
