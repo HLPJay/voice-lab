@@ -909,3 +909,321 @@ class TestNoRealExternalAPICalls:
         with patch.object(httpx, "AsyncClient") as mock_client_class:
             await adapter.render_sync(plan)
             mock_client_class.assert_not_called()
+
+
+class TestConfigDrivenBehavior:
+    """Tests for config-driven behavior in Xiaomi MiMo adapter.
+
+    P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1: Verify config hierarchy is used.
+    """
+
+    def setup_method(self):
+        """Reset caches and set fake env."""
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        from app.providers.adapter_type_registry import (
+            clear_adapter_type_registry_for_tests,
+        )
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.env_resolver import clear_env_cache
+
+        clear_adapter_type_registry_for_tests()
+        clear_adapter_config_cache()
+        clear_provider_config_cache()
+        clear_capability_registry_cache()
+        clear_env_cache()
+
+        os.environ["MIMO_API_KEY"] = "fake_key"
+        os.environ["XIAOMI_MIMO_BASE_URL"] = "https://config-driven.xiaomimimo.com"
+
+    def teardown_method(self):
+        """Clean up."""
+        os.environ.pop("MIMO_API_KEY", None)
+        os.environ.pop("XIAOMI_MIMO_BASE_URL", None)
+
+    def test_get_base_url_uses_provider_config_base_url_env(self):
+        """_get_base_url uses ProviderConfig.base_url_env when set."""
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+        base_url = adapter._get_base_url()
+
+        # Should use XIAOMI_MIMO_BASE_URL from env (via base_url_env in providers.yaml)
+        assert base_url == "https://config-driven.xiaomimimo.com"
+
+    def test_get_base_url_falls_back_to_adapter_config(self):
+        """_get_base_url falls back to AdapterConfig.default_base_url."""
+        from unittest.mock import patch
+
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        # Patch _get_provider_config to return None
+        with patch.object(
+            XiaomiMiMoChatTTSAdapter,
+            "_get_provider_config",
+            return_value=None,
+        ):
+            adapter = XiaomiMiMoChatTTSAdapter()
+            base_url = adapter._get_base_url()
+
+        # Should use AdapterConfig.default_base_url
+        assert base_url == "https://api.xiaomimimo.com"
+
+    def test_get_endpoint_uses_provider_config_endpoints(self):
+        """_get_endpoint uses ProviderConfig.endpoints.tts when set."""
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+        endpoint = adapter._get_endpoint()
+
+        # Should use endpoints.tts from providers.yaml
+        assert endpoint == "/v1/chat/completions"
+
+    def test_get_endpoint_falls_back_to_adapter_config(self):
+        """_get_endpoint falls back to AdapterConfig.endpoints.tts."""
+        from unittest.mock import patch
+
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        # Patch _get_provider_config to return None
+        with patch.object(
+            XiaomiMiMoChatTTSAdapter,
+            "_get_provider_config",
+            return_value=None,
+        ):
+            adapter = XiaomiMiMoChatTTSAdapter()
+            endpoint = adapter._get_endpoint()
+
+        # Should use AdapterConfig.endpoints.tts
+        assert endpoint == "/v1/chat/completions"
+
+    def test_get_model_uses_plan_model_first(self):
+        """_get_model uses plan.model when set."""
+        from app.domain.render_plan import RenderPlan, SubtitlePlan
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+        plan = RenderPlan(
+            id="test-plan",
+            text="test",
+            processed_text="test",
+            profile_id="profile-1",
+            provider="xiaomi_mimo",
+            model="custom-model",
+            provider_voice_id="冰糖",
+            voice_params={},
+            audio_params={"format": "wav"},
+            subtitle=SubtitlePlan(enabled=False),
+            output_format="wav",
+            language_boost="auto",
+        )
+
+        model = adapter._get_model(plan)
+        assert model == "custom-model"
+
+    def test_get_model_uses_provider_config_default_model(self):
+        """_get_model falls back to ProviderConfig.default_model."""
+        from app.domain.adapter_config import AdapterConfig
+        from app.domain.provider_config import ProviderConfig
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        # Create adapter with no provider_config (to test fallback)
+        adapter = XiaomiMiMoChatTTSAdapter()
+
+        # Mock the plan with a model set
+        mock_plan = MagicMock()
+        mock_plan.model = "plan-model"  # This takes precedence
+
+        model = adapter._get_model(mock_plan)
+        # Should use plan.model first
+        assert model == "plan-model"
+
+        # Test fallback: no plan model, should use ProviderConfig.default_model
+        mock_plan.model = None
+        model = adapter._get_model(mock_plan)
+        # Should use ProviderConfig.default_model from providers.yaml
+        assert model == "mimo-v2.5-tts"
+
+    def test_get_api_key_uses_provider_config_resolved_api_key(self):
+        """_get_api_key uses ProviderConfig.resolved_api_key."""
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+        api_key = adapter._get_api_key()
+
+        # Should use resolved_api_key from ProviderConfig (MIMO_API_KEY env var)
+        assert api_key == "fake_key"
+
+    def test_get_api_key_raises_when_missing(self):
+        """_get_api_key raises ProviderNotConfigured when API key is missing."""
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+        from app.core.errors import ProviderNotConfigured
+
+        os.environ.pop("MIMO_API_KEY", None)
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+
+        with pytest.raises(ProviderNotConfigured, match="MIMO_API_KEY"):
+            adapter._get_api_key()
+
+        os.environ["MIMO_API_KEY"] = "fake_key"
+
+    def test_get_timeout_uses_adapter_config(self):
+        """_get_timeout uses AdapterConfig.default_timeout_seconds."""
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+        timeout = adapter._get_timeout()
+
+        # Should use AdapterConfig.default_timeout_seconds (120 from yaml)
+        assert timeout == 120
+
+    @pytest.mark.asyncio
+    async def test_list_voices_uses_static_voices_from_config(self):
+        """list_voices returns voices from AdapterConfig.provider_voices.static_voices."""
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+        voices = await adapter.list_voices()
+
+        voice_ids = [v.provider_voice_id for v in voices]
+        # Should have 9 voices from static_voices in xiaomi_mimo_chat_tts.yaml
+        assert len(voices) == 9
+        assert "mimo_default" in voice_ids
+        assert "冰糖" in voice_ids
+        assert "Mia" in voice_ids
+        assert "Dean" in voice_ids
+
+    @pytest.mark.asyncio
+    async def test_list_voices_no_http_calls_with_static_config(self):
+        """list_voices with static_voices config does not make HTTP calls."""
+        from unittest.mock import patch, AsyncMock
+
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        adapter = XiaomiMiMoChatTTSAdapter()
+
+        with patch.object(adapter, "_request") as mock_request:
+            voices = await adapter.list_voices()
+            mock_request.assert_not_called()
+
+        assert len(voices) == 9
+
+    def test_render_sync_uses_config_endpoint(self):
+        """render_sync uses endpoint from config hierarchy."""
+        import base64
+        from app.domain.render_plan import RenderPlan, SubtitlePlan
+        from app.providers.xiaomi_mimo_chat_tts_adapter import (
+            XiaomiMiMoChatTTSAdapter,
+        )
+
+        fake_client = AsyncMock()
+        captured_url = {}
+
+        async def fake_request(method, url, **kwargs):
+            captured_url["url"] = url
+            fake_wav = b"RIFF" + b"\x00" * 100
+            encoded = base64.b64encode(fake_wav).decode()
+            return FakehttpxResponse({
+                "id": "test-trace-id",
+                "choices": [{
+                    "message": {
+                        "audio": {"data": encoded, "format": "wav"},
+                        "content": ""
+                    }
+                }],
+                "usage": {"completion_tokens": 50}
+            })
+
+        fake_client.request = fake_request
+        adapter = XiaomiMiMoChatTTSAdapter(http_client=fake_client)
+
+        plan = RenderPlan(
+            id="test-plan",
+            text="test",
+            processed_text="test",
+            profile_id="profile-1",
+            provider="xiaomi_mimo",
+            model="mimo-v2.5-tts",
+            provider_voice_id="冰糖",
+            voice_params={},
+            audio_params={"format": "wav"},
+            subtitle=SubtitlePlan(enabled=False),
+            output_format="wav",
+            language_boost="auto",
+        )
+
+        import asyncio
+        asyncio.get_event_loop().run_until_complete(adapter.render_sync(plan))
+
+        # URL should include the configured base_url and endpoint
+        assert "config-driven.xiaomimimo.com" in captured_url["url"]
+        assert "/v1/chat/completions" in captured_url["url"]
+
+
+class TestEnvResolverDotEnvFallback:
+    """Tests for .env file fallback in env_resolver.
+
+    Note: These tests are simplified because the .env file operations
+    have encoding issues on Windows. The core resolve_env_value function
+    is tested separately in test_env_resolver.py.
+    """
+
+    def setup_method(self):
+        """Reset caches."""
+        from app.config.env_resolver import clear_env_cache
+        clear_env_cache()
+
+    def teardown_method(self):
+        """Clean up."""
+        from app.config.env_resolver import clear_env_cache
+        clear_env_cache()
+
+    def test_resolve_env_value_prefers_environ_over_dot_env(self):
+        """os.environ values take precedence over .env file values."""
+        from app.config.env_resolver import resolve_env_value, clear_env_cache
+
+        # Set value in os.environ
+        os.environ["TEST_KEY_FROM_OS"] = "os_environ_value"
+
+        # Should return os.environ value (not .env value)
+        value = resolve_env_value("TEST_KEY_FROM_OS")
+        assert value == "os_environ_value"
+
+        # Cleanup
+        os.environ.pop("TEST_KEY_FROM_OS", None)
+
+    def test_resolve_env_value_returns_none_for_missing_key(self):
+        """resolve_env_value returns None for non-existent keys."""
+        from app.config.env_resolver import resolve_env_value, clear_env_cache
+
+        clear_env_cache()
+
+        # Ensure key is not in os.environ
+        os.environ.pop("NON_EXISTENT_KEY_12345", None)
+
+        value = resolve_env_value("NON_EXISTENT_KEY_12345")
+        assert value is None
+

@@ -51,6 +51,7 @@ class AdapterPluginConfig(BaseModel):
 class EndpointConfig(BaseModel):
     """API endpoint paths for an adapter."""
 
+    tts: str | None = None
     t2a: str | None = None
     t2a_async: str | None = None
     query_async: str | None = None
@@ -108,6 +109,19 @@ class VoiceDesignCapabilityConfig(BaseModel):
     preview_text_max: int | None = None
 
 
+class StaticVoiceConfig(BaseModel):
+    """Static voice configuration for preset/system voices."""
+
+    voice_id: str = Field(
+        ...,
+        description="Voice ID used in API calls (e.g., '冰糖')",
+    )
+    name: str = Field(..., description="Display name of the voice")
+    language: str = Field(..., description="Language code (e.g., 'zh', 'en')")
+    gender: str | None = Field(None, description="Gender: 'female', 'male', or 'neutral'")
+    description: str | None = Field(None, description="Optional description of the voice")
+
+
 class ProviderVoicesCapabilityConfig(BaseModel):
     """Provider voices capability defaults for an adapter."""
 
@@ -116,6 +130,7 @@ class ProviderVoicesCapabilityConfig(BaseModel):
     supports_delete_voice: bool = True
     supports_import_remote_voice: bool = True
     preview_text_max: int | None = None
+    static_voices: list[StaticVoiceConfig] = Field(default_factory=list)
 
 
 class AdapterConfig(BaseModel):

@@ -22,7 +22,7 @@ from __future__ import annotations
 import base64
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -36,12 +36,17 @@ from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
 from app.utils.id_generator import new_id
 
+if TYPE_CHECKING:
+    from app.domain.adapter_config import AdapterConfig
+    from app.domain.provider_config import ProviderConfig
+
 _provider_logger = get_logger("provider.xiaomi_mimo_chat_tts")
 
-# Default base URL for Xiaomi MiMo API
-DEFAULT_BASE_URL = "https://api.xiaomimimo.com"
-DEFAULT_MODEL = "mimo-v2.5-tts"
-DEFAULT_TIMEOUT_SECONDS = 120
+# Hardcoded fallback values (lowest priority in config hierarchy)
+_FALLBACK_BASE_URL = "https://api.xiaomimimo.com"
+_FALLBACK_MODEL = "mimo-v2.5-tts"
+_FALLBACK_TIMEOUT_SECONDS = 120
+_FALLBACK_ENDPOINT = "/v1/chat/completions"
 
 
 class XiaomiMiMoChatTTSAdapter(SpeechProvider):
@@ -60,20 +65,46 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
 
     provider_name = "xiaomi_mimo"
 
-    def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient | None = None,
+        provider_config: "ProviderConfig | None" = None,
+        adapter_config: "AdapterConfig | None" = None,
+    ) -> None:
         """Initialize the adapter.
 
         Args:
             http_client: Optional httpx.AsyncClient for making HTTP requests.
                          If not provided, a default client is used.
+            provider_config: Optional ProviderConfig for this provider.
+                             If not provided, loads from config/providers.yaml.
+            adapter_config: Optional AdapterConfig for this adapter type.
+                           If not provided, loads from config/adapters/xiaomi_mimo_chat_tts.yaml.
         """
         self._http_client = http_client
         self._owns_client = http_client is None
+        self._provider_config = provider_config
+        self._adapter_config = adapter_config
+
+    def _get_provider_config(self) -> "ProviderConfig | None":
+        """Get provider config, loading from registry if not injected."""
+        if self._provider_config is not None:
+            return self._provider_config
+        from app.config.provider_config_loader import get_provider_config
+        return get_provider_config(self.provider_name)
+
+    def _get_adapter_config(self) -> "AdapterConfig | None":
+        """Get adapter config, loading from registry if not injected."""
+        if self._adapter_config is not None:
+            return self._adapter_config
+        from app.config.adapter_config_loader import get_adapter_config
+        return get_adapter_config("xiaomi_mimo_chat_tts")
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
         if self._http_client is None:
-            self._http_client = httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS)
+            timeout = self._get_timeout()
+            self._http_client = httpx.AsyncClient(timeout=timeout)
         return self._http_client
 
     async def _close_client(self) -> None:
@@ -83,36 +114,144 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
             self._http_client = None
 
     def _get_api_key(self) -> str:
-        """Get the Xiaomi MiMo API key from environment.
+        """Get the Xiaomi MiMo API key from ProviderConfig.
+
+        Config hierarchy:
+        1. ProviderConfig.resolved_api_key (from api_key_env, via .env or os.environ)
 
         Raises:
-            ProviderNotConfigured: If the API key is not set.
+            ProviderNotConfigured: If the API key is not set or "replace_me".
         """
-        api_key = os.environ.get("MIMO_API_KEY")
+        provider_config = self._get_provider_config()
+        if provider_config is None:
+            raise ProviderNotConfigured(
+                "Xiaomi MiMo provider config not found",
+                "Ensure xiaomi_mimo is defined in config/providers.yaml",
+            )
+
+        api_key = provider_config.resolved_api_key
         if not api_key or api_key == "replace_me":
+            env_name = provider_config.api_key_env or "MIMO_API_KEY"
             raise ProviderNotConfigured(
                 "Xiaomi MiMo API key is missing",
-                "Set MIMO_API_KEY environment variable",
+                f"Set {env_name} environment variable",
             )
         return api_key
 
     def _get_base_url(self) -> str:
-        """Get the Xiaomi MiMo base URL from environment or default."""
-        return os.environ.get("XIAOMI_MIMO_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+        """Get the Xiaomi MiMo base URL from config hierarchy.
+
+        Config hierarchy:
+        1. ProviderConfig.resolved_base_url (from base_url_env or base_url)
+        2. AdapterConfig.default_base_url
+        3. Hardcoded fallback
+        """
+        provider_config = self._get_provider_config()
+        adapter_config = self._get_adapter_config()
+
+        # Try ProviderConfig first
+        if provider_config is not None:
+            base_url = provider_config.resolved_base_url
+            if base_url:
+                return base_url.rstrip("/")
+
+        # Try AdapterConfig
+        if adapter_config is not None and adapter_config.default_base_url:
+            return adapter_config.default_base_url.rstrip("/")
+
+        # Fallback
+        return _FALLBACK_BASE_URL.rstrip("/")
+
+    def _get_endpoint(self) -> str:
+        """Get the TTS endpoint from config hierarchy.
+
+        Config hierarchy:
+        1. ProviderConfig.endpoints.tts
+        2. AdapterConfig.endpoints.tts
+        3. Hardcoded fallback
+        """
+        provider_config = self._get_provider_config()
+        adapter_config = self._get_adapter_config()
+
+        # Try ProviderConfig first
+        if provider_config is not None and provider_config.endpoints:
+            endpoint = provider_config.endpoints.tts
+            if endpoint:
+                return endpoint
+
+        # Try AdapterConfig
+        if adapter_config is not None and adapter_config.endpoints:
+            endpoint = adapter_config.endpoints.tts
+            if endpoint:
+                return endpoint
+
+        # Fallback
+        return _FALLBACK_ENDPOINT
+
+    def _get_model(self, plan: RenderPlan) -> str:
+        """Get the model from config hierarchy.
+
+        Config hierarchy:
+        1. plan.model
+        2. ProviderConfig.default_model
+        3. AdapterConfig.default_model
+        4. Hardcoded fallback
+        """
+        adapter_config = self._get_adapter_config()
+
+        # plan.model takes precedence
+        if plan.model:
+            return plan.model
+
+        # Try ProviderConfig
+        provider_config = self._get_provider_config()
+        if provider_config is not None and provider_config.default_model:
+            return provider_config.default_model
+
+        # Try AdapterConfig
+        if adapter_config is not None and adapter_config.default_model:
+            return adapter_config.default_model
+
+        # Fallback
+        return _FALLBACK_MODEL
+
+    def _get_timeout(self) -> int:
+        """Get the timeout from config hierarchy.
+
+        Config hierarchy:
+        1. ProviderConfig.timeout_seconds (if added in future)
+        2. AdapterConfig.default_timeout_seconds
+        3. Hardcoded fallback
+        """
+        adapter_config = self._get_adapter_config()
+
+        if adapter_config is not None and adapter_config.default_timeout_seconds:
+            return adapter_config.default_timeout_seconds
+
+        return _FALLBACK_TIMEOUT_SECONDS
 
     async def _request(
         self,
         method: str,
-        path: str,
+        path: str | None = None,
         *,
         timeout: int | None = None,
         **kwargs,
     ) -> httpx.Response:
-        """Make an HTTP request to Xiaomi MiMo API."""
+        """Make an HTTP request to Xiaomi MiMo API.
+
+        Args:
+            method: HTTP method.
+            path: API path. If None, uses _get_endpoint().
+            timeout: Request timeout override. If None, uses _get_timeout().
+            **kwargs: Additional arguments passed to httpx client.
+        """
         base_url = self._get_base_url()
         api_key = self._get_api_key()
+        if path is None:
+            path = self._get_endpoint()
         url = f"{base_url}{path}"
-        request_timeout = timeout or DEFAULT_TIMEOUT_SECONDS
+        request_timeout = timeout if timeout is not None else self._get_timeout()
 
         _provider_logger.debug(
             "provider_request",
@@ -191,9 +330,15 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
                 }
             }]
         }
+
+        Config hierarchy for model:
+        1. plan.model
+        2. ProviderConfig.default_model
+        3. AdapterConfig.default_model
+        4. Hardcoded fallback
         """
-        # Determine model
-        model = plan.model or DEFAULT_MODEL
+        # Determine model using config hierarchy
+        model = self._get_model(plan)
 
         # Determine voice
         voice = plan.provider_voice_id or "mimo_default"
@@ -217,7 +362,8 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
         }
 
         try:
-            response = await self._request("POST", "/v1/chat/completions", json=payload)
+            # Use _get_endpoint() by default (no path argument)
+            response = await self._request("POST", json=payload)
             response.raise_for_status()
             body = response.json()
         except httpx.HTTPStatusError as exc:
@@ -306,88 +452,59 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
 
         Reference: https://platform.xiaomimimo.com/docs/zh-CN/usage-guide/speech-synthesis-v2.5
 
+        Voice source (config hierarchy):
+        1. AdapterConfig.provider_voices.static_voices (if configured)
+        2. Hardcoded fallback preset list
+
         These are static preset voices, not fetched from API.
         """
-        preset_voices = [
-            {
-                "id": "mimo_default",
-                "name": "MiMo-默认",
-                "language": "zh",
-                "gender": "neutral",
-                "description": "默认音色",
-            },
-            {
-                "id": "冰糖",
-                "name": "冰糖",
-                "language": "zh",
-                "gender": "female",
-                "description": "中文女性音色",
-            },
-            {
-                "id": "茉莉",
-                "name": "茉莉",
-                "language": "zh",
-                "gender": "female",
-                "description": "中文女性音色",
-            },
-            {
-                "id": "苏打",
-                "name": "苏打",
-                "language": "zh",
-                "gender": "male",
-                "description": "中文男性音色",
-            },
-            {
-                "id": "白桦",
-                "name": "白桦",
-                "language": "zh",
-                "gender": "male",
-                "description": "中文男性音色",
-            },
-            {
-                "id": "Mia",
-                "name": "Mia",
-                "language": "en",
-                "gender": "female",
-                "description": "English female voice",
-            },
-            {
-                "id": "Chloe",
-                "name": "Chloe",
-                "language": "en",
-                "gender": "female",
-                "description": "English female voice",
-            },
-            {
-                "id": "Milo",
-                "name": "Milo",
-                "language": "en",
-                "gender": "male",
-                "description": "English male voice",
-            },
-            {
-                "id": "Dean",
-                "name": "Dean",
-                "language": "en",
-                "gender": "male",
-                "description": "English male voice",
-            },
+        # Default fallback preset voices (lowest priority)
+        default_preset_voices = [
+            {"voice_id": "mimo_default", "name": "MiMo-默认", "language": "zh", "gender": "neutral", "description": "默认音色"},
+            {"voice_id": "冰糖", "name": "冰糖", "language": "zh", "gender": "female", "description": "中文女性音色"},
+            {"voice_id": "茉莉", "name": "茉莉", "language": "zh", "gender": "female", "description": "中文女性音色"},
+            {"voice_id": "苏打", "name": "苏打", "language": "zh", "gender": "male", "description": "中文男性音色"},
+            {"voice_id": "白桦", "name": "白桦", "language": "zh", "gender": "male", "description": "中文男性音色"},
+            {"voice_id": "Mia", "name": "Mia", "language": "en", "gender": "female", "description": "English female voice"},
+            {"voice_id": "Chloe", "name": "Chloe", "language": "en", "gender": "female", "description": "English female voice"},
+            {"voice_id": "Milo", "name": "Milo", "language": "en", "gender": "male", "description": "English male voice"},
+            {"voice_id": "Dean", "name": "Dean", "language": "en", "gender": "male", "description": "English male voice"},
         ]
+
+        # Try to get static voices from config first
+        adapter_config = self._get_adapter_config()
+        if adapter_config is not None and adapter_config.provider_voices is not None:
+            static_voices = adapter_config.provider_voices.static_voices
+            if static_voices:
+                preset_voices = [
+                    {
+                        "voice_id": v.voice_id,
+                        "name": v.name,
+                        "language": v.language,
+                        "gender": v.gender,
+                        "description": v.description,
+                    }
+                    for v in static_voices
+                ]
+            else:
+                preset_voices = default_preset_voices
+        else:
+            preset_voices = default_preset_voices
 
         voices = []
         for v in preset_voices:
             voices.append(
                 ProviderVoiceRead(
-                    id=f"xiaomi_mimo_{v['id']}",
+                    id=f"xiaomi_mimo_{v['voice_id']}",
                     provider=self.provider_name,
-                    provider_voice_id=v["id"],
+                    provider_voice_id=v["voice_id"],
                     voice_type="system",
                     name=v["name"],
                     description=v.get("description"),
                     language=v.get("language"),
                     gender=v.get("gender"),
                     status=ProviderVoiceStatus.available,
-                    metadata={"voice_id": v["id"]},
+                    metadata={"voice_id": v["voice_id"]},
                 )
             )
 

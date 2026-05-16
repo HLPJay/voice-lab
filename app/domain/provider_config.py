@@ -15,6 +15,7 @@ SENSITIVE_METADATA_KEYS = frozenset({
 
 
 class EndpointConfig(BaseModel):
+    tts: str | None = None
     t2a: str | None = None
     t2a_async: str | None = None
     query_async: str | None = None
@@ -120,16 +121,25 @@ class ProviderConfig(BaseModel):
 
     @property
     def resolved_api_key(self) -> str | None:
-        """Resolve API key from environment variable."""
+        """Resolve API key from environment variable.
+
+        Checks os.environ first, then falls back to .env file.
+        """
         if not self.api_key_env:
             return None
-        return os.environ.get(self.api_key_env)
+        from app.config.env_resolver import resolve_env_value
+        return resolve_env_value(self.api_key_env)
 
     @property
     def resolved_base_url(self) -> str | None:
-        """Resolve base URL from env var or config."""
+        """Resolve base URL from env var or config.
+
+        If base_url_env is set, resolves from environment (os.environ or .env).
+        Otherwise returns base_url from config.
+        """
         if self.base_url_env:
-            return os.environ.get(self.base_url_env)
+            from app.config.env_resolver import resolve_env_value
+            return resolve_env_value(self.base_url_env)
         return self.base_url
 
     @model_validator(mode="after")

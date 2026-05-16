@@ -121,6 +121,7 @@
 * P16-ADAPTER-PLUGIN-DISCOVERY-B1：Adapter 插件发现与配置化注册已完成 ✅
 * P16-ADAPTER-PLUGIN-DISCOVERY-B1-CHECK-FIX1：修复 Adapter 插件发现主路径与错误处理已完成 ✅
 * P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径已完成 ✅
+* P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题已完成 ✅
 * 当前下一阶段：P16-XIAOMI-MIMO-TTS-B1-CHECK
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成

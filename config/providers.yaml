@@ -118,9 +118,10 @@ providers:
     adapter_type: "xiaomi_mimo_chat_tts"
     real_cost: true
     api_key_env: "MIMO_API_KEY"
-    base_url_env: null
+    base_url_env: "XIAOMI_MIMO_BASE_URL"
     base_url: null
-    endpoints: {}
+    endpoints:
+      tts: "/v1/chat/completions"
     default_model: "mimo-v2.5-tts"
     tts:
       enabled: true
