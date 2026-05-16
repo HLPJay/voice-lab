@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界**
+**P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口**
 
 ## 已完成（续）
 
+- P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计 ✅
@@ -169,7 +170,7 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE | close adapter plugin config B1 | 本阶段完成后 |
+| P16-XIAOMI-MIMO-TTS-A0 | design xiaomi mimo TTS adapter | B1-CLOSE 完成后（推荐） |
 | P16-DYNAMIC-PROVIDER-CONFIG-B2 | implement provider capability override enhancements | B1-CLOSE 后评估 |
 | P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | B1-CLOSE 后评估 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
