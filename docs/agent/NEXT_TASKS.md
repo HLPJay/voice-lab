@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo TTS adapter 最小可行路径**
+**P16-ADAPTER-PLUGIN-DISCOVERY-B1：实现 Adapter Plugin 配置化发现与注册机制**
 
 ## 已完成（续）
 
+- P16-ADAPTER-PLUGIN-DISCOVERY-B1：Adapter 插件发现与配置化注册 ✅
 - P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口 ✅
 - P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界 ✅
@@ -171,8 +172,10 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-XIAOMI-MIMO-TTS-B1 | implement Xiaomi MiMo TTS adapter minimum viable path | Xiaomi MiMo A0 完成（当前） |
+| P16-XIAOMI-MIMO-TTS-B1 | implement Xiaomi MiMo TTS adapter minimum viable path via plugin discovery | Adapter Plugin Discovery 完成 |
 | P16-XIAOMI-MIMO-TTS-B1-CHECK | verify Xiaomi MiMo TTS adapter implementation | B1 完成 |
+| P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | B1-CHECK 后评估 |
+| P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | B1-CHECK 后评估 |
 | P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |
 | P16-DYNAMIC-PROVIDER-CONFIG-B2 | provider capability override enhancements | 可后置 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |

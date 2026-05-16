@@ -1,5 +1,8 @@
 adapter_type: "mock"
 
+plugin:
+  import_path: "app.providers.mock_speech_adapter.MockSpeechAdapter"
+
 default_model: "mock-tts"
 
 default_timeout_seconds: 30

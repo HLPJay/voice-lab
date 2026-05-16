@@ -13,6 +13,41 @@ SENSITIVE_METADATA_KEYS = frozenset({
 })
 
 
+class AdapterPluginConfig(BaseModel):
+    """Plugin configuration for dynamically loading an adapter class.
+
+    Loaded from config/adapters/{adapter_type}.yaml plugin.import_path.
+    """
+
+    import_path: str = Field(
+        ...,
+        description="Python import path to the adapter class (e.g. 'app.providers.mock_speech_adapter.MockSpeechAdapter')",
+    )
+
+    model_config = {"extra": "forbid"}
+
+    @model_validator(mode="after")
+    def validate_import_path(self) -> AdapterPluginConfig:
+        """Validate import_path is non-empty and starts with app.providers."""
+        if not self.import_path or not self.import_path.strip():
+            raise ValueError("plugin.import_path must not be empty")
+        if not self.import_path.startswith("app.providers."):
+            raise ValueError("plugin.import_path must start with 'app.providers.'")
+        # Must be in format module.path.ClassName where ClassName starts with uppercase
+        parts = self.import_path.rsplit(".", 1)
+        if len(parts) != 2 or not parts[1]:
+            raise ValueError(
+                "plugin.import_path must be in the format 'module.path.ClassName'"
+            )
+        class_name = parts[1]
+        if not class_name[0].isupper():
+            raise ValueError(
+                "plugin.import_path class name must start with an uppercase letter "
+                f"(e.g. 'MockSpeechAdapter'), got: {class_name}"
+            )
+        return self
+
+
 class EndpointConfig(BaseModel):
     """API endpoint paths for an adapter."""
 
@@ -110,6 +145,9 @@ class AdapterConfig(BaseModel):
     voice_clone: VoiceCloneCapabilityConfig | None = None
     voice_design: VoiceDesignCapabilityConfig | None = None
     provider_voices: ProviderVoicesCapabilityConfig | None = None
+
+    # Plugin for dynamic class loading
+    plugin: AdapterPluginConfig | None = Field(default=None)
 
     # Arbitrary non-secret metadata
     metadata: dict[str, Any] = Field(default_factory=dict)

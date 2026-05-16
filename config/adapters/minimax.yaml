@@ -1,5 +1,8 @@
 adapter_type: "minimax"
 
+plugin:
+  import_path: "app.providers.minimax_speech_adapter.MiniMaxSpeechAdapter"
+
 default_base_url: "https://api.minimaxi.com"
 
 default_model: "speech-2.8-hd"
