@@ -2,10 +2,11 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 配置化边界**
+**P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案**
 
 ## 已完成（续）
 
+- P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现 ✅
 - P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题 ✅
 - P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径 ✅
 - P16-ADAPTER-PLUGIN-DISCOVERY-B1-CHECK-FIX1：修复 Adapter 插件发现主路径与错误处理 ✅
@@ -175,10 +176,10 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-XIAOMI-MIMO-TTS-B1 | implement Xiaomi MiMo TTS adapter minimum viable path via plugin discovery | Adapter Plugin Discovery 完成 |
-| P16-XIAOMI-MIMO-TTS-B1-CHECK | verify Xiaomi MiMo TTS adapter implementation | B1 完成 |
-| P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | B1-CHECK 后评估 |
-| P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | B1-CHECK 后评估 |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0 | design real Xiaomi MiMo API probe plan | B1-CHECK 完成 |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1 | run manually authorized real API probe | 用户明确授权 + MIMO_API_KEY |
+| P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | real probe 后评估 |
+| P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | real probe 后评估 |
 | P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |
 | P16-DYNAMIC-PROVIDER-CONFIG-B2 | provider capability override enhancements | 可后置 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |

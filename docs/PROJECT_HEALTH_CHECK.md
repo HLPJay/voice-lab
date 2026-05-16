@@ -122,7 +122,12 @@
 * P16-ADAPTER-PLUGIN-DISCOVERY-B1-CHECK-FIX1：修复 Adapter 插件发现主路径与错误处理已完成 ✅
 * P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径已完成 ✅
 * P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题已完成 ✅
-* 当前下一阶段：P16-XIAOMI-MIMO-TTS-B1-CHECK
+* P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现已完成 ✅
+* 当前下一阶段：P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0
+* 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
+* xiaomi_mimo 默认 disabled（enabled=false），Provider 下拉框默认不显示 Xiaomi 是预期行为
+* env_resolver 支持 VOICE_LAB_ENV_FILE 临时 env 文件
+* 本阶段未调用真实外部 API
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
