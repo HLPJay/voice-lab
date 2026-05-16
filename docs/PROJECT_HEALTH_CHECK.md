@@ -126,6 +126,7 @@
 * P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案已完成 ✅
 * P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1：执行小米 MiMo 真实 API 最小探测已完成 ✅
 * P16-XIAOMI-MIMO-TTS-REAL-PROBE-B2：真实 API 探测执行（Blocked - 等待 MIMO_API_KEY）已完成 ✅
+* P16-XIAOMI-MIMO-TTS-ADAPTER-TEST-TRIAGE-C0：adapter 测试失败排查已完成 ✅
 * 当前下一阶段：P16-XIAOMI-MIMO-TTS-REAL-PROBE-B2（等待用户提供 MIMO_API_KEY）
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * xiaomi_mimo 默认 disabled（enabled=false），Provider 下拉框默认不显示 Xiaomi 是预期行为

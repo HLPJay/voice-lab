@@ -1077,10 +1077,11 @@ class TestConfigDrivenBehavior:
 
         os.environ.pop("MIMO_API_KEY", None)
 
-        adapter = XiaomiMiMoChatTTSAdapter()
+        with patch("app.config.env_resolver.resolve_env_value", return_value=None):
+            adapter = XiaomiMiMoChatTTSAdapter()
 
-        with pytest.raises(ProviderNotConfigured, match="MIMO_API_KEY"):
-            adapter._get_api_key()
+            with pytest.raises(ProviderNotConfigured, match="MIMO_API_KEY"):
+                adapter._get_api_key()
 
         os.environ["MIMO_API_KEY"] = "fake_key"
 
