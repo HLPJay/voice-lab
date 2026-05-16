@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口**
+**P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查**
 
 ## 已完成（续）
 
@@ -170,9 +170,10 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-XIAOMI-MIMO-TTS-A0 | design xiaomi mimo TTS adapter | B1-CLOSE 完成后（推荐） |
-| P16-DYNAMIC-PROVIDER-CONFIG-B2 | implement provider capability override enhancements | B1-CLOSE 后评估 |
-| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | B1-CLOSE 后评估 |
+| P16-XIAOMI-MIMO-TTS-A0 | analyze Xiaomi MiMo speech-synthesis-v2.5 adapter requirements | B1-CLOSE 完成 |
+| P16-XIAOMI-MIMO-TTS-B1 | implement Xiaomi MiMo TTS adapter minimum viable path | Xiaomi MiMo A0 完成 |
+| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |
+| P16-DYNAMIC-PROVIDER-CONFIG-B2 | provider capability override enhancements | 可后置 |
 | P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | 评估候选：多 Provider 能力适配 |
 | P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
