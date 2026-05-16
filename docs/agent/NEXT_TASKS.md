@@ -2,12 +2,12 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查**
 
 ## 已完成（续）
 
+- NEXT-PRIORITY-REVIEW：下一阶段优先级确认 ✅
 - P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口 ✅
-- P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1 ✅
 - P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题 ✅
 - P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核 ⚠️ (发现阻塞问题，已修复)
 - P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复 ✅
@@ -142,9 +142,10 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
-| P16-PROVIDER-BOUNDARY-A0 | audit provider/mock/capability boundary | Backlog，Provider 问题专项 |
+| P16-PROVIDER-BOUNDARY-A0-CHECK | verify provider boundary audit | P16-PROVIDER-BOUNDARY-A0 完成 |
+| P16-PROVIDER-MOCK-FIX1 | fix mock fallback / provider binding / cost boundary | P16-PROVIDER-BOUNDARY-A0-CHECK 完成 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
+| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
 | P15-STATS-B1 | implement lightweight local statistics panel | Backlog，产品需要时再启动 |
 | P15-SERVER-STATS-A0 | design server-side full statistics | Backlog，需要全量统计时再启动 |

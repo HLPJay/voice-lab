@@ -90,7 +90,8 @@
 * P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题已完成 ✅
 * P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1 已完成 ✅
 * P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口已完成 ✅
-* 当前下一阶段：NEXT-PRIORITY-REVIEW
+* NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
+* 当前下一阶段：P16-PROVIDER-BOUNDARY-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
