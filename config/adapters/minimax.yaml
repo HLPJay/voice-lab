@@ -17,6 +17,7 @@ endpoints:
   list_voices: "/v1/list_voices"
 
 tts:
+  supported: true
   models:
     - "speech-2.8-hd"
     - "speech-02.5-turbo"
@@ -31,24 +32,29 @@ tts:
   supports_emotion: true
 
 batch:
+  supported: true
   max_text_chars: 50000
   max_segments: 200
 
 script:
+  supported: true
   max_text_chars: 50000
   max_segments: 200
 
 voice_clone:
+  supported: true
   preview_text_max: 1000
   supports_noise_reduction: true
   supports_volume_normalization: true
   max_file_size_mb: 20
 
 voice_design:
+  supported: true
   prompt_max: 2000
   preview_text_max: 500
 
 provider_voices:
+  supported: true
   supports_list_voices: true
   supports_delete_voice: true
   supports_import_remote_voice: true

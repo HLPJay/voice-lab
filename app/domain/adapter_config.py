@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+SENSITIVE_METADATA_KEYS = frozenset({
+    "api_key", "apikey", "secret", "token", "password",
+    "minimax_api_key", "openai_api_key",
+})
 
 
 class EndpointConfig(BaseModel):
@@ -23,6 +29,7 @@ class EndpointConfig(BaseModel):
 class TTSCapabilityConfig(BaseModel):
     """TTS capability defaults for an adapter."""
 
+    supported: bool = True
     models: list[str] = Field(default_factory=list)
     default_model: str | None = None
     max_text_chars: int = 10000
@@ -35,6 +42,7 @@ class TTSCapabilityConfig(BaseModel):
 class BatchCapabilityConfig(BaseModel):
     """Batch capability defaults for an adapter."""
 
+    supported: bool = True
     max_text_chars: int = 50000
     max_segments: int | None = None
 
@@ -42,6 +50,7 @@ class BatchCapabilityConfig(BaseModel):
 class ScriptCapabilityConfig(BaseModel):
     """Script capability defaults for an adapter."""
 
+    supported: bool = True
     max_text_chars: int = 50000
     max_segments: int | None = None
 
@@ -49,6 +58,7 @@ class ScriptCapabilityConfig(BaseModel):
 class VoiceCloneCapabilityConfig(BaseModel):
     """Voice clone capability defaults for an adapter."""
 
+    supported: bool = False
     preview_text_max: int | None = None
     supports_noise_reduction: bool = False
     supports_volume_normalization: bool = False
@@ -58,6 +68,7 @@ class VoiceCloneCapabilityConfig(BaseModel):
 class VoiceDesignCapabilityConfig(BaseModel):
     """Voice design capability defaults for an adapter."""
 
+    supported: bool = False
     prompt_max: int | None = None
     preview_text_max: int | None = None
 
@@ -65,6 +76,7 @@ class VoiceDesignCapabilityConfig(BaseModel):
 class ProviderVoicesCapabilityConfig(BaseModel):
     """Provider voices capability defaults for an adapter."""
 
+    supported: bool = True
     supports_list_voices: bool = True
     supports_delete_voice: bool = True
     supports_import_remote_voice: bool = True
@@ -101,5 +113,20 @@ class AdapterConfig(BaseModel):
 
     # Arbitrary non-secret metadata
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_no_secret_metadata(self) -> AdapterConfig:
+        """Ensure metadata does not contain secret values."""
+        for key, value in self.metadata.items():
+            lower_key = str(key).lower()
+            if lower_key in SENSITIVE_METADATA_KEYS:
+                raise ValueError(
+                    f"AdapterConfig.metadata must not contain sensitive key: {key}"
+                )
+            if isinstance(value, str) and ("sk-" in value or "token" in lower_key):
+                raise ValueError(
+                    f"AdapterConfig.metadata value must not contain secret patterns: {key}"
+                )
+        return self
 
     model_config = {"extra": "forbid"}

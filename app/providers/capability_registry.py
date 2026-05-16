@@ -53,6 +53,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
         default_model = base_capability.default_model
 
     # Build TTS capability with merge rules
+    # Priority: ProviderConfig.enabled (highest) > AdapterConfig > builder fallback
     tts_cap = None
     if base_capability and base_capability.tts:
         tts_builder = base_capability.tts
@@ -60,36 +61,32 @@ def _build_capability_from_config(config) -> ProviderCapability:
         from app.domain.capabilities import TTSCapability
         tts_builder = TTSCapability(supported=False)
 
-    if config.tts and config.tts.enabled:
+    # Check if provider explicitly disables TTS
+    provider_tts_disabled = config.tts and not config.tts.enabled
+
+    if provider_tts_disabled:
+        # Provider-level TTS disabled - must respect, do not re-enable via AdapterConfig
+        from app.domain.capabilities import TTSCapability
+        tts_cap = TTSCapability(supported=False)
+    elif config.tts and config.tts.enabled:
         # Provider-level TTS enabled - merge with builder/AdapterConfig
         from app.domain.capabilities import TTSCapability
 
         tts_models = None
+        tts_default_model = None
+        tts_max_chars = tts_builder.max_text_chars
+        tts_audio_formats = list(tts_builder.audio_formats)
+        tts_supports_subtitle = tts_builder.supports_subtitle
+        tts_supports_streaming = tts_builder.supports_streaming
+        tts_supports_emotion = tts_builder.supports_emotion
+
         if adapter_config and adapter_config.tts:
             tts_models = adapter_config.tts.models
-
-        tts_default_model = None
-        if adapter_config and adapter_config.tts:
             tts_default_model = adapter_config.tts.default_model
-
-        tts_max_chars = tts_builder.max_text_chars
-        if adapter_config and adapter_config.tts:
             tts_max_chars = adapter_config.tts.max_text_chars
-
-        tts_audio_formats = list(tts_builder.audio_formats)
-        if adapter_config and adapter_config.tts:
             tts_audio_formats = adapter_config.tts.audio_formats
-
-        tts_supports_subtitle = tts_builder.supports_subtitle
-        if adapter_config and adapter_config.tts:
             tts_supports_subtitle = adapter_config.tts.supports_subtitle
-
-        tts_supports_streaming = tts_builder.supports_streaming
-        if adapter_config and adapter_config.tts:
             tts_supports_streaming = adapter_config.tts.supports_streaming
-
-        tts_supports_emotion = tts_builder.supports_emotion
-        if adapter_config and adapter_config.tts:
             tts_supports_emotion = adapter_config.tts.supports_emotion
 
         tts_cap = TTSCapability(
@@ -105,8 +102,8 @@ def _build_capability_from_config(config) -> ProviderCapability:
             vol=tts_builder.vol,
             pitch=tts_builder.pitch,
         )
-    elif adapter_config and adapter_config.tts and (adapter_config.tts.models or adapter_config.tts.audio_formats):
-        # Adapter has TTS config but provider doesn't override
+    elif adapter_config and adapter_config.tts and adapter_config.tts.supported:
+        # Adapter has TTS config and says supported - use AdapterConfig
         from app.domain.capabilities import TTSCapability
         tts_a = adapter_config.tts
         tts_cap = TTSCapability(
@@ -127,6 +124,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
         tts_cap = tts_builder
 
     # Build Batch capability
+    # Priority: ProviderConfig.enabled (highest) > AdapterConfig > builder fallback
     batch_cap = None
     if base_capability and base_capability.batch:
         batch_builder = base_capability.batch
@@ -134,7 +132,14 @@ def _build_capability_from_config(config) -> ProviderCapability:
         from app.domain.capabilities import BatchCapability
         batch_builder = BatchCapability(supported=False)
 
-    if config.batch and config.batch.enabled:
+    # Check if provider explicitly disables batch
+    provider_batch_disabled = config.batch and not config.batch.enabled
+
+    if provider_batch_disabled:
+        # Provider-level batch disabled - must respect, do not re-enable via AdapterConfig
+        from app.domain.capabilities import BatchCapability
+        batch_cap = BatchCapability(supported=False)
+    elif config.batch and config.batch.enabled:
         from app.domain.capabilities import BatchCapability
 
         batch_max_chars = batch_builder.max_text_chars
@@ -153,7 +158,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
             supports_merge_audio=batch_builder.supports_merge_audio,
             supports_merge_subtitle=batch_builder.supports_merge_subtitle,
         )
-    elif adapter_config and adapter_config.batch:
+    elif adapter_config and adapter_config.batch and adapter_config.batch.supported:
         from app.domain.capabilities import BatchCapability
         b_a = adapter_config.batch
         batch_cap = BatchCapability(
@@ -170,6 +175,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
         batch_cap = batch_builder
 
     # Build Script capability
+    # Priority: ProviderConfig.enabled (highest) > AdapterConfig > builder fallback
     script_cap = None
     if base_capability and base_capability.script:
         script_builder = base_capability.script
@@ -177,7 +183,14 @@ def _build_capability_from_config(config) -> ProviderCapability:
         from app.domain.capabilities import BatchCapability
         script_builder = BatchCapability(supported=False)
 
-    if config.script and config.script.enabled:
+    # Check if provider explicitly disables script
+    provider_script_disabled = config.script and not config.script.enabled
+
+    if provider_script_disabled:
+        # Provider-level script disabled - must respect, do not re-enable via AdapterConfig
+        from app.domain.capabilities import BatchCapability
+        script_cap = BatchCapability(supported=False)
+    elif config.script and config.script.enabled:
         from app.domain.capabilities import BatchCapability
 
         script_max_chars = script_builder.max_text_chars
@@ -196,7 +209,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
             supports_merge_audio=script_builder.supports_merge_audio,
             supports_merge_subtitle=script_builder.supports_merge_subtitle,
         )
-    elif adapter_config and adapter_config.script:
+    elif adapter_config and adapter_config.script and adapter_config.script.supported:
         from app.domain.capabilities import BatchCapability
         s_a = adapter_config.script
         script_cap = BatchCapability(
@@ -212,10 +225,47 @@ def _build_capability_from_config(config) -> ProviderCapability:
     else:
         script_cap = script_builder
 
-    # Use builder's voice_clone/voice_design/provider_voices as-is for now
-    voice_clone_cap = base_capability.voice_clone if base_capability else None
-    voice_design_cap = base_capability.voice_design if base_capability else None
-    provider_voices_cap = base_capability.provider_voices if base_capability else None
+    # Build VoiceClone capability - respect ProviderConfig enabled=false
+    from app.domain.capabilities import VoiceCloneCapability
+    voice_clone_cap = None
+    if base_capability and base_capability.voice_clone:
+        voice_clone_builder = base_capability.voice_clone
+    else:
+        voice_clone_builder = VoiceCloneCapability(supported=False)
+
+    provider_vc_disabled = config.voice_clone and not config.voice_clone.enabled
+    if provider_vc_disabled:
+        voice_clone_cap = VoiceCloneCapability(supported=False)
+    else:
+        voice_clone_cap = voice_clone_builder
+
+    # Build VoiceDesign capability - respect ProviderConfig enabled=false
+    from app.domain.capabilities import VoiceDesignCapability
+    voice_design_cap = None
+    if base_capability and base_capability.voice_design:
+        voice_design_builder = base_capability.voice_design
+    else:
+        voice_design_builder = VoiceDesignCapability(supported=False)
+
+    provider_vd_disabled = config.voice_design and not config.voice_design.enabled
+    if provider_vd_disabled:
+        voice_design_cap = VoiceDesignCapability(supported=False)
+    else:
+        voice_design_cap = voice_design_builder
+
+    # Build ProviderVoices capability - respect ProviderConfig enabled=false
+    from app.domain.capabilities import ProviderVoiceCapability
+    provider_voices_cap = None
+    if base_capability and base_capability.provider_voices:
+        provider_voices_builder = base_capability.provider_voices
+    else:
+        provider_voices_builder = ProviderVoiceCapability(supported=False)
+
+    provider_pv_disabled = config.provider_voices and not config.provider_voices.enabled
+    if provider_pv_disabled:
+        provider_voices_cap = ProviderVoiceCapability(supported=False)
+    else:
+        provider_voices_cap = provider_voices_builder
 
     # Build metadata
     metadata = {

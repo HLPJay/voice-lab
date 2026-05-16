@@ -114,7 +114,9 @@
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核已完成 ✅
 * P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口已完成 ✅
 * P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计已完成 ✅
-* 当前下一阶段：P16-ADAPTER-PLUGIN-CONFIG-B1
+* P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载已完成 ✅
+* P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界已完成 ✅
+* 当前下一阶段：P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -10607,3 +10609,57 @@ if config:
 ### 是否调用真实外部 API
 
 否
+
+---
+
+## P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界
+
+### 阶段背景
+
+P16-ADAPTER-PLUGIN-CONFIG-B1 实现后，复核发现 3 个边界问题需要修复。
+
+### 发现的问题及处理
+
+**问题 1：AdapterConfig.metadata 缺少敏感字段校验**
+
+- 影响：adapter metadata 可能误放 api key/token/secret
+- 处理：新增 `@model_validator` 校验，禁止 api_key/apikey/secret/token/password/minimax_api_key/openai_api_key 等 key，禁止 value 包含 "sk-"
+
+**问题 2：AdapterConfig capability config 缺少 supported 字段**
+
+- 影响：AdapterConfig 无法明确表达"某个 adapter 默认不支持某能力"
+- 处理：为 TTSCapabilityConfig、BatchCapabilityConfig、ScriptCapabilityConfig、VoiceCloneCapabilityConfig、VoiceDesignCapabilityConfig、ProviderVoicesCapabilityConfig 新增 supported 字段；更新 mock.yaml 和 minimax.yaml
+
+**问题 3：capability_registry 可能被 AdapterConfig 重新打开已禁用的能力**
+
+- 影响：ProviderConfig.enabled=false 时，如果 AdapterConfig 有配置，能力可能被重新启用
+- 处理：重构 capability 合成逻辑，ProviderConfig enabled=false 最高优先级，不被 AdapterConfig override
+
+### 修改文件
+
+- `app/domain/adapter_config.py`：新增 sensitive metadata validator；新增 supported 字段
+- `app/providers/capability_registry.py`：重构 TTS/Batch/Script/VoiceClone/VoiceDesign/ProviderVoices 合成逻辑
+- `config/adapters/mock.yaml`：补充 supported 字段
+- `config/adapters/minimax.yaml`：补充 supported 字段
+- `tests/test_adapter_config_loader.py`：新增 3 个测试类
+
+### 测试结果
+
+- test_adapter_config_loader.py: 51 passed
+- test_provider_config_dynamic.py: 40 passed
+- test_capabilities.py: 43 passed
+- test_cost_guard.py: 40 passed
+- 总计: 174 passed
+
+### 明确未做
+
+- 未接 OpenAI
+- 未接小米 MiMo
+- 未调用真实外部 API
+- 未改 RenderPlan / VoiceBinding / ProviderVoice / VoiceProfile schema
+- 未改 resolve_binding
+- 未删 Python capability builder
+
+### 下一阶段
+
+**P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE**

@@ -311,3 +311,273 @@ class TestCapabilityRegistryWithAdapterConfig:
         assert cap.metadata.get("adapter_type") == "mock"
         cap_minimax = get_capability("minimax")
         assert cap_minimax.metadata.get("adapter_type") == "minimax"
+
+
+class TestAdapterConfigMetadataSecurity:
+    """AdapterConfig metadata sensitive field validation."""
+
+    def test_metadata_rejects_api_key(self):
+        """metadata with api_key is rejected."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain sensitive key"):
+            AdapterConfig(adapter_type="test", metadata={"api_key": "secret123"})
+
+    def test_metadata_rejects_token(self):
+        """metadata with token is rejected."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain sensitive key"):
+            AdapterConfig(adapter_type="test", metadata={"token": " bearer xyz"})
+
+    def test_metadata_rejects_secret(self):
+        """metadata with secret is rejected."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain sensitive key"):
+            AdapterConfig(adapter_type="test", metadata={"secret": "topsecret"})
+
+    def test_metadata_rejects_password(self):
+        """metadata with password is rejected."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain sensitive key"):
+            AdapterConfig(adapter_type="test", metadata={"password": "pwd123"})
+
+    def test_metadata_rejects_sk_pattern(self):
+        """metadata value containing sk- is rejected."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain secret patterns"):
+            AdapterConfig(adapter_type="test", metadata={"notes": "sk-abc123"})
+
+    def test_metadata_rejects_token_key(self):
+        """metadata with key containing 'token' is rejected."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain secret patterns"):
+            AdapterConfig(adapter_type="test", metadata={"token_key": "safe_value"})
+
+    def test_metadata_accepts_safe_values(self):
+        """metadata with safe values is accepted."""
+        from app.domain.adapter_config import AdapterConfig
+        cfg = AdapterConfig(
+            adapter_type="test",
+            metadata={"note": "safe note", "mode": "test", "version": "1.0"},
+        )
+        assert cfg.metadata["note"] == "safe note"
+
+    def test_metadata_case_insensitive_key_check(self):
+        """metadata key check is case insensitive."""
+        from app.domain.adapter_config import AdapterConfig
+        with pytest.raises(ValueError, match="must not contain sensitive key"):
+            AdapterConfig(adapter_type="test", metadata={"API_KEY": "secret"})
+
+
+class TestAdapterConfigSupportedField:
+    """AdapterConfig capability supported field tests."""
+
+    def test_mock_adapter_tts_supported_true(self):
+        """mock adapter config has tts.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("mock")
+        assert cfg.tts is not None
+        assert cfg.tts.supported is True
+
+    def test_minimax_adapter_tts_supported_true(self):
+        """minimax adapter config has tts.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("minimax")
+        assert cfg.tts is not None
+        assert cfg.tts.supported is True
+
+    def test_mock_adapter_batch_supported_true(self):
+        """mock adapter config has batch.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("mock")
+        assert cfg.batch is not None
+        assert cfg.batch.supported is True
+
+    def test_mock_adapter_script_supported_true(self):
+        """mock adapter config has script.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("mock")
+        assert cfg.script is not None
+        assert cfg.script.supported is True
+
+    def test_mock_adapter_voice_clone_supported_true(self):
+        """mock adapter config has voice_clone.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("mock")
+        assert cfg.voice_clone is not None
+        assert cfg.voice_clone.supported is True
+
+    def test_mock_adapter_voice_design_supported_true(self):
+        """mock adapter config has voice_design.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("mock")
+        assert cfg.voice_design is not None
+        assert cfg.voice_design.supported is True
+
+    def test_mock_adapter_provider_voices_supported_true(self):
+        """mock adapter config has provider_voices.supported == true."""
+        from app.config.adapter_config_loader import get_adapter_config, clear_adapter_config_cache
+        clear_adapter_config_cache()
+        cfg = get_adapter_config("mock")
+        assert cfg.provider_voices is not None
+        assert cfg.provider_voices.supported is True
+
+
+class TestProviderConfigEnabledOverride:
+    """ProviderConfig enabled=false must override AdapterConfig."""
+
+    def test_provider_tts_disabled_stays_disabled(self):
+        """When provider_config.tts.enabled=false, capability.tts.supported=false."""
+        from app.domain.provider_config import ProviderConfig, TTSConfig
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_adapter_config_cache()
+        clear_capability_registry_cache()
+        clear_provider_config_cache()
+
+        # Create a provider config with tts disabled
+        from app.providers.capability_registry import _build_capability_from_config
+
+        config = ProviderConfig(
+            name="test_disable_tts",
+            display_name="Test Disable TTS",
+            enabled=True,
+            adapter_type="mock",
+            real_cost=False,
+            tts=TTSConfig(enabled=False),
+        )
+
+        cap = _build_capability_from_config(config)
+        assert cap.tts is not None
+        assert cap.tts.supported is False
+
+    def test_provider_batch_disabled_stays_disabled(self):
+        """When provider_config.batch.enabled=false, capability.batch.supported=false."""
+        from app.domain.provider_config import ProviderConfig, BatchConfig
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_adapter_config_cache()
+        clear_capability_registry_cache()
+        clear_provider_config_cache()
+
+        from app.providers.capability_registry import _build_capability_from_config
+
+        config = ProviderConfig(
+            name="test_disable_batch",
+            display_name="Test Disable Batch",
+            enabled=True,
+            adapter_type="mock",
+            real_cost=False,
+            batch=BatchConfig(enabled=False),
+        )
+
+        cap = _build_capability_from_config(config)
+        assert cap.batch is not None
+        assert cap.batch.supported is False
+
+    def test_provider_script_disabled_stays_disabled(self):
+        """When provider_config.script.enabled=false, capability.script.supported=false."""
+        from app.domain.provider_config import ProviderConfig, ScriptConfig
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_adapter_config_cache()
+        clear_capability_registry_cache()
+        clear_provider_config_cache()
+
+        from app.providers.capability_registry import _build_capability_from_config
+
+        config = ProviderConfig(
+            name="test_disable_script",
+            display_name="Test Disable Script",
+            enabled=True,
+            adapter_type="mock",
+            real_cost=False,
+            script=ScriptConfig(enabled=False),
+        )
+
+        cap = _build_capability_from_config(config)
+        assert cap.script is not None
+        assert cap.script.supported is False
+
+    def test_provider_voice_clone_disabled_stays_disabled(self):
+        """When provider_config.voice_clone.enabled=false, capability.voice_clone.supported=false."""
+        from app.domain.provider_config import ProviderConfig, VoiceCloneConfig
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_adapter_config_cache()
+        clear_capability_registry_cache()
+        clear_provider_config_cache()
+
+        from app.providers.capability_registry import _build_capability_from_config
+
+        config = ProviderConfig(
+            name="test_disable_vc",
+            display_name="Test Disable VC",
+            enabled=True,
+            adapter_type="mock",
+            real_cost=False,
+            voice_clone=VoiceCloneConfig(enabled=False),
+        )
+
+        cap = _build_capability_from_config(config)
+        assert cap.voice_clone is not None
+        assert cap.voice_clone.supported is False
+
+    def test_provider_voice_design_disabled_stays_disabled(self):
+        """When provider_config.voice_design.enabled=false, capability.voice_design.supported=false."""
+        from app.domain.provider_config import ProviderConfig, VoiceDesignConfig
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_adapter_config_cache()
+        clear_capability_registry_cache()
+        clear_provider_config_cache()
+
+        from app.providers.capability_registry import _build_capability_from_config
+
+        config = ProviderConfig(
+            name="test_disable_vd",
+            display_name="Test Disable VD",
+            enabled=True,
+            adapter_type="mock",
+            real_cost=False,
+            voice_design=VoiceDesignConfig(enabled=False),
+        )
+
+        cap = _build_capability_from_config(config)
+        assert cap.voice_design is not None
+        assert cap.voice_design.supported is False
+
+    def test_provider_provider_voices_disabled_stays_disabled(self):
+        """When provider_config.provider_voices.enabled=false, capability.provider_voices.supported=false."""
+        from app.domain.provider_config import ProviderConfig, ProviderVoicesConfig
+        from app.config.adapter_config_loader import clear_adapter_config_cache
+        from app.providers.capability_registry import clear_capability_registry_cache
+        from app.config.provider_config_loader import clear_provider_config_cache
+        clear_adapter_config_cache()
+        clear_capability_registry_cache()
+        clear_provider_config_cache()
+
+        from app.providers.capability_registry import _build_capability_from_config
+
+        config = ProviderConfig(
+            name="test_disable_pv",
+            display_name="Test Disable PV",
+            enabled=True,
+            adapter_type="mock",
+            real_cost=False,
+            provider_voices=ProviderVoicesConfig(enabled=False),
+        )
+
+        cap = _build_capability_from_config(config)
+        assert cap.provider_voices is not None
+        assert cap.provider_voices.supported is False
