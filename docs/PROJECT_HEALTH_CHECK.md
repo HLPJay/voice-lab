@@ -90,13 +90,13 @@
 * P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题已完成 ✅
 * P16-WORKSPACE-RESTORE-B1-FIX1-CHECK：验证 workspace restore fix1 已完成 ✅
 * P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口已完成 ✅
-* NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
 * P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查已完成 ✅
 * P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核已完成 ✅ (发现 1 处表述需修正)
 * P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary 已完成 ✅
 * P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes 已完成 ✅
 * P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口已完成 ✅
-* 当前下一阶段：NEXT-PRIORITY-REVIEW
+* NEXT-PRIORITY-REVIEW：下一阶段优先级确认已完成 ✅
+* 当前下一阶段：P16-PROVIDER-MODEL-BINDING-A0
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
@@ -9720,4 +9720,50 @@ P16-PROVIDER-MOCK-FIX1-CHECK 复核通过。当前阶段推进到 P16-PROVIDER-M
 ### 阶段状态
 
 P16-PROVIDER-MOCK-CLOSE 收口完成。当前阶段推进到 NEXT-PRIORITY-REVIEW。
+
+## NEXT-PRIORITY-REVIEW：选择 Provider / Model / VoiceBinding 全链路审查
+
+### 当前状态
+
+Provider mock boundary 阶段已闭环（mock 默认不再 fallback minimax、VoiceVariantService CostGuard 已修复、workspace binding guard 已生效）。
+
+### 为什么不直接进入 Capability UI B1
+
+原推荐 `P16-PROVIDER-CAPABILITY-UI-B1`，但发现更底层问题：
+
+1. `VoiceBinding` 数据层已有 `provider / model / provider_voice_id` 复合关系
+2. 但业务选择层（`resolve_binding`）、展示层、恢复层、横向模块尚未统一 `model`
+3. 直接做 Capability UI 会遗漏 batch/script/audition/clone/design 等模块
+4. 新 Provider 接入需要先统一 `provider → model → voice → binding → render plan` 完整链路
+
+### 当前代码事实
+
+- **VoiceBinding**：包含 `provider / model / provider_voice_id` 三元组
+- **创建绑定**：`find_duplicate_binding()` 按 `profile_id + provider + model + provider_voice_id` 排重
+- **解析绑定**：`resolve_binding(profile_id, provider)` — 无 model 参数，按 priority 取第一条
+- **执行使用**：`VoiceRenderService.render_voice()` 使用 `binding.model + binding.provider_voice_id + binding.params_json`
+
+### 核心缺口
+
+解析层（resolve_binding）无 model 参数；workspace/UI 层无 model 下拉；SampleStore/ContextStore 不保存 binding_id。
+
+### 下一阶段
+
+**P16-PROVIDER-MODEL-BINDING-A0**：Provider / Model / VoiceBinding 全链路审查。覆盖所有 21 个音色模块入口（workspace、batch、script、voices tab、binding management、audition、clone、design、import、sample_store、context_store、history 等）。
+
+### 后续路线
+
+```
+P16-PROVIDER-MODEL-BINDING-A0 → A0-CHECK
+    → P16-PROVIDER-MODEL-BINDING-B1 (minimal: 展示+保存 binding_id/model, restore 升级)
+    → P16-PROVIDER-CAPABILITY-UI-B1 (capability-driven provider/model UI)
+    → P16-VARIANTS-UX-FIX1 (多版本等待态)
+    → P17-CREATION-RECORD-A0 (服务端创作记录)
+```
+
+### 阶段状态
+
+NEXT-PRIORITY-REVIEW 完成。下一阶段为 P16-PROVIDER-MODEL-BINDING-A0。
+
+
 

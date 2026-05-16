@@ -2,16 +2,16 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查**
 
 ## 已完成（续）
 
+- NEXT-PRIORITY-REVIEW：选择 Provider / Model / VoiceBinding 全链路审查 ✅
 - P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes ✅
 - P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary ✅
 - P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口 ✅
 - P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核 ✅
 - P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查 ✅
-- NEXT-PRIORITY-REVIEW：下一阶段优先级确认 ✅
 - P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口 ✅
 - P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题 ✅
 - P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核 ⚠️ (发现阻塞问题，已修复)
@@ -147,8 +147,10 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| NEXT-PRIORITY-REVIEW | choose next priority after provider mock close | P16-PROVIDER-MOCK-CLOSE 完成 |
-| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider UI | 推荐优先候选 |
+| P16-PROVIDER-MODEL-BINDING-A0 | audit provider/model/voice binding full chain | NEXT-PRIORITY-REVIEW 完成 |
+| P16-PROVIDER-MODEL-BINDING-A0-CHECK | verify provider/model/binding audit | P16-PROVIDER-MODEL-BINDING-A0 完成 |
+| P16-PROVIDER-MODEL-BINDING-B1 | implement minimal model/binding visibility and restore | A0-CHECK 完成后评估 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | MODEL-BINDING-B1 后评估 |
 | P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
 | P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog，长期架构 |
 | P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
