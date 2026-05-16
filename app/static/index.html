@@ -4584,6 +4584,15 @@ function handleStopAsyncPolling() {
           const provider = audBtn.dataset.provider;
           window._auditionSelectedVoiceId = voiceId;
           window._auditionSelectedVoiceName = voiceName;
+          // Sync voiceProvider select to match the clicked voice's provider
+          var vpSel = document.getElementById('voiceProvider');
+          if (vpSel && provider && vpSel.value !== provider) {
+            vpSel.value = provider;
+            if (window.applyAllProviderCapabilities) window.applyAllProviderCapabilities();
+          }
+          if (window.refreshModelSelectForProvider) {
+            window.refreshModelSelectForProvider('auditionModel', provider);
+          }
           updateAuditionSelected(voiceId, voiceName);
           // Scroll to workstation
           const panel = document.getElementById('voiceAuditionPanel');
