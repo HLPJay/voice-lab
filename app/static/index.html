@@ -2124,7 +2124,7 @@
         loadProfiles(true).then(async () => {
           populateProfileSelect(document.getElementById('batchProfile'));
           await refreshVoiceBindMapForHints();
-          _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
+          window._scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
         });
       }
       if (tab === 'history') {
@@ -2573,7 +2573,7 @@
 
   // B3-script: update script line voice hint on provider change
   document.getElementById('batchScriptProvider')?.addEventListener('change', () => {
-    _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
+    window._scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
   });
 
   // P8-5: localStorage recent job helpers
@@ -5392,20 +5392,20 @@ function handleStopAsyncPolling() {
 
   // Script lines management
   let _scriptLineCount = 0;
-  const _scriptRows = [];  // stable state: {id, role, text, profileId}
+  window._scriptRows = Array.isArray(window._scriptRows) ? window._scriptRows : [];
   var MAX_SCRIPT_LINES = 200;
 
   function updateScriptLineLimitState() {
     const btn = document.getElementById('scriptAddLineBtn');
     if (btn) {
-      const atLimit = _scriptRows.length >= MAX_SCRIPT_LINES;
+      const atLimit = window._scriptRows.length >= MAX_SCRIPT_LINES;
       btn.disabled = atLimit;
       btn.title = atLimit ? '最多支持 200 行台词' : '添加一行台词';
     }
   }
 
   function addScriptLine(role = '', text = '', profileId = '') {
-    if (_scriptRows.length >= MAX_SCRIPT_LINES) {
+    if (window._scriptRows.length >= MAX_SCRIPT_LINES) {
       const resultsEl = document.getElementById('batchScriptResult');
       if (resultsEl) { resultsEl.style.display = ''; resultsEl.innerHTML = '<div style="color:#c53030;font-size:0.85rem;padding:8px 0">最多支持 200 行台词</div>'; }
       return;
@@ -5413,7 +5413,7 @@ function handleStopAsyncPolling() {
     const container = document.getElementById('scriptLines');
     const id = _scriptLineCount++;
     const state = { id, role, text, profileId };
-    _scriptRows.push(state);
+    window._scriptRows.push(state);
 
     const row = document.createElement('div');
     row.id = `scriptLine_${id}`;
@@ -5446,8 +5446,8 @@ function handleStopAsyncPolling() {
   function removeScriptLine(id) {
     const row = document.getElementById(`scriptLine_${id}`);
     if (row) row.remove();
-    const idx = _scriptRows.findIndex(r => r.id === id);
-    if (idx >= 0) _scriptRows.splice(idx, 1);
+    const idx = window._scriptRows.findIndex(r => r.id === id);
+    if (idx >= 0) window._scriptRows.splice(idx, 1);
     updateScriptLineLimitState();
     updateBatchScriptHints();
   }
@@ -5459,7 +5459,7 @@ function handleStopAsyncPolling() {
     const id = parseInt(row.dataset.lineId);
     const field = e.target.dataset.field;
     if (!field) return;
-    const state = _scriptRows.find(r => r.id === id);
+    const state = window._scriptRows.find(r => r.id === id);
     if (state) {
       if (field === 'role') state.role = e.target.value;
       else if (field === 'text') state.text = e.target.value;
@@ -5471,7 +5471,7 @@ function handleStopAsyncPolling() {
     const id = parseInt(row.dataset.lineId);
     const field = e.target.dataset.field;
     if (field === 'profile') {
-      const state = _scriptRows.find(r => r.id === id);
+      const state = window._scriptRows.find(r => r.id === id);
       if (state) state.profileId = e.target.value;
       updateScriptLineVoiceHint(id);
     }
@@ -5653,8 +5653,7 @@ function handleStopAsyncPolling() {
   // Script batch hints
 
   function getScriptRowsSafe() {
-    if (typeof _scriptRows === 'undefined') return [];
-    return _scriptRows;
+    return Array.isArray(window._scriptRows) ? window._scriptRows : [];
   }
 
   function collectScriptStats() {
