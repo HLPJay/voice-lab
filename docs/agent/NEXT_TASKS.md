@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-PRODUCT-CONFIG-B1-4（当前）→ 下一步：P17-XIANGTA-CORE-RENDER-B2-A0**
+**P17-XIANGTA-CORE-RENDER-B2-A0（当前）→ 下一步：P17-XIANGTA-CORE-RENDER-B2-B1**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -20,7 +20,9 @@
 | P17-XIANGTA-PRODUCT-CONFIG-B1-1 | ProductConfigRepository 与产品配置模型基础落地 | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1-2 | BootstrapService 接入 ProductConfigRepository | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1-3 | VoicePresetMappingService / TonePresetService 接入 ProductConfigRepository，并切换 TTS dry-run 主链路 | ✅ |
-| P17-XIANGTA-PRODUCT-CONFIG-B1-4 | ProviderStatus / limits / tone 配置读取边界收口 | Current |
+| P17-XIANGTA-PRODUCT-CONFIG-B1-4 | ProviderStatus / limits / tone 配置读取边界收口 | ✅ |
+| P17-XIANGTA-CORE-RENDER-B2-A0 | Core render 接入前置审查与 mock 策略确认 | Current |
+| P17-XIANGTA-CORE-RENDER-B2-B1 | VoiceLabGateway 接 Core render mock path（仅 mock provider，不进入真实 Provider） | Planned |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
@@ -31,11 +33,14 @@
 > 格式：`[ ] GAP-XXX: <描述> — 发现于 P17-XIANGTA-XXXX`
 > 不得直接修改 src/voice_lab/* 解决，需独立 Core 修复任务。
 
-（暂无）
+- [ ] GAP-B2-001: XiangTa `voice_mappings` 仍使用 `<core_profile_id_from_core_profiles>` 占位；B2-B1 测试前需在 fixture / fake repository 中指向真实 Core profile（发现于 `P17-XIANGTA-CORE-RENDER-B2-A0`）
+- [ ] GAP-B2-002: 若 XiangTa 在 B2-B1 中未显式传 `provider="mock"`，Core render 会回落到默认 `settings.voice_provider=minimax`；B2-B1 必须强制 mock provider（发现于 `P17-XIANGTA-CORE-RENDER-B2-A0`）
+- [ ] GAP-B2-003: 当前 Core 没有与 `POST /api/voice/render` 完全等价的进程内 high-level facade；B2-B1 优先走 HTTP API，若未来要走进程内需先补 facade（发现于 `P17-XIANGTA-CORE-RENDER-B2-A0`）
+- [ ] GAP-B2-004: `seed_defaults()` 虽创建 mock binding，但未同时 seed `ProviderVoice`；B2-B1 测试需复用 `seed_mock_binding` 或显式补建 provider voice（发现于 `P17-XIANGTA-CORE-RENDER-B2-A0`）
 
 ## XiangTa 下一步约束
 
-下一步只进入 `P17-XIANGTA-CORE-RENDER-B2-A0`。先完成 Core render 接入前置审查与 mock 策略确认，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
+下一步只进入 `P17-XIANGTA-CORE-RENDER-B2-B1`。范围限定为 `VoiceLabGateway` 接 Core render mock path，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
 
 ## P16 已完成历史
 
