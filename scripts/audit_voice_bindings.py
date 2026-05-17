@@ -157,14 +157,77 @@ def audit_bindings(database_url: str, provider_filter: str | None = None) -> dic
         }
 
 
+def delete_deprecated_issue_bindings(database_url: str, issue_binding_ids: list[str]) -> dict[str, Any]:
+    """Delete bindings that are both in the issue list AND have status=deprecated.
+
+    Safety invariants (enforced, not caller-trusted):
+    - Only bindings whose status column == 'deprecated' are deleted.
+    - Only binding_ids that appeared in the audit issues list are deleted.
+    - available/active bindings are never touched.
+    """
+    engine = create_engine(database_url, connect_args={"check_same_thread": False})
+    deleted: list[str] = []
+    skipped: list[dict[str, str]] = []
+
+    with Session(engine) as session:
+        for bid in issue_binding_ids:
+            binding = session.get(VoiceBinding, bid)
+            if binding is None:
+                skipped.append({"binding_id": bid, "reason": "not_found"})
+                continue
+            if binding.status != "deprecated":
+                skipped.append({"binding_id": bid, "reason": f"status={binding.status!r}, only deprecated allowed"})
+                continue
+            session.delete(binding)
+            deleted.append(bid)
+        session.commit()
+
+    return {
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "skipped": skipped,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Dry-run audit for voice binding consistency.")
     parser.add_argument("--db-url", default=get_settings().database_url, help="SQLAlchemy database URL")
     parser.add_argument("--provider", default=None, help="Filter to a specific provider name")
     parser.add_argument("--dry-run", action="store_true", default=True, help="Read-only mode (always true; flag for explicitness)")
     parser.add_argument("--json", action="store_true", help="Print full JSON report")
+    parser.add_argument("--delete-deprecated-issues", action="store_true", default=False,
+                        help="Delete bindings that are in issues AND have status=deprecated. Requires --confirm-delete.")
+    parser.add_argument("--confirm-delete", action="store_true", default=False,
+                        help="Confirm destructive delete. Must be combined with --delete-deprecated-issues.")
     args = parser.parse_args()
 
+    # --- Apply delete path ---
+    if args.delete_deprecated_issues:
+        if not args.confirm_delete:
+            print("ERROR: --delete-deprecated-issues requires --confirm-delete to prevent accidental deletion.", file=sys.stderr)
+            return 1
+
+        # Run full audit first to get current issue binding ids
+        report = audit_bindings(args.db_url, provider_filter=args.provider)
+        issue_ids = [item["binding_id"] for item in report["issues"]]
+
+        if not issue_ids:
+            print("No issue bindings found. Nothing to delete.")
+            return 0
+
+        print(f"About to delete {len(issue_ids)} deprecated issue binding(s):")
+        for item in report["issues"]:
+            print(f"  {item['binding_id']}  provider={item['provider']}  status={item['status']}")
+
+        result = delete_deprecated_issue_bindings(args.db_url, issue_ids)
+        print(f"Deleted: {result['deleted_count']}")
+        for bid in result["deleted"]:
+            print(f"  deleted: {bid}")
+        for s in result["skipped"]:
+            print(f"  skipped: {s['binding_id']} ({s['reason']})")
+        return 0
+
+    # --- Dry-run path (default) ---
     report = audit_bindings(args.db_url, provider_filter=args.provider)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
