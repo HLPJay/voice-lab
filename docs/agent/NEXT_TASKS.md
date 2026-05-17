@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-CORE-RENDER-B2-B1b（当前）→ 下一步：P17-XIANGTA-CORE-RENDER-B2-B2**
+**P17-XIANGTA-CORE-RENDER-B2-B2（当前）→ 下一步：P17-XIANGTA-CORE-RENDER-B2-B3-A0**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -23,8 +23,9 @@
 | P17-XIANGTA-PRODUCT-CONFIG-B1-4 | ProviderStatus / limits / tone 配置读取边界收口 | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-A0 | Core render 接入前置审查与 mock 策略确认 | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-B1a | VoiceLabGateway 接 Core render HTTP contract mock path（仅 Gateway，不切 TtsOrchestrator） | ✅ |
-| P17-XIANGTA-CORE-RENDER-B2-B1b | TtsOrchestrator 切到 VoiceLabGateway.generate_tts() | Current |
-| P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test with app route + DB fixtures | Planned |
+| P17-XIANGTA-CORE-RENDER-B2-B1b | TtsOrchestrator 切到 VoiceLabGateway.generate_tts() | ✅ |
+| P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test with app route + DB fixtures | Current |
+| P17-XIANGTA-CORE-RENDER-B2-B3-A0 | XiangTa app-level Core mock integration planning | Planned |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
@@ -42,7 +43,7 @@
 
 ## XiangTa 下一步约束
 
-下一步只进入 `P17-XIANGTA-CORE-RENDER-B2-B2`。范围限定为 Core render mock integration test with app route + DB fixtures，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
+下一步只进入 `P17-XIANGTA-CORE-RENDER-B2-B3-A0`。范围限定为 XiangTa app-level Core mock integration planning，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
 
 ## P16 已完成历史
 
