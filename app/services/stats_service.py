@@ -142,6 +142,19 @@ class StatsService:
                 "characters_used": chars,
             }
 
+        # Include providers that have AudioAsset records but no ProviderCallLog
+        # (e.g. async jobs, or providers whose adapter does not yet write call logs)
+        for p, asset_chars in asset_chars_by_provider.items():
+            if p and p not in by_provider:
+                by_provider[p] = {
+                    "api_calls": 0,
+                    "avg_duration_ms": 0,
+                    "p95_duration_ms": 0,
+                    "error_count": 0,
+                    "error_rate": 0,
+                    "characters_used": asset_chars,
+                }
+
         # by_api from provider_call_logs
         by_api: dict = {}
         api_query = select(

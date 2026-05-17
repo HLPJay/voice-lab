@@ -16,16 +16,20 @@ Supports:
 from __future__ import annotations
 
 import base64
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from app.core.context import get_job_id, get_request_id
 from app.core.errors import ProviderError, ProviderNotConfigured
 from app.core.logging import get_logger
+from app.core.time import utc_now_iso
 from app.domain.enums import ProviderVoiceStatus
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
+from app.models.provider_call_log import ProviderCallLog
 from app.providers.base import ProviderRenderResult, SpeechProvider
 from app.utils.audio import estimate_duration_ms
 from app.utils.files import storage_path
@@ -58,6 +62,73 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
         super().__init__(provider_config=provider_config, adapter_config=adapter_config)
         self._http_client = http_client
         self._owns_client = http_client is None
+
+    # ── lightweight call audit ────────────────────────────────────────
+
+    def _save_call_log(
+        self,
+        *,
+        method: str,
+        path: str,
+        status_code: int | None,
+        duration_ms: int,
+        error_type: str | None,
+        error_message: str | None,
+    ) -> None:
+        """Write audit record to provider_call_logs. Never raises."""
+        try:
+            from app.core.database import get_engine
+            from sqlmodel import Session
+
+            log_entry = ProviderCallLog(
+                id=new_id("calllog"),
+                request_id=get_request_id() or None,
+                job_id=get_job_id() or None,
+                provider=self.provider_name,
+                api_path=path,
+                method=method,
+                status_code=status_code,
+                duration_ms=duration_ms,
+                error_type=error_type,
+                error_message=(error_message or "")[:500],
+                created_at=utc_now_iso(),
+            )
+            with Session(get_engine()) as session:
+                session.add(log_entry)
+                session.commit()
+        except Exception as exc:
+            _provider_logger.warning("call_log_save_failed", extra={"error": str(exc)})
+
+    def update_call_log(
+        self,
+        *,
+        job_id: str,
+        usage_characters: int | None,
+        provider_trace_id: str | None,
+    ) -> None:
+        """Update the most recent call log entry for job_id with usage/trace fields."""
+        try:
+            from app.core.database import get_engine
+            from sqlmodel import Session, select
+
+            with Session(get_engine()) as session:
+                entry = session.exec(
+                    select(ProviderCallLog)
+                    .where(ProviderCallLog.job_id == job_id)
+                    .order_by(ProviderCallLog.created_at.desc())
+                    .limit(1)
+                ).one_or_none()
+                if entry:
+                    if usage_characters is not None:
+                        entry.usage_characters = usage_characters
+                    if provider_trace_id is not None:
+                        entry.provider_trace_id = provider_trace_id
+                    session.add(entry)
+                    session.commit()
+        except Exception as exc:
+            _provider_logger.warning("call_log_update_failed", extra={"error": str(exc), "job_id": job_id})
+
+    # ── config helpers ────────────────────────────────────────────────
 
     def _get_provider_config(self) -> "ProviderConfig | None":
         """Get provider config, loading from registry if not injected."""
@@ -236,11 +307,10 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
         )
 
         # Auth: api-key header works for both sk- and tp- prefix keys
-        # OpenAI SDK compat (Authorization: Bearer) also works, but api-key is
-        # the officially documented method for direct HTTP calls.
         headers = {"api-key": api_key}
 
         client = await self._get_client()
+        _start = time.monotonic()
         try:
             response = await client.request(
                 method,
@@ -250,7 +320,7 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
                 **kwargs,
             )
 
-            duration_ms = 0
+            duration_ms = round((time.monotonic() - _start) * 1000)
             _provider_logger.info(
                 "provider_response",
                 extra={
@@ -261,8 +331,17 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
                     "duration_ms": duration_ms,
                 },
             )
+            self._save_call_log(
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+                error_type=None,
+                error_message=None,
+            )
             return response
         except httpx.TimeoutException as exc:
+            duration_ms = round((time.monotonic() - _start) * 1000)
             _provider_logger.error(
                 "provider_error",
                 extra={
@@ -271,10 +350,20 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
                     "path": path,
                     "error_type": "TimeoutException",
                     "error_message": str(exc),
+                    "duration_ms": duration_ms,
                 },
+            )
+            self._save_call_log(
+                method=method,
+                path=path,
+                status_code=None,
+                duration_ms=duration_ms,
+                error_type="TimeoutException",
+                error_message=str(exc),
             )
             raise ProviderError("Xiaomi MiMo request timeout", str(exc)) from exc
         except httpx.NetworkError as exc:
+            duration_ms = round((time.monotonic() - _start) * 1000)
             _provider_logger.error(
                 "provider_error",
                 extra={
@@ -283,9 +372,41 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
                     "path": path,
                     "error_type": "NetworkError",
                     "error_message": str(exc),
+                    "duration_ms": duration_ms,
                 },
             )
+            self._save_call_log(
+                method=method,
+                path=path,
+                status_code=None,
+                duration_ms=duration_ms,
+                error_type="NetworkError",
+                error_message=str(exc),
+            )
             raise ProviderError("Xiaomi MiMo network error", str(exc)) from exc
+        except Exception as exc:
+            duration_ms = round((time.monotonic() - _start) * 1000)
+            error_type = type(exc).__name__
+            _provider_logger.error(
+                "provider_error",
+                extra={
+                    "provider": self.provider_name,
+                    "method": method,
+                    "path": path,
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "duration_ms": duration_ms,
+                },
+            )
+            self._save_call_log(
+                method=method,
+                path=path,
+                status_code=None,
+                duration_ms=duration_ms,
+                error_type=error_type,
+                error_message=str(exc),
+            )
+            raise
 
     async def render_sync(self, plan: RenderPlan) -> ProviderRenderResult:
         """Render TTS using Xiaomi MiMo Chat Completions format.
@@ -385,6 +506,13 @@ class XiaomiMiMoChatTTSAdapter(SpeechProvider):
         # Usage from response (Xiaomi returns completion_tokens)
         usage = body.get("usage", {})
         usage_characters = usage.get("completion_tokens") or len(plan.text)
+
+        # Backfill usage + trace into the call log written by _request()
+        self.update_call_log(
+            job_id=get_job_id() or "",
+            usage_characters=usage_characters,
+            provider_trace_id=body.get("id"),
+        )
 
         return ProviderRenderResult(
             audio_path=str(audio_path),
