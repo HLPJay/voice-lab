@@ -1,5 +1,15 @@
 # Voice Lab 项目健康检查
 
+## P16 V1 Closeout 状态
+
+- 当前工作分支：`p16/real-usage-issues`
+- 当前阶段：P16 V1 已进入 closeout
+- 核心能力状态：MiniMax 主链路、Xiaomi MiMo 单段同步 TTS 样板、Provider 切换、本地统计口径、Xiaomi MiMo ProviderCallLog、Admin provider filter、voice preview 测试口径对齐、Xiaomi MiMo 测试口径对齐、Voice Profile 人设归档生命周期均已完成
+- 当前 full suite 剩余失败口径：主要集中于 jsdom 环境依赖、Playwright E2E locator 过期、ordering pollution 与环境/API key 隔离问题；这些属于已知豁免项，不代表 D4 新回归
+- 当前产品边界：仍是本地 Web App / 单用户创作工作台，不代表生产级 SaaS、多用户计费或官方账单系统能力
+
+---
+
 ## 当前最新状态摘要
 
 截至 P12-USAGE-CHECK2（真实使用修复阶段最终收口）：

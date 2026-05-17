@@ -76,11 +76,18 @@
 
 ### D4-F6P：Voice Profile 人设归档生命周期
 
-- **commit**: 本任务（见下方）
+- **commit**: `11847e4`
 - **问题**: 人设只有创建 / 绑定，没有安全归档 / 停用能力
 - **根因**: 缺少 profile archive API、生成链路 inactive profile 拦截、前端绑定管理入口
 - **处理**: 使用 `VoiceProfile.is_active=false` 实现软归档；普通列表过滤 inactive；生成链路拒绝 archived profile；前端在音色工具 → 绑定管理提供归档入口
 - **状态**: 已完成
+
+### D4-CLOSEOUT：P16 V1 收口文档与合并准备
+
+- **commit**: 本任务待提交
+- **问题**: P16 V1 已完成能力、剩余风险、测试豁免项和合并条件仍分散在多份记录中，不利于合并前统一判断
+- **处理**: 新增 `docs/P16_V1_CLOSEOUT.md`，同步更新 `docs/PROJECT_HEALTH_CHECK.md`、`docs/agent/NEXT_TASKS.md` 与本归档文档，统一 closeout 口径
+- **状态**: 待提交
 
 ---
 
@@ -113,5 +120,5 @@
 按优先顺序：
 
 1. **D4-F6**：`npm install jsdom` 解锁 33 个 Node.js 静态 JS 测试 — 可延后
-2. **D4-CLOSEOUT**：P16 V1 收口文档 + 合并 main
+2. **D4-CLOSEOUT**：人工验收 + scoped regression + 合并 main 准备
 3. **V2 规划**：官方账单接入、model-level stats、日志清理策略

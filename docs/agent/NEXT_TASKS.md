@@ -2,7 +2,20 @@
 
 ## 当前阶段
 
-**P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3：adapter render_sync 真实调用验证（待用户授权）**
+**P16-V1-CLOSEOUT：人工验收、scoped regression 与合并 main 准备**
+
+## 下一步
+
+1. 人工验收
+2. scoped regression
+3. 合并 main 准备
+4. V2 backlog
+
+## 当前 Closeout 范围
+
+- 不再将 D4-F4、D4-F5、D4-F6P 视为待办，它们已完成
+- 当前仍保留的豁免项：jsdom 环境依赖、Playwright E2E locator 过期、full-suite ordering pollution、full-suite env/API key 隔离问题
+- 合并前关注点：人工验收、scoped regression、secret 暴露检查、数据库 schema 变更说明检查
 
 ## 已完成（续）
 
