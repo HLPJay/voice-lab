@@ -76,7 +76,7 @@ adapter 测试失败排查。
 |---|---|
 | 是否修改代码 | ❌ 否 |
 | 是否修改配置 | ❌ 否 |
-| 是否启用 xiaomi_mimo provider | ❌ 否 |
+| Xiaomi MiMo 是否作为可选 Provider 打开 | ✅ 是 |
 | 是否修改 schema | ❌ 否 |
 | 是否修改 resolve_binding | ❌ 否 |
 | 是否提交密钥 | ❌ 否 |
@@ -112,5 +112,5 @@ adapter 测试失败排查。
 
 **当前禁止事项**：
 - 不要重复执行 real-call
-- 不要启用 xiaomi_mimo provider
+- 不要在未授权情况下重复执行 Xiaomi MiMo real-call / probe
 - 不要进入 B3（adapter render_sync 验证）

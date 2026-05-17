@@ -7,7 +7,7 @@
 ## 2. 检查范围
 
 - [x] env_resolver 支持 VOICE_LAB_ENV_FILE
-- [x] xiaomi_mimo 默认 disabled 行为
+- [x] xiaomi_mimo 作为可选 Provider 启用且不自动 real-call
 - [x] 临时 enabled=true capability 暴露
 - [x] plugin discovery 行为
 - [x] runtime 配置读取行为（api_key / base_url / endpoint / model / timeout / static_voices）
@@ -38,21 +38,24 @@
 - clear_env_cache() 后可重新读取变化后的 env 文件
 - 各种 .env 格式（simple、double-quoted、single-quoted、comments、empty lines）
 
-## 4. xiaomi_mimo 默认 disabled 的预期行为
+## 4. xiaomi_mimo 可选启用且不自动 real-call 的当前口径
 
 **验证结果**：
 
 ```yaml
 # config/providers.yaml
 - name: "xiaomi_mimo"
-  enabled: false  # 默认 disabled
+  enabled: true
+  metadata:
+    ui_visible: true
 ```
 
-- `list_capabilities()` 默认**不包含** xiaomi_mimo（0 个 xiaomi_mimo capability）
-- `get_provider("xiaomi_mimo")` 默认抛出 `UnsupportedProvider("Provider xiaomi_mimo is not enabled")`
-- **前端 Provider 下拉框默认不显示 Xiaomi MiMo 是预期行为**，因为 `enabled=false`
+- `list_capabilities()` 在当前配置下会包含 xiaomi_mimo capability
+- Xiaomi MiMo 可以作为可选 Provider 出现在前端 Provider 下拉框中
+- 默认 Provider 仍由 `VOICE_PROVIDER=minimax` 控制，不会因为 capabilities 加载而自动切换到 Xiaomi MiMo
+- 页面加载、普通 capabilities 加载、普通测试和 dry-run probe 不会自动触发真实 Xiaomi API
 
-**这是预期行为，不是 bug。**
+**这是当前 closeout 阶段的预期行为，不代表自动 real-call。**
 
 ## 5. 临时 enabled=true 的 capability 验证
 
@@ -197,7 +200,7 @@ provider_voices={
 ## 12. 明确未做
 
 - **未调用真实小米 API**
-- **未把正式 config/providers.yaml 中 xiaomi_mimo 改成 enabled=true**
+- **未在本阶段修改 Xiaomi MiMo 的正式业务代码或 real-call 触发边界**
 - **未修改 app/providers/__init__.py 做注册**
 - **未修改 app/providers/adapter_type_registry.py 做注册**
 - **未实现 design_voice**
@@ -218,7 +221,7 @@ provider_voices={
 
 - [x] 配置化闭环已形成
 - [x] env_resolver 支持 VOICE_LAB_ENV_FILE
-- [x] xiaomi_mimo 默认 disabled 行为正确
+- [x] xiaomi_mimo 作为可选 Provider 启用且不自动 real-call
 - [x] plugin discovery 工作正常
 - [x] runtime 配置读取通过测试验证
 - [x] 未调用真实 API

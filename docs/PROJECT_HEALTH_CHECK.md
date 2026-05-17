@@ -140,13 +140,13 @@
 * P16-XIAOMI-MIMO-TTS-CONFIG-AND-DUPLICATE-TRIAGE-D1：配置审查与重复 banner 修复（commit D1，194 passed）已完成 ✅
 * 当前下一阶段：P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3（adapter render_sync 验证，需用户授权）
 * 当前不进入：SaaS / 多用户 / 移动端 H5 / 后端扩展
-* xiaomi_mimo 默认 disabled（enabled=false），Provider 下拉框默认不显示 Xiaomi 是预期行为
+* xiaomi_mimo 当前作为可选 Provider 启用（enabled=true）并可在 Provider UI 中显示；默认 Provider 仍由 `VOICE_PROVIDER=minimax` 控制，不会自动切换到 Xiaomi MiMo
 * env_resolver 支持 VOICE_LAB_ENV_FILE 临时 env 文件
 * REAL-PROBE-B2 执行结果：status_code=200, audio_bytes=161324, trace_id=615f66a3b19d4ad3ba9b4165ef575873
 * D1 发现并修复：probe real-call 日志重复打印（async_main 中重复打印 [REAL-CALL] banner）
 * D1 .env.example 审查：新增 MIMO_API_KEY/XIAOMI_MIMO_BASE_URL/VOICE_LAB_ENV_FILE 注释占位
 * 当前禁止：不要重复执行 real-call，除非用户明确授权
-* 当前禁止：不要启用 xiaomi_mimo provider
+* 当前禁止：不要重复执行 Xiaomi MiMo real-call / probe，除非用户明确授权；真实调用只应发生在用户显式选择 Xiaomi MiMo 并执行生成，或显式运行 `--real-call` probe 时
 * REAL-PROBE-A0 阶段未调用真实外部 API
 * P7-I：真实 MiniMax 能力验证与修复收口已完成
 * P7-J0：并发架构边界归纳已完成
