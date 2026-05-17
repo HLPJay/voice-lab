@@ -2,14 +2,28 @@
 
 ## 当前阶段
 
-**P16-V1-CLOSEOUT：人工验收、scoped regression 与合并 main 准备**
+**P17-XIANGTA-INIT-A0：Core Freeze 与 XiangTa 产品层骨架初始化**
 
-## 下一步
+## 下一步（P17 阶段路线图）
 
-1. 人工验收
-2. scoped regression
-3. 合并 main 准备
-4. V2 backlog
+| 任务 | 内容 | 状态 |
+|---|---|---|
+| P17-XIANGTA-INIT-A0 | Core Freeze 声明 + 骨架初始化（本任务） | ✅ |
+| P17-XIANGTA-A1 | 配置层 + voice_lab_gateway 实现 + preset_mapper | TODO |
+| P17-XIANGTA-A2 | copywriting_service + LLM 文案生成（Mock E2E） | TODO |
+| P17-XIANGTA-A3 | tts_orchestrator + 真实 TTS 接入（Mock E2E） | TODO |
+| P17-XIANGTA-A4 | 前端联调（替换 EXPRESSION_BANK + _silentWav） | TODO |
+| P17-XIANGTA-A5 | 错误状态覆盖 + 分享图 + PWA 打磨 | TODO |
+
+## Core Contract Gap 登记区
+
+> 此处登记在产品开发中发现的 voice_lab Core 能力缺口。
+> 格式：`[ ] GAP-XXX: <描述> — 发现于 P17-XIANGTA-XXXX`
+> 不得直接修改 src/voice_lab/* 解决，需独立 Core 修复任务。
+
+（暂无）
+
+## P16 已完成历史
 
 ## 当前 Closeout 范围
 

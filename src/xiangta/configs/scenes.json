@@ -1,0 +1,7 @@
+[
+  { "id": "miss",    "label": "想念", "desc": "想起一个人，想让 TA 知道" },
+  { "id": "sorry",   "label": "道歉", "desc": "想说对不起，不想解释太多" },
+  { "id": "thanks",  "label": "感谢", "desc": "一直没说出口的谢谢" },
+  { "id": "comfort", "label": "安慰", "desc": "对方不太好，想轻轻陪一会儿" },
+  { "id": "night",   "label": "晚安", "desc": "睡前想说一声，不打扰" }
+]

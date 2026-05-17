@@ -1,0 +1,32 @@
+[
+  {
+    "id": "restrained",
+    "label": "克制",
+    "desc": "短、淡、留白多，说到为止",
+    "_core_params": { "speed_delta": 0.0, "pitch": "normal", "emotion": "calm" }
+  },
+  {
+    "id": "gentle",
+    "label": "温柔",
+    "desc": "稍慢、柔、不强硬",
+    "_core_params": { "speed_delta": -0.05, "pitch": "slightly_low", "emotion": "gentle" }
+  },
+  {
+    "id": "sincere",
+    "label": "真诚",
+    "desc": "认真、不绕弯、听起来郑重",
+    "_core_params": { "speed_delta": -0.03, "pitch": "normal", "emotion": "sincere" }
+  },
+  {
+    "id": "whisper",
+    "label": "轻声",
+    "desc": "像在耳边小声说",
+    "_core_params": { "speed_delta": -0.10, "pitch": "low", "emotion": "whisper" }
+  },
+  {
+    "id": "bedtime",
+    "label": "睡前",
+    "desc": "极慢、极轻，像哄睡",
+    "_core_params": { "speed_delta": -0.15, "pitch": "low", "emotion": "calm" }
+  }
+]
