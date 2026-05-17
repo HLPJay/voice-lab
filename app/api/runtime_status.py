@@ -17,11 +17,10 @@ router = APIRouter()
 # Max length for detail field
 _MAX_DETAIL_CHARS = 120
 
-# Action hints for each category
+# Action hints for each category (auth is resolved dynamically by _get_auth_hint)
 _ACTION_HINTS: dict[str, str] = {
     "quota": "检查套餐额度或等待重置",
     "rate_limit": "稍后重试或降低并发",
-    "auth": "检查 MINIMAX_API_KEY",
     "timeout": "检查网络或稍后重试",
     "network": "检查网络连接",
     "server": "稍后重试",
@@ -31,6 +30,18 @@ _ACTION_HINTS: dict[str, str] = {
     "ok": "最近调用成功",
     "none": "尚无调用记录",
 }
+
+
+def _get_auth_hint(provider: str | None) -> str:
+    """Return provider-specific API key hint for auth errors."""
+    if not provider:
+        return "检查当前 Provider 的 API Key 配置"
+    p = provider.lower()
+    if "mimo" in p or "xiaomi" in p:
+        return "检查 MIMO_API_KEY"
+    if "minimax" in p:
+        return "检查 MINIMAX_API_KEY"
+    return "检查当前 Provider 的 API Key 配置"
 
 
 def _today_range() -> tuple[str, str]:
@@ -125,7 +136,7 @@ def _classify_call(entry: ProviderCallLog) -> dict[str, Any]:
             "category": "auth",
             "label": "鉴权失败",
             "detail": detail,
-            "action_hint": _ACTION_HINTS["auth"],
+            "action_hint": _get_auth_hint(entry.provider),
         }
 
     # 4. Timeout
@@ -276,6 +287,22 @@ def _provider_status_from_entry(entry: ProviderCallLog | None) -> dict[str, Any]
     }
 
 
+def _get_ws_model(default_provider: str, fallback: str) -> str:
+    """Get the ws_model for default_provider from capability registry metadata."""
+    try:
+        from app.providers.capability_registry import get_capability
+        cap = get_capability(default_provider)
+        if cap and cap.metadata:
+            ws = cap.metadata.get("ws_model")
+            if ws:
+                return str(ws)
+        if cap and cap.tts and cap.tts.default_model:
+            return cap.tts.default_model
+    except Exception:
+        pass
+    return fallback
+
+
 @router.get("/runtime/status")
 def get_runtime_status(
     session: Session = Depends(get_session),
@@ -295,10 +322,13 @@ def get_runtime_status(
     last_call = _last_call(session)
     provider_status = _provider_status_from_entry(last_call_entry)
 
+    default_ws_model = _get_ws_model(settings.voice_provider, settings.minimax_default_model)
+
     return {
         "current": {
             "default_provider": settings.voice_provider,
             "default_model": settings.minimax_default_model,
+            "default_ws_model": default_ws_model,
             "default_audio_format": settings.default_audio_format,
         },
         "today": today,
