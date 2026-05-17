@@ -137,9 +137,14 @@ class ProductService:
         return self._admin_config_service.toggle_tone_preset_enabled(id, enabled)
 
     async def get_suggestions(self, recipient: str, scene: str, raw_text: str) -> dict:
-        """参见 copywriting_service.generate_suggestions。"""
-        # TODO(P17-A4)
-        raise NotImplementedError
+        """委托给 CopywritingService；ProductService 只做门面。"""
+        if self._copywriting is None:
+            raise RuntimeError("copywriting service not wired")
+        return await self._copywriting.generate_suggestions(
+            recipient=recipient,
+            scene=scene,
+            raw_text=raw_text,
+        )
 
     async def generate_tts(
         self, *, text: str, voice_preset: str, tone: str, recipient: str, scene: str
@@ -166,6 +171,7 @@ def create_product_service() -> "ProductService":
 
     from src.xiangta.config.product_config_writer import ProductConfigWriter
     from src.xiangta.services.admin_config_service import AdminConfigService
+    from src.xiangta.services.copywriting_service import CopywritingService
 
     config_repository = ProductConfigRepository()
     gateway         = VoiceLabGateway()
@@ -186,10 +192,12 @@ def create_product_service() -> "ProductService":
     )
     writer = ProductConfigWriter()
     admin_config_svc = AdminConfigService(writer=writer)
+    copywriting = CopywritingService(gateway=gateway)
     return ProductService(
         bootstrap=bootstrap,
         provider_status=provider_status,
         tts=tts,
         config_repository=config_repository,
         admin_config_service=admin_config_svc,
+        copywriting=copywriting,
     )

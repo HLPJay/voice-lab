@@ -348,11 +348,11 @@ class TestProviderStatusWithGateway:
 
 class TestUnimplementedRoutes:
 
-    def test_suggestions_returns_501(self, client):
+    def test_suggestions_returns_200(self, client):
         r = client.post("/api/xiangta/suggestions", json={
-            "recipient": "lover", "scene": "miss", "rawText": "测试"
+            "recipient": "lover", "scene": "miss", "rawText": "我今天很想你"
         })
-        assert r.status_code == 501
+        assert r.status_code == 200
 
     def test_create_letter_returns_501(self, client):
         r = client.post("/api/xiangta/letters", json={})

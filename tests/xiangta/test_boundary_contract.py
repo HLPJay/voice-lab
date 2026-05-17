@@ -614,6 +614,59 @@ class TestB43WriterBoundary:
         assert "coreProfileId" in _TONE_PRESET_FORBIDDEN
 
 
+class TestB51CopywritingBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_copywriting_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.copywriting_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_copywriting_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.copywriting_service")
+        assert "os.environ" not in src
+
+    def test_copywriting_service_does_not_call_get_provider(self):
+        src = self._get_source("src.xiangta.services.copywriting_service")
+        assert "get_provider(" not in src
+
+    def test_copywriting_service_does_not_import_provider_adapter(self):
+        src = self._get_source("src.xiangta.services.copywriting_service")
+        for token in ["minimax", "mimo", "openai", "azure", "elevenlabs"]:
+            assert token not in src.lower(), (
+                f"copywriting_service.py 不得 import provider adapter（检测到：{token}）"
+            )
+
+    def test_copywriting_service_does_not_read_api_key(self):
+        src = self._get_source("src.xiangta.services.copywriting_service")
+        for token in ["MINIMAX_API_KEY", "MIMO_API_KEY", "OPENAI_API_KEY", "api_key"]:
+            assert token not in src, (
+                f"copywriting_service.py 不得读取 API key（检测到：{token}）"
+            )
+
+    def test_copywriting_service_does_not_call_llm_in_generate(self):
+        src = self._get_source("src.xiangta.services.copywriting_service")
+        assert "generate_llm_text" not in src
+
+    def test_routes_suggestions_does_not_call_real_provider(self):
+        src = self._get_source("src.xiangta.api.routes")
+        for token in ["generate_llm_text", "MINIMAX_API_KEY", "MIMO_API_KEY"]:
+            assert token not in src, (
+                f"routes.py /suggestions 不得引用 Provider token（检测到：{token}）"
+            )
+
+    def test_product_service_get_suggestions_delegates(self):
+        from src.xiangta.services.product_service import ProductService
+        import inspect
+        src = inspect.getsource(ProductService.get_suggestions)
+        assert "self._copywriting" in src
+        assert "NotImplementedError" not in src
+
+
 class TestB2B1bOrchestratorBoundary:
     def _get_source(self, module_path: str) -> str:
         import importlib

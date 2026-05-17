@@ -26,6 +26,8 @@ from src.xiangta.api.schemas import (
     AdminVoiceMappingsResponse,
     BootstrapResponse,
     ProviderStatusResponse,
+    SuggestionsRequest,
+    SuggestionsResponse,
     TtsRequest,
     TtsResponse,
 )
@@ -139,10 +141,22 @@ async def admin_toggle_tone_preset_enabled(id: str, body: AdminToggleEnabledRequ
         return _write_error_response(exc)
 
 
-@router.post("/suggestions")
-async def suggestions():
-    """生成文案建议（A4 实现，当前返回 501）。"""
-    raise HTTPException(status_code=501, detail="not_integrated")
+@router.post("/suggestions", response_model=SuggestionsResponse)
+async def suggestions(body: SuggestionsRequest):
+    """生成 3 条模板文案建议（B5-1：不调用真实 LLM）。"""
+    svc = create_product_service()
+    try:
+        data = await svc.get_suggestions(
+            recipient=body.recipient,
+            scene=body.scene,
+            raw_text=body.rawText,
+        )
+        return SuggestionsResponse(data=data)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "errorKind": "invalid_input", "message": str(exc), "retryable": False},
+        )
 
 
 @router.post("/tts")
