@@ -33,6 +33,7 @@
 | P17-XIANGTA-COPYWRITING-B5-1 | CopywritingService 模板文案建议，POST /suggestions 闭环 | ✅ |
 | P17-XIANGTA-LETTERS-B6-1 | letters/history 进程内内存闭环（POST/GET /letters） | ✅ |
 | P17-XIANGTA-H5-B7-1 | H5 静态前端主流程（bootstrap→suggestions→tts→letters） | ✅ |
+| P17-XIANGTA-H5-B7-1-FIX1 | 移动 serve.py 到 apps/xiangta-h5/，补充 DESIGN_REFERENCE.md 设计来源文档 | ✅ |
 | P17-XIANGTA-MVP-CLOSEOUT-B7 | 后端 + H5 MVP closeout / 合并前验收 | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |

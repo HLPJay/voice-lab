@@ -4,6 +4,10 @@
 
 想Ta了产品主流程最小 H5 静态页面（B7-1 MVP），无需构建步骤，无外部依赖。
 
+## 设计来源
+
+本 H5 基于 `design_h5/想他了点击版本/` 设计稿实现。详见 [DESIGN_REFERENCE.md](DESIGN_REFERENCE.md)。
+
 ## 主流程
 
 ```
@@ -19,8 +23,8 @@
 ## 本地预览
 
 ```bash
-cd apps/xiangta-h5
-python -m http.server 5173
+# 在项目根目录执行
+python -m uvicorn serve:app --app-dir apps/xiangta-h5 --host 127.0.0.1 --port 5173
 # 浏览器打开 http://localhost:5173
 ```
 
@@ -32,11 +36,13 @@ python -m http.server 5173
 
 ## 文件说明
 
-| 文件         | 说明 |
+| 文件                  | 说明 |
 |---|---|
-| `index.html` | 单页 H5，包含所有 UI 区域 |
-| `styles.css` | 移动端优先样式，无外部依赖 |
-| `app.js`     | 纯 JS，调用 `/api/xiangta/*` 接口 |
+| `index.html`          | 单页 H5，包含所有 UI 区域 |
+| `styles.css`          | 移动端优先样式，无外部依赖 |
+| `app.js`              | 纯 JS，调用 `/api/xiangta/*` 接口 |
+| `serve.py`            | 本地预览用静态文件服务器（FastAPI） |
+| `DESIGN_REFERENCE.md` | 设计稿来源与实现映射说明 |
 
 ## 约束
 
