@@ -12,7 +12,7 @@
 | P17-XIANGTA-INIT-A0-FIX1 | 清理产品层底层参数泄露，修正 voicePreset/Core 边界 | ✅ |
 | P17-XIANGTA-A1 | 配置协议 + bootstrap/status 只读接口，不接真实 TTS | ✅ |
 | P17-XIANGTA-A1-FIX1 | 抽离配置加载（config/loader.py）与 Bootstrap 组装（BootstrapService），消除 product_service.py 责任膨胀 | ✅ |
-| P17-XIANGTA-A2 | preset_mapper + voice_lab_gateway contract dry-run，不调用真实 Provider | TODO |
+| P17-XIANGTA-A2 | TtsOrchestrator + VoiceLabGateway dry-run 合约：产品层 → Core 边界完整 dry-run，不调用真实 Provider | ✅ |
 | P17-XIANGTA-A3 | 真实 Core TTS 接入，通过 gateway 调用 Core 稳定入口 | TODO |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |

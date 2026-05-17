@@ -192,13 +192,6 @@ class TestUnimplementedRoutes:
         })
         assert r.status_code == 501
 
-    def test_tts_returns_501(self, client):
-        r = client.post("/api/xiangta/tts", json={
-            "text": "测试", "voicePreset": "female-gentle",
-            "tone": "gentle", "recipient": "lover", "scene": "miss"
-        })
-        assert r.status_code == 501
-
     def test_create_letter_returns_501(self, client):
         r = client.post("/api/xiangta/letters", json={})
         assert r.status_code == 501

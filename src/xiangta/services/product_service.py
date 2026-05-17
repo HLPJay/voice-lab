@@ -53,16 +53,27 @@ class ProductService:
     async def generate_tts(
         self, *, text: str, voice_preset: str, tone: str, recipient: str, scene: str
     ) -> dict:
-        """参见 tts_orchestrator.generate。"""
-        # TODO(P17-A3)
-        raise NotImplementedError
+        """委托给 TtsOrchestrator；ProductService 只做门面。"""
+        return await self._tts.generate(
+            text=text,
+            voice_preset=voice_preset,
+            tone=tone,
+            recipient=recipient,
+            scene=scene,
+        )
 
 
 def create_product_service() -> "ProductService":
-    """默认工厂：A1 阶段只需要 bootstrap + provider_status（不需要真实 gateway）。"""
+    """默认工厂：A2 阶段装配 dry-run TtsOrchestrator（不接真实 Provider）。"""
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.services.bootstrap_service import BootstrapService
+    from src.xiangta.services.preset_mapper import PresetMapper
+    from src.xiangta.services.tts_orchestrator import TtsOrchestrator
+    from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
 
     provider_status = ProviderStatusService(gateway=None)
     bootstrap       = BootstrapService(provider_status=provider_status)
-    return ProductService(bootstrap=bootstrap, provider_status=provider_status)
+    gateway         = VoiceLabGateway()
+    mapper          = PresetMapper()
+    tts             = TtsOrchestrator(gateway=gateway, mapper=mapper)
+    return ProductService(bootstrap=bootstrap, provider_status=provider_status, tts=tts)

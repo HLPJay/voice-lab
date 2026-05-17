@@ -208,3 +208,70 @@ class TestApiSchemas:
         assert "not_integrated" in args, (
             "ProviderKind 应包含 'not_integrated' 状态，表示尚未接入真实 Provider"
         )
+
+    def test_tts_contract_no_forbidden_fields(self):
+        from src.xiangta.api.schemas import TtsContract
+        fields = set(TtsContract.model_fields.keys())
+        bad = fields & FORBIDDEN_KEYS
+        assert not bad, f"TtsContract 包含禁止的底层字段：{bad}"
+
+
+# ── A2 架构边界：import 隔离 ──────────────────────────────────────────────────
+
+class TestA2ImportBoundary:
+    """
+    验证产品层各模块不直接 import src.voice_lab.*。
+    product_service、routes 只能通过 voice_lab_gateway 访问 Core 边界。
+    tts_orchestrator 不直接 import 真实 Provider。
+    """
+
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_routes_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.api.routes")
+        assert "from src.voice_lab" not in src, (
+            "routes.py 不得直接 import src.voice_lab.*"
+        )
+        assert "import src.voice_lab" not in src, (
+            "routes.py 不得直接 import src.voice_lab.*"
+        )
+
+    def test_product_service_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.services.product_service")
+        assert "from src.voice_lab" not in src, (
+            "product_service.py 不得直接 import src.voice_lab.*"
+        )
+        assert "import src.voice_lab" not in src, (
+            "product_service.py 不得直接 import src.voice_lab.*"
+        )
+
+    def test_tts_orchestrator_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        assert "from src.voice_lab" not in src, (
+            "tts_orchestrator.py 不得直接 import src.voice_lab.*"
+        )
+        assert "import src.voice_lab" not in src, (
+            "tts_orchestrator.py 不得直接 import src.voice_lab.*"
+        )
+
+    def test_tts_orchestrator_does_not_import_provider_adapter(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        provider_imports = ["minimax", "mimo", "openai", "azure", "elevenlabs"]
+        for token in provider_imports:
+            assert token not in src.lower(), (
+                f"tts_orchestrator.py 不得直接 import Provider adapter（检测到：{token}）"
+            )
+
+    def test_gateway_dry_run_signature_no_forbidden_params(self):
+        import inspect
+        from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
+        sig = inspect.signature(VoiceLabGateway.generate_tts_dry_run)
+        param_names = set(sig.parameters.keys()) - {"self"}
+        bad = param_names & FORBIDDEN_KEYS
+        assert not bad, (
+            f"VoiceLabGateway.generate_tts_dry_run() 签名包含禁止参数：{bad}"
+        )

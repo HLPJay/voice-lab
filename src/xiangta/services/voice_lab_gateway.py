@@ -16,6 +16,7 @@ Core Contract Gap 登记：
 """
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 
@@ -64,6 +65,53 @@ class VoiceLabGateway:
         # TODO(P17-A3): 调用 Core TTSService
         # Core 内部负责将 core_binding_key 解析为实际 voice_id / model 等参数
         raise NotImplementedError
+
+    async def generate_tts_dry_run(
+        self,
+        *,
+        text: str,
+        core_binding_key: str,
+        tone: str,
+        tone_hint: str,
+        scene: str,
+        voice_preset: str,
+        style: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Dry-run contract — validates product→Core bridge without calling any Provider.
+
+        No real network call. No API key read. No Provider import.
+
+        Returns:
+            {
+              "taskId": "dryrun_<hex>",
+              "status": "dry_run",
+              "audioUrl": None,
+              "durationMs": None,
+              "message": "dry-run only, no provider call",
+              "contract": {
+                "coreBindingKey": str,
+                "voicePreset": str,
+                "tone": str,
+                "toneHint": str,
+                "scene": str,
+              },
+            }
+        """
+        return {
+            "taskId": f"dryrun_{uuid.uuid4().hex[:8]}",
+            "status": "dry_run",
+            "audioUrl": None,
+            "durationMs": None,
+            "message": "dry-run only, no provider call",
+            "contract": {
+                "coreBindingKey": core_binding_key,
+                "voicePreset": voice_preset,
+                "tone": tone,
+                "toneHint": tone_hint,
+                "scene": scene,
+            },
+        }
 
     async def get_provider_status(self) -> dict[str, Any]:
         """Query Voice Lab Core provider status.

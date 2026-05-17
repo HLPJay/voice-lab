@@ -29,6 +29,25 @@ class NoProviderError(XiangTaError):
         super().__init__("no_provider", "声音服务暂时连接不上，请稍后再试。", retryable=True)
 
 
+class InvalidInputError(XiangTaError):
+    def __init__(self, message: str) -> None:
+        super().__init__("invalid_input", message, retryable=False)
+
+
+class TextTooLongError(XiangTaError):
+    def __init__(self, max_chars: int) -> None:
+        super().__init__(
+            "text_too_long",
+            f"文案超过 {max_chars} 字，请缩短后再试。",
+            retryable=False,
+        )
+
+
+class PresetNotFoundError(XiangTaError):
+    def __init__(self, detail: str = "") -> None:
+        super().__init__("preset_not_found", detail or "声线或语气配置不存在。", retryable=False)
+
+
 class TtsFailedError(XiangTaError):
     def __init__(self, detail: str = "") -> None:
         super().__init__("tts_failed", f"生成声音时遇到了问题，可以再试一次。{detail}", retryable=True)
@@ -40,12 +59,11 @@ class LlmFailedError(XiangTaError):
 
 
 def translate(exc: Exception) -> XiangTaError:
-    """
-    将 Core 抛出的技术异常映射为 XiangTaError。
+    """将 Core 抛出的技术异常映射为 XiangTaError。"""
+    from src.xiangta.services.preset_mapper import PresetMappingError  # local import to avoid cycle
 
-    TODO(P17-A2/A3): 随着 Core 错误类型的引入，逐步完善映射规则。
-    """
     if isinstance(exc, XiangTaError):
         return exc
-    # 兜底：未知异常统一提示
+    if isinstance(exc, PresetMappingError):
+        return PresetNotFoundError(str(exc))
     return XiangTaError("unknown", "出了点小问题，可以再试一次。", retryable=True)

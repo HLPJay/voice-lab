@@ -4,20 +4,24 @@ XiangTa API 路由定义。
 NOTE: 本模块不注册到主应用（app/main.py）。
       通过 include_router 在独立 XiangTa 入口或测试中挂载。
 
-实现状态（P17-XIANGTA-A1）：
+实现状态（P17-XIANGTA-A2）：
   GET  /bootstrap       ✅ 可用（读取配置，固定 not_integrated）
   GET  /provider/status ✅ 可用（固定 not_integrated）
+  POST /tts             ✅ dry-run 合约（不调用真实 Provider）
   POST /suggestions     ⏳ 未实现（A4）
-  POST /tts             ⏳ 未实现（A3）
   POST /letters         ⏳ 未实现（A4+）
   GET  /letters         ⏳ 未实现（A4+）
 """
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 
 from src.xiangta.api.schemas import (
     BootstrapResponse,
     ProviderStatusResponse,
+    TtsRequest,
+    TtsResponse,
 )
+from src.xiangta.services.error_translator import XiangTaError
 from src.xiangta.services.product_service import create_product_service
 
 router = APIRouter(prefix="/api/xiangta", tags=["xiangta"])
@@ -54,9 +58,24 @@ async def suggestions():
 
 
 @router.post("/tts")
-async def tts():
-    """生成 TTS 语音（A3 实现，当前返回 501）。"""
-    raise HTTPException(status_code=501, detail="not_integrated")
+async def tts(body: TtsRequest):
+    """TTS dry-run 合约（A2）。
+
+    不调用真实 Provider，不生成真实音频，不读取真实 API key。
+    返回 taskId / status / contract，供前端验证链路。
+    """
+    svc = create_product_service()
+    try:
+        data = await svc.generate_tts(
+            text=body.text,
+            voice_preset=body.voicePreset,
+            tone=body.tone,
+            recipient=body.recipient,
+            scene=body.scene,
+        )
+        return TtsResponse(data=data)
+    except XiangTaError as exc:
+        return JSONResponse(status_code=400, content=exc.to_dict())
 
 
 @router.post("/letters")

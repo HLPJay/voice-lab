@@ -141,13 +141,25 @@ class TtsRequest(BaseModel):
     scene: SceneId
 
 
+class TtsContract(BaseModel):
+    """Product→Core bridge echo — safe product-layer identifiers only."""
+    coreBindingKey: str
+    voicePreset: str
+    tone: str
+    toneHint: str
+    scene: str
+
+
 class TtsData(BaseModel):
     taskId: str
-    audioUrl: str
-    durationSecs: float
+    status: str                          # "dry_run" | "completed"
+    audioUrl: Optional[str] = None
+    durationMs: Optional[int] = None
     charCount: int
-    voicePreset: VoicePresetId
-    tone: ToneId
+    voicePreset: str
+    tone: str
+    message: Optional[str] = None
+    contract: Optional[TtsContract] = None
 
 
 class TtsResponse(OkResponse):
