@@ -10702,3 +10702,31 @@ P16-ADAPTER-PLUGIN-CONFIG-B1 实现后，复核发现 3 个边界问题需要修
 - 预置音色列表（list_voices）
 - 音色设计（design_voice via mimo-v2.5-tts-voicedesign）
 - mock transport 单元测试
+
+---
+
+## P16-MOCK-CONFIGURED-CONFIG-TEST-RECONCILE
+
+**阶段**：P16-MOCK-CONFIGURED-CONFIG-TEST-RECONCILE-D4-C0
+
+**问题**：commit `534ed48` 将 `mock_configured` provider 设为 `enabled: false`（原因："test-only, clutters UI"），但未同步更新测试期望，导致 6 项测试失败。
+
+**mock_configured 定性**：
+- **测试专用 provider** — 不做真实 API 调用，仅用于验证 config-driven 架构支持同 adapter_type 多实例命名的能力
+- 与 `disabled_provider` 用途不同：`disabled_provider` 专门测试"禁用 provider 被正确排除"，`mock_configured` 测试"启用 mock 实例可被路由/注册到 capabilities"
+- 两者覆盖范围不可替换
+
+**决策**：修 `config/providers.yaml`，将 `mock_configured.enabled` 恢复为 `true`
+- 理由：`mock_configured` 是零成本测试 provider，re-enable 不影响真实 API 调用，不影响 xiaomi_mimo 边界
+- "UI 杂乱"问题可由 UI 过滤解决，不应以禁用 provider 来处理
+- 测试是架构契约的体现，不应被配置偶然改变而失效
+
+**验证结果**：
+- `tests/test_adapter_config_loader.py`：51/51 passed
+- `tests/test_provider_config_dynamic.py`：40/40 passed
+- `tests/test_capabilities.py`：43/43 passed
+- 总计 134 passed，0 failed
+
+**后续策略**：
+- `mock_configured` 长期保持 `enabled: true`，作为架构回归测试基础设施
+- 如需隐藏 UI 中的开发专用 provider，应在前端 provider 选择列表中增加 `dev_only` 过滤标志，而非修改 `enabled` 字段
