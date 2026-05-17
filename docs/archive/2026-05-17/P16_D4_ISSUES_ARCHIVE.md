@@ -74,6 +74,14 @@
 - **处理**: 更新测试断言为当前 enabled / capabilities 可见口径；clone/design 测试改为校验当前配置声明，不等同于 V1 产品承诺
 - **状态**: 已完成
 
+### D4-F6P：Voice Profile 人设归档生命周期
+
+- **commit**: 本任务（见下方）
+- **问题**: 人设只有创建 / 绑定，没有安全归档 / 停用能力
+- **根因**: 缺少 profile archive API、生成链路 inactive profile 拦截、前端绑定管理入口
+- **处理**: 使用 `VoiceProfile.is_active=false` 实现软归档；普通列表过滤 inactive；生成链路拒绝 archived profile；前端在音色工具 → 绑定管理提供归档入口
+- **状态**: 已完成
+
 ---
 
 ## 4. 当前仍未处理问题

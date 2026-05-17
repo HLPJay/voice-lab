@@ -60,6 +60,11 @@ class VoiceBindingService:
         profile = get_profile(session, profile_id)
         if not profile:
             raise ProfileNotFound("Voice profile not found", profile_id)
+        if not profile.is_active:
+            raise ValidationError(
+                "该人设已归档，不能创建新绑定",
+                f"PROFILE_ARCHIVED:{profile_id}",
+            )
 
         capability_validator.validate_tts(provider=request.provider, model=request.model)
 

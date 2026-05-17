@@ -1975,7 +1975,11 @@
             </select>
           </div>
         </div>
-        <button class="btn-primary" onclick="handleListBindings()">查询</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="handleListBindings()">查询</button>
+          <button class="btn-primary" id="archiveProfileBtn" type="button" onclick="handleArchiveProfile()" disabled>归档当前人设</button>
+        </div>
+        <div id="archiveProfileResult"></div>
         <div id="bindingListResults"></div>
       </div>
 
@@ -2216,6 +2220,27 @@
     });
   }
   window.populateProfileSelect = populateProfileSelect;
+
+  function refreshScriptProfileSelects() {
+    if (!Array.isArray(window._scriptRows)) return;
+    window._scriptRows.forEach(function (row) {
+      var sel = document.getElementById(`scriptProfile_${row.id}`);
+      if (sel) {
+        populateProfileSelect(sel, row.profileId || '');
+        row.profileId = sel.value || '';
+        updateScriptLineVoiceHint(row.id);
+      }
+    });
+    updateBatchScriptHints();
+  }
+
+  function updateArchiveProfileButtonState() {
+    var btn = document.getElementById('archiveProfileBtn');
+    var profileSel = document.getElementById('bindingProfileSelect');
+    if (!btn || !profileSel) return;
+    if (btn.dataset.loading === 'true') return;
+    btn.disabled = !profileSel.value;
+  }
 
   // ============================================================
   // P16-PROVIDER-BINDING-UI-B2: Workspace profile binding helpers
@@ -2544,6 +2569,10 @@
     populateProfileSelect(document.getElementById('bindingProfileSelect'));
     populateProfileSelect(document.getElementById('newBindingProfile'));
     populateProfileSelect(document.getElementById('batchProfile'));
+    refreshScriptProfileSelects();
+    updateBatchVoiceBindingHint?.();
+    updateWorkspaceBindingUiState();
+    updateArchiveProfileButtonState();
   }
   function showProfileRetry() {
     // Remove any existing retry button before adding a new one
@@ -2566,6 +2595,7 @@
   // T2A Tab: also load binding status when provider changes
   providerSelect.addEventListener('change', async () => { await refreshWorkspaceBindingMap(); refreshWorkspaceProfileAvailability(); await checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
   profileSelect.addEventListener('change', async () => { await checkBindingStatus(); updateWorkspaceBindingUiState(); updateWorkspaceVoiceBindingHint(); });
+  document.getElementById('bindingProfileSelect')?.addEventListener('change', updateArchiveProfileButtonState);
 
   // Batch longtext tab: update voice binding hint on profile/provider change
   document.getElementById('batchProfile')?.addEventListener('change', updateBatchVoiceBindingHint);
@@ -5259,6 +5289,67 @@ function handleStopAsyncPolling() {
     }
   }
 
+  function getProfileArchiveConfirmMessage() {
+    return [
+      '确认归档该人设？',
+      '',
+      '归档后：',
+      '1. 该人设不会出现在工作台、长文本、剧本的人设下拉中；',
+      '2. 该人设不能再用于新生成；',
+      '3. 历史生成记录、音频资产和调用统计不会删除；',
+      '4. 已有绑定记录会保留，便于后续追溯。'
+    ].join('\n');
+  }
+
+  async function handleArchiveProfile() {
+    const profileSel = document.getElementById('bindingProfileSelect');
+    const resultDiv = document.getElementById('archiveProfileResult');
+    const listDiv = document.getElementById('bindingListResults');
+    const btn = document.getElementById('archiveProfileBtn');
+    const profileId = profileSel?.value || '';
+
+    if (!profileId) {
+      resultDiv.innerHTML = '<div class="error-msg">请先选择人设</div>';
+      updateArchiveProfileButtonState();
+      return;
+    }
+
+    if (!confirm(getProfileArchiveConfirmMessage())) return;
+
+    const oldText = btn.textContent;
+    btn.dataset.loading = 'true';
+    btn.disabled = true;
+    btn.textContent = '归档中…';
+    resultDiv.innerHTML = '';
+
+    try {
+      const resp = await fetch(`/api/voice/profiles/${encodeURIComponent(profileId)}/archive`, {
+        method: 'PATCH',
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const msg = data?.error?.message || data?.detail || JSON.stringify(data);
+        resultDiv.innerHTML = `<div class="error-msg">归档失败：${esc(msg)}</div>`;
+        return;
+      }
+
+      await loadProfiles(true);
+      await populateAllProfiles();
+
+      if (profileSel && profileSel.value === profileId) {
+        listDiv.innerHTML = '<div style="font-size:0.85rem;color:#718096">该人设已归档，已从默认列表移除。</div>';
+      }
+
+      resultDiv.innerHTML = `<div class="success-msg">归档成功：${esc(data.name || profileId)}</div>`;
+    } catch (e) {
+      resultDiv.innerHTML = `<div class="error-msg">归档失败：${esc(e.message)}</div>`;
+    } finally {
+      btn.dataset.loading = 'false';
+      btn.textContent = oldText;
+      updateArchiveProfileButtonState();
+    }
+  }
+
   async function handleCreateBinding() {
     const profileId = document.getElementById('newBindingProfile').value;
     const provider = document.getElementById('newBindingProvider').value;
@@ -5343,10 +5434,7 @@ function handleStopAsyncPolling() {
 
       // 刷新全局人设缓存并更新所有人设下拉
       await loadProfiles(true);
-      populateProfileSelect(document.getElementById('bindingProfileSelect'));
-      populateProfileSelect(document.getElementById('newBindingProfile'));
-      populateProfileSelect(profileSelect);
-      populateProfileSelect(document.getElementById('batchProfile'));
+      await populateAllProfiles();
 
       // 清空输入
       document.getElementById('newProfileId').value = '';
