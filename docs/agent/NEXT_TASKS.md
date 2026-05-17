@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-H5-B7-1（已完成）→ 下一步：P17-XIANGTA-MVP-CLOSEOUT-B7**
+**P17-XIANGTA-MVP-CLOSEOUT-B7（已完成）→ 下一步：P17-XIANGTA-MERGE-DEV-REVIEW**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -34,7 +34,8 @@
 | P17-XIANGTA-LETTERS-B6-1 | letters/history 进程内内存闭环（POST/GET /letters） | ✅ |
 | P17-XIANGTA-H5-B7-1 | H5 静态前端主流程（bootstrap→suggestions→tts→letters） | ✅ |
 | P17-XIANGTA-H5-B7-1-FIX1 | 移动 serve.py 到 apps/xiangta-h5/，补充 DESIGN_REFERENCE.md 设计来源文档 | ✅ |
-| P17-XIANGTA-MVP-CLOSEOUT-B7 | 后端 + H5 MVP closeout / 合并前验收 | Next |
+| P17-XIANGTA-MVP-CLOSEOUT-B7 | 后端 + H5 MVP closeout / 合并前验收，生成 MVP_CLOSEOUT_REPORT.md，512 tests 全绿 | ✅ |
+| P17-XIANGTA-MERGE-DEV-REVIEW | 合并 p17/xiangta-product-init → dev 前代码审查 | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
 
@@ -58,7 +59,11 @@
 
 ## XiangTa 下一步约束
 
-下一步进入 `P17-XIANGTA-MVP-CLOSEOUT-B7`：后端 + H5 MVP closeout / 合并前验收。不得直接进入真实 Provider 调用、读取 API key 或运行真实 LLM probe。
+下一步进入 `P17-XIANGTA-MERGE-DEV-REVIEW`：合并 `p17/xiangta-product-init` → `dev` 前人工代码审查。
+
+**不建议直接进入真实 Provider 接入**。真实 Provider / LLM 接入应在 dev 合并审查通过后，作为独立新阶段处理。不得直接进入真实 Provider 调用、读取 API key 或运行真实 LLM probe。
+
+MVP closeout 报告详见：`docs/xiangta/MVP_CLOSEOUT_REPORT.md`
 
 ## P16 已完成历史
 

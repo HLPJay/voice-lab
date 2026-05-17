@@ -13,6 +13,19 @@
 | [PRODUCT_CONFIG_MODEL.md](PRODUCT_CONFIG_MODEL.md) | P17-XIANGTA-PRODUCT-CONFIG-A0：产品配置模型设计 |
 | [API_CONTRACT.md](API_CONTRACT.md) | 用户端 API、管理端 API、Core 调用契约 |
 | [ROADMAP.md](ROADMAP.md) | 后续实施路线：从文档确认到 B1/B2/B3 实现 |
+| [MVP_CLOSEOUT_REPORT.md](MVP_CLOSEOUT_REPORT.md) | P17-XIANGTA-MVP-CLOSEOUT-B7：MVP 能力清单、限制、gaps、合并前验收结论 |
+
+## 当前状态（2026-05-18）
+
+**MVP 主流程已闭环（P17-XIANGTA-MVP-CLOSEOUT-B7 完成）**，全套 512 tests 通过。
+
+当前已就绪：bootstrap / template suggestions / tts（mock path）/ letters（进程内）/ Admin 配置读写 / H5 静态前端。
+
+**当前不接真实 Provider / LLM**：suggestions 为模板版，tts 默认路径返回稳定降级（no_provider）。
+
+下一步：`P17-XIANGTA-MERGE-DEV-REVIEW`（合并 dev 前人工审查），真实 Provider 接入作为审查通过后的新阶段。
+
+---
 
 ## 当前结论
 
