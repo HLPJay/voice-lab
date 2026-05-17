@@ -454,3 +454,26 @@ class TestB2B1aGatewayBoundary:
     def test_gateway_does_not_read_environment(self):
         src = self._get_source("src.xiangta.services.voice_lab_gateway")
         assert "os.environ" not in src
+
+
+class TestB2B1bOrchestratorBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_tts_orchestrator_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_tts_orchestrator_does_not_call_get_provider(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        assert "get_provider(" not in src
+
+    def test_product_service_does_not_create_real_http_client(self):
+        src = self._get_source("src.xiangta.services.product_service")
+        forbidden_tokens = ["httpx.AsyncClient(", "requests.Session(", "urllib.request"]
+        for token in forbidden_tokens:
+            assert token not in src

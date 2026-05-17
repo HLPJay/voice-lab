@@ -6,7 +6,7 @@ TTS Orchestrator — 调度 TTS 生成任务。
   2. VoicePresetMappingService.resolve(voicePreset) → ProductVoiceMapping
   3. TonePresetService.resolve(tone) → TonePreset
   4. 组装 CoreRenderTarget
-  3. voice_lab_gateway.generate_tts_dry_run(...)
+  3. voice_lab_gateway.generate_tts(...) / generate_tts_dry_run(...)
   4. 返回产品层任务响应
 
 不直接调用 provider adapter。
@@ -19,8 +19,10 @@ from typing import TYPE_CHECKING
 
 from src.xiangta.services.error_translator import (
     InvalidInputError,
+    NoProviderError,
     PresetNotFoundError,
     TextTooLongError,
+    TtsFailedError,
 )
 
 if TYPE_CHECKING:
@@ -37,11 +39,13 @@ class TtsOrchestrator:
         voice_mapping_service: "VoicePresetMappingService",
         tone_preset_service: "TonePresetService",
         max_tts_chars: int = 500,
+        use_dry_run: bool = False,
     ) -> None:
         self._gw = gateway
         self._voice_mapping_service = voice_mapping_service
         self._tone_preset_service = tone_preset_service
         self._max_tts_chars = max_tts_chars
+        self._use_dry_run = use_dry_run
 
     async def generate(
         self,
@@ -53,14 +57,14 @@ class TtsOrchestrator:
         scene: str,
     ) -> dict:
         """
-        Product-layer TTS dry-run.
+        Product-layer TTS orchestration.
 
         Returns:
             {
               "taskId": str,
-              "status": "dry_run",
-              "audioUrl": None,
-              "durationMs": None,
+              "status": str,
+              "audioUrl": str | None,
+              "durationMs": int | None,
               "charCount": int,
               "voicePreset": str,
               "tone": str,
@@ -103,15 +107,37 @@ class TtsOrchestrator:
             emotion=render_overrides.get("emotion"),
         )
 
-        result = await self._gw.generate_tts_dry_run(
-            text=text,
-            target=target,
-            tone=tone,
-            tone_hint=tone_preset.style_hint,
-            scene=scene,
-            voice_preset_id=voice_preset,
-            metadata={"recipient": recipient},
-        )
+        metadata = {
+            "recipient": recipient,
+            "voicePresetId": voice_preset,
+            "toneHint": tone_preset.style_hint,
+        }
+        try:
+            if self._use_dry_run:
+                result = await self._gw.generate_tts_dry_run(
+                    text=text,
+                    target=target,
+                    tone=tone,
+                    tone_hint=tone_preset.style_hint,
+                    scene=scene,
+                    voice_preset_id=voice_preset,
+                    metadata=metadata,
+                )
+            else:
+                result = await self._gw.generate_tts(
+                    text=text,
+                    target=target,
+                    tone=tone,
+                    scene=scene,
+                    metadata=metadata,
+                )
+        except Exception as exc:
+            name = exc.__class__.__name__
+            if name == "CoreRenderUnavailableError":
+                raise NoProviderError() from exc
+            if name == "CoreRenderResponseError":
+                raise TtsFailedError() from exc
+            raise
 
         return {
             "taskId":      result["taskId"],

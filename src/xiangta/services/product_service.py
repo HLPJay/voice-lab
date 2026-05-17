@@ -64,7 +64,7 @@ class ProductService:
 
 
 def create_product_service() -> "ProductService":
-    """默认工厂：A2 阶段装配 dry-run TtsOrchestrator（不接真实 Provider）。"""
+    """默认工厂：装配安全的 Core render mock-path 编排，不真实访问网络。"""
     from src.xiangta.config.product_config_repository import ProductConfigRepository
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.services.bootstrap_service import BootstrapService
@@ -88,5 +88,6 @@ def create_product_service() -> "ProductService":
         voice_mapping_service=voice_mapping_service,
         tone_preset_service=tone_preset_service,
         max_tts_chars=limits.max_tts_chars,
+        use_dry_run=False,
     )
     return ProductService(bootstrap=bootstrap, provider_status=provider_status, tts=tts)

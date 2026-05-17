@@ -1,6 +1,3 @@
-"""
-P17-XIANGTA-PRODUCT-CONFIG-B1-4 - TtsOrchestrator unit tests.
-"""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -10,8 +7,10 @@ import pytest
 from src.xiangta.config.product_config_models import ProductVoiceMapping, TonePreset
 from src.xiangta.services.error_translator import (
     InvalidInputError,
+    NoProviderError,
     PresetNotFoundError,
     TextTooLongError,
+    TtsFailedError,
 )
 from src.xiangta.services.tone_preset_service import TonePresetDisabled, TonePresetNotFound
 from src.xiangta.services.tts_orchestrator import TtsOrchestrator
@@ -66,7 +65,22 @@ MOCK_TONE = TonePreset(
     sort_order=0,
 )
 
-MOCK_GATEWAY_RESULT = {
+MOCK_GENERATE_RESULT = {
+    "taskId": "job_123",
+    "status": "completed",
+    "audioUrl": "/api/voice/assets/audio_123/download",
+    "durationMs": 1800,
+    "message": None,
+    "contract": {
+        "voicePresetId": "female-gentle",
+        "tone": "gentle",
+        "toneHint": "soft",
+        "scene": "miss",
+        "mode": "core_render_mock",
+    },
+}
+
+MOCK_DRY_RUN_RESULT = {
     "taskId": "dryrun_abc12345",
     "status": "dry_run",
     "audioUrl": None,
@@ -99,7 +113,8 @@ def mock_tone_preset_service():
 @pytest.fixture
 def mock_gateway():
     gateway = MagicMock()
-    gateway.generate_tts_dry_run = AsyncMock(return_value=MOCK_GATEWAY_RESULT)
+    gateway.generate_tts = AsyncMock(return_value=MOCK_GENERATE_RESULT)
+    gateway.generate_tts_dry_run = AsyncMock(return_value=MOCK_DRY_RUN_RESULT)
     return gateway
 
 
@@ -137,7 +152,7 @@ class TestGenerateHappyPath:
         mock_tone_preset_service.resolve.assert_called_once_with("gentle")
 
     @pytest.mark.asyncio
-    async def test_calls_gateway_dry_run_once(self, orchestrator, mock_gateway):
+    async def test_default_calls_generate_tts(self, orchestrator, mock_gateway):
         await orchestrator.generate(
             text="想念你",
             voice_preset="female-gentle",
@@ -145,10 +160,11 @@ class TestGenerateHappyPath:
             recipient="lover",
             scene="miss",
         )
-        mock_gateway.generate_tts_dry_run.assert_called_once()
+        mock_gateway.generate_tts.assert_called_once()
+        mock_gateway.generate_tts_dry_run.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_gateway_dry_run_receives_core_render_target(self, orchestrator, mock_gateway):
+    async def test_generate_tts_receives_core_render_target_and_metadata(self, orchestrator, mock_gateway):
         await orchestrator.generate(
             text="想念你",
             voice_preset="female-gentle",
@@ -156,11 +172,12 @@ class TestGenerateHappyPath:
             recipient="lover",
             scene="miss",
         )
-        kwargs = mock_gateway.generate_tts_dry_run.call_args.kwargs
+        kwargs = mock_gateway.generate_tts.call_args.kwargs
         target = kwargs["target"]
         assert target.profile_id == "<core_profile_id_from_core_profiles>"
-        assert kwargs["voice_preset_id"] == "female-gentle"
-        assert kwargs["tone_hint"] == "soft"
+        assert kwargs["metadata"]["voicePresetId"] == "female-gentle"
+        assert kwargs["metadata"]["toneHint"] == "soft"
+        assert kwargs["metadata"]["recipient"] == "lover"
 
     @pytest.mark.asyncio
     async def test_returns_safe_product_fields(self, orchestrator):
@@ -171,12 +188,37 @@ class TestGenerateHappyPath:
             recipient="lover",
             scene="miss",
         )
-        assert result["taskId"] == "dryrun_abc12345"
-        assert result["status"] == "dry_run"
+        assert result["taskId"] == "job_123"
+        assert result["status"] == "completed"
+        assert result["audioUrl"] == "/api/voice/assets/audio_123/download"
+        assert result["durationMs"] == 1800
         assert result["charCount"] == len("想念你")
         assert result["voicePreset"] == "female-gentle"
         assert result["tone"] == "gentle"
         assert result["contract"]["voicePresetId"] == "female-gentle"
+        assert result["contract"]["toneHint"] == "soft"
+        assert result["contract"]["mode"] == "core_render_mock"
+
+    @pytest.mark.asyncio
+    async def test_use_dry_run_true_calls_dry_run_branch(
+        self, mock_gateway, mock_voice_mapping_service, mock_tone_preset_service
+    ):
+        orch = TtsOrchestrator(
+            gateway=mock_gateway,
+            voice_mapping_service=mock_voice_mapping_service,
+            tone_preset_service=mock_tone_preset_service,
+            max_tts_chars=500,
+            use_dry_run=True,
+        )
+        result = await orch.generate(
+            text="想念你",
+            voice_preset="female-gentle",
+            tone="gentle",
+            recipient="lover",
+            scene="miss",
+        )
+        mock_gateway.generate_tts_dry_run.assert_called_once()
+        assert result["status"] == "dry_run"
 
 
 class TestNoCoreLeaks:
@@ -322,6 +364,54 @@ class TestPresetErrors:
                 text="想念你",
                 voice_preset="female-gentle",
                 tone="x",
+                recipient="lover",
+                scene="miss",
+            )
+
+
+class TestGatewayErrors:
+    @pytest.mark.asyncio
+    async def test_core_render_unavailable_is_translated_to_no_provider(
+        self, mock_gateway, mock_voice_mapping_service, mock_tone_preset_service
+    ):
+        class CoreRenderUnavailableError(Exception):
+            pass
+
+        mock_gateway.generate_tts.side_effect = CoreRenderUnavailableError("client missing")
+        orch = TtsOrchestrator(
+            gateway=mock_gateway,
+            voice_mapping_service=mock_voice_mapping_service,
+            tone_preset_service=mock_tone_preset_service,
+            max_tts_chars=500,
+        )
+        with pytest.raises(NoProviderError):
+            await orch.generate(
+                text="想念你",
+                voice_preset="female-gentle",
+                tone="gentle",
+                recipient="lover",
+                scene="miss",
+            )
+
+    @pytest.mark.asyncio
+    async def test_core_render_response_error_is_translated_to_tts_failed(
+        self, mock_gateway, mock_voice_mapping_service, mock_tone_preset_service
+    ):
+        class CoreRenderResponseError(Exception):
+            pass
+
+        mock_gateway.generate_tts.side_effect = CoreRenderResponseError("bad response")
+        orch = TtsOrchestrator(
+            gateway=mock_gateway,
+            voice_mapping_service=mock_voice_mapping_service,
+            tone_preset_service=mock_tone_preset_service,
+            max_tts_chars=500,
+        )
+        with pytest.raises(TtsFailedError):
+            await orch.generate(
+                text="想念你",
+                voice_preset="female-gentle",
+                tone="gentle",
                 recipient="lover",
                 scene="miss",
             )
