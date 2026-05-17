@@ -17,6 +17,54 @@
     return d.innerHTML;
   }
 
+  // ── provider UI visibility helpers ────────────────────────────────────
+
+  /**
+   * Returns true when dev mode is active (URL ?dev=1 or localStorage voice_lab_dev=1).
+   */
+  window.isDevMode = function () {
+    try {
+      if (new URLSearchParams(window.location.search).get('dev') === '1') return true;
+      if (window.localStorage && window.localStorage.getItem('voice_lab_dev') === '1') return true;
+    } catch (e) { /* ignore */ }
+    return false;
+  };
+
+  /**
+   * Returns true if the given capability should be visible in the provider UI.
+   *
+   * Rules (applied in priority order):
+   *   1. cap.enabled !== true              → not visible (always hidden)
+   *   2. metadata.testing_only === true    → never visible in UI
+   *   3. metadata.dev_only === true        → visible only in dev mode
+   *   4. metadata.ui_visible === false     → not visible in UI
+   *   5. otherwise                         → visible
+   *
+   * @param {object} cap  A provider capability object from the API.
+   * @param {{devMode?: boolean}} [opts]  Pass devMode explicitly for testability.
+   */
+  window.isUiVisibleProvider = function (cap, opts) {
+    if (!cap || cap.enabled !== true) return false;
+    var meta = cap.metadata || {};
+    if (meta.testing_only === true) return false;
+    var devMode = (opts && opts.devMode !== undefined) ? opts.devMode : window.isDevMode();
+    if (meta.dev_only === true) return devMode;
+    if (meta.ui_visible === false) return false;
+    return true;
+  };
+
+  /**
+   * Returns the list of capabilities that should appear in the provider select UI.
+   *
+   * @param {{devMode?: boolean}} [opts]
+   */
+  window.getUiProviderCapabilities = function (opts) {
+    if (!Array.isArray(window._providerCapabilities)) return [];
+    return window._providerCapabilities.filter(function (cap) {
+      return window.isUiVisibleProvider(cap, opts);
+    });
+  };
+
   // ── capability loading ───────────────────────────────────────────────
 
   window.loadProviderCapabilities = async function (force) {
@@ -250,14 +298,14 @@
     if (!el || !window._providerCapabilities) return;
     var current = el.value;
 
-    el.innerHTML = window._providerCapabilities
-      .filter(function (cap) { return cap.enabled; })
+    var visible = window.getUiProviderCapabilities();
+    el.innerHTML = visible
       .map(function (cap) {
         return '<option value="' + capEsc(cap.provider) + '">' + capEsc(cap.display_name || cap.provider) + '</option>';
       }).join('');
 
     var currentCap = window._providerCapabilitiesByName[current];
-    if (currentCap && currentCap.enabled) {
+    if (currentCap && window.isUiVisibleProvider(currentCap)) {
       el.value = current;
     }
   };

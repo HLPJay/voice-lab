@@ -162,7 +162,7 @@ def _build_capability_from_config(config) -> ProviderCapability:
     else:
         provider_voices_cap = ProviderVoiceCapability(supported=False)
 
-    # Metadata
+    # Metadata — adapter defaults first, then provider instance overrides
     metadata = {
         "adapter_type": config.adapter_type,
         "real_cost": config.real_cost,
@@ -170,6 +170,8 @@ def _build_capability_from_config(config) -> ProviderCapability:
     }
     if adapter_config and adapter_config.metadata:
         metadata.update(adapter_config.metadata)
+    if config.metadata:
+        metadata.update(config.metadata)
 
     return ProviderCapability(
         provider=config.name,

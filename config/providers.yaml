@@ -27,6 +27,8 @@ providers:
       enabled: true
     metadata:
       mode: "mock"
+      dev_only: true
+      ui_visible: false
 
   - name: "minimax"
     display_name: "MiniMax"
@@ -60,6 +62,7 @@ providers:
     metadata:
       ws_model: "speech-2.8-hd"
       clone_audio_max_size_mb: 20
+      ui_visible: true
 
   - name: "mock_configured"
     display_name: "Mock Configured"
@@ -86,6 +89,8 @@ providers:
     metadata:
       mode: "mock_configured"
       configured_via_yaml: true
+      testing_only: true
+      ui_visible: false
 
   - name: "disabled_provider"
     display_name: "Disabled Provider"
@@ -138,3 +143,4 @@ providers:
     metadata:
       provider_family: "xiaomi_mimo"
       api_shape: "chat_completions_audio"
+      ui_visible: true
