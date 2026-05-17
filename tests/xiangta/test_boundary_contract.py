@@ -392,3 +392,37 @@ class TestMappingServicesBoundary:
     def test_tone_preset_service_does_not_read_environment(self):
         src = self._get_source("src.xiangta.services.tone_preset_service")
         assert "os.environ" not in src
+
+
+class TestB14BoundaryCloseout:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_tts_orchestrator_does_not_import_bootstrap_config(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        assert "src.xiangta.config.bootstrap_config" not in src
+
+    def test_tts_orchestrator_does_not_import_product_config_repository(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        assert "ProductConfigRepository" not in src
+
+    def test_provider_status_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_provider_status_service_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "from src.voice_lab" not in src
+        assert "import src.voice_lab" not in src
+
+    def test_provider_status_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "os.environ" not in src
+
+    def test_provider_status_service_does_not_call_get_provider(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "get_provider(" not in src

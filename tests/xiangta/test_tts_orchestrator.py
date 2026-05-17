@@ -1,17 +1,11 @@
 """
-P17-XIANGTA-PRODUCT-CONFIG-B1-3 — TtsOrchestrator 单元测试
-
-验证：
-  - 正常 dry-run 调用 VoicePresetMappingService.resolve()
-  - 正常 dry-run 调用 TonePresetService.resolve()
-  - 正常 dry-run 调用 VoiceLabGateway.generate_tts_dry_run()
-  - 响应不包含 coreBindingKey / profile_id / provider / model 等 Core 字段
-  - voicePreset / tone 错误路径返回稳定错误
+P17-XIANGTA-PRODUCT-CONFIG-B1-4 - TtsOrchestrator unit tests.
 """
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.xiangta.config.product_config_models import ProductVoiceMapping, TonePreset
 from src.xiangta.services.error_translator import (
@@ -19,7 +13,7 @@ from src.xiangta.services.error_translator import (
     PresetNotFoundError,
     TextTooLongError,
 )
-from src.xiangta.services.tone_preset_service import TonePresetDisabled
+from src.xiangta.services.tone_preset_service import TonePresetDisabled, TonePresetNotFound
 from src.xiangta.services.tts_orchestrator import TtsOrchestrator
 from src.xiangta.services.voice_preset_mapping_service import (
     VoicePresetDisabled,
@@ -49,7 +43,7 @@ FORBIDDEN_KEYS = {
 MOCK_MAPPING = ProductVoiceMapping(
     id="female-gentle",
     label="温柔女声",
-    desc="清晰",
+    desc="清亮柔和",
     gender_style="female",
     suitable_recipients=["lover", "friend"],
     recommended_scenes=["miss", "night"],
@@ -65,7 +59,7 @@ MOCK_MAPPING = ProductVoiceMapping(
 MOCK_TONE = TonePreset(
     id="gentle",
     label="温柔",
-    desc="柔和",
+    desc="柔和表达",
     style_hint="soft",
     render_overrides={},
     enabled=True,
@@ -115,6 +109,7 @@ def orchestrator(mock_gateway, mock_voice_mapping_service, mock_tone_preset_serv
         gateway=mock_gateway,
         voice_mapping_service=mock_voice_mapping_service,
         tone_preset_service=mock_tone_preset_service,
+        max_tts_chars=500,
     )
 
 
@@ -189,9 +184,9 @@ class TestNoCoreLeaks:
         if seen is None:
             seen = set()
         if isinstance(obj, dict):
-            for k, v in obj.items():
-                seen.add(k)
-                self._collect_keys(v, seen)
+            for key, value in obj.items():
+                seen.add(key)
+                self._collect_keys(value, seen)
         elif isinstance(obj, list):
             for item in obj:
                 self._collect_keys(item, seen)
@@ -208,7 +203,7 @@ class TestNoCoreLeaks:
         )
         all_keys = self._collect_keys(result)
         bad = all_keys & FORBIDDEN_KEYS
-        assert not bad, f"TtsOrchestrator 返回了禁止字段：{bad}"
+        assert not bad, f"TtsOrchestrator returned forbidden fields: {bad}"
 
 
 class TestInputValidationErrors:
@@ -224,10 +219,29 @@ class TestInputValidationErrors:
             )
 
     @pytest.mark.asyncio
-    async def test_text_over_limit_raises_text_too_long(self, orchestrator):
+    async def test_text_over_default_limit_raises_text_too_long(self, orchestrator):
         with pytest.raises(TextTooLongError):
             await orchestrator.generate(
                 text="字" * 501,
+                voice_preset="female-gentle",
+                tone="gentle",
+                recipient="lover",
+                scene="miss",
+            )
+
+    @pytest.mark.asyncio
+    async def test_text_over_injected_limit_raises_text_too_long(
+        self, mock_gateway, mock_voice_mapping_service, mock_tone_preset_service
+    ):
+        orch = TtsOrchestrator(
+            gateway=mock_gateway,
+            voice_mapping_service=mock_voice_mapping_service,
+            tone_preset_service=mock_tone_preset_service,
+            max_tts_chars=3,
+        )
+        with pytest.raises(TextTooLongError):
+            await orch.generate(
+                text="1234",
                 voice_preset="female-gentle",
                 tone="gentle",
                 recipient="lover",
@@ -239,13 +253,14 @@ class TestPresetErrors:
     @pytest.mark.asyncio
     async def test_unknown_voice_preset_raises_stable_error(self, mock_gateway, mock_tone_preset_service):
         voice_mapping_service = MagicMock()
-        voice_mapping_service.resolve.side_effect = VoicePresetNotFound("voice mapping 'x' 不存在")
+        voice_mapping_service.resolve.side_effect = VoicePresetNotFound("voice mapping 'x' does not exist")
         orch = TtsOrchestrator(
             gateway=mock_gateway,
             voice_mapping_service=voice_mapping_service,
             tone_preset_service=mock_tone_preset_service,
+            max_tts_chars=500,
         )
-        with pytest.raises(PresetNotFoundError, match="不存在"):
+        with pytest.raises(PresetNotFoundError, match="does not exist"):
             await orch.generate(
                 text="想念你",
                 voice_preset="x",
@@ -257,13 +272,14 @@ class TestPresetErrors:
     @pytest.mark.asyncio
     async def test_disabled_voice_preset_raises_stable_error(self, mock_gateway, mock_tone_preset_service):
         voice_mapping_service = MagicMock()
-        voice_mapping_service.resolve.side_effect = VoicePresetDisabled("voicePreset 'x' 已禁用")
+        voice_mapping_service.resolve.side_effect = VoicePresetDisabled("voicePreset 'x' is disabled")
         orch = TtsOrchestrator(
             gateway=mock_gateway,
             voice_mapping_service=voice_mapping_service,
             tone_preset_service=mock_tone_preset_service,
+            max_tts_chars=500,
         )
-        with pytest.raises(PresetNotFoundError, match="已禁用"):
+        with pytest.raises(PresetNotFoundError, match="disabled"):
             await orch.generate(
                 text="想念你",
                 voice_preset="x",
@@ -275,13 +291,14 @@ class TestPresetErrors:
     @pytest.mark.asyncio
     async def test_unknown_tone_raises_stable_error(self, mock_gateway, mock_voice_mapping_service):
         tone_preset_service = MagicMock()
-        tone_preset_service.resolve.side_effect = Exception("tone preset 'x' 不存在")
+        tone_preset_service.resolve.side_effect = TonePresetNotFound("tone preset 'x' does not exist")
         orch = TtsOrchestrator(
             gateway=mock_gateway,
             voice_mapping_service=mock_voice_mapping_service,
             tone_preset_service=tone_preset_service,
+            max_tts_chars=500,
         )
-        with pytest.raises(PresetNotFoundError, match="不存在"):
+        with pytest.raises(PresetNotFoundError, match="does not exist"):
             await orch.generate(
                 text="想念你",
                 voice_preset="female-gentle",
@@ -293,13 +310,14 @@ class TestPresetErrors:
     @pytest.mark.asyncio
     async def test_disabled_tone_raises_stable_error(self, mock_gateway, mock_voice_mapping_service):
         tone_preset_service = MagicMock()
-        tone_preset_service.resolve.side_effect = TonePresetDisabled("tone 'x' 已禁用")
+        tone_preset_service.resolve.side_effect = TonePresetDisabled("tone 'x' is disabled")
         orch = TtsOrchestrator(
             gateway=mock_gateway,
             voice_mapping_service=mock_voice_mapping_service,
             tone_preset_service=tone_preset_service,
+            max_tts_chars=500,
         )
-        with pytest.raises(PresetNotFoundError, match="已禁用"):
+        with pytest.raises(PresetNotFoundError, match="disabled"):
             await orch.generate(
                 text="想念你",
                 voice_preset="female-gentle",

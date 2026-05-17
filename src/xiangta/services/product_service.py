@@ -82,9 +82,11 @@ def create_product_service() -> "ProductService":
     gateway         = VoiceLabGateway()
     voice_mapping_service = VoicePresetMappingService(config_repository=config_repository)
     tone_preset_service = TonePresetService(config_repository=config_repository)
+    limits = config_repository.get_limits()
     tts             = TtsOrchestrator(
         gateway=gateway,
         voice_mapping_service=voice_mapping_service,
         tone_preset_service=tone_preset_service,
+        max_tts_chars=limits.max_tts_chars,
     )
     return ProductService(bootstrap=bootstrap, provider_status=provider_status, tts=tts)

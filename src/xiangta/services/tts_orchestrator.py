@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.xiangta.config.bootstrap_config import LIMITS
 from src.xiangta.services.error_translator import (
     InvalidInputError,
     PresetNotFoundError,
@@ -37,10 +36,12 @@ class TtsOrchestrator:
         gateway: "VoiceLabGateway",
         voice_mapping_service: "VoicePresetMappingService",
         tone_preset_service: "TonePresetService",
+        max_tts_chars: int = 500,
     ) -> None:
         self._gw = gateway
         self._voice_mapping_service = voice_mapping_service
         self._tone_preset_service = tone_preset_service
+        self._max_tts_chars = max_tts_chars
 
     async def generate(
         self,
@@ -75,7 +76,7 @@ class TtsOrchestrator:
         if not text or not text.strip():
             raise InvalidInputError("文案不能为空。")
 
-        max_chars = LIMITS["maxTtsChars"]
+        max_chars = self._max_tts_chars
         if len(text) > max_chars:
             raise TextTooLongError(max_chars)
 
