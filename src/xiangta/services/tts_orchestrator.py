@@ -3,7 +3,9 @@ TTS Orchestrator — 调度 TTS 生成任务。
 
 流程：
   1. 校验产品层输入（文案长度）
-  2. preset_mapper.resolve_binding(voicePreset, tone) → CoreBindingRequest
+  2. VoicePresetMappingService.resolve(voicePreset) → ProductVoiceMapping
+  3. TonePresetService.resolve(tone) → TonePreset
+  4. 组装 CoreRenderTarget
   3. voice_lab_gateway.generate_tts_dry_run(...)
   4. 返回产品层任务响应
 
@@ -21,18 +23,24 @@ from src.xiangta.services.error_translator import (
     PresetNotFoundError,
     TextTooLongError,
 )
-from src.xiangta.services.preset_mapper import PresetMappingError
 
 if TYPE_CHECKING:
+    from src.xiangta.services.tone_preset_service import TonePresetService
+    from src.xiangta.services.voice_preset_mapping_service import VoicePresetMappingService
     from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
-    from src.xiangta.services.preset_mapper import PresetMapper
 
 
 class TtsOrchestrator:
 
-    def __init__(self, gateway: "VoiceLabGateway", mapper: "PresetMapper") -> None:
+    def __init__(
+        self,
+        gateway: "VoiceLabGateway",
+        voice_mapping_service: "VoicePresetMappingService",
+        tone_preset_service: "TonePresetService",
+    ) -> None:
         self._gw = gateway
-        self._mapper = mapper
+        self._voice_mapping_service = voice_mapping_service
+        self._tone_preset_service = tone_preset_service
 
     async def generate(
         self,
@@ -56,7 +64,7 @@ class TtsOrchestrator:
               "voicePreset": str,
               "tone": str,
               "message": str,
-              "contract": {"coreBindingKey": str, ...},
+              "contract": {"voicePresetId": str, ...},
             }
 
         Raises:
@@ -72,17 +80,35 @@ class TtsOrchestrator:
             raise TextTooLongError(max_chars)
 
         try:
-            binding = self._mapper.resolve_binding(voice_preset, tone)
-        except PresetMappingError as exc:
+            mapping = self._voice_mapping_service.resolve(voice_preset)
+            tone_preset = self._tone_preset_service.resolve(tone)
+        except Exception as exc:
             raise PresetNotFoundError(str(exc)) from exc
+
+        from src.xiangta.services.voice_lab_gateway import CoreRenderTarget
+
+        render_overrides = {}
+        render_overrides.update(mapping.render_overrides)
+        render_overrides.update(tone_preset.render_overrides)
+        target = CoreRenderTarget(
+            profile_id=mapping.core_profile_id,
+            provider=mapping.provider_policy,
+            need_subtitle=bool(render_overrides.get("need_subtitle", True)),
+            output_format=str(render_overrides.get("output_format", "url")),
+            audio_format=str(render_overrides.get("audio_format", "mp3")),
+            speed=render_overrides.get("speed"),
+            vol=render_overrides.get("vol"),
+            pitch=render_overrides.get("pitch"),
+            emotion=render_overrides.get("emotion"),
+        )
 
         result = await self._gw.generate_tts_dry_run(
             text=text,
-            core_binding_key=binding["core_binding_key"],
+            target=target,
             tone=tone,
-            tone_hint=binding["tone_hint"],
+            tone_hint=tone_preset.style_hint,
             scene=scene,
-            voice_preset=voice_preset,
+            voice_preset_id=voice_preset,
             metadata={"recipient": recipient},
         )
 

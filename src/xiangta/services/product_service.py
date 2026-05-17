@@ -68,8 +68,9 @@ def create_product_service() -> "ProductService":
     from src.xiangta.config.product_config_repository import ProductConfigRepository
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.services.bootstrap_service import BootstrapService
-    from src.xiangta.services.preset_mapper import PresetMapper
+    from src.xiangta.services.tone_preset_service import TonePresetService
     from src.xiangta.services.tts_orchestrator import TtsOrchestrator
+    from src.xiangta.services.voice_preset_mapping_service import VoicePresetMappingService
     from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
 
     provider_status = ProviderStatusService(gateway=None)
@@ -79,6 +80,11 @@ def create_product_service() -> "ProductService":
         config_repository=config_repository,
     )
     gateway         = VoiceLabGateway()
-    mapper          = PresetMapper()
-    tts             = TtsOrchestrator(gateway=gateway, mapper=mapper)
+    voice_mapping_service = VoicePresetMappingService(config_repository=config_repository)
+    tone_preset_service = TonePresetService(config_repository=config_repository)
+    tts             = TtsOrchestrator(
+        gateway=gateway,
+        voice_mapping_service=voice_mapping_service,
+        tone_preset_service=tone_preset_service,
+    )
     return ProductService(bootstrap=bootstrap, provider_status=provider_status, tts=tts)

@@ -147,11 +147,11 @@ class TtsRequest(BaseModel):
 
 class TtsContract(BaseModel):
     """Product→Core bridge echo — safe product-layer identifiers only."""
-    coreBindingKey: str
-    voicePreset: str
+    voicePresetId: str
     tone: str
     toneHint: str
     scene: str
+    mode: str = "dry_run"
 
 
 class TtsData(BaseModel):

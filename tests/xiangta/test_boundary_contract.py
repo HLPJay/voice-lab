@@ -177,11 +177,11 @@ class TestVoiceLabGatewayInterface:
             f"Provider-specific 参数应在 gateway 内部或 Core 内部解析，不得暴露给调用方。"
         )
 
-    def test_generate_tts_accepts_core_binding_key(self):
+    def test_generate_tts_accepts_core_render_target(self):
         from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
         sig = inspect.signature(VoiceLabGateway.generate_tts)
-        assert "core_binding_key" in sig.parameters, (
-            "VoiceLabGateway.generate_tts() 应接受 core_binding_key 参数"
+        assert "target" in sig.parameters, (
+            "VoiceLabGateway.generate_tts() 应接受 CoreRenderTarget 参数"
         )
 
 
@@ -224,7 +224,8 @@ class TestApiSchemas:
     def test_tts_contract_no_forbidden_fields(self):
         from src.xiangta.api.schemas import TtsContract
         fields = set(TtsContract.model_fields.keys())
-        bad = fields & FORBIDDEN_KEYS
+        forbidden = FORBIDDEN_KEYS | {"coreBindingKey", "core_binding_key"}
+        bad = fields & forbidden
         assert not bad, f"TtsContract 包含禁止的底层字段：{bad}"
 
     def test_bootstrap_voice_preset_schema_does_not_expose_core_fields(self):
@@ -290,6 +291,10 @@ class TestA2ImportBoundary:
             assert token not in src.lower(), (
                 f"tts_orchestrator.py 不得直接 import Provider adapter（检测到：{token}）"
             )
+
+    def test_tts_orchestrator_does_not_import_preset_mapper(self):
+        src = self._get_source("src.xiangta.services.tts_orchestrator")
+        assert "preset_mapper" not in src, "tts_orchestrator.py 不应继续依赖 PresetMapper"
 
     def test_gateway_dry_run_signature_no_forbidden_params(self):
         import inspect
@@ -361,3 +366,29 @@ class TestProductConfigRepositoryBoundary:
         assert FORBIDDEN_PUBLIC_FIELDS.isdisjoint(public_fields), (
             f"PublicVoicePreset 不得暴露 Core 字段：{FORBIDDEN_PUBLIC_FIELDS & public_fields}"
         )
+
+
+class TestMappingServicesBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_voice_preset_mapping_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.voice_preset_mapping_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_tone_preset_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.tone_preset_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_voice_preset_mapping_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.voice_preset_mapping_service")
+        assert "os.environ" not in src
+
+    def test_tone_preset_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.tone_preset_service")
+        assert "os.environ" not in src

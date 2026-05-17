@@ -5,7 +5,7 @@ Voice Lab Gateway — XiangTa 访问 Core 的唯一入口。
 - 本文件是产品层与 Core 之间的隔离边界。
 - 产品服务层（copywriting_service, tts_orchestrator 等）只能 import 本模块，
   不得直接 import 任何 src.voice_lab.* 模块。
-- 本模块公共方法参数只接受产品层稳定字段（core_binding_key、tone、scene、style_hint 等），
+- 本模块公共方法参数只接受产品层稳定字段和内部 CoreRenderTarget，
   不接受 voice_id、model_id、sample_rate 等 Provider-specific 参数。
 - Provider-specific 参数的解析在 Core 内部或 gateway 的私有实现中完成，
   对外完全不可见。
@@ -16,6 +16,7 @@ Core Contract Gap 登记：
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import uuid
 from typing import Any
 
@@ -25,11 +26,24 @@ from typing import Any
 # from src.voice_lab.services.provider_service import ProviderService
 
 
+@dataclass(frozen=True)
+class CoreRenderTarget:
+    profile_id: str
+    provider: str | None = None
+    need_subtitle: bool = True
+    output_format: str = "url"
+    audio_format: str = "mp3"
+    speed: float | None = None
+    vol: float | None = None
+    pitch: int | None = None
+    emotion: str | None = None
+
+
 class VoiceLabGateway:
     """
     代理对 Voice Lab Core 的所有调用。
 
-    公共方法只接受产品层稳定字段（core_binding_key、tone、scene）。
+    公共方法只接受产品层稳定字段或内部 CoreRenderTarget。
     Provider-specific 参数（voice_id、model_id、sample_rate）在本模块或 Core 内部解析，
     不暴露给上层 Product Server。
     """
@@ -38,7 +52,7 @@ class VoiceLabGateway:
         self,
         *,
         text: str,
-        core_binding_key: str,
+        target: CoreRenderTarget,
         tone: str,
         scene: str,
         style: str | None = None,
@@ -52,8 +66,7 @@ class VoiceLabGateway:
 
         Args:
             text:             要朗读的文案
-            core_binding_key: 产品声线绑定 key（如 "xiangta_female_gentle"），
-                              由 preset_mapper 解析自 voice_presets.json
+            target:           供 Core render 使用的内部目标对象
             tone:             语气预设 ID（如 "gentle"）
             scene:            场景 ID（如 "miss"），用于 Core 内部语境
             style:            风格 ID（如 "restrained"），可选
@@ -63,18 +76,18 @@ class VoiceLabGateway:
             {"audio_url": str, "duration_secs": float, "task_id": str}
         """
         # TODO(P17-A3): 调用 Core TTSService
-        # Core 内部负责将 core_binding_key 解析为实际 voice_id / model 等参数
+        # Core 内部负责将 target 解析为实际 provider render 请求
         raise NotImplementedError
 
     async def generate_tts_dry_run(
         self,
         *,
         text: str,
-        core_binding_key: str,
+        target: CoreRenderTarget,
         tone: str,
         tone_hint: str,
         scene: str,
-        voice_preset: str,
+        voice_preset_id: str,
         style: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -90,14 +103,15 @@ class VoiceLabGateway:
               "durationMs": None,
               "message": "dry-run only, no provider call",
               "contract": {
-                "coreBindingKey": str,
-                "voicePreset": str,
+                "voicePresetId": str,
                 "tone": str,
                 "toneHint": str,
                 "scene": str,
+                "mode": "dry_run",
               },
             }
         """
+        _ = (text, target, style, metadata)
         return {
             "taskId": f"dryrun_{uuid.uuid4().hex[:8]}",
             "status": "dry_run",
@@ -105,11 +119,11 @@ class VoiceLabGateway:
             "durationMs": None,
             "message": "dry-run only, no provider call",
             "contract": {
-                "coreBindingKey": core_binding_key,
-                "voicePreset": voice_preset,
+                "voicePresetId": voice_preset_id,
                 "tone": tone,
                 "toneHint": tone_hint,
                 "scene": scene,
+                "mode": "dry_run",
             },
         }
 
