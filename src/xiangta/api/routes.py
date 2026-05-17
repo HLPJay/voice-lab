@@ -16,6 +16,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from src.xiangta.api.schemas import (
+    AdminConfigResponse,
+    AdminTonePresetsResponse,
+    AdminVoiceMappingsResponse,
     BootstrapResponse,
     ProviderStatusResponse,
     TtsRequest,
@@ -49,6 +52,28 @@ async def provider_status():
     svc = create_product_service()
     data = await svc.get_provider_status()
     return ProviderStatusResponse(data=data)
+
+
+@router.get("/admin/config", response_model=AdminConfigResponse)
+async def admin_config():
+    """Admin-only: return full config snapshot including Core mapping fields."""
+    svc = create_product_service()
+    data = svc.get_admin_config()
+    return AdminConfigResponse(data=data)
+
+
+@router.get("/admin/voice-mappings", response_model=AdminVoiceMappingsResponse)
+async def admin_voice_mappings():
+    """Admin-only: return all voice mappings with Core fields."""
+    svc = create_product_service()
+    return AdminVoiceMappingsResponse(data=svc.get_admin_voice_mappings())
+
+
+@router.get("/admin/tone-presets", response_model=AdminTonePresetsResponse)
+async def admin_tone_presets():
+    """Admin-only: return all tone presets with render overrides."""
+    svc = create_product_service()
+    return AdminTonePresetsResponse(data=svc.get_admin_tone_presets())
 
 
 @router.post("/suggestions")

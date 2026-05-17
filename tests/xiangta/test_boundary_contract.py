@@ -491,6 +491,56 @@ class TestB3StatusBoundary:
         assert gw._status_path() == "http://core:8000/api/voice/runtime/status"
 
 
+class TestB4AdminConfigBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_routes_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.api.routes")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_routes_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.api.routes")
+        assert "os.environ" not in src
+
+    def test_product_service_admin_methods_do_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.product_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_product_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.product_service")
+        assert "os.environ" not in src
+
+    def test_product_service_admin_methods_exist(self):
+        from src.xiangta.services.product_service import ProductService
+        assert hasattr(ProductService, "get_admin_voice_mappings")
+        assert hasattr(ProductService, "get_admin_tone_presets")
+        assert hasattr(ProductService, "get_admin_config")
+
+    def test_admin_config_schema_exposes_core_profile_id(self):
+        from src.xiangta.api.schemas import AdminVoiceMappingItem
+        fields = set(AdminVoiceMappingItem.model_fields.keys())
+        assert "coreProfileId" in fields
+
+    def test_user_voice_preset_schema_does_not_expose_core_profile_id(self):
+        from src.xiangta.api.schemas import VoicePresetItem
+        fields = set(VoicePresetItem.model_fields.keys())
+        assert "coreProfileId" not in fields
+        assert "core_profile_id" not in fields
+
+    def test_admin_schema_does_not_expose_low_level_provider_fields(self):
+        from src.xiangta.api.schemas import AdminVoiceMappingItem
+        low_level = {"api_key", "provider_voice_id", "binding_id", "params_json", "voice_id", "model_id"}
+        fields = set(AdminVoiceMappingItem.model_fields.keys())
+        bad = fields & low_level
+        assert not bad, f"AdminVoiceMappingItem exposes low-level fields: {bad}"
+
+
 class TestB2B1bOrchestratorBoundary:
     def _get_source(self, module_path: str) -> str:
         import importlib

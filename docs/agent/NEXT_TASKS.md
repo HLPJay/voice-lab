@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-PROVIDER-STATUS-B3（已完成）→ 下一步：P17-XIANGTA-ADMIN-CONFIG-B4**
+**P17-XIANGTA-ADMIN-CONFIG-B4-1（已完成）→ 下一步：P17-XIANGTA-ADMIN-CONFIG-B4-2 或 P17-XIANGTA-COPYWRITING-B5**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -27,7 +27,8 @@
 | P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test with app route + DB fixtures | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-B3 | XiangTa app-level Core mock integration test | ✅ |
 | P17-XIANGTA-PROVIDER-STATUS-B3 | ProviderStatus runtime/status mock path | ✅ |
-| P17-XIANGTA-ADMIN-CONFIG-B4 | 配置管理 API 第一版 | Next |
+| P17-XIANGTA-ADMIN-CONFIG-B4-1 | 配置管理只读 API（voice-mappings / tone-presets / config） | ✅ |
+| P17-XIANGTA-ADMIN-CONFIG-B4-2 | 配置管理写接口设计与安全边界 | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
@@ -48,7 +49,7 @@
 
 ## XiangTa 下一步约束
 
-下一步进入 `P17-XIANGTA-ADMIN-CONFIG-B4`。范围限定为配置管理 API 第一版，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
+下一步进入 `P17-XIANGTA-ADMIN-CONFIG-B4-2` 或 `P17-XIANGTA-COPYWRITING-B5`。不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
 
 ## P16 已完成历史
 

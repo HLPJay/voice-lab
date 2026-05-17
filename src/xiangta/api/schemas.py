@@ -6,7 +6,7 @@ XiangTa API 请求/响应 Pydantic 模型。
 """
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 # ── 枚举值 ────────────────────────────────────────────────────────────────────
@@ -168,6 +168,55 @@ class TtsData(BaseModel):
 
 class TtsResponse(OkResponse):
     data: TtsData
+
+
+# ── Admin Config (read-only) ──────────────────────────────────────────────────
+
+class AdminVoiceMappingItem(BaseModel):
+    id: str
+    label: str
+    desc: str
+    genderStyle: Optional[str] = None
+    suitableRecipients: list[str] = Field(default_factory=list)
+    recommendedScenes: list[str] = Field(default_factory=list)
+    defaultTone: str
+    enabled: bool
+    sortOrder: int
+    coreProfileId: str
+    providerPolicy: Optional[str] = None
+    renderOverrides: dict[str, Any] = Field(default_factory=dict)
+    notes: Optional[str] = None
+
+
+class AdminTonePresetItem(BaseModel):
+    id: str
+    label: str
+    desc: str
+    styleHint: str
+    copywritingStyle: Optional[str] = None
+    renderOverrides: dict[str, Any] = Field(default_factory=dict)
+    enabled: bool
+    sortOrder: int
+
+
+class AdminConfigData(BaseModel):
+    voiceMappings: list[AdminVoiceMappingItem]
+    tonePresets: list[AdminTonePresetItem]
+    recipients: list[dict]
+    scenes: list[dict]
+    limits: LimitsData
+
+
+class AdminConfigResponse(OkResponse):
+    data: AdminConfigData
+
+
+class AdminVoiceMappingsResponse(OkResponse):
+    data: list[AdminVoiceMappingItem]
+
+
+class AdminTonePresetsResponse(OkResponse):
+    data: list[AdminTonePresetItem]
 
 
 # ── POST /letters ─────────────────────────────────────────────────────────────

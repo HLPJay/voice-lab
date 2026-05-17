@@ -177,6 +177,31 @@ class TestBootstrap:
             assert forbidden.isdisjoint(tone.keys())
 
 
+# ── Admin fields hidden from user-facing bootstrap ───────────────────────────
+
+class TestBootstrapHidesAdminFields:
+
+    def test_bootstrap_does_not_expose_core_profile_id(self, client):
+        body = client.get("/api/xiangta/bootstrap").json()
+        keys = _collect_keys(body)
+        assert "coreProfileId" not in keys
+
+    def test_bootstrap_does_not_expose_provider_policy(self, client):
+        body = client.get("/api/xiangta/bootstrap").json()
+        keys = _collect_keys(body)
+        assert "providerPolicy" not in keys
+
+    def test_bootstrap_does_not_expose_render_overrides(self, client):
+        body = client.get("/api/xiangta/bootstrap").json()
+        keys = _collect_keys(body)
+        assert "renderOverrides" not in keys
+
+    def test_bootstrap_does_not_expose_sort_order(self, client):
+        body = client.get("/api/xiangta/bootstrap").json()
+        keys = _collect_keys(body)
+        assert "sortOrder" not in keys
+
+
 # ── GET /api/xiangta/provider/status ─────────────────────────────────────────
 
 class TestProviderStatus:

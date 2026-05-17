@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from src.xiangta.services.tts_orchestrator import TtsOrchestrator
     from src.xiangta.services.letter_service import LetterService
     from src.xiangta.services.provider_status_service import ProviderStatusService
+    from src.xiangta.config.product_config_repository import ProductConfigRepository
 
 
 class ProductService:
@@ -32,18 +33,85 @@ class ProductService:
         copywriting: "CopywritingService | None" = None,
         tts: "TtsOrchestrator | None" = None,
         letters: "LetterService | None" = None,
+        config_repository: "ProductConfigRepository | None" = None,
     ) -> None:
-        self._bootstrap       = bootstrap
-        self._provider_status = provider_status
-        self._copywriting     = copywriting
-        self._tts             = tts
-        self._letters         = letters
+        self._bootstrap          = bootstrap
+        self._provider_status    = provider_status
+        self._copywriting        = copywriting
+        self._tts                = tts
+        self._letters            = letters
+        self._config_repository  = config_repository
 
     async def get_bootstrap(self) -> dict:
         return await self._bootstrap.get_bootstrap()
 
     async def get_provider_status(self) -> dict:
         return await self._provider_status.get_status()
+
+    def get_admin_voice_mappings(self) -> list[dict]:
+        """Return full voice mapping data including admin fields (coreProfileId, etc.)."""
+        if self._config_repository is None:
+            return []
+        return [
+            {
+                "id": m.id,
+                "label": m.label,
+                "desc": m.desc,
+                "genderStyle": m.gender_style,
+                "suitableRecipients": list(m.suitable_recipients),
+                "recommendedScenes": list(m.recommended_scenes),
+                "defaultTone": m.default_tone,
+                "enabled": m.enabled,
+                "sortOrder": m.sort_order,
+                "coreProfileId": m.core_profile_id,
+                "providerPolicy": m.provider_policy,
+                "renderOverrides": dict(m.render_overrides),
+                "notes": m.notes,
+            }
+            for m in self._config_repository.list_voice_mappings()
+        ]
+
+    def get_admin_tone_presets(self) -> list[dict]:
+        """Return full tone preset data including admin fields (renderOverrides, etc.)."""
+        if self._config_repository is None:
+            return []
+        return [
+            {
+                "id": t.id,
+                "label": t.label,
+                "desc": t.desc,
+                "styleHint": t.style_hint,
+                "copywritingStyle": t.copywriting_style,
+                "renderOverrides": dict(t.render_overrides),
+                "enabled": t.enabled,
+                "sortOrder": t.sort_order,
+            }
+            for t in self._config_repository.list_tone_presets()
+        ]
+
+    def get_admin_config(self) -> dict:
+        """Return full admin config snapshot."""
+        if self._config_repository is None:
+            limits = {"maxRawTextChars": 500, "maxTtsChars": 500, "maxSuggestions": 3}
+            return {
+                "voiceMappings": [],
+                "tonePresets": [],
+                "recipients": [],
+                "scenes": [],
+                "limits": limits,
+            }
+        lim = self._config_repository.get_limits()
+        return {
+            "voiceMappings": self.get_admin_voice_mappings(),
+            "tonePresets": self.get_admin_tone_presets(),
+            "recipients": self._config_repository.list_recipients(),
+            "scenes": self._config_repository.list_scenes(),
+            "limits": {
+                "maxRawTextChars": lim.max_raw_text_chars,
+                "maxTtsChars": lim.max_tts_chars,
+                "maxSuggestions": lim.max_suggestions,
+            },
+        }
 
     async def get_suggestions(self, recipient: str, scene: str, raw_text: str) -> dict:
         """参见 copywriting_service.generate_suggestions。"""
@@ -90,4 +158,9 @@ def create_product_service() -> "ProductService":
         max_tts_chars=limits.max_tts_chars,
         use_dry_run=False,
     )
-    return ProductService(bootstrap=bootstrap, provider_status=provider_status, tts=tts)
+    return ProductService(
+        bootstrap=bootstrap,
+        provider_status=provider_status,
+        tts=tts,
+        config_repository=config_repository,
+    )
