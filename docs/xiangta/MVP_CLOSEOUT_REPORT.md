@@ -5,6 +5,8 @@
 **分支**：`p17/xiangta-product-init`  
 **基线 HEAD**：`98bcf73`
 
+> **B8-1 补充（2026-05-18）**：P17-XIANGTA-RUNTIME-B8-1 新增 `apps/xiangta_runtime/main.py`，提供统一本地运行入口，同源挂载 H5（`/h5`）和 `/api/xiangta/*`。scoped tests 530/530 通过。`/tts` 默认 no_provider 仍是 MVP 边界。
+
 ---
 
 ## 1. Closeout 结论

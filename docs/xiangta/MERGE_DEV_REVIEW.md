@@ -6,6 +6,12 @@
 
 ---
 
+> **B8-1 补充说明（2026-05-18）**：原结论为 PASS_WITH_NOTES，其中 Note 1 指出 XiangTa router 尚未挂载到运行时入口。
+> P17-XIANGTA-RUNTIME-B8-1 已补齐此项：新增 `apps/xiangta_runtime/main.py`，同源挂载 H5（`/h5`）和 `/api/xiangta/*`，本地可通过单一 runtime 入口启动。
+> 建议在执行 merge 前完成本地手工冒烟确认（P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2）或直接进入 merge execute。
+
+---
+
 ## 1. 审查结论
 
 **PASS_WITH_NOTES**
