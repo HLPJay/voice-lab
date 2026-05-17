@@ -1,8 +1,8 @@
 """
 test_usage_stats_semantics_static.py
 
-P16-V1-CLOSEOUT-USAGE-STATS-SEMANTICS-D4-F1: Static contract tests for
-usage/cost/stats display semantics.
+P16-V1-CLOSEOUT-USAGE-STATS-SEMANTICS-D4-F1/D4-F1A: Static contract tests
+for usage/cost/stats display semantics and provider filter init order.
 
 Covers:
 1. runtime_status.js today/month chip text includes "本地"
@@ -18,6 +18,9 @@ Covers:
 11. admin.html loadErrors passes provider param
 12. cost_guard_service non-minimax warning mentions "不代表官方扣费"
 13. StatsService by_provider grouping works for multiple providers
+14. applyFocusFromURL() called before requestAnimationFrame(loadAll) [D4-F1A]
+15. loadAll deferred inside requestAnimationFrame, not before applyFocusFromURL [D4-F1A]
+16. applyFocusFromURL not inside requestAnimationFrame (must run synchronously) [D4-F1A]
 """
 
 import os
@@ -184,6 +187,50 @@ class TestAdminHtmlProviderFilter:
         region = content[func_start:func_start + 600]
         assert 'provider' in region, \
             'applyFocusFromURL must read and apply the provider URL param'
+
+    def test_applyFocusFromURL_called_before_requestAnimationFrame_loadAll(self):
+        """applyFocusFromURL() must be called synchronously before requestAnimationFrame(loadAll).
+
+        This ensures currentProviderFilter is set before the first loadLogs/loadErrors fetch.
+        """
+        content = read_file(ADMIN_HTML)
+        # Find the init block: applyFocusFromURL call site (not the definition)
+        # Look for the pattern where applyFocusFromURL(); appears before requestAnimationFrame
+        # Both must appear in the init section (after the function definitions)
+        init_idx = content.rfind('applyFocusFromURL()')
+        raf_idx = content.rfind('requestAnimationFrame')
+        assert init_idx >= 0, 'applyFocusFromURL() must be called in init section'
+        assert raf_idx >= 0, 'requestAnimationFrame must be present'
+        assert init_idx < raf_idx, (
+            'applyFocusFromURL() must be called BEFORE requestAnimationFrame so that '
+            'currentProviderFilter is set before loadAll runs. '
+            f'applyFocusFromURL at {init_idx}, requestAnimationFrame at {raf_idx}'
+        )
+
+    def test_loadAll_inside_requestAnimationFrame_not_before(self):
+        """loadAll must be deferred inside requestAnimationFrame, not called synchronously before it."""
+        content = read_file(ADMIN_HTML)
+        # The last requestAnimationFrame call should contain loadAll
+        raf_idx = content.rfind('requestAnimationFrame')
+        assert raf_idx >= 0
+        raf_region = content[raf_idx:raf_idx + 100]
+        assert 'loadAll' in raf_region, (
+            'loadAll() must be inside requestAnimationFrame callback, not called '
+            'synchronously before applyFocusFromURL. '
+            f'requestAnimationFrame region: {raf_region!r}'
+        )
+
+    def test_applyFocusFromURL_not_inside_requestAnimationFrame(self):
+        """applyFocusFromURL must not be inside requestAnimationFrame — it must run synchronously."""
+        content = read_file(ADMIN_HTML)
+        raf_idx = content.rfind('requestAnimationFrame')
+        assert raf_idx >= 0
+        raf_region = content[raf_idx:raf_idx + 100]
+        assert 'applyFocusFromURL' not in raf_region, (
+            'applyFocusFromURL must NOT be inside requestAnimationFrame. '
+            'It must run synchronously so currentProviderFilter is set before loadAll. '
+            f'requestAnimationFrame region: {raf_region!r}'
+        )
 
 
 # ── cost_guard_service semantics ──────────────────────────────────────────────

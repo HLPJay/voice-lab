@@ -1004,8 +1004,10 @@
   // ── Init ───────────────────────────────────────────────────────
   initDates();
   loadCapabilityMatrix();
+  // Parse provider filter before first draw so loadAll sees currentProviderFilter
+  applyFocusFromURL();
   // Defer first draw so CSS layout is complete and canvas has correct dimensions
-  requestAnimationFrame(() => { loadAll(); applyFocusFromURL(); });
+  requestAnimationFrame(() => { loadAll(); });
 
   // Redraw chart on resize (no API re-fetch)
   window.addEventListener('resize', () => {
