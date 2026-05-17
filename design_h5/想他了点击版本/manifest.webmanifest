@@ -1,0 +1,13 @@
+{
+  "name": "想他了",
+  "short_name": "想他了",
+  "description": "把想说的话，变成更合适的文字和语音。",
+  "start_url": "./app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A080E",
+  "theme_color": "#100D14",
+  "lang": "zh-CN",
+  "categories": ["lifestyle", "productivity"]
+}

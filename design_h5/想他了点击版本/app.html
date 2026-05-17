@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#100D14" />
+<title>想他了</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #0A080E;
+    overflow: hidden;     /* let the .xt-screen scroll instead */
+    height: 100%;
+  }
+  #root { height: 100dvh; width: 100vw; }
+
+  /* SPA shell: full viewport on mobile; centered phone-shaped column on wider */
+  .spa-shell {
+    position: relative;
+    height: 100dvh;
+    width: 100vw;
+    background: #0A080E;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .spa-screen-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    background: #100D14;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  .spa-screen-wrap > .xt-screen {
+    min-height: 100%;
+    padding-top: max(env(safe-area-inset-top), 12px) !important;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Hide scrollbar */
+  .spa-screen-wrap::-webkit-scrollbar { width: 0; height: 0; }
+  .spa-screen-wrap { scrollbar-width: none; }
+
+  /* Desktop / tablet: center a phone-width column with subtle frame */
+  @media (min-width: 520px) {
+    .spa-screen-wrap {
+      max-width: 414px;
+      height: min(880px, 100dvh - 32px);
+      margin: 16px 0;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .spa-screen-wrap > .xt-screen { padding-top: 0 !important; }
+  }
+
+  /* Direction-aware screen transitions */
+  .spa-fwd { animation: spaSlideInR .32s cubic-bezier(.2,.8,.25,1) both; }
+  .spa-back { animation: spaSlideInL .28s cubic-bezier(.2,.8,.25,1) both; }
+  @keyframes spaSlideInR {
+    from { opacity: 0; transform: translateX(28px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes spaSlideInL {
+    from { opacity: 0; transform: translateX(-22px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spa-fwd, .spa-back { animation: none; }
+    [style*="spaCardIn"] { animation: none !important; }
+  }
+
+  /* Letter type stays serif even when 'sans' tweak is on. The .xt-screen
+     override is necessary for UI, but the .xt-letter body inside the letter
+     is the soul of the product — pin it back to serif. */
+  body .xt-letter,
+  body .xt-screen textarea { font-family: "Noto Serif SC", "Songti SC", serif !important; }
+
+  /* Focus-visible — accessible keyboard nav */
+  button:focus-visible, [role="button"]:focus-visible, span.xt-pill:focus-visible {
+    outline: 2px solid var(--xt-accent); outline-offset: 2px; border-radius: 12px;
+  }
+  textarea:focus-visible { outline: none; }
+
+  /* Save ceremony — seal stamp */
+  .spa-seal-overlay {
+    position: absolute; inset: 0; z-index: 60;
+    background: rgba(10, 8, 14, 0.72);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 18px;
+    animation: spaFadeOverlay .2s ease both;
+  }
+  @keyframes spaFadeOverlay { from { opacity: 0 } to { opacity: 1 } }
+  .spa-seal-stamp {
+    width: 116px; height: 116px; border-radius: 20px;
+    border: 2px solid var(--xt-accent);
+    color: var(--xt-accent);
+    display: flex; align-items: center; justify-content: center;
+    transform: rotate(-6deg) scale(0.4);
+    opacity: 0;
+    animation: spaStamp .65s cubic-bezier(.2,.85,.3,1.05) .15s forwards;
+    box-shadow: 0 0 0 3px var(--xt-accent-soft), inset 0 0 0 1px var(--xt-accent-soft);
+  }
+  @keyframes spaStamp {
+    0%   { transform: rotate(-22deg) scale(1.6); opacity: 0; }
+    55%  { transform: rotate(-6deg) scale(0.95); opacity: 1; }
+    72%  { transform: rotate(-6deg) scale(1.05); opacity: 1; }
+    100% { transform: rotate(-6deg) scale(1); opacity: 1; }
+  }
+  .spa-seal-label {
+    opacity: 0; animation: spaLabelIn .4s cubic-bezier(.2,.7,.3,1) .55s forwards;
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    font-size: 15px; letter-spacing: 0.16em;
+    color: rgba(244,239,230,0.85);
+  }
+  @keyframes spaLabelIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="letters-store.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="states.jsx"></script>
+
+<script type="text/babel">
+// ─────────────────────────────────────────────────────────────
+// SPA Router — pure history stack, no react-router required
+// ─────────────────────────────────────────────────────────────
+
+const SCREENS = {
+  home:     HomeScreen,
+  input:    InputScreen,
+  suggest:  SuggestionsScreen,
+  voice:    VoiceScreen,
+  letter:   LetterScreen,
+  history:  HistoryScreen,
+  settings: SettingsScreen,
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#D9954A",
+  "titleStyle": "serif",
+  "demoState": "default",
+  "lightMode": false
+}/*EDITMODE-END*/;
+
+const HEX_TO_PALETTE = {
+  '#9B4DCA': 'purple', '#D9954A': 'amber',
+  '#6FA582': 'sage',   '#C77191': 'rose',
+};
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  React.useEffect(() => {
+    applyPalette(HEX_TO_PALETTE[(t.accent || '').toUpperCase()] || 'purple');
+  }, [t.accent]);
+
+  // Seed example letters on first run
+  React.useEffect(() => { seedExampleLettersIfNeeded(); }, []);
+
+  // iOS visualViewport — keep content above the soft keyboard
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const update = () => {
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      root.style.setProperty('--xt-kb', `${offset}px`);
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+  }, []);
+
+  const [stack, setStack] = React.useState(['home']);
+  const prevLenRef = React.useRef(1);
+  const [direction, setDirection] = React.useState('fwd');
+  const [flow, setFlow] = React.useState({
+    recipient: 'lover',
+    scene:     'miss',
+    rawText:   '',
+    style:     'gentle',
+    voice:     'female-gentle',
+    tone:      'gentle',
+  });
+  const [showOnboard, setShowOnboard] = React.useState(() => {
+    try { return !sessionStorage.getItem('xt-onboarded'); } catch { return true; }
+  });
+
+  const current = stack[stack.length - 1];
+
+  const nav = React.useCallback((to, opts = {}) => {
+    if (to === 'back') {
+      setStack(s => s.length > 1 ? s.slice(0, -1) : s);
+      return;
+    }
+    if (!SCREENS[to]) return;
+    setStack(s => {
+      if (s[s.length - 1] === to) return s;
+      // replace: swap the top entry — used after "重新编辑" / "换语气"
+      if (opts.replace) return [...s.slice(0, -1), to];
+      // resetTo: collapse to single entry — used after save ceremony
+      if (opts.resetTo) return [to];
+      return [...s, to];
+    });
+    requestAnimationFrame(() => {
+      const wrap = document.querySelector('.spa-screen-wrap');
+      if (wrap) wrap.scrollTop = 0;
+    });
+  }, []);
+
+  // Track direction by stack length delta. Trigger save-ceremony on voice→letter.
+  // Track direction by stack length delta. Save-ceremony lives inside
+  // LetterScreen (which owns the save action) so it fires exactly once.
+  React.useEffect(() => {
+    const len = stack.length;
+    setDirection(len >= prevLenRef.current ? 'fwd' : 'back');
+    prevLenRef.current = len;
+  }, [stack.length, current]);
+
+  // Hardware / browser back
+  React.useEffect(() => {
+    const onPop = () => nav('back');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [nav]);
+  React.useEffect(() => {
+    if (stack.length > 1) {
+      try { history.pushState({}, '', '#' + current); } catch (_) {}
+    } else {
+      try { history.replaceState({}, '', '#'); } catch (_) {}
+    }
+  }, [stack.length, current]);
+
+  const dismissOnboard = () => {
+    try { sessionStorage.setItem('xt-onboarded', '1'); } catch (_) {}
+    setShowOnboard(false);
+  };
+
+  const ctx = { flow, setFlow, nav, current, stack, demo: t.demoState || 'default' };
+  const Screen = SCREENS[current] || HomeScreen;
+
+  return (
+    <React.Fragment key={t.accent + ':' + t.titleStyle}>
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="外观">
+          <TweakColor
+            label="主题色"
+            value={t.accent}
+            options={['#9B4DCA', '#D9954A', '#6FA582', '#C77191']}
+            onChange={(v) => setTweak('accent', v)}
+          />
+          <TweakRadio
+            label="UI 字体"
+            value={t.titleStyle}
+            options={[
+              { value: 'serif', label: '宋体' },
+              { value: 'sans',  label: '黑体' },
+            ]}
+            onChange={(v) => setTweak('titleStyle', v)}
+          />
+          <TweakToggle
+            label="日间模式"
+            value={!!t.lightMode}
+            onChange={(v) => setTweak('lightMode', v)}
+          />
+        </TweakSection>
+        <TweakSection label="演示状态">
+          <TweakSelect
+            label="语音页"
+            value={t.demoState}
+            options={[
+              { value: 'default',     label: '默认 · 真实流程' },
+              { value: 'generating',  label: '生成中' },
+              { value: 'failed',      label: '生成失败' },
+              { value: 'quota',       label: '今日额度不足' },
+              { value: 'no-provider', label: 'Provider 未配置' },
+              { value: 'empty',       label: '历史为空' },
+            ]}
+            onChange={(v) => setTweak('demoState', v)}
+          />
+          {t.demoState !== 'default' && (
+            <TweakButton label="关闭演示" onClick={() => setTweak('demoState', 'default')} secondary />
+          )}
+        </TweakSection>
+        <TweakSection label="开发工具">
+          <TweakButton label={`当前：${current}`} onClick={() => nav('home')} secondary />
+          <TweakButton label="重看首次引导" onClick={() => { try { sessionStorage.removeItem('xt-onboarded'); } catch(_){}; setShowOnboard(true); }} secondary />
+        </TweakSection>
+      </TweaksPanel>
+
+      <style>{`
+        ${t.titleStyle === 'sans' ? `
+          .xt-screen, [data-xt-title] {
+            font-family: ${T.sans} !important;
+          }
+        ` : ''}
+        ${t.lightMode ? `
+          /* Day mode — paper-warm whites, dark ink */
+          .spa-shell, body, html, #root { background: #F5F1EA !important; }
+          .spa-screen-wrap { background: #F5F1EA !important; }
+          .xt-screen { background: #F5F1EA !important; color: #2A2530 !important; }
+          .xt-card { background: rgba(255,255,255,0.55) !important; border-color: rgba(20,15,25,0.08) !important; }
+          .xt-card-elev { background: #FFFFFFC0 !important; border-color: rgba(20,15,25,0.08) !important; }
+          .xt-pill { color: rgba(42,37,48,0.62) !important; background: rgba(255,255,255,0.5) !important; border-color: rgba(20,15,25,0.06) !important; }
+          .xt-btn { background: rgba(255,255,255,0.6) !important; color: #2A2530 !important; }
+          .xt-btn.ghost { color: rgba(42,37,48,0.62) !important; border-color: rgba(20,15,25,0.12) !important; }
+          .xt-btn.primary { color: white !important; }
+          .xt-letter { color: #2A2530 !important; }
+          .xt-screen textarea { color: #2A2530 !important; caret-color: var(--xt-accent); }
+        ` : ''}
+      `}</style>
+
+      <div className="spa-shell">
+        <div className="spa-screen-wrap" data-screen-label={current}>
+          <div
+            key={stack.length + ':' + current}
+            className={direction === 'fwd' ? 'spa-fwd' : 'spa-back'}
+            style={{ minHeight: '100%' }}
+          >
+            <Screen ctx={ctx} />
+          </div>
+
+          {showOnboard && <OnboardOverlay onDone={dismissOnboard} />}
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// First-run onboarding — one quiet card. Two product promises.
+// ─────────────────────────────────────────────────────────────
+function OnboardOverlay({ onDone }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 80,
+      background: 'rgba(10,8,14,0.78)',
+      backdropFilter: 'blur(16px) saturate(140%)',
+      WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: 20, animation: 'spaFadeOverlay .25s ease both',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 380,
+        background: T.surface, border: `1px solid ${T.hairline2}`,
+        borderRadius: 24, padding: '26px 24px 22px',
+        marginBottom: 'env(safe-area-inset-bottom)',
+        boxShadow: '0 30px 70px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{
+          fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.text,
+          lineHeight: 1.45, marginBottom: 16,
+        }}>
+          有些话不好说，<br/>
+          但值得说。
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 22 }}>
+          {[
+            { t: '这不是 AI 聊天工具', d: '它帮你把粗糙的真心，变成更合适的文字和语音。' },
+            { t: '不替你发送',           d: '生成好的内容只在你本机，由你自己决定要不要发。' },
+          ].map((r, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12 }}>
+              <span style={{
+                fontFamily: T.mono, fontSize: 11, color: T.accentInk,
+                width: 18, paddingTop: 2,
+              }}>0{i + 1}</span>
+              <div>
+                <div style={{ fontSize: 14, color: T.text, fontWeight: 500, marginBottom: 4 }}>{r.t}</div>
+                <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.7 }}>{r.d}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={onDone} className="xt-btn primary full" style={{ height: 50, fontSize: 15 }}>
+          知道了，开始吧
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
