@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-CORE-RENDER-B2-B2（当前）→ 下一步：P17-XIANGTA-CORE-RENDER-B2-B3-A0**
+**P17-XIANGTA-CORE-RENDER-B2-B3（当前）→ 下一步：P17-XIANGTA-PROVIDER-STATUS-B3**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -24,8 +24,9 @@
 | P17-XIANGTA-CORE-RENDER-B2-A0 | Core render 接入前置审查与 mock 策略确认 | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-B1a | VoiceLabGateway 接 Core render HTTP contract mock path（仅 Gateway，不切 TtsOrchestrator） | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-B1b | TtsOrchestrator 切到 VoiceLabGateway.generate_tts() | ✅ |
-| P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test with app route + DB fixtures | Current |
-| P17-XIANGTA-CORE-RENDER-B2-B3-A0 | XiangTa app-level Core mock integration planning | Planned |
+| P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test with app route + DB fixtures | ✅ |
+| P17-XIANGTA-CORE-RENDER-B2-B3 | XiangTa app-level Core mock integration test | Current |
+| P17-XIANGTA-PROVIDER-STATUS-B3 | ProviderStatus runtime/status mock path | Planned |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
@@ -41,9 +42,12 @@
 - [ ] GAP-B2-003: 当前 Core 没有与 `POST /api/voice/render` 完全等价的进程内 high-level facade；B2-B1 优先走 HTTP API，若未来要走进程内需先补 facade（发现于 `P17-XIANGTA-CORE-RENDER-B2-A0`）
 - [ ] GAP-B2-004: `seed_defaults()` 虽创建 mock binding，但未同时 seed `ProviderVoice`；B2-B1 测试需复用 `seed_mock_binding` 或显式补建 provider voice（发现于 `P17-XIANGTA-CORE-RENDER-B2-A0`）
 
+> 备注：B2-B3 测试路径已通过 fake repository 将 `voicePreset -> deep_night_programmer`，并显式断言 `provider="mock"`。
+> 正式产品配置仍需在后续 Admin / 配置治理阶段消化 GAP-B2-001 与 GAP-B2-002。
+
 ## XiangTa 下一步约束
 
-下一步只进入 `P17-XIANGTA-CORE-RENDER-B2-B3-A0`。范围限定为 XiangTa app-level Core mock integration planning，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
+下一步只进入 `P17-XIANGTA-PROVIDER-STATUS-B3`。范围限定为 ProviderStatus runtime/status mock path，不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
 
 ## P16 已完成历史
 
