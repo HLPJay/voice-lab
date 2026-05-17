@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-LETTERS-B6-1（已完成）→ 下一步：P17-XIANGTA-H5-B7**
+**P17-XIANGTA-H5-B7-1（已完成）→ 下一步：P17-XIANGTA-MVP-CLOSEOUT-B7**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -32,7 +32,8 @@
 | P17-XIANGTA-ADMIN-CONFIG-B4-3 | 配置管理写接口最小实现（update existing + enable/disable） | ✅ |
 | P17-XIANGTA-COPYWRITING-B5-1 | CopywritingService 模板文案建议，POST /suggestions 闭环 | ✅ |
 | P17-XIANGTA-LETTERS-B6-1 | letters/history 进程内内存闭环（POST/GET /letters） | ✅ |
-| P17-XIANGTA-H5-B7 | H5 前端主流程 | Next |
+| P17-XIANGTA-H5-B7-1 | H5 静态前端主流程（bootstrap→suggestions→tts→letters） | ✅ |
+| P17-XIANGTA-MVP-CLOSEOUT-B7 | 后端 + H5 MVP closeout / 合并前验收 | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
 
@@ -56,7 +57,7 @@
 
 ## XiangTa 下一步约束
 
-下一步进入 `P17-XIANGTA-H5-B7`：H5 前端主流程。不得直接进入真实 Provider 调用、读取 API key 或运行真实 LLM probe。
+下一步进入 `P17-XIANGTA-MVP-CLOSEOUT-B7`：后端 + H5 MVP closeout / 合并前验收。不得直接进入真实 Provider 调用、读取 API key 或运行真实 LLM probe。
 
 ## P16 已完成历史
 

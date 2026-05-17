@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>想Ta了</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- 状态提示区 -->
+  <header class="app-header">
+    <h1 class="app-title">想Ta了</h1>
+    <div id="statusBar" class="status-bar status-idle">准备就绪</div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- Provider 状态区 -->
+    <section class="card" id="providerCard">
+      <div class="card-label">语音服务</div>
+      <div id="providerStatus" class="provider-status">检查中…</div>
+    </section>
+
+    <!-- 步骤 1：选择参数 -->
+    <section class="card">
+      <div class="card-label">步骤 1 — 告诉我这条消息</div>
+
+      <div class="field-row">
+        <label for="recipientSelect">发给谁</label>
+        <select id="recipientSelect"></select>
+      </div>
+
+      <div class="field-row">
+        <label for="sceneSelect">场景</label>
+        <select id="sceneSelect"></select>
+      </div>
+
+      <div class="field-row">
+        <label for="voicePresetSelect">音色</label>
+        <select id="voicePresetSelect"></select>
+      </div>
+
+      <div class="field-row">
+        <label for="toneSelect">语调</label>
+        <select id="toneSelect"></select>
+      </div>
+
+      <div class="field-col">
+        <label for="rawTextArea">你想说什么（原始心情）</label>
+        <textarea id="rawTextArea" rows="4" maxlength="500"
+          placeholder="随便写，比如：我今天突然很想你…"></textarea>
+        <div class="char-count"><span id="rawTextCount">0</span> / 500</div>
+      </div>
+    </section>
+
+    <!-- 步骤 2：生成文案建议 -->
+    <section class="card">
+      <div class="card-label">步骤 2 — 生成文案建议</div>
+      <button id="genSuggestionsBtn" class="btn btn-primary" onclick="generateSuggestions()">
+        生成文案建议
+      </button>
+      <div id="suggestionsArea" class="suggestions-area hidden"></div>
+    </section>
+
+    <!-- 步骤 3：生成语音 -->
+    <section class="card">
+      <div class="card-label">步骤 3 — 生成语音（dry-run 合约）</div>
+      <div class="field-col">
+        <label for="finalTextArea">最终文案</label>
+        <textarea id="finalTextArea" rows="4" maxlength="800"
+          placeholder="选择上方建议后自动填入，或手动编辑"></textarea>
+      </div>
+      <button id="genTtsBtn" class="btn btn-primary" onclick="generateTts()">
+        生成语音
+      </button>
+      <div id="ttsResult" class="tts-result hidden"></div>
+    </section>
+
+    <!-- 步骤 4：保存信笺 -->
+    <section class="card">
+      <div class="card-label">步骤 4 — 保存信笺</div>
+      <div class="field-row">
+        <label for="titleInput">标题（选填）</label>
+        <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+      </div>
+      <button id="saveLetterBtn" class="btn btn-accent" onclick="saveLetter()">
+        保存信笺
+      </button>
+    </section>
+
+    <!-- 步骤 5：历史记录 -->
+    <section class="card">
+      <div class="card-label">历史记录</div>
+      <button class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
+      <div id="lettersArea" class="letters-area"></div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

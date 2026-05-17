@@ -1,0 +1,302 @@
+/* 想Ta了 H5 — mobile-first, no external fonts/CDN */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --c-bg:        #f5f4f0;
+  --c-surface:   #ffffff;
+  --c-primary:   #5b7fa6;
+  --c-accent:    #c27b5e;
+  --c-ghost:     #8a8a8a;
+  --c-border:    #e0ddd8;
+  --c-text:      #2d2d2d;
+  --c-muted:     #888;
+  --c-ok:        #4a9e6b;
+  --c-warn:      #c09040;
+  --c-err:       #c05050;
+  --radius:      12px;
+  --gap:         16px;
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+               "Microsoft YaHei", sans-serif;
+  line-height: 1.6;
+  min-height: 100dvh;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  padding: 12px var(--gap);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  flex-shrink: 0;
+}
+
+.status-bar {
+  flex: 1;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background .2s, color .2s;
+}
+.status-idle    { background: #eee; color: var(--c-muted); }
+.status-loading { background: #ddeeff; color: var(--c-primary); }
+.status-ok      { background: #d6f0df; color: var(--c-ok); }
+.status-error   { background: #fde8e8; color: var(--c-err); }
+.status-warn    { background: #fdf3d6; color: var(--c-warn); }
+
+/* ── Main layout ───────────────────────────────────────────────────────── */
+
+.app-main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/* ── Card ──────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--c-surface);
+  border-radius: var(--radius);
+  padding: var(--gap);
+  border: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+/* ── Provider status ───────────────────────────────────────────────────── */
+
+.provider-status {
+  font-size: 0.88rem;
+  color: var(--c-muted);
+}
+.provider-ok      { color: var(--c-ok); }
+.provider-warn    { color: var(--c-warn); }
+.provider-error   { color: var(--c-err); }
+
+/* ── Form fields ───────────────────────────────────────────────────────── */
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.field-row label {
+  flex-shrink: 0;
+  width: 72px;
+  font-size: 0.85rem;
+  color: var(--c-muted);
+}
+.field-row select {
+  flex: 1;
+}
+
+.field-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-col label {
+  font-size: 0.85rem;
+  color: var(--c-muted);
+}
+
+select, input[type="text"], textarea {
+  width: 100%;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--c-bg);
+  color: var(--c-text);
+  outline: none;
+  transition: border-color .15s;
+}
+select:focus, input:focus, textarea:focus {
+  border-color: var(--c-primary);
+}
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.char-count {
+  font-size: 0.75rem;
+  color: var(--c-muted);
+  text-align: right;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity .15s, transform .1s;
+  width: 100%;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-primary { background: var(--c-primary); color: #fff; }
+.btn-accent  { background: var(--c-accent);  color: #fff; }
+.btn-ghost   {
+  background: transparent;
+  color: var(--c-ghost);
+  border: 1px solid var(--c-border);
+}
+
+/* ── Suggestions ───────────────────────────────────────────────────────── */
+
+.suggestions-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.suggestion-card {
+  border: 2px solid var(--c-border);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.suggestion-card:hover { background: #f8f7f3; }
+.suggestion-card.selected {
+  border-color: var(--c-primary);
+  background: #eef3fb;
+}
+
+.sugg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.sugg-style-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--c-primary);
+  background: #ddeeff;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.sugg-fits-for {
+  font-size: 0.75rem;
+  color: var(--c-muted);
+}
+.sugg-text {
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+.sugg-chars {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--c-muted);
+  text-align: right;
+}
+
+/* ── TTS result ────────────────────────────────────────────────────────── */
+
+.tts-result {
+  background: #f0f7f0;
+  border: 1px solid #b8dbb8;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tts-row { display: flex; gap: 8px; }
+.tts-key  { color: var(--c-muted); flex-shrink: 0; width: 80px; }
+.tts-val  { word-break: break-all; }
+
+/* ── Letters history ───────────────────────────────────────────────────── */
+
+.letters-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.letter-card {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 0.85rem;
+}
+.letter-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.letter-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.letter-date {
+  font-size: 0.75rem;
+  color: var(--c-muted);
+}
+.letter-meta {
+  font-size: 0.78rem;
+  color: var(--c-muted);
+  margin-bottom: 6px;
+}
+.letter-text {
+  color: var(--c-text);
+  line-height: 1.6;
+}
+.letters-empty {
+  text-align: center;
+  color: var(--c-muted);
+  font-size: 0.85rem;
+  padding: 16px 0;
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────────── */
+
+.hidden { display: none !important; }
