@@ -60,12 +60,13 @@ Home 选对象 + 场景
 ### A0（本阶段，P17-XIANGTA-INIT-A0）
 固定 Core 基线，新建骨架，写文档。不实现业务。
 
-### A1 — 配置协议 + Bootstrap 只读接口
+### A1 — 配置协议 + Bootstrap 只读接口 ✅
 - `configs/*.json` 只保留产品语义与 `core_binding_key`，不含 Provider 参数
 - `preset_mapper.resolve_binding()` 输出 CoreBindingRequest，不输出 Provider 参数
 - `GET /api/xiangta/bootstrap` 可用，返回配置快照
 - `GET /api/xiangta/provider/status` 返回 `not_integrated`
 - 不接真实 TTS，不调用真实 Provider
+- 测试：66 个 tests 全通过
 
 ### A2 — Gateway Contract Dry-run
 - `voice_lab_gateway.py` 完整接口定义，含 contract 注释

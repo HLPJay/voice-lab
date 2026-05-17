@@ -1,7 +1,17 @@
 # 想Ta了 · API Contract 草案
 
 > 本文档只定义协议，不实现。实现在 `src/xiangta/api/routes.py`。
-> 版本：v0.1（P17-XIANGTA-INIT-A0-FIX1，修正边界）
+> 版本：v0.2（P17-XIANGTA-A1，bootstrap/status 可用）
+
+**接口实现状态**
+
+| 接口 | 方法 | 状态 |
+|---|---|---|
+| `/bootstrap` | GET | ✅ A1 可用 |
+| `/provider/status` | GET | ✅ A1 可用（固定 not_integrated） |
+| `/suggestions` | POST | ⏳ A4 实现 |
+| `/tts` | POST | ⏳ A3 实现 |
+| `/letters` | POST/GET | ⏳ A4+ 实现 |
 
 ---
 

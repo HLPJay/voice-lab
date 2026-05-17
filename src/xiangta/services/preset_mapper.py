@@ -11,24 +11,44 @@ Provider-specific 参数的解析责任由 voice_lab_gateway 持有，Product Se
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 _CONFIGS_DIR = Path(__file__).parent.parent / "configs"
 
 
-def _load(name: str) -> list[dict]:
-    # TODO(P17-A1): 加载后缓存，避免每次请求读磁盘
-    with open(_CONFIGS_DIR / name, encoding="utf-8") as f:
+class PresetMappingError(ValueError):
+    """voicePreset 或 tone 配置不合法或不存在时抛出。"""
+    pass
+
+
+@lru_cache(maxsize=1)
+def _load_voices() -> list[dict]:
+    with open(_CONFIGS_DIR / "voice_presets.json", encoding="utf-8") as f:
         return json.load(f)
+
+
+@lru_cache(maxsize=1)
+def _load_tones() -> list[dict]:
+    with open(_CONFIGS_DIR / "tone_presets.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _reload():
+    """测试辅助：清除 lru_cache 以重新读取文件。"""
+    _load_voices.cache_clear()
+    _load_tones.cache_clear()
 
 
 class PresetMapper:
     """
     将产品预设 ID 解析为 CoreBindingRequest。
 
-    CoreBindingRequest 是 XiangTa Product Server 与 Voice Lab Gateway 之间的稳定边界，
-    只包含产品语义，不包含任何 Provider-specific 参数。
+    CoreBindingRequest 只包含产品语义：
+      core_binding_key, voice_preset, tone, tone_hint, enabled
+
+    不返回 voice_id, model_id, sample_rate, bitrate 等 Provider-specific 参数。
     """
 
     def resolve_binding(self, voice_preset_id: str, tone_id: str) -> dict[str, Any]:
@@ -44,13 +64,49 @@ class PresetMapper:
         Returns:
             CoreBindingRequest:
             {
-              "core_binding_key": str,   # 声线的稳定 binding key（如 "xiangta_female_gentle"）
-              "voice_preset": str,       # 原始 preset ID
-              "tone": str,               # 原始 tone ID
-              "tone_hint": str,          # 产品语义风格提示（如 "calm", "soft"）
+              "core_binding_key": str,
+              "voice_preset": str,
+              "tone": str,
+              "tone_hint": str,
               "enabled": bool,
             }
+
+        Raises:
+            PresetMappingError: 当 preset 不存在、已禁用、或缺少必要字段时。
         """
-        # TODO(P17-A1): 读取 configs/voice_presets.json 和 configs/tone_presets.json，
-        #               组合成 CoreBindingRequest
-        raise NotImplementedError
+        voices = _load_voices()
+        tones = _load_tones()
+
+        voice = next((v for v in voices if v.get("id") == voice_preset_id), None)
+        if voice is None:
+            raise PresetMappingError(f"voicePreset '{voice_preset_id}' 不存在")
+
+        tone = next((t for t in tones if t.get("id") == tone_id), None)
+        if tone is None:
+            raise PresetMappingError(f"tone '{tone_id}' 不存在")
+
+        if not voice.get("enabled", True):
+            raise PresetMappingError(f"voicePreset '{voice_preset_id}' 已禁用")
+
+        if not tone.get("enabled", True):
+            raise PresetMappingError(f"tone '{tone_id}' 已禁用")
+
+        core_binding_key = voice.get("core_binding_key", "")
+        if not core_binding_key:
+            raise PresetMappingError(
+                f"voicePreset '{voice_preset_id}' 缺少 core_binding_key"
+            )
+
+        tone_hint = tone.get("style_hint", "")
+        if not tone_hint:
+            raise PresetMappingError(
+                f"tone '{tone_id}' 缺少 style_hint"
+            )
+
+        return {
+            "core_binding_key": core_binding_key,
+            "voice_preset": voice["id"],
+            "tone": tone["id"],
+            "tone_hint": tone_hint,
+            "enabled": True,
+        }

@@ -1,6 +1,26 @@
 [
-  { "id": "lover",  "label": "恋人", "context": "亲密伴侣，感情表达可以更直接和温柔" },
-  { "id": "family", "label": "父母", "context": "父母或长辈，语气稳重，不轻浮" },
-  { "id": "friend", "label": "朋友", "context": "朋友，轻松自然，不过于正式" },
-  { "id": "self",   "label": "自己", "context": "写给自己，像私人日记，不用给别人看" }
+  {
+    "id": "lover",
+    "label": "恋人",
+    "hint": "想他、想她",
+    "enabled": true
+  },
+  {
+    "id": "family",
+    "label": "父母",
+    "hint": "爸爸、妈妈",
+    "enabled": true
+  },
+  {
+    "id": "friend",
+    "label": "朋友",
+    "hint": "老友、同学、同事",
+    "enabled": true
+  },
+  {
+    "id": "self",
+    "label": "自己",
+    "hint": "写给自己的独白",
+    "enabled": true
+  }
 ]

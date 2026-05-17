@@ -2,15 +2,15 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-INIT-A0-FIX1：清理产品层底层参数泄露，修正 voicePreset/Core 边界**
+**P17-XIANGTA-A1（已完成）→ 下一步：P17-XIANGTA-A2**
 
 ## 下一步（P17 阶段路线图）
 
 | 任务 | 内容 | 状态 |
 |---|---|---|
 | P17-XIANGTA-INIT-A0 | Core Freeze 声明 + 骨架初始化 | ✅ |
-| P17-XIANGTA-INIT-A0-FIX1 | 清理产品层底层参数泄露，修正 voicePreset/Core 边界 | 当前 |
-| P17-XIANGTA-A1 | 配置协议 + bootstrap/status 只读接口，不接真实 TTS | TODO |
+| P17-XIANGTA-INIT-A0-FIX1 | 清理产品层底层参数泄露，修正 voicePreset/Core 边界 | ✅ |
+| P17-XIANGTA-A1 | 配置协议 + bootstrap/status 只读接口，不接真实 TTS | ✅ |
 | P17-XIANGTA-A2 | preset_mapper + voice_lab_gateway contract dry-run，不调用真实 Provider | TODO |
 | P17-XIANGTA-A3 | 真实 Core TTS 接入，通过 gateway 调用 Core 稳定入口 | TODO |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |

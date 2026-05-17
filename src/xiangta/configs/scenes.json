@@ -1,7 +1,32 @@
 [
-  { "id": "miss",    "label": "想念", "desc": "想起一个人，想让 TA 知道" },
-  { "id": "sorry",   "label": "道歉", "desc": "想说对不起，不想解释太多" },
-  { "id": "thanks",  "label": "感谢", "desc": "一直没说出口的谢谢" },
-  { "id": "comfort", "label": "安慰", "desc": "对方不太好，想轻轻陪一会儿" },
-  { "id": "night",   "label": "晚安", "desc": "睡前想说一声，不打扰" }
+  {
+    "id": "miss",
+    "label": "想念",
+    "hint": "不知不觉就想了",
+    "enabled": true
+  },
+  {
+    "id": "sorry",
+    "label": "道歉",
+    "hint": "想好好说一句对不起",
+    "enabled": true
+  },
+  {
+    "id": "thanks",
+    "label": "感谢",
+    "hint": "想认真表达感谢",
+    "enabled": true
+  },
+  {
+    "id": "comfort",
+    "label": "安慰",
+    "hint": "想陪对方一下",
+    "enabled": true
+  },
+  {
+    "id": "night",
+    "label": "晚安",
+    "hint": "睡前轻轻说一句",
+    "enabled": true
+  }
 ]
