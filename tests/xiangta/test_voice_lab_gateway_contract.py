@@ -8,6 +8,8 @@ from src.xiangta.services.voice_lab_gateway import (
     CoreRenderResponseError,
     CoreRenderTarget,
     CoreRenderUnavailableError,
+    CoreStatusUnavailableError,
+    CoreStatusResponseError,
     VoiceLabGateway,
 )
 
@@ -210,6 +212,124 @@ class TestGenerateTtsContract:
                 scene="night",
                 metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
             )
+
+
+STATUS_FORBIDDEN_KEYS = {
+    "api_key",
+    "env",
+    "provider_secret",
+    "raw_config",
+    "stack_trace",
+}
+
+_RUNTIME_STATUS_PAYLOAD = {
+    "current": {
+        "default_provider": "mock",
+        "default_model": "mock-model",
+    },
+    "provider_status": {
+        "state": "available",
+        "category": "ok",
+        "label": "正常",
+        "detail": None,
+        "action_hint": "最近调用成功",
+    },
+    "today": {"job_count": 0, "success_count": 0, "failed_count": 0, "usage_characters": 0},
+    "month": {"job_count": 0, "success_count": 0, "failed_count": 0, "usage_characters": 0},
+    "last_call": {"provider": None, "status": "none"},
+}
+
+
+class FakeCoreGetClient:
+    def __init__(self, payload: dict, status_code: int = 200) -> None:
+        self.payload = payload
+        self.requests: list[tuple[str, ...]] = []
+        self._status_code = status_code
+
+    async def get(self, path: str) -> FakeResponse:
+        self.requests.append(("GET", path))
+        return FakeResponse(self.payload, self._status_code)
+
+
+class TestGetProviderStatusContract:
+    @pytest.mark.asyncio
+    async def test_calls_core_runtime_status_path(self):
+        fake_client = FakeCoreGetClient(_RUNTIME_STATUS_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.get_provider_status()
+
+        assert fake_client.requests == [("GET", "/api/voice/runtime/status")]
+
+    @pytest.mark.asyncio
+    async def test_returns_safe_dict_with_expected_fields(self):
+        fake_client = FakeCoreGetClient(_RUNTIME_STATUS_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.get_provider_status()
+
+        assert result["ok"] is True
+        assert result["status"] == "available"
+        assert "quota_pct" in result
+        assert "message" in result
+
+    @pytest.mark.asyncio
+    async def test_response_does_not_expose_forbidden_keys(self):
+        fake_client = FakeCoreGetClient(_RUNTIME_STATUS_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.get_provider_status()
+
+        bad = set(result.keys()) & STATUS_FORBIDDEN_KEYS
+        assert not bad, f"get_provider_status response exposes forbidden keys: {bad}"
+
+    @pytest.mark.asyncio
+    async def test_no_http_client_raises_unavailable_error(self):
+        gateway = VoiceLabGateway()
+
+        with pytest.raises(CoreStatusUnavailableError):
+            await gateway.get_provider_status()
+
+    @pytest.mark.asyncio
+    async def test_non_dict_response_raises_response_error(self):
+        class BadClient:
+            async def get(self, path: str):
+                return FakeResponse("not-a-dict")
+
+        gateway = VoiceLabGateway(http_client=BadClient())
+
+        with pytest.raises(CoreStatusResponseError):
+            await gateway.get_provider_status()
+
+    @pytest.mark.asyncio
+    async def test_missing_provider_status_raises_response_error(self):
+        fake_client = FakeCoreGetClient({"current": {}, "today": {}})
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        # Missing provider_status is treated as {} which is valid (state defaults to "unknown")
+        result = await gateway.get_provider_status()
+        assert result["status"] == "unknown"
+
+    @pytest.mark.asyncio
+    async def test_does_not_read_api_key_env(self, monkeypatch):
+        monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+        monkeypatch.delenv("MIMO_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        fake_client = FakeCoreGetClient(_RUNTIME_STATUS_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.get_provider_status()
+        assert result["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_uses_core_base_url_when_set(self):
+        fake_client = FakeCoreGetClient(_RUNTIME_STATUS_PAYLOAD)
+        gateway = VoiceLabGateway(core_base_url="http://core:8000", http_client=fake_client)
+
+        await gateway.get_provider_status()
+
+        path, = (r[1] for r in fake_client.requests)
+        assert path == "http://core:8000/api/voice/runtime/status"
 
 
 class TestGenerateTtsDryRunContract:

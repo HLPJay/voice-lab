@@ -456,6 +456,41 @@ class TestB2B1aGatewayBoundary:
         assert "os.environ" not in src
 
 
+class TestB3StatusBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_provider_status_service_does_not_import_app_repositories(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "app.repositories" not in src
+
+    def test_provider_status_service_does_not_import_app_providers(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "app.providers" not in src
+
+    def test_provider_status_service_does_not_reference_render_plan(self):
+        src = self._get_source("src.xiangta.services.provider_status_service")
+        assert "RenderPlan" not in src
+
+    def test_gateway_get_provider_status_no_forbidden_env_tokens(self):
+        src = self._get_source("src.xiangta.services.voice_lab_gateway")
+        for token in ("MINIMAX_API_KEY", "MIMO_API_KEY", "OPENAI_API_KEY"):
+            assert token not in src, f"voice_lab_gateway.py references env token: {token}"
+
+    def test_gateway_status_path_is_correct(self):
+        from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
+        gw = VoiceLabGateway()
+        assert gw._status_path() == "/api/voice/runtime/status"
+
+    def test_gateway_status_path_uses_base_url_when_set(self):
+        from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
+        gw = VoiceLabGateway(core_base_url="http://core:8000")
+        assert gw._status_path() == "http://core:8000/api/voice/runtime/status"
+
+
 class TestB2B1bOrchestratorBoundary:
     def _get_source(self, module_path: str) -> str:
         import importlib

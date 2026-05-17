@@ -1,19 +1,22 @@
 """
-P17-XIANGTA-A1 — Bootstrap API 集成测试
+P17-XIANGTA-B3 — Bootstrap API 集成测试
 
-使用独立 FastAPI app（不注册到主应用）。
 验证：
   - GET /api/xiangta/bootstrap 返回 200 + 正确结构
-  - GET /api/xiangta/provider/status 返回 200 + not_integrated
+  - GET /api/xiangta/provider/status 返回 200 + not_integrated (默认 no http_client)
+  - 带 fake gateway 时 providerStatus.kind == "ok"
   - 响应不包含底层 Provider 参数
   - 未实现接口返回 501
 """
-import json
 import pytest
+from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.xiangta.api.routes import router
+from src.xiangta.services.product_service import ProductService
+from src.xiangta.services.provider_status_service import ProviderStatusService
+from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
 
 FORBIDDEN_KEYS = {
     "voice_id", "model_id", "sample_rate", "bitrate",
@@ -207,6 +210,113 @@ class TestProviderStatus:
         keys = _collect_keys(body)
         bad = keys & FORBIDDEN_KEYS
         assert not bad, f"provider/status 响应包含禁止字段：{bad}"
+
+
+# ── GET /api/xiangta/provider/status with fake gateway ───────────────────────
+
+class FakeGetResponse:
+    def __init__(self, payload, status_code=200):
+        self._payload = payload
+        self.status_code = status_code
+
+    def json(self):
+        return self._payload
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class FakeCoreStatusClient:
+    def __init__(self, payload):
+        self.payload = payload
+        self.requests = []
+
+    async def get(self, path: str):
+        self.requests.append(("GET", path))
+        return FakeGetResponse(self.payload)
+
+
+_AVAILABLE_PAYLOAD = {
+    "provider_status": {
+        "state": "available",
+        "category": "ok",
+        "label": "正常",
+        "detail": None,
+        "action_hint": "最近调用成功",
+    }
+}
+
+
+@pytest.fixture(scope="function")
+def client_with_gateway(monkeypatch):
+    fake_core_client = FakeCoreStatusClient(_AVAILABLE_PAYLOAD)
+    gateway = VoiceLabGateway(http_client=fake_core_client)
+    provider_status_svc = ProviderStatusService(gateway=gateway)
+    service = ProductService(
+        bootstrap=MagicMock(**{"get_bootstrap": AsyncMock(return_value={})}),
+        provider_status=provider_status_svc,
+    )
+
+    import src.xiangta.api.routes as routes_module
+    monkeypatch.setattr(routes_module, "create_product_service", lambda: service)
+
+    app = FastAPI()
+    app.include_router(router)
+    return TestClient(app), fake_core_client
+
+
+class TestProviderStatusWithGateway:
+
+    def test_status_200(self, client_with_gateway):
+        client, _ = client_with_gateway
+        r = client.get("/api/xiangta/provider/status")
+        assert r.status_code == 200
+
+    def test_ok_true(self, client_with_gateway):
+        client, _ = client_with_gateway
+        r = client.get("/api/xiangta/provider/status")
+        assert r.json()["ok"] is True
+
+    def test_kind_ok_from_available_gateway(self, client_with_gateway):
+        client, _ = client_with_gateway
+        data = client.get("/api/xiangta/provider/status").json()["data"]
+        assert data["kind"] == "ok"
+
+    def test_called_runtime_status_path(self, client_with_gateway):
+        client, fake_core_client = client_with_gateway
+        client.get("/api/xiangta/provider/status")
+        assert ("GET", "/api/voice/runtime/status") in fake_core_client.requests
+
+    def test_no_forbidden_keys(self, client_with_gateway):
+        client, _ = client_with_gateway
+        body = client.get("/api/xiangta/provider/status").json()
+        keys = _collect_keys(body)
+        bad = keys & FORBIDDEN_KEYS
+        assert not bad, f"gateway status 响应包含禁止字段：{bad}"
+
+    def test_degraded_when_gateway_fails(self, monkeypatch):
+        class ErrorGetClient:
+            async def get(self, path: str):
+                raise RuntimeError("simulated core failure")
+
+        gateway = VoiceLabGateway(http_client=ErrorGetClient())
+        provider_status_svc = ProviderStatusService(gateway=gateway)
+        service = ProductService(
+            bootstrap=MagicMock(**{"get_bootstrap": AsyncMock(return_value={})}),
+            provider_status=provider_status_svc,
+        )
+
+        import src.xiangta.api.routes as routes_module
+        monkeypatch.setattr(routes_module, "create_product_service", lambda: service)
+
+        app = FastAPI()
+        app.include_router(router)
+        c = TestClient(app)
+        r = c.get("/api/xiangta/provider/status")
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert data["kind"] == "degraded"
 
 
 # ── 未实现接口返回 501 ────────────────────────────────────────────────────────

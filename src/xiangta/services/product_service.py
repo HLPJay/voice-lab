@@ -73,13 +73,13 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.voice_preset_mapping_service import VoicePresetMappingService
     from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
 
-    provider_status = ProviderStatusService(gateway=None)
     config_repository = ProductConfigRepository()
+    gateway         = VoiceLabGateway()
+    provider_status = ProviderStatusService(gateway=gateway)
     bootstrap       = BootstrapService(
         provider_status=provider_status,
         config_repository=config_repository,
     )
-    gateway         = VoiceLabGateway()
     voice_mapping_service = VoicePresetMappingService(config_repository=config_repository)
     tone_preset_service = TonePresetService(config_repository=config_repository)
     limits = config_repository.get_limits()

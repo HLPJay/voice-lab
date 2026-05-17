@@ -50,6 +50,20 @@ NOT_INTEGRATED_STATUS = {
     "quotaPct": 0.0,
 }
 
+OK_STATUS = {
+    "kind": "ok",
+    "label": "语音服务可用",
+    "detail": "mock runtime available",
+    "quotaPct": 0.0,
+}
+
+DEGRADED_STATUS = {
+    "kind": "degraded",
+    "label": "语音服务状态未知",
+    "detail": "Core runtime status unavailable",
+    "quotaPct": 0.0,
+}
+
 
 @pytest.fixture
 def mock_provider_status():
@@ -150,6 +164,22 @@ class TestBootstrapServiceGetBootstrap:
             "recipients", "scenes", "styles", "voicePresets",
             "tonePresets", "limits", "providerStatus",
         }
+
+    @pytest.mark.asyncio
+    async def test_provider_status_ok_kind_propagates(self, mock_config_repository):
+        svc_ok = MagicMock()
+        svc_ok.get_status = AsyncMock(return_value=OK_STATUS)
+        svc = BootstrapService(provider_status=svc_ok, config_repository=mock_config_repository)
+        result = await svc.get_bootstrap()
+        assert result["providerStatus"]["kind"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_provider_status_degraded_kind_propagates(self, mock_config_repository):
+        svc_deg = MagicMock()
+        svc_deg.get_status = AsyncMock(return_value=DEGRADED_STATUS)
+        svc = BootstrapService(provider_status=svc_deg, config_repository=mock_config_repository)
+        result = await svc.get_bootstrap()
+        assert result["providerStatus"]["kind"] == "degraded"
 
     @pytest.mark.asyncio
     async def test_no_forbidden_keys_in_result(self, mock_provider_status, mock_config_repository):

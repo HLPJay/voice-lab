@@ -33,6 +33,18 @@ class CoreRenderResponseError(CoreRenderError):
     """Raised when the Core render response does not match the contract."""
 
 
+class CoreStatusError(Exception):
+    """Base error for XiangTa to Core status contract failures."""
+
+
+class CoreStatusUnavailableError(CoreStatusError):
+    """Raised when the gateway has no injected Core client for status calls."""
+
+
+class CoreStatusResponseError(CoreStatusError):
+    """Raised when the Core status response does not match the contract."""
+
+
 class VoiceLabGateway:
     """Gateway for XiangTa-to-Core high-level calls."""
 
@@ -135,7 +147,34 @@ class VoiceLabGateway:
         }
 
     async def get_provider_status(self) -> dict[str, Any]:
-        raise NotImplementedError
+        """Call Core GET /api/voice/runtime/status and return a safe status dict."""
+        if self._http_client is None:
+            raise CoreStatusUnavailableError(
+                "VoiceLabGateway.get_provider_status requires an injected Core HTTP client"
+            )
+
+        response = await self._http_client.get(self._status_path())
+        if hasattr(response, "raise_for_status"):
+            response.raise_for_status()
+
+        body = response.json() if hasattr(response, "json") else response
+        if not isinstance(body, dict):
+            raise CoreStatusResponseError("Core status response must be a JSON object")
+
+        provider_status = body.get("provider_status", {})
+        if not isinstance(provider_status, dict):
+            raise CoreStatusResponseError("Core status response missing provider_status object")
+
+        state = provider_status.get("state", "unknown")
+        message = provider_status.get("detail") or provider_status.get("label") or "mock runtime status"
+
+        return {
+            "ok": True,
+            "provider": "mock",
+            "status": state,
+            "quota_pct": 0.0,
+            "message": message,
+        }
 
     async def generate_llm_text(
         self,
@@ -145,6 +184,11 @@ class VoiceLabGateway:
     ) -> str:
         _ = (prompt, max_tokens)
         raise NotImplementedError
+
+    def _status_path(self) -> str:
+        if self._core_base_url:
+            return f"{self._core_base_url}/api/voice/runtime/status"
+        return "/api/voice/runtime/status"
 
     def _render_path(self) -> str:
         if self._core_base_url:
