@@ -354,10 +354,10 @@ class TestUnimplementedRoutes:
         })
         assert r.status_code == 200
 
-    def test_create_letter_returns_501(self, client):
+    def test_create_letter_returns_422_on_empty_body(self, client):
         r = client.post("/api/xiangta/letters", json={})
-        assert r.status_code == 501
+        assert r.status_code == 422
 
-    def test_list_letters_returns_501(self, client):
+    def test_list_letters_returns_200(self, client):
         r = client.get("/api/xiangta/letters")
-        assert r.status_code == 501
+        assert r.status_code == 200

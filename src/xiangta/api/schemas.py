@@ -268,8 +268,8 @@ class CreateLetterRequest(BaseModel):
     recipient: RecipientId
     scene: SceneId
     style: StyleId
-    rawText: str
-    finalText: str
+    rawText: str = Field(min_length=1, max_length=500)
+    finalText: str = Field(min_length=1, max_length=800)
     voicePreset: VoicePresetId
     tone: ToneId
     audioUrl: Optional[str] = None
@@ -284,3 +284,34 @@ class CreateLetterData(BaseModel):
 
 class CreateLetterResponse(OkResponse):
     data: CreateLetterData
+
+
+# ── GET /letters ──────────────────────────────────────────────────────────────
+
+class LetterItem(BaseModel):
+    letterId: str
+    recipient: str
+    scene: str
+    style: str
+    rawText: str
+    finalText: str
+    voicePreset: str
+    tone: str
+    audioUrl: Optional[str] = None
+    durationSecs: Optional[float] = None
+    title: Optional[str] = None
+    createdAt: str
+    favorited: bool = False
+    openCount: int = 0
+    openedAt: Optional[str] = None
+
+
+class ListLettersData(BaseModel):
+    letters: list[LetterItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class ListLettersResponse(OkResponse):
+    data: ListLettersData

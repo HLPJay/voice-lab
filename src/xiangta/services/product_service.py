@@ -136,6 +136,18 @@ class ProductService:
             raise RuntimeError("admin_config_service not wired")
         return self._admin_config_service.toggle_tone_preset_enabled(id, enabled)
 
+    async def create_letter(self, data: dict) -> dict:
+        """委托给 LetterService；ProductService 只做门面。"""
+        if self._letters is None:
+            raise RuntimeError("letter service not wired")
+        return await self._letters.create(data)
+
+    async def list_letters(self, limit: int = 50, offset: int = 0) -> dict:
+        """委托给 LetterService；ProductService 只做门面。"""
+        if self._letters is None:
+            raise RuntimeError("letter service not wired")
+        return await self._letters.list(limit=limit, offset=offset)
+
     async def get_suggestions(self, recipient: str, scene: str, raw_text: str) -> dict:
         """委托给 CopywritingService；ProductService 只做门面。"""
         if self._copywriting is None:
@@ -172,6 +184,7 @@ def create_product_service() -> "ProductService":
     from src.xiangta.config.product_config_writer import ProductConfigWriter
     from src.xiangta.services.admin_config_service import AdminConfigService
     from src.xiangta.services.copywriting_service import CopywritingService
+    from src.xiangta.services.letter_service import LetterService
 
     config_repository = ProductConfigRepository()
     gateway         = VoiceLabGateway()
@@ -193,6 +206,7 @@ def create_product_service() -> "ProductService":
     writer = ProductConfigWriter()
     admin_config_svc = AdminConfigService(writer=writer)
     copywriting = CopywritingService(gateway=gateway)
+    letter_svc = LetterService()
     return ProductService(
         bootstrap=bootstrap,
         provider_status=provider_status,
@@ -200,4 +214,5 @@ def create_product_service() -> "ProductService":
         config_repository=config_repository,
         admin_config_service=admin_config_svc,
         copywriting=copywriting,
+        letters=letter_svc,
     )

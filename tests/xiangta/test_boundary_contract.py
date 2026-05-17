@@ -614,6 +614,60 @@ class TestB43WriterBoundary:
         assert "coreProfileId" in _TONE_PRESET_FORBIDDEN
 
 
+class TestB61LettersBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_letter_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.letter_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_letter_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.letter_service")
+        assert "os.environ" not in src
+
+    def test_letter_service_does_not_call_get_provider(self):
+        src = self._get_source("src.xiangta.services.letter_service")
+        assert "get_provider(" not in src
+
+    def test_letter_service_does_not_import_provider_adapter(self):
+        src = self._get_source("src.xiangta.services.letter_service")
+        for token in ["minimax", "mimo", "openai", "azure", "elevenlabs"]:
+            assert token not in src.lower()
+
+    def test_letter_service_does_not_write_files(self):
+        src = self._get_source("src.xiangta.services.letter_service")
+        for token in ["open(", "json.dump", "shutil", "os.replace"]:
+            assert token not in src
+
+    def test_routes_letters_does_not_call_real_provider(self):
+        src = self._get_source("src.xiangta.api.routes")
+        for token in ["MINIMAX_API_KEY", "MIMO_API_KEY", "generate_llm_text"]:
+            assert token not in src
+
+    def test_product_service_create_letter_delegates(self):
+        from src.xiangta.services.product_service import ProductService
+        import inspect
+        src = inspect.getsource(ProductService.create_letter)
+        assert "self._letters" in src
+
+    def test_product_service_list_letters_delegates(self):
+        from src.xiangta.services.product_service import ProductService
+        import inspect
+        src = inspect.getsource(ProductService.list_letters)
+        assert "self._letters" in src
+
+    def test_letter_item_schema_no_forbidden_fields(self):
+        from src.xiangta.api.schemas import LetterItem
+        forbidden = {"provider", "model", "coreProfileId", "api_key", "provider_voice_id"}
+        fields = set(LetterItem.model_fields.keys())
+        assert forbidden.isdisjoint(fields)
+
+
 class TestB51CopywritingBoundary:
     def _get_source(self, module_path: str) -> str:
         import importlib

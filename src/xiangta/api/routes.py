@@ -25,6 +25,9 @@ from src.xiangta.api.schemas import (
     AdminVoiceMappingUpdateRequest,
     AdminVoiceMappingsResponse,
     BootstrapResponse,
+    CreateLetterRequest,
+    CreateLetterResponse,
+    ListLettersResponse,
     ProviderStatusResponse,
     SuggestionsRequest,
     SuggestionsResponse,
@@ -180,13 +183,17 @@ async def tts(body: TtsRequest):
         return JSONResponse(status_code=400, content=exc.to_dict())
 
 
-@router.post("/letters")
-async def create_letter():
-    """保存信笺（A4+ 实现，当前返回 501）。"""
-    raise HTTPException(status_code=501, detail="not_integrated")
+@router.post("/letters", response_model=CreateLetterResponse)
+async def create_letter(body: CreateLetterRequest):
+    """保存信笺（B6-1：进程内内存存储）。"""
+    svc = create_product_service()
+    data = await svc.create_letter(body.model_dump())
+    return CreateLetterResponse(data=data)
 
 
-@router.get("/letters")
-async def list_letters():
-    """获取信笺列表（A4+ 实现，当前返回 501）。"""
-    raise HTTPException(status_code=501, detail="not_integrated")
+@router.get("/letters", response_model=ListLettersResponse)
+async def list_letters(limit: int = 50, offset: int = 0):
+    """获取信笺列表（B6-1：进程内内存存储）。"""
+    svc = create_product_service()
+    data = await svc.list_letters(limit=limit, offset=offset)
+    return ListLettersResponse(data=data)
