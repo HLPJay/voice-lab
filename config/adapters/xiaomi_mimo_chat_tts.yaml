@@ -101,7 +101,7 @@ metadata:
   sample_rate: 24000
   sample_format: "pcm16le_mono"
   auth_mode: "auto"
-  auth_note: "dual-prefix auth: session-key uses Bearer header, token-plan uses api-key header"
+  auth_note: "current implementation uses api-key header for all requests; dual-prefix auth routing is reserved for future work, not implemented in this stage"
   voice_clone_audio_formats:
     - "mp3"
     - "wav"

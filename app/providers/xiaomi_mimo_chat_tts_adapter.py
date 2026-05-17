@@ -9,7 +9,8 @@ Supports:
 - voice clone with mimo-v2.5-tts-voiceclone model (base64 data URI, no file upload)
 - static preset voice list via list_voices
 - wav/pcm16 output
-- dual auth: sk- prefix → Authorization Bearer, tp- prefix → api-key header
+- direct HTTP calls use api-key header (works for both sk- and tp- prefix keys)
+- dual-prefix auth routing is reserved for future work, not implemented in this stage
 """
 
 from __future__ import annotations

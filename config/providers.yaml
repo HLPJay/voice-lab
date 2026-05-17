@@ -130,9 +130,9 @@ providers:
     script:
       enabled: false
     voice_clone:
-      enabled: true
+      enabled: false
     voice_design:
-      enabled: true
+      enabled: false
     provider_voices:
       enabled: true
     metadata:

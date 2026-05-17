@@ -285,11 +285,11 @@ class VoiceDeleteResponse(BaseModel):
 
 class ProviderVoicePreviewRequest(BaseModel):
     """直连试听请求 — 不走 profile binding，直接指定 provider_voice_id。"""
-    provider: str = "minimax"
+    provider: str = Field(min_length=1)
     provider_voice_id: str = Field(min_length=1)
-    model: str = "speech-2.8-hd"
+    model: str | None = None
     text: str = Field(min_length=1, max_length=1000)
-    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
+    audio_format: Literal["mp3", "wav", "flac"] | None = None
     output_format: Literal["hex", "url"] = "hex"
     need_subtitle: bool = False
     speed: float | None = Field(None, ge=0.5, le=2.0)
@@ -309,15 +309,15 @@ class ProviderVoicePreviewResponse(BaseModel):
 
 
 class ProviderVoiceImportRequest(BaseModel):
-    """导入已有远端音色请求 — 将 MiniMax 远端已存在的 voice_id 登记到本地 provider_voices 表。"""
-    provider: str = "minimax"
+    """导入已有远端音色请求 — 将远端已存在的 voice_id 登记到本地 provider_voices 表。"""
+    provider: str = Field(min_length=1)
     provider_voice_id: str = Field(min_length=1)
     voice_type: Literal["voice_cloning", "voice_generation"]
     name: str | None = None
     description: str | None = None
     verify: bool = True
-    model: str = "speech-2.8-hd"
-    audio_format: Literal["mp3", "wav", "flac"] = "mp3"
+    model: str | None = None
+    audio_format: Literal["mp3", "wav", "flac"] | None = None
     preview_text: str = Field(default="你好，这是导入音色试听。", min_length=1, max_length=1000)
     confirm_cost: bool = False
 
@@ -420,8 +420,8 @@ class BatchStatusResponse(BaseModel):
 
 
 class CostEstimateRequest(BaseModel):
-    provider: str = "minimax"
-    model: str = "speech-2.8-hd"
+    provider: str = Field(min_length=1)
+    model: str | None = None
     text: str = Field(min_length=1)
     operation: str = "t2a"
 

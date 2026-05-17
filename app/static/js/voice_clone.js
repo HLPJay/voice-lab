@@ -107,10 +107,10 @@
     var voiceId = document.getElementById('cloneVoiceId').value.trim();
     var previewText = document.getElementById('clonePreviewText').value.trim();
     var model = document.getElementById('cloneModel').value.trim();
-    var audioFormat = window.getDefaultAudioFormat ? window.getDefaultAudioFormat(provider) : 'mp3';
-    var promptFileId = document.getElementById('clonePromptFileId').value.trim();
     var cloneProvider = document.getElementById('cloneProvider');
     var currentProvider = cloneProvider ? cloneProvider.value : '';
+    var audioFormat = window.getDefaultAudioFormat ? window.getDefaultAudioFormat(currentProvider) : 'mp3';
+    var promptFileId = document.getElementById('clonePromptFileId').value.trim();
     var needsIntFileId = (currentProvider === 'minimax');
     var fileIdNum = Number(fileId);
     var promptFileIdNum = Number(promptFileId);
