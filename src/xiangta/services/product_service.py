@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from src.xiangta.services.letter_service import LetterService
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.config.product_config_repository import ProductConfigRepository
+    from src.xiangta.services.admin_config_service import AdminConfigService
 
 
 class ProductService:
@@ -34,13 +35,15 @@ class ProductService:
         tts: "TtsOrchestrator | None" = None,
         letters: "LetterService | None" = None,
         config_repository: "ProductConfigRepository | None" = None,
+        admin_config_service: "AdminConfigService | None" = None,
     ) -> None:
-        self._bootstrap          = bootstrap
-        self._provider_status    = provider_status
-        self._copywriting        = copywriting
-        self._tts                = tts
-        self._letters            = letters
-        self._config_repository  = config_repository
+        self._bootstrap             = bootstrap
+        self._provider_status       = provider_status
+        self._copywriting           = copywriting
+        self._tts                   = tts
+        self._letters               = letters
+        self._config_repository     = config_repository
+        self._admin_config_service  = admin_config_service
 
     async def get_bootstrap(self) -> dict:
         return await self._bootstrap.get_bootstrap()
@@ -113,6 +116,26 @@ class ProductService:
             },
         }
 
+    def update_admin_voice_mapping(self, id: str, data: dict) -> dict:
+        if self._admin_config_service is None:
+            raise RuntimeError("admin_config_service not wired")
+        return self._admin_config_service.update_voice_mapping(id, data)
+
+    def toggle_admin_voice_mapping_enabled(self, id: str, enabled: bool) -> dict:
+        if self._admin_config_service is None:
+            raise RuntimeError("admin_config_service not wired")
+        return self._admin_config_service.toggle_voice_mapping_enabled(id, enabled)
+
+    def update_admin_tone_preset(self, id: str, data: dict) -> dict:
+        if self._admin_config_service is None:
+            raise RuntimeError("admin_config_service not wired")
+        return self._admin_config_service.update_tone_preset(id, data)
+
+    def toggle_admin_tone_preset_enabled(self, id: str, enabled: bool) -> dict:
+        if self._admin_config_service is None:
+            raise RuntimeError("admin_config_service not wired")
+        return self._admin_config_service.toggle_tone_preset_enabled(id, enabled)
+
     async def get_suggestions(self, recipient: str, scene: str, raw_text: str) -> dict:
         """参见 copywriting_service.generate_suggestions。"""
         # TODO(P17-A4)
@@ -141,6 +164,9 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.voice_preset_mapping_service import VoicePresetMappingService
     from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
 
+    from src.xiangta.config.product_config_writer import ProductConfigWriter
+    from src.xiangta.services.admin_config_service import AdminConfigService
+
     config_repository = ProductConfigRepository()
     gateway         = VoiceLabGateway()
     provider_status = ProviderStatusService(gateway=gateway)
@@ -158,9 +184,12 @@ def create_product_service() -> "ProductService":
         max_tts_chars=limits.max_tts_chars,
         use_dry_run=False,
     )
+    writer = ProductConfigWriter()
+    admin_config_svc = AdminConfigService(writer=writer)
     return ProductService(
         bootstrap=bootstrap,
         provider_status=provider_status,
         tts=tts,
         config_repository=config_repository,
+        admin_config_service=admin_config_svc,
     )

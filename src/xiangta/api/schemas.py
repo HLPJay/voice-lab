@@ -219,6 +219,49 @@ class AdminTonePresetsResponse(OkResponse):
     data: list[AdminTonePresetItem]
 
 
+# ── Admin Config (write) ──────────────────────────────────────────────────────
+
+class AdminVoiceMappingUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: Optional[str] = None
+    desc: Optional[str] = None
+    genderStyle: Optional[str] = None
+    suitableRecipients: Optional[list[str]] = None
+    recommendedScenes: Optional[list[str]] = None
+    defaultTone: Optional[str] = None
+    enabled: Optional[bool] = None
+    sortOrder: Optional[int] = None
+    coreProfileId: Optional[str] = None
+    providerPolicy: Optional[str] = None
+    renderOverrides: Optional[dict[str, Any]] = None
+    notes: Optional[str] = None
+
+
+class AdminTonePresetUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: Optional[str] = None
+    desc: Optional[str] = None
+    styleHint: Optional[str] = None
+    copywritingStyle: Optional[str] = None
+    renderOverrides: Optional[dict[str, Any]] = None
+    enabled: Optional[bool] = None
+    sortOrder: Optional[int] = None
+
+
+class AdminToggleEnabledRequest(BaseModel):
+    enabled: bool
+
+
+class AdminVoiceMappingItemResponse(OkResponse):
+    data: AdminVoiceMappingItem
+
+
+class AdminTonePresetItemResponse(OkResponse):
+    data: AdminTonePresetItem
+
+
 # ── POST /letters ─────────────────────────────────────────────────────────────
 
 class CreateLetterRequest(BaseModel):

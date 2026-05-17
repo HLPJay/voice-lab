@@ -17,12 +17,23 @@ from fastapi.responses import JSONResponse
 
 from src.xiangta.api.schemas import (
     AdminConfigResponse,
+    AdminTonePresetItemResponse,
+    AdminTonePresetUpdateRequest,
     AdminTonePresetsResponse,
+    AdminToggleEnabledRequest,
+    AdminVoiceMappingItemResponse,
+    AdminVoiceMappingUpdateRequest,
     AdminVoiceMappingsResponse,
     BootstrapResponse,
     ProviderStatusResponse,
     TtsRequest,
     TtsResponse,
+)
+from src.xiangta.config.product_config_writer import (
+    ConfigNotFoundError,
+    InvalidConfigInputError,
+    InvalidCoreProfileError,
+    InvalidRenderOverrideError,
 )
 from src.xiangta.services.error_translator import XiangTaError
 from src.xiangta.services.product_service import create_product_service
@@ -74,6 +85,58 @@ async def admin_tone_presets():
     """Admin-only: return all tone presets with render overrides."""
     svc = create_product_service()
     return AdminTonePresetsResponse(data=svc.get_admin_tone_presets())
+
+
+def _write_error_response(exc: Exception) -> JSONResponse:
+    if isinstance(exc, ConfigNotFoundError):
+        return JSONResponse(status_code=404, content={"ok": False, "errorKind": "not_found", "message": str(exc)})
+    if isinstance(exc, (InvalidConfigInputError, InvalidRenderOverrideError, InvalidCoreProfileError)):
+        return JSONResponse(status_code=422, content={"ok": False, "errorKind": "validation_error", "message": str(exc)})
+    return JSONResponse(status_code=500, content={"ok": False, "errorKind": "write_failed", "message": str(exc)})
+
+
+@router.put("/admin/voice-mappings/{id}", response_model=AdminVoiceMappingItemResponse)
+async def admin_update_voice_mapping(id: str, body: AdminVoiceMappingUpdateRequest):
+    """Admin-only: update a voice mapping by id."""
+    svc = create_product_service()
+    try:
+        data = svc.update_admin_voice_mapping(id, body.model_dump(exclude_unset=True))
+        return AdminVoiceMappingItemResponse(data=data)
+    except (ConfigNotFoundError, InvalidConfigInputError, InvalidRenderOverrideError, InvalidCoreProfileError) as exc:
+        return _write_error_response(exc)
+
+
+@router.patch("/admin/voice-mappings/{id}/enabled", response_model=AdminVoiceMappingItemResponse)
+async def admin_toggle_voice_mapping_enabled(id: str, body: AdminToggleEnabledRequest):
+    """Admin-only: toggle enabled state of a voice mapping."""
+    svc = create_product_service()
+    try:
+        data = svc.toggle_admin_voice_mapping_enabled(id, body.enabled)
+        return AdminVoiceMappingItemResponse(data=data)
+    except ConfigNotFoundError as exc:
+        return _write_error_response(exc)
+
+
+@router.put("/admin/tone-presets/{id}", response_model=AdminTonePresetItemResponse)
+async def admin_update_tone_preset(id: str, body: AdminTonePresetUpdateRequest):
+    """Admin-only: update a tone preset by id."""
+    svc = create_product_service()
+    try:
+        data = svc.update_admin_tone_preset(id, body.model_dump(exclude_unset=True))
+        return AdminTonePresetItemResponse(data=data)
+    except (ConfigNotFoundError, InvalidConfigInputError, InvalidRenderOverrideError) as exc:
+        return _write_error_response(exc)
+
+
+@router.patch("/admin/tone-presets/{id}/enabled", response_model=AdminTonePresetItemResponse)
+async def admin_toggle_tone_preset_enabled(id: str, body: AdminToggleEnabledRequest):
+    """Admin-only: toggle enabled state of a tone preset."""
+    svc = create_product_service()
+    try:
+        data = svc.toggle_admin_tone_preset_enabled(id, body.enabled)
+        return AdminTonePresetItemResponse(data=data)
+    except ConfigNotFoundError as exc:
+        return _write_error_response(exc)
 
 
 @router.post("/suggestions")

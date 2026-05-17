@@ -541,6 +541,79 @@ class TestB4AdminConfigBoundary:
         assert not bad, f"AdminVoiceMappingItem exposes low-level fields: {bad}"
 
 
+class TestB43WriterBoundary:
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_writer_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.config.product_config_writer")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_writer_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.config.product_config_writer")
+        assert "from src.voice_lab" not in src
+        assert "import src.voice_lab" not in src
+
+    def test_writer_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.config.product_config_writer")
+        assert "os.environ" not in src
+
+    def test_writer_does_not_call_get_provider(self):
+        src = self._get_source("src.xiangta.config.product_config_writer")
+        assert "get_provider(" not in src
+
+    def test_admin_config_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.admin_config_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_admin_config_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.admin_config_service")
+        assert "os.environ" not in src
+
+    def test_product_service_write_methods_exist(self):
+        from src.xiangta.services.product_service import ProductService
+        assert hasattr(ProductService, "update_admin_voice_mapping")
+        assert hasattr(ProductService, "toggle_admin_voice_mapping_enabled")
+        assert hasattr(ProductService, "update_admin_tone_preset")
+        assert hasattr(ProductService, "toggle_admin_tone_preset_enabled")
+
+    def test_writer_write_lock_is_module_level(self):
+        import src.xiangta.config.product_config_writer as writer_mod
+        import threading
+        assert isinstance(writer_mod._WRITE_LOCK, type(threading.Lock()))
+
+    def test_update_request_schema_forbids_extra_fields(self):
+        from pydantic import ValidationError
+        from src.xiangta.api.schemas import AdminVoiceMappingUpdateRequest
+        with pytest.raises(ValidationError):
+            AdminVoiceMappingUpdateRequest(**{"label": "x", "unknown_field": "y"})
+
+    def test_tone_preset_update_request_schema_forbids_extra_fields(self):
+        from pydantic import ValidationError
+        from src.xiangta.api.schemas import AdminTonePresetUpdateRequest
+        with pytest.raises(ValidationError):
+            AdminTonePresetUpdateRequest(**{"label": "x", "bad": 1})
+
+    def test_render_overrides_whitelist_does_not_include_provider_params(self):
+        from src.xiangta.config.product_config_writer import _RENDER_OVERRIDES_WHITELIST
+        forbidden = {"voice_id", "model_id", "api_key", "provider_voice_id", "sample_rate", "bitrate"}
+        assert forbidden.isdisjoint(_RENDER_OVERRIDES_WHITELIST)
+
+    def test_voice_mapping_forbidden_set_includes_api_keys(self):
+        from src.xiangta.config.product_config_writer import _VOICE_MAPPING_FORBIDDEN
+        assert "api_key" in _VOICE_MAPPING_FORBIDDEN
+        assert "minimax_api_key" in _VOICE_MAPPING_FORBIDDEN
+
+    def test_tone_preset_forbidden_set_includes_core_profile_id(self):
+        from src.xiangta.config.product_config_writer import _TONE_PRESET_FORBIDDEN
+        assert "coreProfileId" in _TONE_PRESET_FORBIDDEN
+
+
 class TestB2B1bOrchestratorBoundary:
     def _get_source(self, module_path: str) -> str:
         import importlib
