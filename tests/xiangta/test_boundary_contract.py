@@ -227,6 +227,19 @@ class TestApiSchemas:
         bad = fields & FORBIDDEN_KEYS
         assert not bad, f"TtsContract 包含禁止的底层字段：{bad}"
 
+    def test_bootstrap_voice_preset_schema_does_not_expose_core_fields(self):
+        from src.xiangta.api.schemas import VoicePresetItem
+
+        fields = set(VoicePresetItem.model_fields.keys())
+        forbidden = {
+            "core_binding_key", "coreBindingKey", "coreProfileId",
+            "core_profile_id", "profile_id", "provider", "model",
+            "provider_voice_id", "binding_id", "params_json",
+        }
+        assert forbidden.isdisjoint(fields), (
+            f"VoicePresetItem 不得暴露 Core 字段：{forbidden & fields}"
+        )
+
 
 # ── A2 架构边界：import 隔离 ──────────────────────────────────────────────────
 
@@ -286,6 +299,30 @@ class TestA2ImportBoundary:
         bad = param_names & FORBIDDEN_KEYS
         assert not bad, (
             f"VoiceLabGateway.generate_tts_dry_run() 签名包含禁止参数：{bad}"
+        )
+
+    def test_bootstrap_service_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.services.bootstrap_service")
+        assert "from src.voice_lab" not in src
+        assert "import src.voice_lab" not in src
+
+    def test_bootstrap_service_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.services.bootstrap_service")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_bootstrap_service_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.services.bootstrap_service")
+        assert "os.environ" not in src
+
+    def test_bootstrap_service_does_not_call_get_provider(self):
+        src = self._get_source("src.xiangta.services.bootstrap_service")
+        assert "get_provider(" not in src
+
+    def test_bootstrap_service_does_not_read_legacy_voice_presets_loader(self):
+        src = self._get_source("src.xiangta.services.bootstrap_service")
+        assert "load_voice_presets(" not in src, (
+            "BootstrapService 不应继续直接读取旧的 voice_presets.json"
         )
 
 

@@ -18,6 +18,9 @@ from src.xiangta.api.routes import router
 FORBIDDEN_KEYS = {
     "voice_id", "model_id", "sample_rate", "bitrate",
     "api_key", "minimax_api_key", "mimo_api_key",
+    "core_binding_key", "coreBindingKey", "coreProfileId",
+    "core_profile_id", "profile_id", "provider", "model",
+    "provider_voice_id", "binding_id", "params_json",
 }
 
 
@@ -108,11 +111,26 @@ class TestBootstrap:
         bad = keys & FORBIDDEN_KEYS
         assert not bad, f"bootstrap 响应包含禁止字段：{bad}"
 
-    def test_voice_presets_have_core_binding_key(self, client):
+    def test_voice_presets_hide_core_fields(self, client):
         data = client.get("/api/xiangta/bootstrap").json()["data"]
         for vp in data["voicePresets"]:
-            assert "core_binding_key" in vp, f"voicePreset {vp.get('id')} 缺少 core_binding_key"
-            assert vp["core_binding_key"].startswith("xiangta_")
+            forbidden = {
+                "core_binding_key", "coreBindingKey", "coreProfileId",
+                "core_profile_id", "profile_id", "provider", "model",
+                "provider_voice_id", "binding_id", "params_json",
+            }
+            assert forbidden.isdisjoint(vp.keys()), (
+                f"voicePreset {vp.get('id')} 暴露了 Core 字段：{forbidden & set(vp.keys())}"
+            )
+
+    def test_voice_presets_use_public_projection_fields(self, client):
+        data = client.get("/api/xiangta/bootstrap").json()["data"]
+        for vp in data["voicePresets"]:
+            assert "id" in vp
+            assert "label" in vp
+            assert "desc" in vp
+            assert "defaultTone" in vp
+            assert "enabled" in vp
 
     def test_recipients_have_required_fields(self, client):
         data = client.get("/api/xiangta/bootstrap").json()["data"]
@@ -145,6 +163,15 @@ class TestBootstrap:
         data = client.get("/api/xiangta/bootstrap").json()["data"]
         ids = {s["id"] for s in data["scenes"]}
         assert ids == {"miss", "sorry", "thanks", "comfort", "night"}
+
+    def test_tone_presets_hide_core_fields(self, client):
+        data = client.get("/api/xiangta/bootstrap").json()["data"]
+        forbidden = {
+            "coreProfileId", "core_profile_id", "profile_id",
+            "provider", "model", "provider_voice_id", "params_json",
+        }
+        for tone in data["tonePresets"]:
+            assert forbidden.isdisjoint(tone.keys())
 
 
 # ── GET /api/xiangta/provider/status ─────────────────────────────────────────

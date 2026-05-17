@@ -7,7 +7,7 @@ XiangTa API 请求/响应 Pydantic 模型。
 from __future__ import annotations
 
 from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ── 枚举值 ────────────────────────────────────────────────────────────────────
 
@@ -56,21 +56,25 @@ class StyleItem(BaseModel):
 
 
 class VoicePresetItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
-    name: str
+    label: str
     desc: str
-    suitable_recipients: list[str] = []
-    recommended_scenes: list[str] = []
-    default_tone: str
-    core_binding_key: str
+    gender_style: Optional[str] = Field(default=None, alias="genderStyle")
+    suitable_recipients: list[str] = Field(default_factory=list, alias="suitableRecipients")
+    recommended_scenes: list[str] = Field(default_factory=list, alias="recommendedScenes")
+    default_tone: str = Field(alias="defaultTone")
     enabled: bool = True
 
 
 class TonePresetItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     label: str
     desc: str
-    style_hint: str
+    style_hint: str = Field(alias="styleHint")
     enabled: bool = True
 
 

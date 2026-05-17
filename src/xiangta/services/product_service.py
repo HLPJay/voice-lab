@@ -65,6 +65,7 @@ class ProductService:
 
 def create_product_service() -> "ProductService":
     """默认工厂：A2 阶段装配 dry-run TtsOrchestrator（不接真实 Provider）。"""
+    from src.xiangta.config.product_config_repository import ProductConfigRepository
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.services.bootstrap_service import BootstrapService
     from src.xiangta.services.preset_mapper import PresetMapper
@@ -72,7 +73,11 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
 
     provider_status = ProviderStatusService(gateway=None)
-    bootstrap       = BootstrapService(provider_status=provider_status)
+    config_repository = ProductConfigRepository()
+    bootstrap       = BootstrapService(
+        provider_status=provider_status,
+        config_repository=config_repository,
+    )
     gateway         = VoiceLabGateway()
     mapper          = PresetMapper()
     tts             = TtsOrchestrator(gateway=gateway, mapper=mapper)
