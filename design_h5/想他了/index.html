@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>想Ta了 · Mobile Product Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; background: #100D14; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="states.jsx"></script>
+<script type="text/babel" src="docs.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#D9954A",
+  "titleStyle": "sans",
+  "showGrid": false
+}/*EDITMODE-END*/;
+
+// Map an accent hex to a palette name in tokens.jsx.
+const HEX_TO_PALETTE = {
+  '#9B4DCA': 'purple',
+  '#D9954A': 'amber',
+  '#6FA582': 'sage',
+  '#C77191': 'rose',
+};
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  // Re-apply palette when accent hex changes.
+  React.useEffect(() => {
+    applyPalette(HEX_TO_PALETTE[(t.accent || '').toUpperCase()] || 'purple');
+  }, [t.accent]);
+
+  // Each mobile artboard wraps a screen in an iOS frame.
+  // Width/height match IOSDevice 402×874 so artboards size correctly.
+  const Phone = ({ children, dark = true }) => (
+    <div style={{ width: 402, height: 874 }}>
+      <IOSDevice dark={dark}>{children}</IOSDevice>
+    </div>
+  );
+
+  return (
+    <React.Fragment key={t.accent + ':' + t.titleStyle}>
+      {t.showGrid && (
+        <div style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999,
+          backgroundImage: `repeating-linear-gradient(to right, rgba(155,77,202,0.18) 0 1px, transparent 1px 8px),
+                            repeating-linear-gradient(to bottom, rgba(155,77,202,0.18) 0 1px, transparent 1px 8px)`,
+          mixBlendMode: 'screen', opacity: 0.5,
+        }} />
+      )}
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="主题色">
+          <TweakColor
+            label="Accent"
+            value={t.accent}
+            options={['#9B4DCA', '#D9954A', '#6FA582', '#C77191']}
+            onChange={(v) => setTweak('accent', v)}
+          />
+        </TweakSection>
+        <TweakSection label="排版">
+          <TweakRadio
+            label="标题字体"
+            value={t.titleStyle}
+            options={[
+              { value: 'serif', label: '宋体' },
+              { value: 'sans',  label: '黑体' },
+            ]}
+            onChange={(v) => setTweak('titleStyle', v)}
+          />
+        </TweakSection>
+        <TweakSection label="审阅工具">
+          <TweakToggle
+            label="8px 栅格叠加"
+            value={t.showGrid}
+            onChange={(v) => setTweak('showGrid', v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+
+      <style>{`
+        ${t.titleStyle === 'sans' ? `
+          .xt-screen, .xt-letter, [data-xt-title] {
+            font-family: ${T.sans} !important;
+          }
+        ` : ''}
+      `}</style>
+
+      <DesignCanvas>
+      <DCSection id="overview" title="想Ta了 · Mobile Product Design"
+                 subtitle="把想说的话，变成更合适的文字和语音 · 2026.05">
+        <DCArtboard id="cover" label="封面 · Cover" width={520} height={620}>
+          <Cover />
+        </DCArtboard>
+        <DCArtboard id="product" label="第一部分 · 产品整理" width={580} height={620}>
+          <DocProduct />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="ia" title="信息架构与用户路径"
+                 subtitle="第二部分 · 页面图 + 主路径 + 错误恢复">
+        <DCArtboard id="ia-graph" label="页面结构图" width={780} height={620}>
+          <DocIA />
+        </DCArtboard>
+        <DCArtboard id="states" label="第三部分 · 17 个状态覆盖" width={640} height={780}>
+          <DocStateMatrix />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="screens" title="第四部分 · 移动端页面"
+                 subtitle="7 张主屏 · 375×812 起步 · 暗色温紫调">
+        <DCArtboard id="s1" label="① 首页 · 情绪入口" width={402} height={874}>
+          <Phone><HomeScreen /></Phone>
+        </DCArtboard>
+        <DCArtboard id="s2" label="② 输入页 · 真实想法" width={402} height={874}>
+          <Phone><InputScreen /></Phone>
+        </DCArtboard>
+        <DCArtboard id="s3" label="③ 建议页 · 三个版本" width={402} height={874}>
+          <Phone><SuggestionsScreen /></Phone>
+        </DCArtboard>
+        <DCArtboard id="s4" label="④ 语音页 · TTS 配置" width={402} height={874}>
+          <Phone><VoiceScreen /></Phone>
+        </DCArtboard>
+        <DCArtboard id="s5" label="⑤ 结果页 · 信笺详情" width={402} height={874}>
+          <Phone><LetterScreen /></Phone>
+        </DCArtboard>
+        <DCArtboard id="s6" label="⑥ 信笺夹 · History" width={402} height={874}>
+          <Phone><HistoryScreen /></Phone>
+        </DCArtboard>
+        <DCArtboard id="s7" label="⑦ 本机状态 · Settings" width={402} height={874}>
+          <Phone><SettingsScreen /></Phone>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="states-screens" title="关键状态 · 全屏快照"
+                 subtitle="生成中 / 失败 / 额度不足 / Provider 缺失 / 空 / 保存成功">
+        <DCArtboard id="st-gen" label="TTS 生成中" width={402} height={874}>
+          <Phone><StateGenerating /></Phone>
+        </DCArtboard>
+        <DCArtboard id="st-fail" label="TTS 失败" width={402} height={874}>
+          <Phone><StateFailed /></Phone>
+        </DCArtboard>
+        <DCArtboard id="st-quota" label="额度不足" width={402} height={874}>
+          <Phone><StateQuota /></Phone>
+        </DCArtboard>
+        <DCArtboard id="st-noprov" label="Provider 缺失" width={402} height={874}>
+          <Phone><StateNoProvider /></Phone>
+        </DCArtboard>
+        <DCArtboard id="st-empty" label="历史为空" width={402} height={874}>
+          <Phone><StateEmpty /></Phone>
+        </DCArtboard>
+        <DCArtboard id="st-saved" label="保存成功" width={402} height={874}>
+          <Phone><StateSavedToast /></Phone>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="components" title="全局组件系统"
+                 subtitle="按钮 · 标签 · 卡片 · 输入框 · 语音 · 错误解释">
+        <DCArtboard id="comp" label="组件总览" width={580} height={1900}>
+          <ComponentShowcase />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="model" title="第五部分 · 领域模型 · API · Handoff"
+                 subtitle="给前端 / 给 Claude Code">
+        <DCArtboard id="domain" label="领域模型 · 9 个实体" width={640} height={760}>
+          <DocDomain />
+        </DCArtboard>
+        <DCArtboard id="api" label="Mobile API Facade" width={800} height={760}>
+          <DocAPI />
+        </DCArtboard>
+        <DCArtboard id="handoff" label="Claude Code Handoff" width={840} height={1180}>
+          <DocHandoff />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+    </React.Fragment>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cover artboard — sets the tone before any docs
+// ─────────────────────────────────────────────────────────────
+function Cover() {
+  return (
+    <div style={{
+      width: 520, height: 620, position: 'relative', overflow: 'hidden',
+      background: `radial-gradient(120% 80% at 20% 0%, rgba(155,77,202,0.28), transparent 60%),
+                   radial-gradient(100% 80% at 100% 100%, rgba(155,77,202,0.10), transparent 60%),
+                   ${T.bgDeep}`,
+      border: `1px solid ${T.hairline2}`, borderRadius: 24,
+      color: T.text, fontFamily: T.sans,
+      padding: '36px 38px',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {/* faint grid behind */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundImage:
+          `repeating-linear-gradient(to right, ${T.hairline} 0 1px, transparent 1px 80px),
+           repeating-linear-gradient(to bottom, ${T.hairline} 0 1px, transparent 1px 80px)`,
+        opacity: 0.5,
+        maskImage: 'radial-gradient(80% 60% at 50% 50%, black, transparent)',
+        WebkitMaskImage: 'radial-gradient(80% 60% at 50% 50%, black, transparent)',
+      }} />
+
+      {/* top header */}
+      <div className="xt-row" style={{ justifyContent: 'space-between', position: 'relative' }}>
+        <div className="xt-row xt-gap-2">
+          <LetterSeal size={18} />
+          <span style={{ fontFamily: T.serif, fontSize: 14, letterSpacing: 0.2 }}>想Ta了</span>
+        </div>
+        <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text3, letterSpacing: 0.18 }}>
+          XIANG-TA-LE / MOBILE / 2026.05
+        </span>
+      </div>
+
+      {/* big title */}
+      <div style={{ marginTop: 70, position: 'relative' }}>
+        <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accentInk, letterSpacing: 0.32, marginBottom: 18 }}>
+          MOBILE-FIRST H5 · v0.1.0
+        </div>
+        <div style={{
+          fontFamily: T.serif, fontSize: 64, lineHeight: 1.02, fontWeight: 500,
+          letterSpacing: 0.01,
+        }}>
+          今晚，<br/>想对谁<br/><span style={{ color: T.accentInk }}>说话？</span>
+        </div>
+      </div>
+
+      <div style={{
+        fontSize: 14, color: T.text2, lineHeight: 1.85, maxWidth: 380,
+        marginTop: 26, position: 'relative',
+      }}>
+        一个从情绪出发的手机端表达工具。<br/>
+        把粗糙的真心，整理成更合适的文字，<br/>
+        再变成一段有情绪的语音 —— 由你来按下"发送"。
+      </div>
+
+      {/* tag row */}
+      <div className="xt-row xt-gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap', position: 'relative' }}>
+        <span className="xt-pill" style={{ background: T.accentSoft, borderColor: T.accentDeep, color: T.accentInk }}>Mobile-first H5 / PWA</span>
+        <span className="xt-pill">情绪 · 文案 · TTS</span>
+        <span className="xt-pill">不是 AI 恋人</span>
+        <span className="xt-pill">不替你发送</span>
+      </div>
+    </div>
+  );
+}
+
+window.App = App;
+window.Cover = Cover;
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>
