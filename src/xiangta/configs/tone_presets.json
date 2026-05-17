@@ -2,31 +2,36 @@
   {
     "id": "restrained",
     "label": "克制",
-    "desc": "短、淡、留白多，说到为止",
-    "_core_params": { "speed_delta": 0.0, "pitch": "normal", "emotion": "calm" }
+    "desc": "少一点情绪外露，不给对方压力",
+    "style_hint": "calm",
+    "enabled": true
   },
   {
     "id": "gentle",
     "label": "温柔",
-    "desc": "稍慢、柔、不强硬",
-    "_core_params": { "speed_delta": -0.05, "pitch": "slightly_low", "emotion": "gentle" }
+    "desc": "更柔和、更靠近一点",
+    "style_hint": "soft",
+    "enabled": true
   },
   {
     "id": "sincere",
     "label": "真诚",
-    "desc": "认真、不绕弯、听起来郑重",
-    "_core_params": { "speed_delta": -0.03, "pitch": "normal", "emotion": "sincere" }
+    "desc": "认真表达，不绕弯",
+    "style_hint": "clear",
+    "enabled": true
   },
   {
     "id": "whisper",
     "label": "轻声",
-    "desc": "像在耳边小声说",
-    "_core_params": { "speed_delta": -0.10, "pitch": "low", "emotion": "whisper" }
+    "desc": "像夜里轻轻说话",
+    "style_hint": "low",
+    "enabled": true
   },
   {
     "id": "bedtime",
     "label": "睡前",
-    "desc": "极慢、极轻，像哄睡",
-    "_core_params": { "speed_delta": -0.15, "pitch": "low", "emotion": "calm" }
+    "desc": "慢一点，安静一点",
+    "style_hint": "sleep",
+    "enabled": true
   }
 ]

@@ -4,55 +4,39 @@
     "name": "温柔女声",
     "desc": "清晰、靠近、稍慢",
     "suitable_recipients": ["lover", "friend", "self"],
-    "_core_params": {
-      "__comment": "TODO(P17-A1): 填入真实 MiniMax voice_id 和参数",
-      "voice_id": "__PLACEHOLDER__",
-      "model_id": "speech-02-hd",
-      "speed": 0.85,
-      "sample_rate": 32000,
-      "bitrate": 128000
-    }
+    "recommended_scenes": ["miss", "thanks", "night"],
+    "default_tone": "gentle",
+    "core_binding_key": "xiangta_female_gentle",
+    "enabled": true
   },
   {
     "id": "male-gentle",
     "name": "温柔男声",
     "desc": "低、安静、像夜里的电话",
     "suitable_recipients": ["lover", "friend"],
-    "_core_params": {
-      "__comment": "TODO(P17-A1): 填入真实 MiniMax voice_id 和参数",
-      "voice_id": "__PLACEHOLDER__",
-      "model_id": "speech-02-hd",
-      "speed": 0.88,
-      "sample_rate": 32000,
-      "bitrate": 128000
-    }
+    "recommended_scenes": ["miss", "sorry", "comfort"],
+    "default_tone": "gentle",
+    "core_binding_key": "xiangta_male_gentle",
+    "enabled": true
   },
   {
     "id": "female-bright",
     "name": "清亮女声",
     "desc": "年轻，适合朋友、自己",
     "suitable_recipients": ["friend", "self"],
-    "_core_params": {
-      "__comment": "TODO(P17-A1): 填入真实 MiniMax voice_id 和参数",
-      "voice_id": "__PLACEHOLDER__",
-      "model_id": "speech-02-hd",
-      "speed": 0.92,
-      "sample_rate": 32000,
-      "bitrate": 128000
-    }
+    "recommended_scenes": ["thanks", "comfort"],
+    "default_tone": "sincere",
+    "core_binding_key": "xiangta_female_bright",
+    "enabled": true
   },
   {
     "id": "male-mature",
     "name": "成熟男声",
     "desc": "稳，适合父母",
     "suitable_recipients": ["family"],
-    "_core_params": {
-      "__comment": "TODO(P17-A1): 填入真实 MiniMax voice_id 和参数",
-      "voice_id": "__PLACEHOLDER__",
-      "model_id": "speech-02-hd",
-      "speed": 0.90,
-      "sample_rate": 32000,
-      "bitrate": 128000
-    }
+    "recommended_scenes": ["thanks", "comfort", "night"],
+    "default_tone": "restrained",
+    "core_binding_key": "xiangta_male_mature",
+    "enabled": true
   }
 ]

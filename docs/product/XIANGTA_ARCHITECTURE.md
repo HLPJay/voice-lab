@@ -59,7 +59,7 @@
 |---|---|---|
 | 调用 Core TTS 服务 | ✅ | ❌ 不直接调用 |
 | 调用 Core Provider 状态 | ✅ | ❌ |
-| 映射 voice_id / model_id | ✅（由 preset_mapper 提供参数） | ❌ |
+| 解析 core_binding_key → Provider 参数 | ✅（gateway/Core 内部，对上层不可见） | ❌ |
 | 产品业务逻辑 | ❌ | ✅ |
 | 错误翻译 | ❌（抛原始异常） | ✅（error_translator） |
 
@@ -69,7 +69,7 @@
 
 ---
 
-## preset_mapper.py — 产品概念 → Core 参数
+## preset_mapper.py — 产品概念 → CoreBindingRequest
 
 前端传入产品语义：
 
@@ -82,9 +82,23 @@
 ```
 
 `preset_mapper.py` 读取 `configs/voice_presets.json` 和 `configs/tone_presets.json`，
-将其映射为 Core 可接受的参数，再交给 `voice_lab_gateway.py` 调用。
+将其解析为 **CoreBindingRequest**（产品层稳定结构），再交给 `voice_lab_gateway.py`。
 
-前端永远不感知 `voice_id`、`model_id`、`speed`、`sample_rate` 等底层字段。
+```json
+{
+  "core_binding_key": "xiangta_female_gentle",
+  "voice_preset": "female-gentle",
+  "tone": "restrained",
+  "tone_hint": "calm",
+  "enabled": true
+}
+```
+
+**CoreBindingRequest 不包含 `voice_id`、`model_id`、`sample_rate`、`bitrate`。**
+这些 Provider-specific 参数的解析在 `voice_lab_gateway` 内部或 Core 内部完成，
+Product Server 完全不感知。
+
+前端也永远不感知底层字段。
 
 ---
 

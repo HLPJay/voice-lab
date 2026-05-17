@@ -2,18 +2,19 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-INIT-A0：Core Freeze 与 XiangTa 产品层骨架初始化**
+**P17-XIANGTA-INIT-A0-FIX1：清理产品层底层参数泄露，修正 voicePreset/Core 边界**
 
 ## 下一步（P17 阶段路线图）
 
 | 任务 | 内容 | 状态 |
 |---|---|---|
-| P17-XIANGTA-INIT-A0 | Core Freeze 声明 + 骨架初始化（本任务） | ✅ |
-| P17-XIANGTA-A1 | 配置层 + voice_lab_gateway 实现 + preset_mapper | TODO |
-| P17-XIANGTA-A2 | copywriting_service + LLM 文案生成（Mock E2E） | TODO |
-| P17-XIANGTA-A3 | tts_orchestrator + 真实 TTS 接入（Mock E2E） | TODO |
-| P17-XIANGTA-A4 | 前端联调（替换 EXPRESSION_BANK + _silentWav） | TODO |
-| P17-XIANGTA-A5 | 错误状态覆盖 + 分享图 + PWA 打磨 | TODO |
+| P17-XIANGTA-INIT-A0 | Core Freeze 声明 + 骨架初始化 | ✅ |
+| P17-XIANGTA-INIT-A0-FIX1 | 清理产品层底层参数泄露，修正 voicePreset/Core 边界 | 当前 |
+| P17-XIANGTA-A1 | 配置协议 + bootstrap/status 只读接口，不接真实 TTS | TODO |
+| P17-XIANGTA-A2 | preset_mapper + voice_lab_gateway contract dry-run，不调用真实 Provider | TODO |
+| P17-XIANGTA-A3 | 真实 Core TTS 接入，通过 gateway 调用 Core 稳定入口 | TODO |
+| P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
+| P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
 
 ## Core Contract Gap 登记区
 

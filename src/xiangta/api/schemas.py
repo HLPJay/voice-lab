@@ -106,7 +106,7 @@ class CreateLetterResponse(OkResponse):
 
 # ── GET /provider/status ──────────────────────────────────────────────────────
 
-ProviderKind = Literal["ok", "degraded", "quota", "error"]
+ProviderKind = Literal["not_integrated", "ok", "degraded", "quota", "error", "unknown"]
 
 
 class ProviderStatusData(BaseModel):

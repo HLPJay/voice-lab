@@ -60,25 +60,32 @@ Home 选对象 + 场景
 ### A0（本阶段，P17-XIANGTA-INIT-A0）
 固定 Core 基线，新建骨架，写文档。不实现业务。
 
-### A1 — 配置层 + Gateway
-- `configs/*.json` 填充真实预设数据
-- `voice_lab_gateway.py` 实现 TTS 调用代理
-- `preset_mapper.py` 实现预设映射
-- 单元测试
+### A1 — 配置协议 + Bootstrap 只读接口
+- `configs/*.json` 只保留产品语义与 `core_binding_key`，不含 Provider 参数
+- `preset_mapper.resolve_binding()` 输出 CoreBindingRequest，不输出 Provider 参数
+- `GET /api/xiangta/bootstrap` 可用，返回配置快照
+- `GET /api/xiangta/provider/status` 返回 `not_integrated`
+- 不接真实 TTS，不调用真实 Provider
 
-### A2 — LLM 文案生成
+### A2 — Gateway Contract Dry-run
+- `voice_lab_gateway.py` 完整接口定义，含 contract 注释
+- `preset_mapper.resolve_binding()` 实现（读取 JSON，返回 CoreBindingRequest）
+- 单元测试：验证 preset_mapper 不返回 Provider 参数
+- 不调用真实 MiniMax / MiMo
+
+### A3 — 真实 Core TTS 接入
+- `tts_orchestrator.py` 实现 TTS 任务调度
+- `voice_lab_gateway.generate_tts()` 通过 Core 稳定入口调用真实 TTS
+- `POST /api/xiangta/tts` 路由可用
+- E2E Mock 测试（不调用真实 MiniMax）
+
+### A4 — LLM 文案生成
 - `prompts/*.md` 填充 Prompt 模板
 - `copywriting_service.py` 实现 LLM 调用
 - `POST /api/xiangta/suggestions` 路由可用
 - E2E Mock 测试
 
-### A3 — TTS 真实生成
-- `tts_orchestrator.py` 实现 TTS 任务调度
-- `POST /api/xiangta/tts` 路由可用
-- 前端 VoiceScreen "生成语音" 接真实 API
-- E2E Mock 测试
-
-### A4 — 前端集成 + 联调
+### A5 — 前端集成 + 联调
 - `app.html` 前端接入产品 API（替换 EXPRESSION_BANK mock）
 - 真实 TTS 音频替换 `_silentWav()`
 - HistoryScreen 播放真实音频

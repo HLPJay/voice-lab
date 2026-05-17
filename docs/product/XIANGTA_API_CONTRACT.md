@@ -1,7 +1,28 @@
 # 想Ta了 · API Contract 草案
 
 > 本文档只定义协议，不实现。实现在 `src/xiangta/api/routes.py`。
-> 版本：v0（草案阶段，P17-XIANGTA-INIT-A0）
+> 版本：v0.1（P17-XIANGTA-INIT-A0-FIX1，修正边界）
+
+---
+
+## 边界声明
+
+**禁止暴露的底层字段**
+
+`voice_id`、`model_id`、`sample_rate`、`bitrate` 等字段只允许存在于
+Voice Lab Core 内部或 `voice_lab_gateway` 的实现细节中。
+它们不属于 XiangTa API Contract，不得出现在：
+
+- 前端请求体
+- 前端响应体
+- XiangTa Product Server 的公共接口文档
+
+**允许的产品语义字段**
+
+```
+recipient, scene, rawText, style, voicePreset, tone,
+letterId, audioUrl, durationSecs, core_binding_key（仅内部）
+```
 
 ---
 
@@ -15,7 +36,7 @@
 ```json
 {
   "ok": false,
-  "errorKind": "quota | no_provider | tts_failed | llm_failed | not_found | bad_request",
+  "errorKind": "quota | no_provider | tts_failed | llm_failed | not_found | bad_request | not_integrated",
   "message": "对用户友好的中文说明",
   "retryable": true
 }
@@ -71,13 +92,16 @@
       { "id": "bedtime",    "label": "睡前" }
     ],
     "provider": {
-      "kind": "ok",
-      "label": "已连接",
-      "detail": "MiniMax · speech-2.5-hd"
+      "kind": "not_integrated",
+      "label": "语音服务待接入",
+      "detail": "XiangTa Product Server 已初始化，真实 TTS 将在后续阶段通过 voice_lab_gateway 接入。"
     }
   }
 }
 ```
+
+> **注意**：`provider.kind` 在 A0/A1 阶段固定返回 `"not_integrated"`。
+> 真实 Provider 状态在 A3 接入后才会返回 `"ok"` 或 `"degraded"`。
 
 ---
 
@@ -138,7 +162,7 @@
 
 **Error 422**：rawText 过短
 
-**Error 503**：LLM Provider 不可用
+**Error 503**：LLM Provider 不可用（P17-A4 前返回 `not_integrated`）
 
 ---
 
@@ -146,7 +170,7 @@
 
 对选定文案生成语音。
 
-**Request**：
+**Request**（前端只传产品语义）：
 
 ```json
 {
@@ -161,7 +185,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | text | string | ✅ | 要朗读的文案（选定的那条） |
-| voicePreset | string | ✅ | 声线预设 ID |
+| voicePreset | string | ✅ | 声线预设 ID（产品层，非 voice_id） |
 | tone | string | ✅ | 语气预设 ID |
 | recipient | string | ✅ | 用于日志 / 统计 |
 | scene | string | ✅ | 用于日志 / 统计 |
@@ -185,6 +209,8 @@
 **Error 402**：配额耗尽（errorKind: "quota"）
 
 **Error 503**：TTS Provider 不可用（errorKind: "no_provider"）
+
+**Error 503**：尚未接入（errorKind: "not_integrated"，P17-A3 前）
 
 ---
 
@@ -245,18 +271,20 @@
 
 实时查询底层 Provider 状态，供前端状态栏显示。
 
-**Response 200**：
+**Response 200（A0/A1 阶段）**：
 
 ```json
 {
   "ok": true,
   "data": {
-    "kind": "ok",
-    "label": "已连接",
-    "detail": "MiniMax · speech-2.5-hd",
-    "quotaPct": 0.72
+    "kind": "not_integrated",
+    "label": "语音服务待接入",
+    "detail": "XiangTa Product Server 已初始化，真实 TTS 将在后续阶段通过 voice_lab_gateway 接入。",
+    "quotaPct": 0.0
   }
 }
 ```
 
-`kind` 取值：`ok` | `degraded` | `quota` | `error`
+`kind` 取值：`not_integrated` | `ok` | `degraded` | `quota` | `error` | `unknown`
+
+> A0/A1 阶段固定返回 `not_integrated`。`ok` 状态在 A3 真实接入后才会出现。

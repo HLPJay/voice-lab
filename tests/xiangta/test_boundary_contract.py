@@ -1,0 +1,210 @@
+"""
+P17-XIANGTA-INIT-A0-FIX1 边界合约测试
+
+验证 XiangTa 产品层配置与公共接口不包含底层 Provider 参数。
+这些测试保护架构边界，防止 voice_id/model_id/sample_rate/bitrate 等字段
+泄露到产品层公共结构中。
+"""
+import json
+import inspect
+from pathlib import Path
+
+import pytest
+
+# ── 禁止字段集合 ──────────────────────────────────────────────────────────────
+
+FORBIDDEN_KEYS = {
+    "voice_id",
+    "model_id",
+    "sample_rate",
+    "bitrate",
+    "api_key",
+    "minimax_api_key",
+    "mimo_api_key",
+}
+
+_CONFIGS_DIR = Path(__file__).parent.parent.parent / "src" / "xiangta" / "configs"
+
+
+# ── 辅助函数 ──────────────────────────────────────────────────────────────────
+
+def _collect_keys(obj, seen=None) -> set[str]:
+    """递归收集 dict/list 结构中所有的 key。"""
+    if seen is None:
+        seen = set()
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            seen.add(k)
+            _collect_keys(v, seen)
+    elif isinstance(obj, list):
+        for item in obj:
+            _collect_keys(item, seen)
+    return seen
+
+
+def assert_no_forbidden_keys(data, source: str):
+    keys = _collect_keys(data)
+    bad = keys & FORBIDDEN_KEYS
+    assert not bad, (
+        f"{source} 包含禁止的底层参数字段：{bad}\n"
+        f"这些字段属于 Voice Lab Core 内部，不得出现在 XiangTa 产品层配置中。"
+    )
+
+
+# ── voice_presets.json 测试 ───────────────────────────────────────────────────
+
+class TestVoicePresetsJson:
+
+    def setup_method(self):
+        with open(_CONFIGS_DIR / "voice_presets.json", encoding="utf-8") as f:
+            self.data = json.load(f)
+
+    def test_is_list(self):
+        assert isinstance(self.data, list), "voice_presets.json 应为 JSON 数组"
+
+    def test_no_forbidden_keys(self):
+        assert_no_forbidden_keys(self.data, "voice_presets.json")
+
+    def test_no_core_params_field(self):
+        for item in self.data:
+            assert "_core_params" not in item, (
+                f"voice_presets.json 中的 {item.get('id')} 仍包含 _core_params，"
+                f"应已移除。"
+            )
+
+    def test_required_product_fields(self):
+        required = {"id", "name", "desc", "core_binding_key", "enabled"}
+        for item in self.data:
+            missing = required - set(item.keys())
+            assert not missing, (
+                f"voice_presets.json 中的 {item.get('id')} 缺少字段：{missing}"
+            )
+
+    def test_core_binding_key_format(self):
+        for item in self.data:
+            key = item.get("core_binding_key", "")
+            assert key.startswith("xiangta_"), (
+                f"core_binding_key 应以 'xiangta_' 开头，得到：{key!r}"
+            )
+
+
+# ── tone_presets.json 测试 ────────────────────────────────────────────────────
+
+class TestTonePresetsJson:
+
+    def setup_method(self):
+        with open(_CONFIGS_DIR / "tone_presets.json", encoding="utf-8") as f:
+            self.data = json.load(f)
+
+    def test_is_list(self):
+        assert isinstance(self.data, list)
+
+    def test_no_forbidden_keys(self):
+        assert_no_forbidden_keys(self.data, "tone_presets.json")
+
+    def test_no_provider_param_fields(self):
+        provider_params = {"speed", "speed_delta", "pitch", "emotion",
+                           "provider_param", "sample_rate"}
+        for item in self.data:
+            bad = set(item.keys()) & provider_params
+            assert not bad, (
+                f"tone_presets.json 中的 {item.get('id')} 包含 Provider 参数字段：{bad}"
+            )
+
+    def test_required_product_fields(self):
+        required = {"id", "label", "desc", "style_hint", "enabled"}
+        for item in self.data:
+            missing = required - set(item.keys())
+            assert not missing, (
+                f"tone_presets.json 中的 {item.get('id')} 缺少字段：{missing}"
+            )
+
+
+# ── PresetMapper 接口测试 ─────────────────────────────────────────────────────
+
+class TestPresetMapperInterface:
+
+    def test_has_resolve_binding_method(self):
+        from src.xiangta.services.preset_mapper import PresetMapper
+        assert hasattr(PresetMapper, "resolve_binding"), (
+            "PresetMapper 应有 resolve_binding() 方法（不是 resolve_voice）"
+        )
+
+    def test_resolve_binding_signature_no_forbidden_params(self):
+        from src.xiangta.services.preset_mapper import PresetMapper
+        sig = inspect.signature(PresetMapper.resolve_binding)
+        param_names = set(sig.parameters.keys()) - {"self"}
+        bad = param_names & FORBIDDEN_KEYS
+        assert not bad, (
+            f"PresetMapper.resolve_binding() 参数中包含禁止字段：{bad}"
+        )
+
+    def test_no_resolve_voice_returning_forbidden(self):
+        """resolve_voice() 若存在，其文档不应承诺返回底层参数。"""
+        from src.xiangta.services.preset_mapper import PresetMapper
+        if hasattr(PresetMapper, "resolve_voice"):
+            doc = (PresetMapper.resolve_voice.__doc__ or "").lower()
+            for key in FORBIDDEN_KEYS:
+                assert key.lower() not in doc, (
+                    f"PresetMapper.resolve_voice docstring 提及了禁止字段 '{key}'，"
+                    f"请改用 resolve_binding()。"
+                )
+
+
+# ── VoiceLabGateway 接口测试 ──────────────────────────────────────────────────
+
+class TestVoiceLabGatewayInterface:
+
+    def test_generate_tts_signature_no_forbidden_params(self):
+        from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
+        sig = inspect.signature(VoiceLabGateway.generate_tts)
+        param_names = set(sig.parameters.keys()) - {"self"}
+        bad = param_names & FORBIDDEN_KEYS
+        assert not bad, (
+            f"VoiceLabGateway.generate_tts() 签名中包含禁止的 Provider 参数：{bad}\n"
+            f"Provider-specific 参数应在 gateway 内部或 Core 内部解析，不得暴露给调用方。"
+        )
+
+    def test_generate_tts_accepts_core_binding_key(self):
+        from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
+        sig = inspect.signature(VoiceLabGateway.generate_tts)
+        assert "core_binding_key" in sig.parameters, (
+            "VoiceLabGateway.generate_tts() 应接受 core_binding_key 参数"
+        )
+
+
+# ── API Schemas 测试 ──────────────────────────────────────────────────────────
+
+class TestApiSchemas:
+
+    def test_tts_request_no_forbidden_fields(self):
+        from src.xiangta.api.schemas import TtsRequest
+        fields = set(TtsRequest.model_fields.keys())
+        bad = fields & FORBIDDEN_KEYS
+        assert not bad, (
+            f"TtsRequest 包含禁止的底层字段：{bad}"
+        )
+
+    def test_tts_data_no_forbidden_fields(self):
+        from src.xiangta.api.schemas import TtsData
+        fields = set(TtsData.model_fields.keys())
+        bad = fields & FORBIDDEN_KEYS
+        assert not bad, (
+            f"TtsData 响应包含禁止的底层字段：{bad}"
+        )
+
+    def test_provider_status_data_no_forbidden_fields(self):
+        from src.xiangta.api.schemas import ProviderStatusData
+        fields = set(ProviderStatusData.model_fields.keys())
+        bad = fields & FORBIDDEN_KEYS
+        assert not bad, (
+            f"ProviderStatusData 包含禁止的底层字段：{bad}"
+        )
+
+    def test_provider_kind_includes_not_integrated(self):
+        from src.xiangta.api.schemas import ProviderKind
+        # ProviderKind 是 Literal，检查其 __args__
+        args = getattr(ProviderKind, "__args__", ())
+        assert "not_integrated" in args, (
+            "ProviderKind 应包含 'not_integrated' 状态，表示尚未接入真实 Provider"
+        )
