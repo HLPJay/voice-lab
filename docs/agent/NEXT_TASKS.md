@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-ADMIN-CONFIG-B4-1（已完成）→ 下一步：P17-XIANGTA-ADMIN-CONFIG-B4-2 或 P17-XIANGTA-COPYWRITING-B5**
+**P17-XIANGTA-ADMIN-CONFIG-B4-2（已完成）→ 下一步：P17-XIANGTA-ADMIN-CONFIG-B4-3**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -28,7 +28,8 @@
 | P17-XIANGTA-CORE-RENDER-B2-B3 | XiangTa app-level Core mock integration test | ✅ |
 | P17-XIANGTA-PROVIDER-STATUS-B3 | ProviderStatus runtime/status mock path | ✅ |
 | P17-XIANGTA-ADMIN-CONFIG-B4-1 | 配置管理只读 API（voice-mappings / tone-presets / config） | ✅ |
-| P17-XIANGTA-ADMIN-CONFIG-B4-2 | 配置管理写接口设计与安全边界 | Next |
+| P17-XIANGTA-ADMIN-CONFIG-B4-2 | 配置管理写接口设计与安全边界 | ✅ |
+| P17-XIANGTA-ADMIN-CONFIG-B4-3 | 配置管理写接口最小实现（update existing + enable/disable） | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
@@ -47,9 +48,13 @@
 > 备注：B2-B3 测试路径已通过 fake repository 将 `voicePreset -> deep_night_programmer`，并显式断言 `provider="mock"`。
 > 正式产品配置仍需在后续 Admin / 配置治理阶段消化 GAP-B2-001 与 GAP-B2-002。
 
+- [ ] GAP-B4-001: 当前配置存储仍为 JSON 文件，写接口需要原子写 / 备份 / 并发锁；MVP 阶段用 threading.Lock + atomic rename，多人并发需评估 DB 化（发现于 `P17-XIANGTA-ADMIN-CONFIG-B4-2`）
+- [ ] GAP-B4-002: coreProfileId 正式合法性校验需要 Core profiles public API / VoiceLabGateway 支持；B4-3 只做格式校验，B4-4 通过 VoiceLabGateway.get_voice_profiles() 接 Core 校验（发现于 `P17-XIANGTA-ADMIN-CONFIG-B4-2`）
+- [ ] GAP-B4-003: tone_presets.json 当前不含 sort_order / render_overrides / copywriting_style 字段；B4-3 写入时应以 default 值补全，确保文件格式与模型定义一致（发现于 `P17-XIANGTA-ADMIN-CONFIG-B4-2`）
+
 ## XiangTa 下一步约束
 
-下一步进入 `P17-XIANGTA-ADMIN-CONFIG-B4-2` 或 `P17-XIANGTA-COPYWRITING-B5`。不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。
+下一步进入 `P17-XIANGTA-ADMIN-CONFIG-B4-3`：配置管理写接口最小实现（update existing + enable/disable）。不得直接进入真实 Provider 调用、读取 API key 或运行真实 probe。设计边界见 `docs/xiangta/ADMIN_CONFIG_WRITE_BOUNDARY.md`。
 
 ## P16 已完成历史
 
