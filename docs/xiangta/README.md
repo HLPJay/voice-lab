@@ -14,6 +14,7 @@
 | [API_CONTRACT.md](API_CONTRACT.md) | 用户端 API、管理端 API、Core 调用契约 |
 | [ROADMAP.md](ROADMAP.md) | 后续实施路线：从文档确认到 B1/B2/B3 实现 |
 | [MVP_CLOSEOUT_REPORT.md](MVP_CLOSEOUT_REPORT.md) | P17-XIANGTA-MVP-CLOSEOUT-B7：MVP 能力清单、限制、gaps、合并前验收结论 |
+| [MERGE_DEV_REVIEW.md](MERGE_DEV_REVIEW.md) | P17-XIANGTA-MERGE-DEV-REVIEW：合并 dev 前代码审查报告（结论：PASS_WITH_NOTES） |
 
 ## 当前状态（2026-05-18）
 
