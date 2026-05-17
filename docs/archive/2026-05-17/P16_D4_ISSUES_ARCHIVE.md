@@ -84,10 +84,11 @@
 
 ### D4-CLOSEOUT：P16 V1 收口文档与合并准备
 
-- **commit**: 本任务待提交
+- **commit**: `5aa4beb`
 - **问题**: P16 V1 已完成能力、剩余风险、测试豁免项和合并条件仍分散在多份记录中，不利于合并前统一判断
 - **处理**: 新增 `docs/P16_V1_CLOSEOUT.md`，同步更新 `docs/PROJECT_HEALTH_CHECK.md`、`docs/agent/NEXT_TASKS.md` 与本归档文档，统一 closeout 口径
-- **状态**: 待提交
+- **状态**: 已完成
+- **人工验收备注**: 简单人工验收未发现明显问题；完整 E2E 未执行，剩余 full suite 失败按 closeout 文档豁免。
 
 ---
 
