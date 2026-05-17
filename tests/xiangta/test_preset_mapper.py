@@ -6,22 +6,23 @@ P17-XIANGTA-A1 — PresetMapper.resolve_binding 单元测试
   - 返回结果不包含任何底层 Provider 参数
   - 不存在的 preset 抛 PresetMappingError
   - disabled preset 抛 PresetMappingError
+
+注：mock 目标为 src.xiangta.config.loader（preset_mapper 通过 config.loader 读取配置）。
 """
-import json
 import pytest
 from unittest.mock import patch
 
 from src.xiangta.services.preset_mapper import PresetMapper, PresetMappingError
-import src.xiangta.services.preset_mapper as _pm_module
-
-# 在任何 mock 生效前保存真实函数引用，供集成测试恢复使用
-_REAL_LOAD_VOICES = _pm_module._load_voices
-_REAL_LOAD_TONES  = _pm_module._load_tones
+from src.xiangta.config import loader as _loader_module
 
 FORBIDDEN_KEYS = {
     "voice_id", "model_id", "sample_rate", "bitrate",
     "api_key", "minimax_api_key", "mimo_api_key",
 }
+
+# 在任何 mock 生效前保存真实函数引用，供集成测试恢复使用
+_REAL_LOAD_VOICES = _loader_module.load_voice_presets
+_REAL_LOAD_TONES  = _loader_module.load_tone_presets
 
 # ── 测试数据 fixtures ──────────────────────────────────────────────────────────
 
@@ -92,11 +93,10 @@ MOCK_TONES = [
 
 @pytest.fixture(autouse=True)
 def mock_config_files():
-    """patch lru_cache 函数，让测试使用 mock 数据而非真实文件。"""
-    import src.xiangta.services.preset_mapper as pm_module
+    """patch config.loader，让测试使用 mock 数据而非真实文件。"""
     with (
-        patch.object(pm_module, "_load_voices", return_value=MOCK_VOICES),
-        patch.object(pm_module, "_load_tones",  return_value=MOCK_TONES),
+        patch.object(_loader_module, "load_voice_presets", return_value=MOCK_VOICES),
+        patch.object(_loader_module, "load_tone_presets",  return_value=MOCK_TONES),
     ):
         yield
 
@@ -188,11 +188,11 @@ class TestRealConfigIntegrity:
     @pytest.fixture(autouse=True)
     def _no_mock(self):
         """覆盖 autouse mock，恢复真实函数引用后清除缓存。"""
-        _pm_module._load_voices = _REAL_LOAD_VOICES
-        _pm_module._load_tones  = _REAL_LOAD_TONES
-        _pm_module._reload()
+        _loader_module.load_voice_presets = _REAL_LOAD_VOICES
+        _loader_module.load_tone_presets  = _REAL_LOAD_TONES
+        _loader_module.reload_all()
         yield
-        _pm_module._reload()
+        _loader_module.reload_all()
 
     def test_real_config_female_gentle_gentle(self):
         result = PresetMapper().resolve_binding("female-gentle", "gentle")

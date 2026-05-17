@@ -1,90 +1,46 @@
 """
-Product Service — 编排主业务流程。
+Product Service — 产品主流程编排。
 
-作为各子服务（copywriting, tts, letter）的上层协调者。
-路由层只调用 ProductService，不直接调用子服务。
+职责：作为对外门面，将请求路由到各子服务。
+不持有配置读取逻辑、静态常量、或 Bootstrap 组装细节。
+
+子服务分工：
+  bootstrap_service   — 配置快照组装（GET /bootstrap）
+  provider_status     — Provider 状态查询
+  copywriting         — LLM 文案生成（A4）
+  tts                 — TTS 任务调度（A3）
+  letters             — 信笺 CRUD（A4+）
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from src.xiangta.services.bootstrap_service import BootstrapService
     from src.xiangta.services.copywriting_service import CopywritingService
     from src.xiangta.services.tts_orchestrator import TtsOrchestrator
     from src.xiangta.services.letter_service import LetterService
     from src.xiangta.services.provider_status_service import ProviderStatusService
-
-_CONFIGS_DIR = Path(__file__).parent.parent / "configs"
-
-_STYLES: list[dict] = [
-    {
-        "id": "restrained",
-        "label": "克制版",
-        "desc": "少一点情绪外露，不给对方压力",
-        "enabled": True,
-    },
-    {
-        "id": "gentle",
-        "label": "温柔版",
-        "desc": "更柔和、更靠近一点",
-        "enabled": True,
-    },
-    {
-        "id": "sincere",
-        "label": "真诚版",
-        "desc": "认真表达，不绕弯",
-        "enabled": True,
-    },
-]
-
-_LIMITS: dict = {
-    "maxRawTextChars": 500,
-    "maxTtsChars": 500,
-    "maxSuggestions": 3,
-}
-
-
-def _load_json(name: str) -> list[dict]:
-    with open(_CONFIGS_DIR / name, encoding="utf-8") as f:
-        return json.load(f)
 
 
 class ProductService:
 
     def __init__(
         self,
+        bootstrap: "BootstrapService",
         provider_status: "ProviderStatusService",
         copywriting: "CopywritingService | None" = None,
         tts: "TtsOrchestrator | None" = None,
         letters: "LetterService | None" = None,
     ) -> None:
+        self._bootstrap       = bootstrap
         self._provider_status = provider_status
-        self._copywriting = copywriting
-        self._tts = tts
-        self._letters = letters
+        self._copywriting     = copywriting
+        self._tts             = tts
+        self._letters         = letters
 
-    async def get_bootstrap(self) -> dict[str, Any]:
-        """
-        返回前端启动所需的完整配置快照。
-        读取本地 configs/*.json，不调用任何外部 API 或 voice_lab Core。
-        """
-        recipients  = _load_json("recipients.json")
-        scenes      = _load_json("scenes.json")
-        voices      = _load_json("voice_presets.json")
-        tones       = _load_json("tone_presets.json")
-        provider_status = await self._provider_status.get_status()
-
-        return {
-            "recipients":     recipients,
-            "scenes":         scenes,
-            "styles":         _STYLES,
-            "voicePresets":   voices,
-            "tonePresets":    tones,
-            "limits":         _LIMITS,
-            "providerStatus": provider_status,
-        }
+    async def get_bootstrap(self) -> dict:
+        return await self._bootstrap.get_bootstrap()
 
     async def get_provider_status(self) -> dict:
         return await self._provider_status.get_status()
@@ -102,7 +58,11 @@ class ProductService:
         raise NotImplementedError
 
 
-def create_product_service() -> ProductService:
-    """默认工厂：A1 阶段只需要 ProviderStatusService（不需要 gateway）。"""
+def create_product_service() -> "ProductService":
+    """默认工厂：A1 阶段只需要 bootstrap + provider_status（不需要真实 gateway）。"""
     from src.xiangta.services.provider_status_service import ProviderStatusService
-    return ProductService(provider_status=ProviderStatusService(gateway=None))
+    from src.xiangta.services.bootstrap_service import BootstrapService
+
+    provider_status = ProviderStatusService(gateway=None)
+    bootstrap       = BootstrapService(provider_status=provider_status)
+    return ProductService(bootstrap=bootstrap, provider_status=provider_status)

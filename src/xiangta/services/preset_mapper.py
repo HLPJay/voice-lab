@@ -7,38 +7,19 @@ Preset Mapper — 产品预设 → CoreBindingRequest。
 
 CoreBindingRequest 不包含任何 Provider 参数（不含 voice_id、model_id、sample_rate、bitrate）。
 Provider-specific 参数的解析责任由 voice_lab_gateway 持有，Product Server 不参与。
+
+配置读取委托给 config.loader，不直接操作文件路径。
 """
 from __future__ import annotations
 
-import json
-from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
-_CONFIGS_DIR = Path(__file__).parent.parent / "configs"
+from src.xiangta.config import loader as _loader
 
 
 class PresetMappingError(ValueError):
     """voicePreset 或 tone 配置不合法或不存在时抛出。"""
     pass
-
-
-@lru_cache(maxsize=1)
-def _load_voices() -> list[dict]:
-    with open(_CONFIGS_DIR / "voice_presets.json", encoding="utf-8") as f:
-        return json.load(f)
-
-
-@lru_cache(maxsize=1)
-def _load_tones() -> list[dict]:
-    with open(_CONFIGS_DIR / "tone_presets.json", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _reload():
-    """测试辅助：清除 lru_cache 以重新读取文件。"""
-    _load_voices.cache_clear()
-    _load_tones.cache_clear()
 
 
 class PresetMapper:
@@ -74,8 +55,8 @@ class PresetMapper:
         Raises:
             PresetMappingError: 当 preset 不存在、已禁用、或缺少必要字段时。
         """
-        voices = _load_voices()
-        tones = _load_tones()
+        voices = _loader.load_voice_presets()
+        tones  = _loader.load_tone_presets()
 
         voice = next((v for v in voices if v.get("id") == voice_preset_id), None)
         if voice is None:
@@ -105,8 +86,8 @@ class PresetMapper:
 
         return {
             "core_binding_key": core_binding_key,
-            "voice_preset": voice["id"],
-            "tone": tone["id"],
-            "tone_hint": tone_hint,
-            "enabled": True,
+            "voice_preset":     voice["id"],
+            "tone":             tone["id"],
+            "tone_hint":        tone_hint,
+            "enabled":          True,
         }
