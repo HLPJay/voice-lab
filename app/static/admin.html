@@ -363,15 +363,19 @@
     </div>
     <div class="stat-card">
       <div class="stat-value" id="statChars">—</div>
-      <div class="stat-label">总字符数</div>
-      <div class="stat-sub" id="statCalls">调用 — 次</div>
+      <div class="stat-label" title="来自本地 Voice Lab 数据库，非 Provider 官方账单">本地字符数</div>
+      <div class="stat-sub" id="statCalls">本地调用 — 次</div>
     </div>
     <div class="stat-card">
       <div class="stat-value" id="statDuration">—</div>
       <div class="stat-label">总音频时长</div>
-      <div class="stat-sub" id="statErrors">错误 — 次</div>
+      <div class="stat-sub" id="statErrors">本地错误 — 次</div>
     </div>
   </div>
+  <div id="statsDisclaimer" style="font-size:0.72rem;color:#a0aec0;margin-top:6px;padding:4px 0">
+    统计来自本地 Voice Lab 数据库，按 ProviderCallLog.provider 分组。不代表 MiniMax / Xiaomi MiMo / Provider 官方账单，费用和余额以各 Provider 控制台为准。
+  </div>
+  <div id="providerFilterBanner" style="display:none;font-size:0.80rem;color:#5a67d8;margin-top:4px;padding:4px 6px;background:#ebf4ff;border-radius:4px;border:1px solid #bee3f8"></div>
 
   <!-- Region 1b: Provider Capability Matrix -->
   <div class="card">
@@ -393,11 +397,11 @@
         <thead>
           <tr>
             <th>Provider</th>
-            <th>调用次数</th>
+            <th>本地调用次数</th>
             <th>平均耗时</th>
             <th>P95 耗时</th>
             <th>错误率</th>
-            <th>字符数</th>
+            <th title="来自 ProviderCallLog.usage_characters / AudioAsset.usage_characters，非官方扣费">本地字符</th>
           </tr>
         </thead>
         <tbody id="providerBody"><tr><td colspan="6" class="empty-state">加载中…</td></tr></tbody>
@@ -425,7 +429,7 @@
     <div class="card-title">每日趋势</div>
     <div class="chart-tabs">
       <button class="chart-tab-btn active" data-metric="jobs" onclick="switchMetric('jobs')">任务数</button>
-      <button class="chart-tab-btn" data-metric="characters" onclick="switchMetric('characters')">字符数</button>
+      <button class="chart-tab-btn" data-metric="characters" onclick="switchMetric('characters')" title="本地记录字符数，非官方扣费">本地字符</button>
       <button class="chart-tab-btn" data-metric="errors" onclick="switchMetric('errors')">错误数</button>
       <button class="chart-tab-btn" data-metric="api_calls" onclick="switchMetric('api_calls')">调用次数</button>
       <button class="chart-tab-btn" data-metric="avg_duration" onclick="switchMetric('avg_duration')">平均耗时</button>
@@ -448,7 +452,7 @@
           <th>Provider</th>
           <th>API</th>
           <th>耗时</th>
-          <th>字符</th>
+          <th title="本地记录字符数，非官方账单">本地字符</th>
           <th>结果</th>
           <th>追踪</th>
         </tr>
@@ -555,6 +559,7 @@
 
   // ── Loading state ──────────────────────────────────────────────
   let currentMetric = 'jobs';
+  let currentProviderFilter = null;
 
   async function loadAll() {
     if (!validateDateRange()) return;
@@ -562,10 +567,21 @@
     await Promise.all([loadSummary(start, end), loadDailyTrend(start, end, currentMetric), loadLogs(start, end), loadErrors(start, end)]);
   }
 
-  // ── Focus handling (e.g. ?focus=call-logs) ─────────────────────
+  // ── Focus handling (e.g. ?focus=call-logs&provider=xiaomi_mimo) ─
   function applyFocusFromURL() {
     const params = new URLSearchParams(window.location.search);
     const focus = params.get('focus');
+    const providerParam = params.get('provider');
+
+    if (providerParam) {
+      currentProviderFilter = providerParam;
+      const banner = document.getElementById('providerFilterBanner');
+      if (banner) {
+        banner.textContent = '当前筛选：provider = ' + providerParam + '（本地调用记录 / 错误）';
+        banner.style.display = '';
+      }
+    }
+
     if (focus === 'call-logs') {
       const el = document.getElementById('logsSection');
       if (el) {
@@ -596,8 +612,8 @@
       document.getElementById('statSuccessRate').textContent = `成功率 ${(successRate * 100).toFixed(1)}%`;
       document.getElementById('statChars').textContent = formatNum(ov.total_characters || 0);
       document.getElementById('statDuration').textContent = formatDuration(ov.total_audio_duration_ms || 0);
-      document.getElementById('statCalls').textContent = `调用 ${(data.by_provider ? Object.values(data.by_provider).reduce((s, p) => s + (p.api_calls || 0), 0) : 0)} 次`;
-      document.getElementById('statErrors').textContent = `错误 ${(data.by_provider ? Object.values(data.by_provider).reduce((s, p) => s + (p.error_count || 0), 0) : 0)} 次`;
+      document.getElementById('statCalls').textContent = `本地调用 ${(data.by_provider ? Object.values(data.by_provider).reduce((s, p) => s + (p.api_calls || 0), 0) : 0)} 次`;
+      document.getElementById('statErrors').textContent = `本地错误 ${(data.by_provider ? Object.values(data.by_provider).reduce((s, p) => s + (p.error_count || 0), 0) : 0)} 次`;
 
       renderProviderTable(data.by_provider || {});
       renderApiTable(data.by_api || {});
@@ -800,7 +816,7 @@
     const tbody = document.getElementById('logsBody');
     tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><span class="spinner"></span>加载中…</td></tr>';
     try {
-      const qs = buildQuery({ start, end, limit: 20 });
+      const qs = buildQuery({ start, end, limit: 20, provider: currentProviderFilter || undefined });
       const resp = await fetch('/api/admin/call-logs' + qs);
       if (!resp.ok) throw new Error();
       const data = await resp.json();
@@ -866,7 +882,7 @@
     const tbody = document.getElementById('errorsBody');
     tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><span class="spinner"></span>加载中…</td></tr>';
     try {
-      const qs = buildQuery({ start, end, status: 'error', limit: 10 });
+      const qs = buildQuery({ start, end, status: 'error', limit: 10, provider: currentProviderFilter || undefined });
       const resp = await fetch('/api/admin/call-logs' + qs);
       if (!resp.ok) throw new Error();
       const data = await resp.json();

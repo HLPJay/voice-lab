@@ -70,16 +70,16 @@
       // Today chip
       var chipToday = document.getElementById('chipToday');
       if (chipToday) {
-        chipToday.textContent = '今日 ' + (data.today.usage_characters || 0) + ' 字';
-        chipToday.title = '本地估算用量，不代表官方剩余额度';
+        chipToday.textContent = '今日本地 ' + (data.today.usage_characters || 0) + ' 字';
+        chipToday.title = '本地估算用量，不代表 Provider 官方账单或官方剩余额度';
         chipToday.classList.remove('muted');
       }
 
       // Month chip
       var chipMonth = document.getElementById('chipMonth');
       if (chipMonth) {
-        chipMonth.textContent = '本月 ' + (data.month.usage_characters || 0) + ' 字';
-        chipMonth.title = '本地估算用量，不代表官方剩余额度';
+        chipMonth.textContent = '本月本地 ' + (data.month.usage_characters || 0) + ' 字';
+        chipMonth.title = '本地估算用量，不代表 Provider 官方账单或官方剩余额度';
         chipMonth.classList.remove('muted');
       }
 

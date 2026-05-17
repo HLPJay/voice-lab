@@ -85,7 +85,7 @@ def estimate_t2a_cost(provider: str, model: str, text: str) -> dict:
     }
 
     if provider != "minimax":
-        warnings.append("当前 provider 暂未配置价格估算")
+        warnings.append("当前 provider 暂未配置价格估算；本地字符数不代表官方扣费")
         return result
 
     unit_price, is_unknown = _get_minimax_unit_price(model)

@@ -78,6 +78,16 @@ class TestRuntimeStatusJsModelChip:
         assert 'loadRuntimeStatus' in region, \
             'provider-capabilities-applied handler must call loadRuntimeStatus()'
 
+    def test_today_chip_text_includes_local(self):
+        content = read_file(RUNTIME_STATUS_JS)
+        assert '今日本地' in content, \
+            'today chip must show "今日本地 N 字" not plain "今日 N 字"'
+
+    def test_month_chip_text_includes_local(self):
+        content = read_file(RUNTIME_STATUS_JS)
+        assert '本月本地' in content, \
+            'month chip must show "本月本地 N 字" not plain "本月 N 字"'
+
     def test_no_infinite_loop_from_listeners(self):
         """loadRuntimeStatus must not dispatch provider-capabilities-applied."""
         content = read_file(RUNTIME_STATUS_JS)
