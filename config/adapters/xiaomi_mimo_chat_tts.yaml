@@ -1,0 +1,110 @@
+adapter_type: "xiaomi_mimo_chat_tts"
+
+plugin:
+  import_path: "app.providers.xiaomi_mimo_chat_tts_adapter.XiaomiMiMoChatTTSAdapter"
+
+default_base_url: "https://api.xiaomimimo.com"
+
+default_model: "mimo-v2.5-tts"
+
+default_timeout_seconds: 120
+
+endpoints:
+  tts: "/v1/chat/completions"
+
+tts:
+  supported: true
+  models:
+    - "mimo-v2.5-tts"
+  default_model: "mimo-v2.5-tts"
+  max_text_chars: 5000
+  audio_formats:
+    - "wav"
+  supports_subtitle: false
+  supports_streaming: false
+  supports_async: false
+  supports_emotion: true
+
+batch:
+  supported: false
+
+script:
+  supported: false
+
+voice_clone:
+  supported: true
+  preview_text_max: 5000
+  supports_noise_reduction: false
+  supports_volume_normalization: false
+  max_file_size_mb: 10
+
+voice_design:
+  supported: true
+  prompt_max: 2000
+  preview_text_max: 5000
+
+provider_voices:
+  supported: true
+  supports_list_voices: true
+  supports_delete_voice: false
+  supports_import_remote_voice: false
+  preview_text_max: 5000
+  static_voices:
+    - voice_id: "mimo_default"
+      name: "MiMo-默认"
+      language: "zh"
+      gender: "neutral"
+      description: "默认音色（中国集群=冰糖，其他=Mia）"
+    - voice_id: "冰糖"
+      name: "冰糖"
+      language: "zh"
+      gender: "female"
+      description: "中文女性音色"
+    - voice_id: "茉莉"
+      name: "茉莉"
+      language: "zh"
+      gender: "female"
+      description: "中文女性音色"
+    - voice_id: "苏打"
+      name: "苏打"
+      language: "zh"
+      gender: "male"
+      description: "中文男性音色"
+    - voice_id: "白桦"
+      name: "白桦"
+      language: "zh"
+      gender: "male"
+      description: "中文男性音色"
+    - voice_id: "Mia"
+      name: "Mia"
+      language: "en"
+      gender: "female"
+      description: "English female voice"
+    - voice_id: "Chloe"
+      name: "Chloe"
+      language: "en"
+      gender: "female"
+      description: "English female voice"
+    - voice_id: "Milo"
+      name: "Milo"
+      language: "en"
+      gender: "male"
+      description: "English male voice"
+    - voice_id: "Dean"
+      name: "Dean"
+      language: "en"
+      gender: "male"
+      description: "English male voice"
+
+metadata:
+  api_shape: "chat_completions_audio"
+  sample_rate: 24000
+  sample_format: "pcm16le_mono"
+  auth_mode: "auto"
+  auth_note: "current implementation uses api-key header for all requests; dual-prefix auth routing is reserved for future work, not implemented in this stage"
+  voice_clone_audio_formats:
+    - "mp3"
+    - "wav"
+  voice_clone_max_base64_mb: 10
+  voice_design_param: "optimize_text_preview"
+  stream_note: "stream=true is compat mode only, returns once after full inference"

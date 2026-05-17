@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from pydantic import BaseModel, Field
 
 from app.domain.render_plan import RenderPlan
 from app.domain.schemas import ProviderVoiceRead
+
+if TYPE_CHECKING:
+    from app.domain.adapter_config import AdapterConfig
+    from app.domain.provider_config import ProviderConfig
 
 
 class StreamAudioChunk(BaseModel):
@@ -56,6 +62,16 @@ class AsyncTaskStatus(BaseModel):
 
 class SpeechProvider(ABC):
     provider_name: str
+
+    def __init__(
+        self,
+        provider_config: ProviderConfig | None = None,
+        adapter_config: AdapterConfig | None = None,
+    ) -> None:
+        self._provider_config = provider_config
+        self._adapter_config = adapter_config
+        if provider_config:
+            self.provider_name = provider_config.name
 
     @abstractmethod
     async def render_sync(self, plan: RenderPlan) -> ProviderRenderResult:

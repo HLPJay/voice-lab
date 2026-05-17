@@ -13,6 +13,7 @@ from app.domain.schemas import (
     ProviderVoicePreviewResponse,
 )
 from app.models.voice_job import VoiceJob
+from app.providers.capability_registry import get_capability
 from app.providers.registry import get_provider
 from app.services.asset_service import AssetService
 from app.services.cost_guard_service import CostGuardService
@@ -38,6 +39,10 @@ class ProviderVoicePreviewService:
 
         settings = get_settings()
         adapter = get_provider(provider)
+        cap = get_capability(provider)
+
+        model = request.model or (cap.tts.default_model if cap.tts else None) or cap.default_model
+        audio_format = request.audio_format or (cap.tts.audio_formats[0] if cap.tts and cap.tts.audio_formats else "mp3")
 
         processed_text = self.preprocessor.preprocess(request.text)
         voice_params = {}
@@ -51,7 +56,7 @@ class ProviderVoicePreviewService:
             voice_params["emotion"] = request.emotion
 
         audio_params = {
-            "format": request.audio_format,
+            "format": audio_format,
             "sample_rate": settings.default_sample_rate,
             "bitrate": settings.default_bitrate,
             "channel": settings.default_channel,
@@ -63,7 +68,7 @@ class ProviderVoicePreviewService:
             processed_text=processed_text,
             profile_id="provider_voice_preview",
             provider=provider,
-            model=request.model,
+            model=model,
             provider_voice_id=request.provider_voice_id,
             voice_params=voice_params,
             audio_params=audio_params,
@@ -77,7 +82,7 @@ class ProviderVoicePreviewService:
             job_type=JobType.sync_render,
             status=JobStatus.pending,
             provider=provider,
-            model=request.model,
+            model=model,
             profile_id="provider_voice_preview",
             input_text=request.text,
             processed_text=processed_text,
@@ -90,7 +95,7 @@ class ProviderVoicePreviewService:
 
         self.logger.info(
             "preview_start job_id=%s provider=%s voice_id=%s model=%s text_length=%d",
-            job.id, provider, request.provider_voice_id, request.model, len(request.text),
+            job.id, provider, request.provider_voice_id, model, len(request.text),
         )
 
         try:
@@ -102,7 +107,7 @@ class ProviderVoicePreviewService:
             async with get_resource_guard().guard(
                 provider=provider,
                 operation="voice_preview",
-                model=request.model,
+                model=model,
                 job_id=job.id,
             ):
                 result = await adapter.render_sync(plan)
@@ -110,7 +115,7 @@ class ProviderVoicePreviewService:
                 session,
                 job_id=job.id,
                 provider=provider,
-                model=request.model,
+                model=model,
                 result=result,
                 audio_params=audio_params,
                 subtitle_type="sentence",
@@ -130,7 +135,7 @@ class ProviderVoicePreviewService:
                 job_id=job.id,
                 status="success",
                 provider=provider,
-                model=request.model,
+                model=model,
                 provider_voice_id=request.provider_voice_id,
                 audio_asset=AudioAssetResponse(
                     id=audio_asset.id,

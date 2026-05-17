@@ -2,10 +2,74 @@
 
 ## 当前阶段
 
-**NEXT-PRIORITY-REVIEW：下一阶段优先级确认**
+**P16-V1-CLOSEOUT：人工验收、scoped regression 与合并 main 准备**
+
+## 下一步
+
+1. 人工验收
+2. scoped regression
+3. 合并 main 准备
+4. V2 backlog
+
+## 当前 Closeout 范围
+
+- 不再将 D4-F4、D4-F5、D4-F6P 视为待办，它们已完成
+- 当前仍保留的豁免项：jsdom 环境依赖、Playwright E2E locator 过期、full-suite ordering pollution、full-suite env/API key 隔离问题
+- 合并前关注点：人工验收、scoped regression、secret 暴露检查、数据库 schema 变更说明检查
 
 ## 已完成（续）
 
+- P16-XIAOMI-MIMO-TTS-REAL-PROBE-B1：执行小米 MiMo 真实 API 最小探测 ✅
+- P16-XIAOMI-MIMO-TTS-REAL-PROBE-B2：真实 API 探测执行（用户手动执行成功） ✅
+- P16-XIAOMI-MIMO-TTS-ADAPTER-TEST-TRIAGE-C0：adapter 测试失败排查 ✅
+- P16-XIAOMI-MIMO-TTS-CONFIG-AND-DUPLICATE-TRIAGE-D1：配置审查与重复 banner 修复 ✅
+- P16-XIAOMI-MIMO-TTS-REAL-PROBE-A0：小米 MiMo 真实 API 最小探测方案 ✅
+- P16-XIAOMI-MIMO-TTS-B1-CHECK：验证 Xiaomi MiMo Chat TTS 最小实现 ✅
+- P16-XIAOMI-MIMO-TTS-B1-CHECK-FIX1：修复 Xiaomi MiMo 配置化边界问题 ✅
+- P16-XIAOMI-MIMO-TTS-B1：实现 Xiaomi MiMo Chat TTS 最小可行路径 ✅
+- P16-ADAPTER-PLUGIN-DISCOVERY-B1-CHECK-FIX1：修复 Adapter 插件发现主路径与错误处理 ✅
+- P16-ADAPTER-PLUGIN-DISCOVERY-B1：Adapter 插件发现与配置化注册 ✅
+- P16-XIAOMI-MIMO-TTS-A0：小米 MiMo speech-synthesis-v2.5 接入前置审查 ✅
+- P16-ADAPTER-PLUGIN-CONFIG-B1-CLOSE：AdapterConfig 与插件配置加载阶段收口 ✅
+- P16-ADAPTER-PLUGIN-CONFIG-B1-CHECK-FIX1：修复 AdapterConfig 与 capability 合成边界 ✅
+- P16-ADAPTER-PLUGIN-CONFIG-B1：实现 AdapterConfig 与 Adapter 插件配置加载 ✅
+- P16-ADAPTER-PLUGIN-CONFIG-A0：Adapter 插件化与配置分层设计 ✅
+- P16-DYNAMIC-PROVIDER-CONFIG-B1-CLOSE：Provider 配置化接入阶段收口 ✅
+- P16-DYNAMIC-PROVIDER-CONFIG-B1-CHECK：Provider 配置化接入实现复核 ✅
+- P16-DYNAMIC-PROVIDER-CONFIG-B1：Provider 配置化接入实现 ✅
+- P16-DYNAMIC-PROVIDER-CONFIG-A0：Provider 配置化接入架构设计 ✅
+- P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CLOSE：Provider-first UI 观察项修复阶段收口 ✅
+- P16-PROVIDER-BINDING-UI-B2-OBS-FIX1-CHECK：验证 Provider-first UI 观察项修复 ✅
+- P16-PROVIDER-BINDING-UI-B2-OBS-FIX1：修复 Provider-first UI 观察项 ✅
+- NEXT-PRIORITY-REVIEW：选择 Provider-first UI 观察项修复 ✅
+- P16-PROVIDER-BINDING-UI-B2-CLOSE：Provider-first profile/binding UI 阶段收口 ✅
+- P16-PROVIDER-BINDING-UI-B2-CHECK：验证 Provider-first profile/binding UI ✅
+- P16-PROVIDER-BINDING-UI-B2：实现 Provider-first profile/binding UI ✅
+- P16-PROVIDER-BINDING-UI-B2-A0：Provider-first profile/binding UI 设计 ✅
+- NEXT-PRIORITY-REVIEW：选择 Provider-first profile/binding UI 设计 ✅
+- P16-PROVIDER-MODEL-BINDING-CLOSE：Provider / Model / VoiceBinding 最小增强阶段收口 ✅
+- P16-PROVIDER-MODEL-BINDING-B1-CHECK：验证最小 model/binding 可见性与恢复增强 ✅
+- P16-PROVIDER-MODEL-BINDING-B1：实现最小 model/binding 可见性与恢复增强 ✅
+- P16-PROVIDER-MODEL-BINDING-B1-A0：最小 model/binding 可见性与恢复增强前置设计 ✅
+- P16-PROVIDER-MODEL-BINDING-A0-CHECK：Provider / Model / VoiceBinding 全链路审查复核 ✅
+- P16-PROVIDER-MODEL-BINDING-A0：Provider / Model / VoiceBinding 全链路审查 ✅
+- NEXT-PRIORITY-REVIEW：选择 Provider / Model / VoiceBinding 全链路审查 ✅
+- P16-PROVIDER-MOCK-FIX1-CHECK：验证 mock/provider boundary fixes ✅
+- P16-PROVIDER-MOCK-FIX1：修复 mock fallback / provider binding / cost boundary ✅
+- P16-PROVIDER-MOCK-CLOSE：Provider mock boundary 阶段收口 ✅
+- P16-PROVIDER-BOUNDARY-A0-CHECK：Provider 边界审查复核 ✅
+- P16-PROVIDER-BOUNDARY-A0：Provider / Mock / Capability / 新大模型接入边界审查 ✅
+- P16-WORKSPACE-RESTORE-CLOSE：workspace 最近样本完整恢复阶段收口 ✅
+- P16-WORKSPACE-RESTORE-B1-FIX1：修复 workspace restore 复核发现的问题 ✅
+- P16-WORKSPACE-RESTORE-B1-CHECK：workspace context 保存与完整恢复复核 ⚠️ (发现阻塞问题，已修复)
+- P16-WORKSPACE-RESTORE-B1：实现 workspace context 保存与完整恢复 ✅
+- P16-CANCEL-FIX1-CHECK：取消确认语义和 loading 状态修复复核 ✅
+- P16-WORKSPACE-RESTORE-A0：workspace 最近样本完整恢复方案审查 ✅
+- P16-WORKSPACE-RESTORE-A0-CHECK：workspace 最近样本完整恢复方案复核 ✅
+
+## 已完成（续）
+
+- P16-CANCEL-FIX1：修复取消确认语义和 loading 状态 ✅
 - P14-CONTEXT-C2-FIX2：修复 SampleSidebar 详情面板插入位置 ✅
 - P14-CONTEXT-C2-FIX2-CHECK：SampleSidebar 详情面板插入位置修复复核 ✅
 - P14-CONTEXT-C2-FIX3：修复 SampleSidebar 详情面板被 flex 压缩裁切 ✅
@@ -122,17 +186,34 @@
 - P13-CREATION-B4-CHECK：sample sidebar UI 复核 ✅
 - P13-CREATION-B4-CLOSE：sample sidebar UI 阶段收口 ✅
 - P13-B4-REGRESSION-FIX1：修复 workspace layout tab 回归 ✅
+- P15-STATS-B1-PARK：统计面板实现延后，保留为后期待办 ✅
+- P16-REAL-USAGE-ISSUES-A0：真实使用问题统一审查 ✅
+- P16-CANCEL-A0-CHECK：取消确认与生成状态问题复核 ✅
 
 ## Next
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P14-CONTEXT-C2-FIX3-CHECK | verify SampleSidebar detail panel flex shrink fix | P14-CONTEXT-C2-FIX3 完成 |
-| NEXT-PRIORITY-REVIEW | choose next high-value product/dev task | P15-STATS-B1-PARK 完成 |
-| P15-STATS-B1 | implement lightweight local statistics panel | Backlog，产品需要时再启动 |
-| P15-SERVER-STATS-A0 | design server-side full statistics | Backlog，需要全量统计时再启动 |
-| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | P13 归档后的小型安全债 |
-| 后续 | SaaS / 多用户 | 产品验证后 |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3 | validate adapter render_sync with real API | 用户授权 + MIMO_API_KEY |
+| P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | B3 成功后评估 |
+| P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | B3 成功后评估 |
+| P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |
+| P16-DYNAMIC-PROVIDER-CONFIG-B2 | provider capability override enhancements | 可后置 |
+| P16-PROVIDER-CAPABILITY-UI-B1 | capability-driven provider/model UI | real probe 后评估 |
+| P16-VOICE-PROFILE-DELETE-A0 | design voice profile deactivate/delete flow | 评估候选：补齐人设生命周期管理 |
+| P16-VARIANTS-UX-FIX1 | add visible waiting state for voice variants | 可后置 |
+| P17-CREATION-RECORD-A0 | design server-side creation record and restore API | Backlog |
+| P13-HISTORY-SECURITY-FIX1 | escape history text snippet | 小型安全债 |
+| P15-STATS-B1 | local statistics panel | Backlog |
+| P15-SERVER-STATS-A0 | server-side statistics | Backlog |
+
+## 长期规则
+
+每次新增 provider、adapter、probe 或环境变量时，必须同步检查：
+- `.env.example` 是否更新（新增变量注释占位）
+- `.gitignore` 是否忽略临时文件
+- `docs` 是否记录变量用途
+- `tests` 是否有对应测试覆盖
 
 ## Paused / Do not touch yet
 

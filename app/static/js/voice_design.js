@@ -31,6 +31,7 @@
     const voiceId = voiceIdInput || null;
     const prompt = document.getElementById('designPrompt').value.trim();
     const previewText = document.getElementById('designPreviewText').value.trim();
+    const audioFormat = window.getDefaultAudioFormat ? window.getDefaultAudioFormat(provider) : 'mp3';
     const resultsEl = document.getElementById('designResult');
     const btn = document.getElementById('designBtn');
 
@@ -107,10 +108,7 @@
           '<div id="designProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
             '<select id="designBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-              '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
-              '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
-              '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
-              '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
+              (window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '') +
             '</select>' +
             '<button class="btn-primary" id="designBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
           '</div>' +
@@ -140,6 +138,9 @@
         profileWrap.appendChild(sel);
         window.populateProfileSelect(sel);
         window.renderInlineCreateProfile(profileWrap, sel, 'design');
+        if (window.refreshModelSelectForProvider) {
+          window.refreshModelSelectForProvider('designBindModel', provider);
+        }
         var bindBtn = document.getElementById('designBindBtn');
         if (bindBtn) {
           bindBtn.onclick = async function () {
@@ -176,10 +177,15 @@
             }
             resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
             try {
+              // P16-CANCEL-FIX1: confirm before fetch — inline pattern matching handleGenerate
+              if (window.isRealCostProvider && window.isRealCostProvider(provider) && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否继续？')) {
+                resultDiv.innerHTML = '';
+                return;
+              }
               var resp = await fetch('/api/voice/render', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider }),
+        body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, audio_format: audioFormat, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
               });
               var rd = await resp.json();
               if (!resp.ok) {
@@ -190,7 +196,7 @@
                 var _qDurD = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
                 resultDiv.innerHTML = (_qDurD ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_qDurD ? ' · 时长 ' + _qDurD : '') + '</div>' : '') +
                   '<audio class="audio-player" controls autoplay preload="metadata">' +
-                  '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
+                  '<source src="' + esc(rd.audio_asset.url) + '" type="' + (window.getAudioMediaType ? window.getAudioMediaType(rd.audio_asset.format) : 'audio/mpeg') + '">' +
                 '</audio>';
               } else {
                 resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';

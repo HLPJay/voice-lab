@@ -4,6 +4,7 @@ from app.core.time import utc_now_iso
 from app.domain.schemas import VoiceRenderRequest, VoiceVariantGroupResponse, VoiceVariantRenderRequest, VoiceVariantResponse
 from app.models.voice_variant import VoiceVariant, VoiceVariantGroup
 from app.repositories import voice_variant_repo
+from app.repositories.voice_profile_repo import resolve_binding
 from app.services.cost_guard_service import CostGuardService
 from app.services.resource_guard_service import get_resource_guard
 from app.services.voice_render_service import VoiceRenderService
@@ -16,7 +17,9 @@ class VoiceVariantService:
         self.cost_guard = CostGuardService()
 
     async def render_variants(self, session: Session, request: VoiceVariantRenderRequest) -> VoiceVariantGroupResponse:
-        provider = request.provider or "mock"
+        # P16-PROVIDER-MOCK-FIX1: resolve binding before CostGuard to use resolved_provider
+        requested_provider = request.provider or "mock"
+        _binding, provider = resolve_binding(session, request.profile_id, requested_provider)
         self.cost_guard.require_confirmed(provider, "voice_variants", request.confirm_cost)
         combos = [
             {"speed": 0.85, "emotion": "sad"},

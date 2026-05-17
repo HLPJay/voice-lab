@@ -16,6 +16,7 @@ from app.repositories.voice_binding_repo import (
     update_binding,
 )
 from app.repositories.voice_profile_repo import get_profile
+from app.services.capability_validator import capability_validator
 
 
 def _binding_to_read(binding: VoiceBinding, provider_voice_name: str | None = None) -> VoiceBindingRead:
@@ -59,6 +60,13 @@ class VoiceBindingService:
         profile = get_profile(session, profile_id)
         if not profile:
             raise ProfileNotFound("Voice profile not found", profile_id)
+        if not profile.is_active:
+            raise ValidationError(
+                "该人设已归档，不能创建新绑定",
+                f"PROFILE_ARCHIVED:{profile_id}",
+            )
+
+        capability_validator.validate_tts(provider=request.provider, model=request.model)
 
         pv = get_provider_voice(session, provider=request.provider, provider_voice_id=request.provider_voice_id)
         if not pv or pv.status != ProviderVoiceStatus.available:

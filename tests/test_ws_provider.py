@@ -102,10 +102,12 @@ async def test_mock_stream_trace_id():
 
 
 def test_minimax_ws_config():
-    """WebSocket 配置项存在且有默认值."""
-    from app.core.config import get_settings
+    """WebSocket 配置项存在且有默认值 (now from adapter YAML)."""
+    from app.config.adapter_config_loader import get_adapter_config
 
-    settings = get_settings()
-    assert settings.minimax_ws_url.startswith("wss://")
-    assert settings.minimax_ws_model
-    assert settings.minimax_ws_timeout_seconds > 0
+    cfg = get_adapter_config("minimax")
+    assert cfg is not None
+    assert cfg.websocket is not None
+    assert cfg.websocket.url.startswith("wss://")
+    assert cfg.websocket.model
+    assert cfg.websocket.timeout_seconds > 0

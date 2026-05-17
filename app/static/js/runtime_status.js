@@ -48,28 +48,38 @@
         chipProvider.classList.remove('muted');
       }
 
-      // Model chip
+      // Model chip — must reflect currentProvider, not always the system default_provider's model
       var chipModel = document.getElementById('chipModel');
       if (chipModel) {
-        var defaultModel = data.current.default_model || '-';
-        chipModel.textContent = defaultModel;
-        chipModel.title = '当前模型：默认配置（' + defaultModel + '）';
+        var resolvedModel = null;
+        // 1. Try capability-derived model for currentProvider (provider-aware)
+        if (typeof window.getDefaultTtsModel === 'function' && currentProvider) {
+          resolvedModel = window.getDefaultTtsModel(currentProvider) || null;
+        }
+        // 2. Fallback: use API default_model only when currentProvider matches default_provider
+        if (!resolvedModel) {
+          resolvedModel = (currentProvider === (data.current.default_provider || ''))
+            ? (data.current.default_model || '-')
+            : '-';
+        }
+        chipModel.textContent = resolvedModel;
+        chipModel.title = '当前模型：默认配置（' + resolvedModel + '）';
         chipModel.classList.remove('muted');
       }
 
       // Today chip
       var chipToday = document.getElementById('chipToday');
       if (chipToday) {
-        chipToday.textContent = '今日 ' + (data.today.usage_characters || 0) + ' 字';
-        chipToday.title = '本地估算用量，不代表官方剩余额度';
+        chipToday.textContent = '今日本地 ' + (data.today.usage_characters || 0) + ' 字';
+        chipToday.title = '本地估算用量，不代表 Provider 官方账单或官方剩余额度';
         chipToday.classList.remove('muted');
       }
 
       // Month chip
       var chipMonth = document.getElementById('chipMonth');
       if (chipMonth) {
-        chipMonth.textContent = '本月 ' + (data.month.usage_characters || 0) + ' 字';
-        chipMonth.title = '本地估算用量，不代表官方剩余额度';
+        chipMonth.textContent = '本月本地 ' + (data.month.usage_characters || 0) + ' 字';
+        chipMonth.title = '本地估算用量，不代表 Provider 官方账单或官方剩余额度';
         chipMonth.classList.remove('muted');
       }
 
@@ -155,4 +165,21 @@
       window.scheduleRuntimeStatusRefresh();
     }, 60000);
   };
+
+  // ── reactive refresh triggers ──────────────────────────────────────
+
+  // Refresh immediately when providerSelect changes so chipModel stays in sync.
+  // DOM is already available (script loads after the select element in the HTML).
+  (function () {
+    var provEl = document.getElementById('providerSelect');
+    if (provEl) {
+      provEl.addEventListener('change', function () { window.loadRuntimeStatus(); });
+    }
+  })();
+
+  // Refresh after capabilities load so getDefaultTtsModel() returns valid data.
+  // provider-capabilities-applied is fired once per load — no loop risk.
+  window.addEventListener('provider-capabilities-applied', function () {
+    window.loadRuntimeStatus();
+  });
 })();

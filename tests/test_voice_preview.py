@@ -148,8 +148,9 @@ class TestProviderVoicePreviewService:
             resp = TestClient(test_app).post(
                 "/api/voice/provider-voices/preview",
                 json={
+                    "provider": "mock",
                     "provider_voice_id": "voice_a",
-                    "model": "speech-2.8-hd",
+                    "model": "mock-tts",
                     "text": "direct preview test",
                     "audio_format": "mp3",
                     "output_format": "hex",
@@ -290,6 +291,7 @@ class TestProviderVoicePreviewResourceGuard:
         # Second: try to call preview - should be rejected before adapter is called
         with patch("app.services.provider_voice_preview_service.get_provider", return_value=CheckedPreviewAdapter()):
             req = ProviderVoicePreviewRequest(
+                provider="minimax",
                 provider_voice_id="test_voice",
                 model="speech-2.8-hd",
                 text="测试文本",
@@ -366,6 +368,7 @@ class TestVoicePreviewResourceGuard:
         # Second: try to call preview - should be rejected before adapter is called
         with patch("app.services.voice_preview_service.get_provider", return_value=CheckedPreviewAdapter()):
             req = ProviderVoicePreviewRequest(
+                provider="minimax",
                 provider_voice_id="test_voice",
                 model="speech-2.8-hd",
                 text="测试文本",

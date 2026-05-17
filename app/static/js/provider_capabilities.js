@@ -17,10 +17,59 @@
     return d.innerHTML;
   }
 
+  // ── provider UI visibility helpers ────────────────────────────────────
+
+  /**
+   * Returns true when dev mode is active (URL ?dev=1 or localStorage voice_lab_dev=1).
+   */
+  window.isDevMode = function () {
+    try {
+      if (new URLSearchParams(window.location.search).get('dev') === '1') return true;
+      if (window.localStorage && window.localStorage.getItem('voice_lab_dev') === '1') return true;
+    } catch (e) { /* ignore */ }
+    return false;
+  };
+
+  /**
+   * Returns true if the given capability should be visible in the provider UI.
+   *
+   * Rules (applied in priority order):
+   *   1. cap.enabled !== true              → not visible (always hidden)
+   *   2. metadata.testing_only === true    → never visible in UI
+   *   3. metadata.dev_only === true        → visible only in dev mode
+   *   4. metadata.ui_visible === false     → not visible in UI
+   *   5. otherwise                         → visible
+   *
+   * @param {object} cap  A provider capability object from the API.
+   * @param {{devMode?: boolean}} [opts]  Pass devMode explicitly for testability.
+   */
+  window.isUiVisibleProvider = function (cap, opts) {
+    if (!cap || cap.enabled !== true) return false;
+    var meta = cap.metadata || {};
+    if (meta.testing_only === true) return false;
+    var devMode = (opts && opts.devMode !== undefined) ? opts.devMode : window.isDevMode();
+    if (meta.dev_only === true) return devMode;
+    if (meta.ui_visible === false) return false;
+    return true;
+  };
+
+  /**
+   * Returns the list of capabilities that should appear in the provider select UI.
+   *
+   * @param {{devMode?: boolean}} [opts]
+   */
+  window.getUiProviderCapabilities = function (opts) {
+    if (!Array.isArray(window._providerCapabilities)) return [];
+    return window._providerCapabilities.filter(function (cap) {
+      return window.isUiVisibleProvider(cap, opts);
+    });
+  };
+
   // ── capability loading ───────────────────────────────────────────────
 
-  window.loadProviderCapabilities = async function () {
-    if (window._capabilitiesLoadAttempted) return;
+  window.loadProviderCapabilities = async function (force) {
+    if (force === undefined) force = false;
+    if (window._capabilitiesLoadAttempted && !force) return;
     window._capabilitiesLoadAttempted = true;
     try {
       var resp = await fetch('/api/voice/capabilities');
@@ -40,9 +89,20 @@
       window._capabilitiesLoadFailed = false;
       window._capabilitiesFailureNotified = false;
 
-      ['providerSelect', 'batchProvider', 'batchScriptProvider', 'voiceProvider', 'cloneProvider', 'designProvider'].forEach(window.updateProviderSelectOptions);
+      [
+        'providerSelect',
+        'batchProvider',
+        'batchScriptProvider',
+        'voiceProvider',
+        'cloneProvider',
+        'designProvider',
+        'newBindingProvider',
+        'importCloneProvider',
+        'importDesignProvider'
+      ].forEach(window.updateProviderSelectOptions);
 
       window.applyAllProviderCapabilities();
+      window.dispatchEvent(new CustomEvent('provider-capabilities-applied'));
     } catch (err) {
       console.warn('loadProviderCapabilities failed', err);
       window._capabilitiesLoaded = false;
@@ -60,6 +120,42 @@
     if (!provider) return null;
     return window._providerCapabilitiesByName[provider] || null;
   }
+
+  window.getProviderCapability = getProviderCapability;
+
+  window.ensureProviderCapability = async function (provider) {
+    if (!provider) return null;
+    var existing = getProviderCapability(provider);
+    if (existing) return existing;
+
+    try {
+      var resp = await fetch('/api/voice/capabilities?provider=' + encodeURIComponent(provider));
+      if (!resp.ok) throw new Error('capability load failed');
+      var cap = await resp.json();
+      if (cap && cap.provider) {
+        window._providerCapabilitiesByName[cap.provider] = cap;
+        if (!Array.isArray(window._providerCapabilities)) {
+          window._providerCapabilities = [];
+        }
+        var replaced = false;
+        window._providerCapabilities = window._providerCapabilities.map(function (item) {
+          if (item && item.provider === cap.provider) {
+            replaced = true;
+            return cap;
+          }
+          return item;
+        });
+        if (!replaced) {
+          window._providerCapabilities.push(cap);
+        }
+        window.dispatchEvent(new CustomEvent('provider-capabilities-applied'));
+        return cap;
+      }
+    } catch (err) {
+      console.warn('ensureProviderCapability failed', provider, err);
+    }
+    return getProviderCapability(provider);
+  };
 
   // ── helper utilities ──────────────────────────────────────────────────
 
@@ -128,6 +224,67 @@
     }
   }
 
+  function getTtsModels(provider) {
+    var cap = getProviderCapability(provider);
+    if (cap && cap.tts && cap.tts.models && cap.tts.models.length > 0) {
+      return cap.tts.models;
+    }
+    if (cap && cap.default_model) return [cap.default_model];
+    return [];
+  }
+
+  function getDefaultTtsModel(provider) {
+    var cap = getProviderCapability(provider);
+    if (cap && cap.tts && cap.tts.models && cap.tts.models.length > 0) {
+      return cap.tts.default_model || cap.default_model || cap.tts.models[0];
+    }
+    return getTtsModels(provider)[0];
+  }
+
+  function getAudioFormats(provider) {
+    var cap = getProviderCapability(provider);
+    if (cap && cap.tts && cap.tts.audio_formats && cap.tts.audio_formats.length > 0) {
+      return cap.tts.audio_formats;
+    }
+    return ['wav'];
+  }
+
+  function getDefaultAudioFormat(provider) {
+    return getAudioFormats(provider)[0];
+  }
+
+  function getAudioMediaType(format) {
+    if (format === 'wav') return 'audio/wav';
+    if (format === 'flac') return 'audio/flac';
+    return 'audio/mpeg';
+  }
+
+  function renderModelOptionsHtml(provider, selected) {
+    var models = getTtsModels(provider);
+    var def = selected || getDefaultTtsModel(provider);
+    return models.map(function (m) {
+      var sel = (m === def) ? ' selected' : '';
+      return '<option value="' + capEsc(m) + '"' + sel + '>' + capEsc(m) + '</option>';
+    }).join('');
+  }
+
+  function refreshModelSelectForProvider(selectId, provider, selected) {
+    var el = document.getElementById(selectId);
+    if (!el) return;
+    el.innerHTML = renderModelOptionsHtml(provider, selected);
+  }
+
+  window.getTtsModels = getTtsModels;
+  window.getDefaultTtsModel = getDefaultTtsModel;
+  window.getAudioFormats = getAudioFormats;
+  window.getDefaultAudioFormat = getDefaultAudioFormat;
+  window.getAudioMediaType = getAudioMediaType;
+  window.renderModelOptionsHtml = renderModelOptionsHtml;
+  window.refreshModelSelectForProvider = refreshModelSelectForProvider;
+  window.getModelOptionsHtml = function (provider) {
+    return renderModelOptionsHtml(provider);
+  };
+
   window.setControlDisabled = function (id, disabled, title) {
     if (title === undefined) title = '';
     var el = document.getElementById(id);
@@ -141,13 +298,14 @@
     if (!el || !window._providerCapabilities) return;
     var current = el.value;
 
-    el.innerHTML = window._providerCapabilities
-      .filter(function (cap) { return cap.enabled; })
+    var visible = window.getUiProviderCapabilities();
+    el.innerHTML = visible
       .map(function (cap) {
         return '<option value="' + capEsc(cap.provider) + '">' + capEsc(cap.display_name || cap.provider) + '</option>';
       }).join('');
 
-    if (window._providerCapabilitiesByName[current]) {
+    var currentCap = window._providerCapabilitiesByName[current];
+    if (currentCap && window.isUiVisibleProvider(currentCap)) {
       el.value = current;
     }
   };
@@ -202,6 +360,14 @@
           if (single) single.checked = true;
         }
       }
+      if (radio.value === 'async') {
+        radio.disabled = !tts.supports_async;
+        radio.title = tts.supports_async ? '' : '当前 Provider 不支持异步生成';
+        if (!tts.supports_async && radio.checked) {
+          var single = document.querySelector('input[name="genMode"][value="single"]');
+          if (single) single.checked = true;
+        }
+      }
     });
   }
 
@@ -212,6 +378,14 @@
 
     var batch = cap.batch;
     var tts = cap.tts || {};
+
+    if (!batch.supported) {
+      window.setControlDisabled('batchLongtextSubmit', true, '当前 Provider 不支持长文本批量生成');
+      setHintText('batchCapabilityHint', '当前 Provider 不支持长文本批量生成。', 'error');
+      return;
+    }
+    window.setControlDisabled('batchLongtextSubmit', false, '');
+    setHintText('batchCapabilityHint', '', '');
 
     setTextMaxLength('batchText', batch.max_text_chars || 50000);
 
@@ -248,6 +422,14 @@
 
     var script = cap.script;
     var tts = cap.tts || {};
+
+    if (!script.supported) {
+      window.setControlDisabled('batchScriptSubmit', true, '当前 Provider 不支持剧本批量生成');
+      setHintText('scriptCapabilityHint', '当前 Provider 不支持剧本批量生成。', 'error');
+      return;
+    }
+    window.setControlDisabled('batchScriptSubmit', false, '');
+    setHintText('scriptCapabilityHint', '', '');
 
     // MAX_SCRIPT_LINES is a var on window (changed from let in index.html)
     if (typeof window.MAX_SCRIPT_LINES !== 'undefined') {
@@ -288,7 +470,7 @@
       setTextMaxLength('auditionText', pv.preview_text_max);
     }
 
-    updateSelectOptions('auditionModel', tts.models || ['speech-2.8-hd']);
+    refreshModelSelectForProvider('auditionModel', provider);
 
     setNumberRange('auditionSpeed', tts.speed, '语速');
     setNumberRange('auditionVol', tts.vol, '音量');
@@ -328,6 +510,16 @@
 
     if (clone.preview_text_max) {
       setTextMaxLength('clonePreviewText', clone.preview_text_max);
+    }
+
+    var cloneModel = document.getElementById('cloneModel');
+    if (cloneModel) {
+      var models = getTtsModels(provider);
+      refreshModelSelectForProvider(
+        'cloneModel',
+        provider,
+        models.indexOf(cloneModel.value) === -1 ? null : cloneModel.value
+      );
     }
 
     if (clone.voice_id) {
@@ -410,27 +602,32 @@
   }
 
   function applyImportVoiceCapability() {
-    var provider = getSelectValue('voiceProvider', getSelectValue('providerSelect', 'mock'));
-    var cap = getProviderCapability(provider);
-    if (!cap || !cap.provider_voices) return;
+    ['importClone', 'importDesign'].forEach(function (prefix) {
+      var provider = getSelectValue(prefix + 'Provider', getSelectValue('providerSelect', 'mock'));
+      var cap = getProviderCapability(provider);
+      if (!cap || !cap.provider_voices) return;
 
-    var pv = cap.provider_voices;
+      var pv = cap.provider_voices;
 
-    if (pv.preview_text_max) {
-      setTextMaxLength('importClonePreviewText', pv.preview_text_max);
-    }
+      if (pv.preview_text_max) {
+        setTextMaxLength(prefix + 'PreviewText', pv.preview_text_max);
+      }
 
-    var verify = document.getElementById('importCloneVerify');
-    if (verify && !pv.supports_import_remote_voice) {
-      verify.checked = false;
-      verify.disabled = true;
-      verify.title = '当前 Provider 不支持远端音色导入';
-    } else if (verify) {
-      verify.disabled = false;
-      verify.title = '';
-    }
+      refreshModelSelectForProvider(prefix + 'Model', provider);
+
+      var verify = document.getElementById(prefix + 'Verify');
+      if (verify && !pv.supports_import_remote_voice) {
+        verify.checked = false;
+        verify.disabled = true;
+        verify.title = 'current provider does not support remote voice import';
+      } else if (verify) {
+        verify.disabled = false;
+        verify.title = '';
+      }
+    });
+
+
   }
-
   // ── apply all + bind events ───────────────────────────────────────────
 
   window.applyAllProviderCapabilities = function () {
@@ -450,7 +647,10 @@
       'batchScriptProvider',
       'voiceProvider',
       'cloneProvider',
-      'designProvider'
+      'designProvider',
+      'newBindingProvider',
+      'importCloneProvider',
+      'importDesignProvider'
     ];
     ids.forEach(function (id) {
       var el = document.getElementById(id);

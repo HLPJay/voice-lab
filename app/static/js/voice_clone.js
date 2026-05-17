@@ -107,12 +107,16 @@
     var voiceId = document.getElementById('cloneVoiceId').value.trim();
     var previewText = document.getElementById('clonePreviewText').value.trim();
     var model = document.getElementById('cloneModel').value.trim();
+    var cloneProvider = document.getElementById('cloneProvider');
+    var currentProvider = cloneProvider ? cloneProvider.value : '';
+    var audioFormat = window.getDefaultAudioFormat ? window.getDefaultAudioFormat(currentProvider) : 'mp3';
     var promptFileId = document.getElementById('clonePromptFileId').value.trim();
+    var needsIntFileId = (currentProvider === 'minimax');
     var fileIdNum = Number(fileId);
     var promptFileIdNum = Number(promptFileId);
     var voiceIdValid = window.isValidVoiceId(voiceId);
-    var fileIdValid = fileId !== '' && Number.isInteger(fileIdNum) && fileIdNum > 0;
-    var promptFileIdValid = promptFileId === '' || (Number.isInteger(promptFileIdNum) && promptFileIdNum > 0);
+    var fileIdValid = fileId !== '' && (needsIntFileId ? (Number.isInteger(fileIdNum) && fileIdNum > 0) : true);
+    var promptFileIdValid = promptFileId === '' || (needsIntFileId ? (Number.isInteger(promptFileIdNum) && promptFileIdNum > 0) : true);
     var disabled = !voiceIdValid || !fileIdValid || (previewText && !model) || !promptFileIdValid;
     btn.disabled = disabled;
     var hint = document.getElementById('cloneBtnHint');
@@ -148,21 +152,25 @@
       resultsEl.innerHTML = '<div class="error-msg">请输入 voice_id</div>';
       return;
     }
+    var needsIntFileId = (provider === 'minimax');
     if (!fileId) {
       resultsEl.innerHTML = '<div class="error-msg">请先上传音频获取 file_id，或手动输入</div>';
       return;
     }
-    var fileIdNum = Number(fileId);
-    if (!Number.isInteger(fileIdNum) || fileIdNum <= 0) {
-      resultsEl.innerHTML = '<div class="error-msg">file_id 必须是大于 0 的整数。</div>';
-      updateCloneBtnState();
-      return;
+    if (needsIntFileId) {
+      var fileIdNum = Number(fileId);
+      if (!Number.isInteger(fileIdNum) || fileIdNum <= 0) {
+        resultsEl.innerHTML = '<div class="error-msg">file_id 必须是大于 0 的整数。</div>';
+        updateCloneBtnState();
+        return;
+      }
     }
     if (previewText && !model) {
-      resultsEl.innerHTML = '<div class="error-msg">preview_text 有值时 model 必填。建议使用 speech-2.8-hd。</div>';
+      var suggestedModel = window.getDefaultTtsModel ? window.getDefaultTtsModel(provider) : '';
+      resultsEl.innerHTML = '<div class="error-msg">preview_text 有值时 model 必填。' + (suggestedModel ? '建议使用 ' + esc(suggestedModel) + '。' : '') + '</div>';
       return;
     }
-    if (promptFileId) {
+    if (needsIntFileId && promptFileId) {
       var promptFileIdNum = Number(promptFileId);
       if (!Number.isInteger(promptFileIdNum) || promptFileIdNum <= 0) {
         resultsEl.innerHTML = '<div class="error-msg">prompt_file_id 必须是大于 0 的整数。</div>';
@@ -170,7 +178,7 @@
         return;
       }
     }
-    if ((promptFileId && !promptText) || (!promptFileId && promptText)) {
+    if (needsIntFileId && ((promptFileId && !promptText) || (!promptFileId && promptText))) {
       resultsEl.innerHTML = '<div class="error-msg">prompt_file_id 和 prompt_text 必须同时填写，或同时留空。</div>';
       return;
     }
@@ -180,14 +188,15 @@
     resultsEl.innerHTML = '<p style="font-size:0.85rem;color:#718096;margin-top:10px"><span class="spinner"></span>克隆中…</p>';
 
     try {
+      var parsedFileId = (provider === 'minimax') ? parseInt(fileId) : fileId;
       var payload = {
         voice_id: voiceId,
-        file_id: parseInt(fileId),
+        file_id: parsedFileId,
         need_noise_reduction: needNoiseReduction,
         need_volume_normalization: needVolumeNormalization,
         confirm_cost: false,
       };
-      if (promptFileId) payload.prompt_file_id = parseInt(promptFileId);
+      if (promptFileId) payload.prompt_file_id = (provider === 'minimax') ? parseInt(promptFileId) : promptFileId;
       if (promptText) payload.prompt_text = promptText;
       if (previewText) payload.preview_text = previewText;
       if (model) payload.model = model;
@@ -235,7 +244,7 @@
         html += '<div style="margin-top:10px">' +
           '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">克隆试听' + (_cloneDemoDur ? ' · 时长 ' + _cloneDemoDur : '') + '</div>' +
           '<audio class="audio-player" controls preload="metadata">' +
-            '<source src="' + esc(data.demo_audio_url) + '" type="audio/mpeg">' +
+            '<source src="' + esc(data.demo_audio_url) + '" type="' + (window.getAudioMediaType ? window.getAudioMediaType(data.audio_format || data.format) : 'audio/mpeg') + '">' +
             '您的浏览器不支持音频播放</audio>' +
         '</div>';
       }
@@ -247,10 +256,7 @@
           '<div id="cloneProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
             '<select id="cloneBindModel" style="min-width:160px;padding:6px;border:1px solid #e2e8f0;border-radius:6px">' +
-              '<option value="speech-2.8-hd" selected>speech-2.8-hd</option>' +
-              '<option value="speech-2.8-turbo">speech-2.8-turbo</option>' +
-              '<option value="speech-2.6-hd">speech-2.6-hd</option>' +
-              '<option value="speech-2.6-turbo">speech-2.6-turbo</option>' +
+              (window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : '') +
             '</select>' +
             '<button class="btn-primary" id="cloneBindBtn" style="margin:0;white-space:nowrap">绑定</button>' +
           '</div>' +
@@ -280,6 +286,9 @@
         profileWrap.appendChild(sel);
         if (window.populateProfileSelect) window.populateProfileSelect(sel);
         if (window.renderInlineCreateProfile) window.renderInlineCreateProfile(profileWrap, sel, 'clone');
+        if (window.refreshModelSelectForProvider) {
+          window.refreshModelSelectForProvider('cloneBindModel', provider);
+        }
         var bindBtn = document.getElementById('cloneBindBtn');
         if (bindBtn) {
           bindBtn.onclick = async function () {
@@ -318,10 +327,15 @@
             }
             resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
             try {
+              // P16-CANCEL-FIX1: confirm before fetch — inline pattern matching handleGenerate
+              if (window.isRealCostProvider && window.isRealCostProvider(provider) && !confirm('真实试听会调用云端 TTS，可能产生字符费用，是否继续？')) {
+                resultDiv.innerHTML = '';
+                return;
+              }
               var r = await fetch('/api/voice/render', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider }),
+                body: JSON.stringify({ text: text, profile_id: profileId, provider: provider, audio_format: audioFormat, confirm_cost: window.isRealCostProvider ? window.isRealCostProvider(provider) : false }),
               });
               var rd = await r.json();
               if (!r.ok) {
@@ -332,7 +346,7 @@
                 var _qDur = rd.audio_asset.duration_ms ? (rd.audio_asset.duration_ms / 1000).toFixed(1) + 's' : '';
                 resultDiv.innerHTML = (_qDur ? '<div style="font-size:0.78rem;color:#718096;margin-bottom:4px">快速试听' + (_qDur ? ' · 时长 ' + _qDur : '') + '</div>' : '') +
                   '<audio class="audio-player" controls autoplay preload="metadata">' +
-                  '<source src="' + esc(rd.audio_asset.url) + '" type="audio/mpeg">' +
+                  '<source src="' + esc(rd.audio_asset.url) + '" type="' + (window.getAudioMediaType ? window.getAudioMediaType(rd.audio_asset.format) : 'audio/mpeg') + '">' +
                 '</audio>';
               } else {
                 resultDiv.innerHTML = '<span style="color:#718096;font-size:0.82rem">未返回音频数据</span>';

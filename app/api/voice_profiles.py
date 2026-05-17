@@ -20,3 +20,11 @@ async def create_profile(
     session: Session = Depends(get_session),
 ):
     return service.create(session, request)
+
+
+@router.patch("/profiles/{profile_id}/archive", response_model=VoiceProfileRead)
+async def archive_profile_endpoint(
+    profile_id: str,
+    session: Session = Depends(get_session),
+):
+    return service.archive(session, profile_id)

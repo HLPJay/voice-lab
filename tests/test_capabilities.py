@@ -14,7 +14,6 @@ from app.providers.capability_registry import (
     list_capabilities,
     provider_exists,
 )
-from app.providers.mock_capabilities import MOCK_CAPABILITY
 
 
 class TestCapabilityRegistry:
@@ -49,22 +48,23 @@ class TestCapabilityRegistry:
         assert provider_exists("unknown_provider") is False
 
     def test_mock_capability_structure(self):
-        assert MOCK_CAPABILITY.provider == "mock"
-        assert MOCK_CAPABILITY.tts is not None
-        assert MOCK_CAPABILITY.batch is not None
-        assert MOCK_CAPABILITY.script is not None
-        assert MOCK_CAPABILITY.voice_clone is not None
-        assert MOCK_CAPABILITY.voice_design is not None
+        cap = get_capability("mock")
+        assert cap.provider == "mock"
+        assert cap.tts is not None
+        assert cap.batch is not None
+        assert cap.script is not None
+        assert cap.voice_clone is not None
+        assert cap.voice_design is not None
 
     def test_mock_tts_capability(self):
-        tts = MOCK_CAPABILITY.tts
+        tts = get_capability("mock").tts
         assert tts.supported is True
         assert "mock-tts" in tts.models
         assert "mp3" in tts.audio_formats
         assert tts.supports_streaming is True
 
     def test_mock_batch_capability(self):
-        batch = MOCK_CAPABILITY.batch
+        batch = get_capability("mock").batch
         assert batch.supported is True
         assert "line" in batch.segment_strategies
         assert batch.max_segment_chars is not None
@@ -72,14 +72,14 @@ class TestCapabilityRegistry:
         assert batch.max_segment_chars.max == 5000
 
     def test_mock_voice_clone_capability(self):
-        vc = MOCK_CAPABILITY.voice_clone
+        vc = get_capability("mock").voice_clone
         assert vc.supported is True
         assert vc.voice_id is not None
         assert vc.voice_id.min_length == 8
         assert vc.supports_noise_reduction is True
 
     def test_mock_voice_design_capability(self):
-        vd = MOCK_CAPABILITY.voice_design
+        vd = get_capability("mock").voice_design
         assert vd.supported is True
         assert vd.prompt_max == 2000
 
@@ -107,8 +107,6 @@ class TestCapabilitiesAPI:
         assert "line" in body["batch"]["segment_strategies"]
         assert body["voice_clone"]["supported"] is True
         assert body["voice_design"]["supported"] is True
-        assert "api_key_configured" in body["metadata"]
-        assert isinstance(body["metadata"]["api_key_configured"], bool)
         assert "minimax_api_key" not in body["metadata"]
         assert "minimax_api_key" not in str(body)
 

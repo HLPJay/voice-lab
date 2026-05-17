@@ -36,5 +36,8 @@ logs/
 # Smoke test local runtime
 .tmp/
 
+# Probe outputs
+tmp/
+
 # Generated cleanup plans
 docs/generated/

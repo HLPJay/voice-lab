@@ -1,12 +1,13 @@
-"""Cost estimation and guard service for Voice Lab."""
+"""Cost estimation and guard service for Voice Lab.
+
+Uses ProviderConfig.real_cost (from config/providers.yaml) to determine
+whether a provider incurs real costs, replacing the hardcoded COST_PROVIDER_SET.
+"""
 
 from app.core.errors import ValidationError
 from app.core.logging import get_logger
 
 logger = get_logger("cost_guard")
-
-# Providers that incur real costs (require cost confirmation for high-risk operations)
-COST_PROVIDER_SET = frozenset({"minimax"})
 
 # High-risk operations that always require explicit cost confirmation
 HIGH_RISK_OPERATIONS = frozenset({
@@ -84,7 +85,7 @@ def estimate_t2a_cost(provider: str, model: str, text: str) -> dict:
     }
 
     if provider != "minimax":
-        warnings.append("当前 provider 暂未配置价格估算")
+        warnings.append("当前 provider 暂未配置价格估算；本地字符数不代表官方扣费")
         return result
 
     unit_price, is_unknown = _get_minimax_unit_price(model)
@@ -107,14 +108,34 @@ class CostGuardService:
     def require_confirmed(self, provider: str, operation: str, confirm_cost: bool) -> None:
         """Enforce cost confirmation for high-risk operations on real-cost providers.
 
+        Resolution:
+          provider -> ProviderConfig (from config/providers.yaml) -> real_cost
+
         Rules:
-        - mock provider: never requires confirm_cost
-        - provider in COST_PROVIDER_SET and operation in HIGH_RISK_OPERATIONS
+        - mock provider: never requires confirm_cost (always allowed)
+        - ProviderConfig.real_cost == True and operation in HIGH_RISK_OPERATIONS
           and confirm_cost != True: raise ValidationError
         """
         if provider == "mock":
             return
-        if provider in COST_PROVIDER_SET and operation in HIGH_RISK_OPERATIONS and not confirm_cost:
+
+        # Try config-driven real_cost first
+        from app.config.provider_config_loader import get_provider_config
+
+        config = get_provider_config(provider)
+        if config:
+            if config.real_cost and operation in HIGH_RISK_OPERATIONS and not confirm_cost:
+                raise ValidationError(
+                    "需要确认成本后才能执行该操作",
+                    f"{operation} requires confirm_cost=true for {provider} provider",
+                )
+            # Provider found in config but real_cost is False — allow without confirm
+            return
+
+        # Fallback: if not in config, use legacy COST_PROVIDER_SET check
+        # This handles cases where a provider is not yet in providers.yaml
+        COST_PROVIDER_SET_FALLBACK = frozenset({"minimax"})
+        if provider in COST_PROVIDER_SET_FALLBACK and operation in HIGH_RISK_OPERATIONS and not confirm_cost:
             raise ValidationError(
                 "需要确认成本后才能执行该操作",
                 f"{operation} requires confirm_cost=true for {provider} provider",

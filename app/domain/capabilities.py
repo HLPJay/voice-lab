@@ -58,6 +58,7 @@ class TTSCapability(BaseModel):
     audio_formats: list[AudioFormat] = Field(default_factory=list)
     supports_subtitle: bool = False
     supports_streaming: bool = False
+    supports_async: bool = False
     supports_emotion: bool = False
     speed: NumericRange | None = None
     vol: NumericRange | None = None

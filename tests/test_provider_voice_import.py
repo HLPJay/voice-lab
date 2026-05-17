@@ -151,7 +151,7 @@ class TestProviderVoiceImportService:
         binding_service = VoiceBindingService()
         binding_req = VoiceBindingCreate(
             provider="mock",
-            model="speech-2.8-hd",
+            model="mock-tts",
             provider_voice_id="import_for_bind_01",
             params={},
             priority=1,

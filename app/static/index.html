@@ -832,6 +832,9 @@
       border-radius: 6px;
       font-size: 0.85rem;
   }
+  .param-row.disabled-by-binding {
+      opacity: 0.55;
+  }
 
   /* Stream */
   .stream-progress {
@@ -1334,6 +1337,13 @@
       <div class="card-title">配置</div>
       <div class="config-grid">
         <div class="form-group">
+          <label for="providerSelect">Provider</label>
+          <select id="providerSelect">
+            <option value="mock">mock（模拟）</option>
+            <option value="minimax">minimax（正式）</option>
+          </select>
+        </div>
+        <div class="form-group">
           <div class="field-label-row">
             <label for="profileSelect">声音人设</label>
             <span id="bindingStatus" class="binding-status-inline"></span>
@@ -1342,13 +1352,6 @@
             <option value="">加载中…</option>
           </select>
           <div id="workspaceVoiceBindingHint" style="margin-top:6px;font-size:0.82rem;display:none"></div>
-        </div>
-        <div class="form-group">
-          <label for="providerSelect">Provider</label>
-          <select id="providerSelect">
-            <option value="mock">mock（模拟）</option>
-            <option value="minimax">minimax（正式）</option>
-          </select>
         </div>
         <div class="form-group">
           <label for="audioFormat">编码格式</label>
@@ -1525,6 +1528,7 @@
           <label for="batchNeedSubtitle" style="font-weight:400;cursor:pointer">生成字幕</label>
         </div>
       </div>
+      <div id="batchCapabilityHint" class="capability-hint"></div>
       <button class="btn-primary" id="batchLongtextSubmit" onclick="handleBatchLongtextSubmit()">提交批量任务</button>
     </div>
     <!-- Longtext batch result / error area -->
@@ -1611,6 +1615,7 @@
         <div class="batch-hint-warning" id="batchScriptProfileWarning" style="display:none"></div>
         <div class="batch-hint-subtitle" id="batchScriptSubtitleHint" style="display:none">已开启字幕，生成耗时可能增加。</div>
       </div>
+      <div id="scriptCapabilityHint" class="capability-hint"></div>
       <button class="btn-primary" id="batchScriptSubmit" onclick="handleBatchScriptSubmit()">提交批量任务</button>
     </div>
     <!-- Script batch result / progress area (populated after submit) -->
@@ -1786,7 +1791,9 @@
           </div>
           <div class="form-group">
             <label for="cloneModel">model（preview_text 有值时必填）</label>
-            <input type="text" id="cloneModel" value="speech-2.8-hd" placeholder="如 speech-2.8-hd" oninput="updateCloneBtnState()">
+            <select id="cloneModel" onchange="updateCloneBtnState()">
+              <option value="">按 Provider 加载模型...</option>
+            </select>
           </div>
           <div class="form-group full-width">
             <div class="checkbox-row">
@@ -1829,10 +1836,7 @@
           <div class="form-group full-width">
             <label for="importCloneModel">model（验证试听时使用）</label>
             <select id="importCloneModel">
-              <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-              <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-              <option value="speech-2.6-hd">speech-2.6-hd</option>
-              <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+              <option value="">按 Provider 加载模型...</option>
             </select>
           </div>
           <div class="form-group full-width">
@@ -1903,10 +1907,7 @@
           <div class="form-group full-width">
             <label for="importDesignModel">model（验证试听时使用）</label>
             <select id="importDesignModel">
-              <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-              <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-              <option value="speech-2.6-hd">speech-2.6-hd</option>
-              <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+              <option value="">按 Provider 加载模型...</option>
             </select>
           </div>
           <div class="form-group full-width">
@@ -1974,7 +1975,11 @@
             </select>
           </div>
         </div>
-        <button class="btn-primary" onclick="handleListBindings()">查询</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="handleListBindings()">查询</button>
+          <button class="btn-primary" id="archiveProfileBtn" type="button" onclick="handleArchiveProfile()" disabled>归档当前人设</button>
+        </div>
+        <div id="archiveProfileResult"></div>
         <div id="bindingListResults"></div>
       </div>
 
@@ -1997,12 +2002,7 @@
           <div class="form-group">
             <label for="newBindingModel">Model</label>
             <select id="newBindingModel" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px">
-              <option value="speech-2.8-hd" selected>speech-2.8-hd（高清）</option>
-              <option value="speech-2.8-turbo">speech-2.8-turbo（快速）</option>
-              <option value="speech-2.6-hd">speech-2.6-hd（低延迟高清）</option>
-              <option value="speech-2.6-turbo">speech-2.6-turbo（低延迟快速）</option>
-              <option value="speech-02-hd">speech-02-hd（经典高清）</option>
-              <option value="speech-02-turbo">speech-02-turbo（经典快速）</option>
+              <option value="">按 Provider 加载模型...</option>
             </select>
           </div>
           <div class="form-group">
@@ -2109,9 +2109,11 @@
         switchAdvancedSubtab('clone');
       }
       if (tab === 'workspace') {
-        loadProfiles(true).then(() => {
+        loadProfiles(true).then(async () => {
+          await refreshWorkspaceBindingMap();
           populateProfileSelect(profileSelect);
-          checkBindingStatus();
+          refreshWorkspaceProfileAvailability();
+          await checkBindingStatus();
           updateWorkspaceVoiceBindingHint();
         });
       }
@@ -2126,7 +2128,7 @@
         loadProfiles(true).then(async () => {
           populateProfileSelect(document.getElementById('batchProfile'));
           await refreshVoiceBindMapForHints();
-          _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
+          window._scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
         });
       }
       if (tab === 'history') {
@@ -2219,6 +2221,140 @@
   }
   window.populateProfileSelect = populateProfileSelect;
 
+  function refreshScriptProfileSelects() {
+    if (!Array.isArray(window._scriptRows)) return;
+    window._scriptRows.forEach(function (row) {
+      var sel = document.getElementById(`scriptProfile_${row.id}`);
+      if (sel) {
+        populateProfileSelect(sel, row.profileId || '');
+        row.profileId = sel.value || '';
+        updateScriptLineVoiceHint(row.id);
+      }
+    });
+    updateBatchScriptHints();
+  }
+
+  function updateArchiveProfileButtonState() {
+    var btn = document.getElementById('archiveProfileBtn');
+    var profileSel = document.getElementById('bindingProfileSelect');
+    if (!btn || !profileSel) return;
+    if (btn.dataset.loading === 'true') return;
+    btn.disabled = !profileSel.value;
+  }
+
+  // ============================================================
+  // P16-PROVIDER-BINDING-UI-B2: Workspace profile binding helpers
+  // ============================================================
+
+  function getWorkspaceProfileBindingState(provider, profileId) {
+    if (!provider) return { status: 'no-provider', binding: null };
+
+    if (!profileId) return { status: 'no-profile', binding: null };
+
+    if (!window._voiceBindMap) {
+      return { status: 'unbound', binding: null };
+    }
+
+    for (var voiceId in window._voiceBindMap) {
+      var bindings = window._voiceBindMap[voiceId] || [];
+      for (var i = 0; i < bindings.length; i += 1) {
+        var b = bindings[i];
+        if (
+          b &&
+          b.profile_id === profileId &&
+          b.provider === provider &&
+          b.status === 'available'
+        ) {
+          return { status: 'available', binding: b };
+        }
+      }
+    }
+
+    return { status: 'unbound', binding: null };
+  }
+
+  function refreshWorkspaceProfileAvailability() {
+    if (!profileSelect) return;
+
+    var provider = providerSelect?.value || '';
+    var currentValue = profileSelect.value;
+
+    profileSelect.innerHTML = '';
+
+    if (!_cachedProfiles || _cachedProfiles.length === 0) {
+      profileSelect.innerHTML = '<option value="">无可用人设</option>';
+      return;
+    }
+
+    _cachedProfiles.forEach(function (p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+
+      var state = getWorkspaceProfileBindingState(provider, p.id);
+
+      if (!provider) {
+        opt.textContent = p.name;
+        opt.dataset.bindingState = 'no-provider';
+      } else if (state.status === 'available') {
+        opt.textContent = p.name;
+        opt.dataset.bindingState = 'available';
+      } else {
+        opt.textContent = p.name + '（未绑定当前 Provider）';
+        opt.dataset.bindingState = 'unbound';
+      }
+
+      if (p.id === currentValue) opt.selected = true;
+      profileSelect.appendChild(opt);
+    });
+
+    // If current selection no longer exists, reset to empty rather than throwing
+    if (currentValue && !Array.from(profileSelect.options).some(function (o) { return o.value === currentValue; })) {
+      profileSelect.value = '';
+    }
+  }
+
+  function setWorkspaceBindingControlsEnabled(enabled, reason) {
+    var paramIds = ['paramSpeed', 'paramVol', 'paramPitch', 'paramEmotion'];
+    paramIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !enabled;
+    });
+
+    var paramRow = document.querySelector('.param-row');
+    if (paramRow) {
+      paramRow.classList.toggle('disabled-by-binding', !enabled);
+      paramRow.title = enabled ? '' : (reason || '当前 Provider 下无可用绑定');
+    }
+
+    if (generateBtn) {
+      generateBtn.disabled = !enabled;
+      generateBtn.title = enabled ? '' : (reason || '当前 Provider 下无可用绑定，无法生成');
+    }
+  }
+
+  function updateWorkspaceBindingUiState(reasonOverride) {
+    var provider = providerSelect?.value || '';
+    var profileId = profileSelect?.value || '';
+    var state = getWorkspaceProfileBindingState(provider, profileId);
+
+    if (!provider) {
+      setWorkspaceBindingControlsEnabled(false, '请先选择 Provider');
+      return;
+    }
+
+    if (!profileId) {
+      setWorkspaceBindingControlsEnabled(false, '请选择声音人设');
+      return;
+    }
+
+    if (state.status === 'available' || workspaceBindingAvailable === true) {
+      setWorkspaceBindingControlsEnabled(true, '');
+      return;
+    }
+
+    setWorkspaceBindingControlsEnabled(false, reasonOverride || '该人设未绑定当前 Provider，请到「绑定管理」创建绑定。');
+  }
+
   async function populateVoiceSelect(selectEl, provider, selectedVoiceId = '') {
     selectEl.innerHTML = '<option value="">加载音色中…</option>';
     try {
@@ -2239,13 +2375,56 @@
   // ============================================================
   // Unified bindVoice function (used across multiple call sites)
   // ============================================================
-  async function bindVoiceToProfile(voiceId, provider, profileId, model = 'speech-2.8-hd') {
+  function getDefaultModelForProvider(provider) {
+    if (window.getDefaultTtsModel) {
+      return window.getDefaultTtsModel(provider);
+    }
+    var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
+    if (cap && cap.tts && cap.tts.default_model) return cap.tts.default_model;
+    if (cap && cap.default_model) return cap.default_model;
+    return '';
+  }
+
+  function getDefaultAudioFormatForProvider(provider) {
+    if (window.getDefaultAudioFormat) {
+      return window.getDefaultAudioFormat(provider);
+    }
+    var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
+    if (cap && cap.tts && cap.tts.audio_formats && cap.tts.audio_formats.length > 0) {
+      return cap.tts.audio_formats[0];
+    }
+    return 'wav';
+  }
+
+  function refreshBindingModelSelect(provider) {
+    const modelSel = document.getElementById('newBindingModel');
+    if (!modelSel) return;
+    if (window.refreshModelSelectForProvider) {
+      window.refreshModelSelectForProvider('newBindingModel', provider);
+    } else if (window.getModelOptionsHtml) {
+      modelSel.innerHTML = window.getModelOptionsHtml(provider);
+    }
+  }
+  window.refreshBindingModelSelect = refreshBindingModelSelect;
+  window.addEventListener('provider-capabilities-applied', () => {
+    const providerEl = document.getElementById('newBindingProvider');
+    if (providerEl) {
+      refreshBindingModelSelect(providerEl.value);
+      refreshBindingVoiceSelect(providerEl.value);
+    }
+  });
+
+  async function bindVoiceToProfile(voiceId, provider, profileId, model = null) {
+    const resolvedModel = model || getDefaultModelForProvider(provider);
+    if (!resolvedModel) {
+      throw new Error('当前 Provider 没有可用 TTS 模型，无法创建绑定');
+    }
     const resp = await fetch(`/api/voice/profiles/${profileId}/bindings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         provider: provider,
-        model: model,
+        model: resolvedModel,
         provider_voice_id: voiceId,
         params: {},
         priority: 1,
@@ -2322,7 +2501,8 @@
   async function updateCostHint() {
     const costHintEl = document.getElementById('costHint');
     if (!costHintEl) return;
-    if (providerSelect.value !== 'minimax') {
+    var selectedProvider = providerSelect.value;
+    if (!isRealCostProvider(selectedProvider)) {
       costHintEl.style.display = 'none';
       return;
     }
@@ -2331,11 +2511,12 @@
       costHintEl.style.display = 'none';
       return;
     }
+    var selectedModel = getDefaultModelForProvider(selectedProvider);
     try {
       const resp = await fetch('/api/voice/cost/estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'minimax', model: 'speech-2.8-hd', text, operation: 't2a' })
+        body: JSON.stringify({ provider: selectedProvider, model: selectedModel, text, operation: 't2a' })
       });
       if (!resp.ok) { costHintEl.style.display = 'none'; return; }
       const data = await resp.json();
@@ -2377,15 +2558,21 @@
   updateGenerationModeHint(document.querySelector('input[name="genMode"]:checked')?.value || 'single');
 
   // Load profiles into cache and populate all profile selects
-  function populateAllProfiles() {
+  async function populateAllProfiles() {
     // Remove any stale retry button on success
     document.getElementById('profileRetryBtn')?.remove();
     populateProfileSelect(profileSelect);
+    await refreshWorkspaceBindingMap();
+    refreshWorkspaceProfileAvailability();
+    await checkBindingStatus();
+    updateWorkspaceVoiceBindingHint();
     populateProfileSelect(document.getElementById('bindingProfileSelect'));
     populateProfileSelect(document.getElementById('newBindingProfile'));
     populateProfileSelect(document.getElementById('batchProfile'));
-    updateWorkspaceVoiceBindingHint();
-    checkBindingStatus();
+    refreshScriptProfileSelects();
+    updateBatchVoiceBindingHint?.();
+    updateWorkspaceBindingUiState();
+    updateArchiveProfileButtonState();
   }
   function showProfileRetry() {
     // Remove any existing retry button before adding a new one
@@ -2406,8 +2593,9 @@
   loadProfiles().then(populateAllProfiles).catch(showProfileRetry);
 
   // T2A Tab: also load binding status when provider changes
-  providerSelect.addEventListener('change', () => { checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
-  profileSelect.addEventListener('change', () => { checkBindingStatus(); updateWorkspaceVoiceBindingHint(); });
+  providerSelect.addEventListener('change', async () => { await refreshWorkspaceBindingMap(); refreshWorkspaceProfileAvailability(); await checkBindingStatus(); updateCostHint(); updateWorkspaceVoiceBindingHint(); });
+  profileSelect.addEventListener('change', async () => { await checkBindingStatus(); updateWorkspaceBindingUiState(); updateWorkspaceVoiceBindingHint(); });
+  document.getElementById('bindingProfileSelect')?.addEventListener('change', updateArchiveProfileButtonState);
 
   // Batch longtext tab: update voice binding hint on profile/provider change
   document.getElementById('batchProfile')?.addEventListener('change', updateBatchVoiceBindingHint);
@@ -2415,7 +2603,7 @@
 
   // B3-script: update script line voice hint on provider change
   document.getElementById('batchScriptProvider')?.addEventListener('change', () => {
-    _scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
+    window._scriptRows.forEach(r => updateScriptLineVoiceHint(r.id));
   });
 
   // P8-5: localStorage recent job helpers
@@ -2471,9 +2659,20 @@
       audio_format: audioFormat,
       voice_id: null,
       voice_name: null,
+      binding_id: null,
+      provider_voice_id: null,
     };
 
-    if (profileId && provider && window._voiceBindMap) {
+    // P16-PROVIDER-MODEL-BINDING-B1: use getCurrentWorkspaceBindingInfo first
+    var bindingInfo = getCurrentWorkspaceBindingInfo();
+    ctx.binding_id = bindingInfo.binding_id || null;
+    ctx.model = bindingInfo.model || ctx.model || null;
+    ctx.voice_id = bindingInfo.voice_id || ctx.voice_id || null;
+    ctx.provider_voice_id = bindingInfo.provider_voice_id || ctx.provider_voice_id || ctx.voice_id || null;
+    ctx.voice_name = bindingInfo.voice_name || ctx.voice_name || ctx.voice_id || null;
+
+    // Fallback: scan _voiceBindMap if currentWorkspaceBindingInfo is null
+    if (!ctx.voice_id && profileId && provider && window._voiceBindMap) {
       for (var vid in window._voiceBindMap) {
         var bindings = window._voiceBindMap[vid] || [];
         for (var i = 0; i < bindings.length; i++) {
@@ -2490,6 +2689,107 @@
     }
 
     return ctx;
+  }
+
+  // Build full workspace restore context (P16-WORKSPACE-RESTORE-B1)
+  function buildWorkspaceRestoreContext(data, source, extra) {
+    extra = extra || {};
+    var text = '';
+    try { text = document.getElementById('textInput').value || ''; } catch (e) { text = ''; }
+    var profileId = '';
+    var profileName = '';
+    try {
+      profileId = document.getElementById('profileSelect').value || '';
+      profileName = getSelectedProfileName() || '';
+    } catch (e) { profileId = ''; profileName = ''; }
+    var provider = '';
+    try { provider = document.getElementById('providerSelect').value || ''; } catch (e) { provider = ''; }
+    var genMode = 'single';
+    try {
+      var checked = document.querySelector('input[name="genMode"]:checked');
+      if (checked) genMode = checked.value || 'single';
+    } catch (e) { genMode = 'single'; }
+    var variantCount = null;
+    if (genMode === 'variants') {
+      try {
+        variantCount = parseInt(variantCountInput && variantCountInput.value, 10);
+        if (isNaN(variantCount)) variantCount = 3;
+        variantCount = Math.min(5, Math.max(1, variantCount));
+      } catch (e) { variantCount = 3; }
+    }
+    var audioFormat = 'mp3';
+    try { audioFormat = document.getElementById('audioFormat').value || 'mp3'; } catch (e) {}
+    var outputFormat = 'hex';
+    try { outputFormat = document.getElementById('outputFormat').value || 'hex'; } catch (e) {}
+    var needSubtitle = false;
+    try { needSubtitle = !!(document.getElementById('needSubtitle') && document.getElementById('needSubtitle').checked); } catch (e) {}
+    var speed = null;
+    try {
+      var sp = document.getElementById('paramSpeed').value;
+      if (sp) {
+        speed = parseFloat(sp);
+        if (isNaN(speed)) speed = null;
+      }
+    } catch (e) {}
+    var vol = null;
+    try {
+      var vl = document.getElementById('paramVol').value;
+      if (vl) {
+        vol = parseFloat(vl);
+        if (isNaN(vol)) vol = null;
+      }
+    } catch (e) {}
+    var pitch = null;
+    try {
+      var pt = document.getElementById('paramPitch').value;
+      if (pt) {
+        pitch = parseInt(pt, 10);
+        if (isNaN(pitch)) pitch = null;
+      }
+    } catch (e) {}
+    var emotion = '';
+    try { emotion = document.getElementById('paramEmotion').value || ''; } catch (e) {}
+
+    // Determine context_id: job_id > asset_id > generated
+    var contextId = null;
+    if (extra.job_id) {
+      contextId = String(extra.job_id);
+    } else if (extra.asset_id) {
+      contextId = String(extra.asset_id);
+    }
+
+    // P16-PROVIDER-MODEL-BINDING-B1: get binding info from current workspace state
+    var bindingInfo = getCurrentWorkspaceBindingInfo();
+
+    return {
+      context_id: contextId,
+      type: 'workspace',
+      source: source,
+      created_at: new Date().toISOString(),
+      full_text: text,
+      provider: provider || null,
+      profile_id: profileId || null,
+      profile_name: profileName || null,
+      model: bindingInfo.model || extra.model || null,
+      binding_id: bindingInfo.binding_id || extra.binding_id || null,
+      provider_voice_id: bindingInfo.provider_voice_id || extra.provider_voice_id || null,
+      voice_id: bindingInfo.voice_id || extra.voice_id || null,
+      voice_name: bindingInfo.voice_name || extra.voice_name || null,
+      gen_mode: genMode,
+      variant_count: variantCount,
+      audio_format: audioFormat,
+      output_format: outputFormat,
+      need_subtitle: needSubtitle,
+      params: {
+        speed: speed,
+        vol: vol,
+        pitch: pitch,
+        emotion: emotion,
+      },
+      job_id: extra.job_id || null,
+      asset_id: extra.asset_id || null,
+      download_url: extra.download_url || null,
+    };
   }
 
   function safePushWorkspaceSample(source, data, extra) {
@@ -2527,12 +2827,15 @@
         profile_name: ctx.profile_name || null,
         provider: data?.provider || ctx.provider || null,
         model: extra.model || data?.model || ctx.model || null,
-        voice_id: ctx.voice_id || null,
+        voice_id: ctx.voice_id || ctx.provider_voice_id || null,
         voice_name: ctx.voice_name || null,
+        binding_id: extra.binding_id || ctx.binding_id || null,
+        provider_voice_id: ctx.provider_voice_id || ctx.voice_id || null,
         duration_ms: durationMs,
         audio_format: audioFormat,
         status: 'completed',
         tags: [source],
+        context_id: extra.context_id || null,  // P16-WORKSPACE-RESTORE-B1
       };
 
       return window.SampleStore.pushSample(sample);
@@ -2840,11 +3143,27 @@
     batch_script: '剧本批量生成会调用云端 TTS，可能产生较高费用，是否继续？',
     async_render: '异步生成会调用云端 TTS，可能产生费用，是否继续？',
     stream_render: '流式生成会调用云端 TTS，可能产生费用，是否继续？',
+    t2a: '同步生成会调用云端 TTS，可能产生费用，是否继续？',
   };
+
+  // Standalone confirm helper — returns true if confirmed, false if cancelled.
+  // Does NOT mutate any UI state.
+  function confirmHighRiskOperation(operation) {
+    var msg = _OPERATION_MESSAGES[operation];
+    if (!msg) return true; // no confirm defined — proceed
+    return confirm(msg);
+  }
+
+  window.isRealCostProvider = isRealCostProvider;
+  function isRealCostProvider(provider) {
+    var cap = window._providerCapabilitiesByName && window._providerCapabilitiesByName[provider];
+    if (cap && cap.metadata && cap.metadata.real_cost) return true;
+    return false;
+  }
 
   async function guardedJsonFetch(url, payload, options) {
     const { provider, operation, highRisk } = options;
-    if (provider === 'minimax' && highRisk && _OPERATION_MESSAGES[operation]) {
+    if (isRealCostProvider(provider) && highRisk && _OPERATION_MESSAGES[operation]) {
       if (!confirm(_OPERATION_MESSAGES[operation])) {
         throw new Error('USER_CANCELLED');
       }
@@ -3139,6 +3458,10 @@
   }
 
   let pollTimer = null;
+  // P16-PROVIDER-MOCK-FIX1: track workspace binding availability
+  let workspaceBindingAvailable = false;
+  // P16-PROVIDER-MODEL-BINDING-B1: track current workspace binding info
+  let currentWorkspaceBindingInfo = null;
 
 // Async polling state (one active polling at a time)
 const asyncPollingState = {
@@ -3217,6 +3540,32 @@ function handleStopAsyncPolling() {
     const pitch = document.getElementById('paramPitch').value;
     const emotion = document.getElementById('paramEmotion').value;
 
+    // Determine operation type BEFORE confirm — needed for confirm check
+    let operation;
+    if (isStream) { operation = 'stream_render'; }
+    else if (isAsync) { operation = 'async_render'; }
+    else if (isVariant) { operation = 'voice_variants'; }
+    else { operation = 't2a'; }
+
+    // P16-PROVIDER-MOCK-FIX1: block if no valid binding BEFORE any side effects
+    if (!isWorkspaceBindingAvailable()) {
+      resultsArea.innerHTML = `
+        <div class="card" style="border-left:4px solid #dd6b20">
+          <div class="result-label" style="color:#dd6b20">无法生成</div>
+          <p style="font-size:0.9rem;color:#4a5568;margin-top:8px">
+            当前声音人设在所选 Provider 下没有可用绑定，请先到「绑定管理」创建绑定。
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    // Confirm BEFORE any side effects (P16-CANCEL-FIX1)
+    if (isRealCostProvider(provider) && !confirmHighRiskOperation(operation)) {
+      return; // cancel: no UI mutation, no request
+    }
+
+    // Only on confirm: stop old polling, set loading, clear results
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     stopAsyncPolling();
     setLoading(true);
@@ -3249,15 +3598,19 @@ function handleStopAsyncPolling() {
         ...(pitch ? { pitch: parseInt(pitch) } : {}),
         ...(emotion ? { emotion } : {}),
         ...(isVariant ? { variant_count: Math.min(5, Math.max(1, count)), scene: '试音台' } : {}),
-        confirm_cost: false,
+        confirm_cost: true,
       };
 
-      let endpoint, operation;
-      if (isAsync) { endpoint = '/api/voice/render/async'; operation = 'async_render'; }
-      else if (isVariant) { endpoint = '/api/voice/variants/render'; operation = 'voice_variants'; }
-      else { endpoint = '/api/voice/render'; operation = 't2a'; }
+      let endpoint;
+      if (isAsync) { endpoint = '/api/voice/render/async'; }
+      else if (isVariant) { endpoint = '/api/voice/variants/render'; }
+      else { endpoint = '/api/voice/render'; }
 
-      const resp = await guardedJsonFetch(endpoint, payload, { provider, operation, highRisk: true });
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
       if (!resp.ok) {
         const err = await parseApiError(resp);
@@ -3281,9 +3634,7 @@ function handleStopAsyncPolling() {
         loadHistory(0);
       }
     } catch (e) {
-      if (e.message === 'USER_CANCELLED') {
-        resultsArea.innerHTML = '';
-      } else if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
+      if (e && e.code === 'RESOURCE_LIMIT_EXCEEDED') {
         resultsArea.innerHTML = renderApiError(e);
         resultsArea.classList.add('visible');
       } else {
@@ -3297,9 +3648,6 @@ function handleStopAsyncPolling() {
   }
 
   function startStreamGenerate(text, profileId, provider, subtitle, audioFormat, voiceParams) {
-    if (provider === 'minimax' && !confirm('流式生成会调用云端 TTS，可能产生费用，是否确认继续？')) {
-      return;
-    }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${proto}//${location.host}/api/voice/ws/render`;
 
@@ -3329,7 +3677,7 @@ function handleStopAsyncPolling() {
             provider: provider,
             audio_format: audioFormat,
             need_subtitle: subtitle,
-            confirm_cost: provider === 'minimax',
+            confirm_cost: isRealCostProvider(provider),
             ...(speed ? { speed: parseFloat(speed) } : {}),
             ...(vol ? { vol: parseFloat(vol) } : {}),
             ...(pitch ? { pitch: parseInt(pitch) } : {}),
@@ -3449,10 +3797,25 @@ function handleStopAsyncPolling() {
       </div>`;
     resultsArea.classList.add('visible');
     if (asset && asset.id) {
+      var streamAssetId = asset.id;
+      var streamJobId = completed.job_id || null;
+      var streamContextId = streamJobId || streamAssetId;
       safePushWorkspaceSample('workspace_stream', completed, {
-        asset_id: asset.id,
+        context_id: streamContextId,
+        asset_id: streamAssetId,
         duration_ms: asset.duration_ms || completed.total_duration_ms || null,
       });
+      // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+      try {
+        if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+          var wsc = buildWorkspaceRestoreContext(completed, 'workspace_stream', {
+            job_id: streamJobId,
+            asset_id: streamAssetId,
+          });
+          wsc.context_id = streamContextId;
+          window.ContextStore.pushContext(wsc);
+        }
+      } catch (e) { /* fail-safe */ }
     }
   }
 
@@ -3656,11 +4019,25 @@ function handleStopAsyncPolling() {
       html += `
       </div>`;
       if (audio && audio.id) {
+        var asyncJobId = data.job_id || null;
+        var asyncContextId = asyncJobId || audio.id;
         safePushWorkspaceSample('workspace_async', data, {
+          context_id: asyncContextId,
           asset_id: audio.id,
           duration_ms: audio.duration_ms || null,
-          job_id: data.job_id || null,
+          job_id: asyncJobId,
         });
+        // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+        try {
+          if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+            var wsc = buildWorkspaceRestoreContext(data, 'workspace_async', {
+              job_id: asyncJobId,
+              asset_id: audio.id,
+            });
+            wsc.context_id = asyncContextId;
+            window.ContextStore.pushContext(wsc);
+          }
+        } catch (e) { /* fail-safe */ }
       }
     }
 
@@ -3709,12 +4086,27 @@ function handleStopAsyncPolling() {
       resultsArea.classList.add('visible');
       data.variants.forEach(function(v) {
         if (!v.audio_asset_id) return;
+        var variantJobId = extractJobId(data) || null;
+        var variantContextId = variantJobId || v.audio_asset_id;
         safePushWorkspaceSample('workspace_variant', v, {
+          context_id: variantContextId,
           asset_id: v.audio_asset_id,
           duration_ms: v.duration_ms || null,
-          job_id: extractJobId(data),
+          job_id: variantJobId,
           model: v.model || data.model || null,
         });
+        // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+        try {
+          if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+            var wsc = buildWorkspaceRestoreContext(v, 'workspace_variant', {
+              job_id: variantJobId,
+              asset_id: v.audio_asset_id,
+              model: v.model || data.model || null,
+            });
+            wsc.context_id = variantContextId;
+            window.ContextStore.pushContext(wsc);
+          }
+        } catch (e) { /* fail-safe */ }
       });
     } else {
       const job = data;
@@ -3754,10 +4146,25 @@ function handleStopAsyncPolling() {
         html += `
       </div>`;
         if (audio && audio.id) {
+          var syncAssetId = audio.id;
+          var syncJobId = data.job_id || null;
+          var syncContextId = syncJobId || syncAssetId;
           safePushWorkspaceSample('workspace_sync', data, {
-            asset_id: audio.id,
+            context_id: syncContextId,
+            asset_id: syncAssetId,
             duration_ms: audio.duration_ms || null,
           });
+          // P16-WORKSPACE-RESTORE-B1: also save workspace context to ContextStore
+          try {
+            if (window.ContextStore && typeof window.ContextStore.pushContext === 'function') {
+              var wsc = buildWorkspaceRestoreContext(data, 'workspace_sync', {
+                job_id: syncJobId,
+                asset_id: syncAssetId,
+              });
+              wsc.context_id = syncContextId;
+              window.ContextStore.pushContext(wsc);
+            }
+          } catch (e) { /* fail-safe */ }
         }
       } else {
         // queued/pending/running/processing: no audio/download/subtitle sections
@@ -3862,14 +4269,100 @@ function handleStopAsyncPolling() {
   // ============================================================
   // TTS Tab: binding status check
   // ============================================================
+
+  // P16-PROVIDER-MOCK-FIX1: check if workspace has a valid binding before generation
+  function isWorkspaceBindingAvailable() {
+    return workspaceBindingAvailable === true;
+  }
+
+  // P16-PROVIDER-MODEL-BINDING-B1: normalize workspace binding info
+  function normalizeWorkspaceBindingInfo(binding, provider, profileId) {
+    if (!binding) {
+      return {
+        binding_id: null,
+        provider: provider || null,
+        model: null,
+        provider_voice_id: null,
+        voice_id: null,
+        voice_name: null,
+        profile_id: profileId || null,
+        profile_name: getSelectedProfileName(),
+      };
+    }
+
+    var voiceId = binding.provider_voice_id || binding.voice_id || null;
+    var voiceName =
+      binding.provider_voice_name ||
+      binding.voice_name ||
+      binding.name ||
+      null;
+
+    return {
+      binding_id: binding.id || binding.binding_id || null,
+      provider: provider || binding.provider || null,
+      model: binding.model || null,
+      provider_voice_id: voiceId,
+      voice_id: voiceId,
+      voice_name: voiceName,
+      profile_id: profileId || binding.profile_id || null,
+      profile_name: getSelectedProfileName(),
+    };
+  }
+
+  // P16-PROVIDER-MODEL-BINDING-B1: get current workspace binding info
+  function getCurrentWorkspaceBindingInfo() {
+    var provider = null;
+    var profileId = null;
+    try { provider = providerSelect?.value || null; } catch (e) {}
+    try { profileId = profileSelect?.value || null; } catch (e) {}
+
+    if (
+      currentWorkspaceBindingInfo &&
+      currentWorkspaceBindingInfo.provider === provider &&
+      currentWorkspaceBindingInfo.profile_id === profileId
+    ) {
+      return currentWorkspaceBindingInfo;
+    }
+
+    // Fallback: scan _voiceBindMap, which is keyed by voice_id.
+    if (profileId && provider && window._voiceBindMap) {
+      for (var voiceId in window._voiceBindMap) {
+        var bindings = window._voiceBindMap[voiceId] || [];
+        for (var i = 0; i < bindings.length; i += 1) {
+          var b = bindings[i];
+          if (
+            b &&
+            b.profile_id === profileId &&
+            b.provider === provider &&
+            b.status === 'available'
+          ) {
+            return normalizeWorkspaceBindingInfo(
+              Object.assign({}, b, {
+                provider_voice_id: b.provider_voice_id || voiceId,
+                voice_id: b.voice_id || voiceId,
+              }),
+              provider,
+              profileId
+            );
+          }
+        }
+      }
+    }
+
+    return normalizeWorkspaceBindingInfo(null, provider, profileId);
+  }
+
   async function checkBindingStatus() {
     const profileId = profileSelect.value;
     const provider = providerSelect.value;
     const statusEl = document.getElementById('bindingStatus');
     if (!statusEl) return;
     if (!profileId || !provider) {
+      workspaceBindingAvailable = false;
+      currentWorkspaceBindingInfo = null;
       statusEl.className = 'binding-status-inline';
       statusEl.textContent = '';
+      updateWorkspaceBindingUiState();
       return;
     }
     try {
@@ -3877,9 +4370,14 @@ function handleStopAsyncPolling() {
       const bindings = await resp.json();
       const matched = (bindings || []).filter(b => b.provider === provider && b.status === 'available');
       if (matched.length > 0) {
+        workspaceBindingAvailable = true;
         const b = matched[0];
+        currentWorkspaceBindingInfo = normalizeWorkspaceBindingInfo(b, provider, profileId);
+        const bindingInfo = currentWorkspaceBindingInfo;
+        const voiceLabel = bindingInfo.voice_name || bindingInfo.provider_voice_id || '未知音色';
+        const modelLabel = bindingInfo.model || '未知模型';
         statusEl.className = 'binding-status-inline bound';
-        statusEl.textContent = `✓ 已绑定: ${b.provider_voice_id} (${b.model})`;
+        statusEl.textContent = `✓ 已绑定: ${voiceLabel} · ${provider}/${modelLabel}`;
         // Sync binding into _voiceBindMap so product_hints.js can read it
         if (!window._voiceBindMap) window._voiceBindMap = {};
         // Remove stale binding for this profile+provider
@@ -3888,11 +4386,25 @@ function handleStopAsyncPolling() {
             bb => !(bb.profile_id === profileId && bb.provider === provider)
           );
         }
-        // Add current available binding
+        // Add current available binding with full info (P16-PROVIDER-MODEL-BINDING-B1)
         const voiceId = b.provider_voice_id;
         if (!window._voiceBindMap[voiceId]) window._voiceBindMap[voiceId] = [];
-        window._voiceBindMap[voiceId].push({profile_id: profileId, provider: provider, model: b.model, status: 'available'});
+        window._voiceBindMap[voiceId].push({
+          id: b.id || null,
+          binding_id: b.id || null,
+          profile_id: profileId,
+          provider: provider,
+          model: b.model || null,
+          status: 'available',
+          provider_voice_id: voiceId,
+          voice_id: voiceId,
+          provider_voice_name: b.provider_voice_name || null,
+          voice_name: b.provider_voice_name || b.voice_name || null,
+        });
+        updateWorkspaceBindingUiState();
       } else {
+        workspaceBindingAvailable = false;
+        currentWorkspaceBindingInfo = null;
         statusEl.className = 'binding-status-inline unbound';
         statusEl.textContent = `✕ ${provider} 下无可用绑定，请到「绑定管理」创建`;
         // Remove stale binding for this profile+provider from _voiceBindMap
@@ -3903,11 +4415,15 @@ function handleStopAsyncPolling() {
             );
           }
         }
+        updateWorkspaceBindingUiState(`该人设未绑定 ${provider}，请到「绑定管理」创建绑定。`);
       }
       window.updateWorkspaceVoiceBindingHint?.();
     } catch (e) {
+      workspaceBindingAvailable = false;
+      currentWorkspaceBindingInfo = null;
       statusEl.className = 'binding-status-inline error';
       statusEl.textContent = '绑定状态检查失败';
+      updateWorkspaceBindingUiState('绑定状态检查失败，请重试或切换 Provider。');
     }
   }
 
@@ -3922,12 +4438,16 @@ function handleStopAsyncPolling() {
 
   document.getElementById('newBindingProvider').addEventListener('change', (e) => {
     delete _cachedVoices[e.target.value];
+    refreshBindingModelSelect(e.target.value);
     refreshBindingVoiceSelect(e.target.value);
   });
 
   // Initialize voice select for binding creation with current provider
   const initBindingProvider = document.getElementById('newBindingProvider').value;
-  if (initBindingProvider) refreshBindingVoiceSelect(initBindingProvider);
+  if (initBindingProvider) {
+    refreshBindingModelSelect(initBindingProvider);
+    refreshBindingVoiceSelect(initBindingProvider);
+  }
 
   // ============================================================
   // Clone Tab: default values
@@ -3936,7 +4456,8 @@ function handleStopAsyncPolling() {
   const clonePreviewTextInput = document.getElementById('clonePreviewText');
   // MiniMax 官方要求：当 preview_text 有值时，model 必填。
   if (cloneModelInput && !cloneModelInput.value) {
-    cloneModelInput.value = 'speech-2.8-hd';
+    const cloneProviderEl = document.getElementById('cloneProvider');
+    cloneModelInput.value = getDefaultModelForProvider(cloneProviderEl ? cloneProviderEl.value : 'minimax');
   }
   if (clonePreviewTextInput && !clonePreviewTextInput.value) {
     clonePreviewTextInput.value = '你好，这是一段声音克隆的试听文本，用于验证克隆效果。';
@@ -3996,7 +4517,11 @@ function handleStopAsyncPolling() {
     }
   }
 
-  function renderAuditionWorkstation() {
+  function renderAuditionWorkstation(provider) {
+    const defModel = (window.getDefaultTtsModel ? window.getDefaultTtsModel(provider) : '') || '';
+    const modelOptions = window.getModelOptionsHtml
+      ? (window.getModelOptionsHtml(provider) || (defModel ? '<option value="' + defModel + '" selected>' + defModel + '</option>' : ''))
+      : (defModel ? '<option value="' + defModel + '" selected>' + defModel + '</option>' : '');
     return `<div id="voiceAuditionPanel" class="card" style="margin-bottom:12px">
       <div class="card-title">🎧 试听工作台</div>
 
@@ -4025,10 +4550,7 @@ function handleStopAsyncPolling() {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
         <div style="font-size:0.82rem">模型：</div>
         <select id="auditionModel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px">
-          <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-          <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-          <option value="speech-2.6-hd">speech-2.6-hd</option>
-          <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          ${modelOptions}
         </select>
         <button class="btn-primary" id="auditionGenBtn" style="margin:0;white-space:nowrap" title="调用当前 Provider 生成试听音频">▶ 生成试听</button>
       </div>
@@ -4065,7 +4587,7 @@ function handleStopAsyncPolling() {
     if (hint) hint.style.display = 'none';
     el.textContent = `${voiceId}${voiceName ? ` (${voiceName})` : ''}`;
 
-    const provider = document.getElementById('voiceProvider')?.value || 'minimax';
+    const provider = document.getElementById('voiceProvider')?.value || 'mock';
     const bindings = (window._voiceBindMap && window._voiceBindMap[voiceId] || [])
       .filter(b => !provider || b.provider === provider);
 
@@ -4095,6 +4617,15 @@ function handleStopAsyncPolling() {
           const provider = audBtn.dataset.provider;
           window._auditionSelectedVoiceId = voiceId;
           window._auditionSelectedVoiceName = voiceName;
+          // Sync voiceProvider select to match the clicked voice's provider
+          var vpSel = document.getElementById('voiceProvider');
+          if (vpSel && provider && vpSel.value !== provider) {
+            vpSel.value = provider;
+            if (window.applyAllProviderCapabilities) window.applyAllProviderCapabilities();
+          }
+          if (window.refreshModelSelectForProvider) {
+            window.refreshModelSelectForProvider('auditionModel', provider);
+          }
           updateAuditionSelected(voiceId, voiceName);
           // Scroll to workstation
           const panel = document.getElementById('voiceAuditionPanel');
@@ -4154,6 +4685,10 @@ function handleStopAsyncPolling() {
     } // end of !_auditionDelegated guard
 
     // These run on every call (after innerHTML replacement recreates elements)
+    const provider = document.getElementById('voiceProvider')?.value || 'mock';
+    if (window.refreshModelSelectForProvider) {
+      window.refreshModelSelectForProvider('auditionModel', provider);
+    }
     renderAuditionRecords();
     // Restore selected voice display if any
     if (window._auditionSelectedVoiceId) {
@@ -4185,17 +4720,19 @@ function handleStopAsyncPolling() {
       return;
     }
 
-    const model = document.getElementById('auditionModel')?.value || 'speech-2.8-hd';
+    const model = document.getElementById('auditionModel')?.value || getDefaultModelForProvider(provider);
+    const audioFormat = getDefaultAudioFormatForProvider(provider);
 
     resultDiv.innerHTML = '<span class="spinner"></span> 生成中…';
     try {
       const resp = await guardedJsonFetch(
         `/api/voice/provider-voices/preview?provider=${encodeURIComponent(provider)}`,
         {
+          provider,
           provider_voice_id: voiceId,
           model,
           text,
-          audio_format: 'mp3',
+          audio_format: audioFormat,
           output_format: 'hex',
           need_subtitle: false,
           confirm_cost: false,
@@ -4281,6 +4818,8 @@ function handleStopAsyncPolling() {
     resultsEl.innerHTML = '';
 
     try {
+      if (window.ensureProviderCapability) await window.ensureProviderCapability(provider);
+
       const url = `/api/voice/provider-voices?provider=${encodeURIComponent(provider)}&voice_type=${encodeURIComponent(voiceType)}&refresh=true`;
       const resp = await fetch(url);
       const data = await resp.json();
@@ -4425,8 +4964,9 @@ function handleStopAsyncPolling() {
         </div>`;
     }
 
-    resultsEl.innerHTML = renderAuditionWorkstation() + tableHtml + paginationHtml;
+    resultsEl.innerHTML = renderAuditionWorkstation(provider) + tableHtml + paginationHtml;
     setupAuditionWorkstation();
+    if (window.applyAllProviderCapabilities) window.applyAllProviderCapabilities();
   }
 
   function handlePageSizeChange(newSize) {
@@ -4538,10 +5078,7 @@ function handleStopAsyncPolling() {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="quickProfileWrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
         <select id="quickBindModelSel" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;min-width:140px">
-          <option value="speech-2.8-hd" selected>speech-2.8-hd</option>
-          <option value="speech-2.8-turbo">speech-2.8-turbo</option>
-          <option value="speech-2.6-hd">speech-2.6-hd</option>
-          <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+          ${window.getModelOptionsHtml ? window.getModelOptionsHtml(provider) : `<option value="${esc(getDefaultModelForProvider(provider))}" selected>${esc(getDefaultModelForProvider(provider))}</option>`}
         </select>
         <button class="btn-primary" id="quickBindConfirm" style="margin:0">确认绑定</button>
         <button class="btn-sm" id="quickBindCancel" style="margin:0">取消</button>
@@ -4554,6 +5091,9 @@ function handleStopAsyncPolling() {
     document.getElementById('voiceListResults').appendChild(panel);
     populateProfileSelect(profileSelect);
     renderInlineCreateProfile(quickProfileWrap, profileSelect, 'quick');
+    if (window.refreshModelSelectForProvider) {
+      window.refreshModelSelectForProvider('quickBindModelSel', provider);
+    }
 
     document.getElementById('quickBindCancel').onclick = () => panel.remove();
     document.getElementById('quickBindConfirm').onclick = async () => {
@@ -4563,6 +5103,10 @@ function handleStopAsyncPolling() {
       const confirmBtn = document.getElementById('quickBindConfirm');
       if (!profileId) {
         msgEl.innerHTML = `<span style="color:#c53030;font-size:0.78rem">请先选择一个声音人设</span>`;
+        return;
+      }
+      if (!model) {
+        msgEl.innerHTML = '<span style="color:#c53030;font-size:0.78rem">请选择当前 Provider 支持的模型</span>';
         return;
       }
       confirmBtn.disabled = true;
@@ -4621,6 +5165,26 @@ function handleStopAsyncPolling() {
     } catch (e) {
       return window._voiceBindMap || {};
     }
+  }
+
+  // Workspace-specific binding map refresh with concurrency protection
+  let workspaceBindingMapLoading = null;
+  async function refreshWorkspaceBindingMap() {
+    if (workspaceBindingMapLoading) return workspaceBindingMapLoading;
+
+    workspaceBindingMapLoading = (async function () {
+      try {
+        const bindMap = await loadAllBindings();
+        window._voiceBindMap = bindMap || {};
+        return window._voiceBindMap;
+      } catch (e) {
+        return window._voiceBindMap || {};
+      } finally {
+        workspaceBindingMapLoading = null;
+      }
+    })();
+
+    return workspaceBindingMapLoading;
   }
 
   async function handleDeleteVoice() {
@@ -4725,6 +5289,67 @@ function handleStopAsyncPolling() {
     }
   }
 
+  function getProfileArchiveConfirmMessage() {
+    return [
+      '确认归档该人设？',
+      '',
+      '归档后：',
+      '1. 该人设不会出现在工作台、长文本、剧本的人设下拉中；',
+      '2. 该人设不能再用于新生成；',
+      '3. 历史生成记录、音频资产和调用统计不会删除；',
+      '4. 已有绑定记录会保留，便于后续追溯。'
+    ].join('\n');
+  }
+
+  async function handleArchiveProfile() {
+    const profileSel = document.getElementById('bindingProfileSelect');
+    const resultDiv = document.getElementById('archiveProfileResult');
+    const listDiv = document.getElementById('bindingListResults');
+    const btn = document.getElementById('archiveProfileBtn');
+    const profileId = profileSel?.value || '';
+
+    if (!profileId) {
+      resultDiv.innerHTML = '<div class="error-msg">请先选择人设</div>';
+      updateArchiveProfileButtonState();
+      return;
+    }
+
+    if (!confirm(getProfileArchiveConfirmMessage())) return;
+
+    const oldText = btn.textContent;
+    btn.dataset.loading = 'true';
+    btn.disabled = true;
+    btn.textContent = '归档中…';
+    resultDiv.innerHTML = '';
+
+    try {
+      const resp = await fetch(`/api/voice/profiles/${encodeURIComponent(profileId)}/archive`, {
+        method: 'PATCH',
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const msg = data?.error?.message || data?.detail || JSON.stringify(data);
+        resultDiv.innerHTML = `<div class="error-msg">归档失败：${esc(msg)}</div>`;
+        return;
+      }
+
+      await loadProfiles(true);
+      await populateAllProfiles();
+
+      if (profileSel && profileSel.value === profileId) {
+        listDiv.innerHTML = '<div style="font-size:0.85rem;color:#718096">该人设已归档，已从默认列表移除。</div>';
+      }
+
+      resultDiv.innerHTML = `<div class="success-msg">归档成功：${esc(data.name || profileId)}</div>`;
+    } catch (e) {
+      resultDiv.innerHTML = `<div class="error-msg">归档失败：${esc(e.message)}</div>`;
+    } finally {
+      btn.dataset.loading = 'false';
+      btn.textContent = oldText;
+      updateArchiveProfileButtonState();
+    }
+  }
+
   async function handleCreateBinding() {
     const profileId = document.getElementById('newBindingProfile').value;
     const provider = document.getElementById('newBindingProvider').value;
@@ -4733,10 +5358,13 @@ function handleStopAsyncPolling() {
     const priority = parseInt(document.getElementById('newBindingPriority').value) || 1;
     const paramsStr = document.getElementById('newBindingParams').value.trim();
     const resultDiv = document.getElementById('createBindingResult');
+    const missingModelMessage = '<div class="error-msg">请选择当前 Provider 支持的模型</div>';
 
     if (!profileId) { resultDiv.innerHTML = '<div class="error-msg">请选择人设</div>'; return; }
     if (!provider) { resultDiv.innerHTML = '<div class="error-msg">请选择 Provider</div>'; return; }
     if (!voiceId) { resultDiv.innerHTML = '<div class="error-msg">请选择要绑定的音色</div>'; return; }
+
+    if (!model) { resultDiv.innerHTML = missingModelMessage; return; }
 
     let params = {};
     if (paramsStr) {
@@ -4806,10 +5434,7 @@ function handleStopAsyncPolling() {
 
       // 刷新全局人设缓存并更新所有人设下拉
       await loadProfiles(true);
-      populateProfileSelect(document.getElementById('bindingProfileSelect'));
-      populateProfileSelect(document.getElementById('newBindingProfile'));
-      populateProfileSelect(profileSelect);
-      populateProfileSelect(document.getElementById('batchProfile'));
+      await populateAllProfiles();
 
       // 清空输入
       document.getElementById('newProfileId').value = '';
@@ -4855,20 +5480,20 @@ function handleStopAsyncPolling() {
 
   // Script lines management
   let _scriptLineCount = 0;
-  const _scriptRows = [];  // stable state: {id, role, text, profileId}
+  window._scriptRows = Array.isArray(window._scriptRows) ? window._scriptRows : [];
   var MAX_SCRIPT_LINES = 200;
 
   function updateScriptLineLimitState() {
     const btn = document.getElementById('scriptAddLineBtn');
     if (btn) {
-      const atLimit = _scriptRows.length >= MAX_SCRIPT_LINES;
+      const atLimit = window._scriptRows.length >= MAX_SCRIPT_LINES;
       btn.disabled = atLimit;
       btn.title = atLimit ? '最多支持 200 行台词' : '添加一行台词';
     }
   }
 
   function addScriptLine(role = '', text = '', profileId = '') {
-    if (_scriptRows.length >= MAX_SCRIPT_LINES) {
+    if (window._scriptRows.length >= MAX_SCRIPT_LINES) {
       const resultsEl = document.getElementById('batchScriptResult');
       if (resultsEl) { resultsEl.style.display = ''; resultsEl.innerHTML = '<div style="color:#c53030;font-size:0.85rem;padding:8px 0">最多支持 200 行台词</div>'; }
       return;
@@ -4876,7 +5501,7 @@ function handleStopAsyncPolling() {
     const container = document.getElementById('scriptLines');
     const id = _scriptLineCount++;
     const state = { id, role, text, profileId };
-    _scriptRows.push(state);
+    window._scriptRows.push(state);
 
     const row = document.createElement('div');
     row.id = `scriptLine_${id}`;
@@ -4909,8 +5534,8 @@ function handleStopAsyncPolling() {
   function removeScriptLine(id) {
     const row = document.getElementById(`scriptLine_${id}`);
     if (row) row.remove();
-    const idx = _scriptRows.findIndex(r => r.id === id);
-    if (idx >= 0) _scriptRows.splice(idx, 1);
+    const idx = window._scriptRows.findIndex(r => r.id === id);
+    if (idx >= 0) window._scriptRows.splice(idx, 1);
     updateScriptLineLimitState();
     updateBatchScriptHints();
   }
@@ -4922,7 +5547,7 @@ function handleStopAsyncPolling() {
     const id = parseInt(row.dataset.lineId);
     const field = e.target.dataset.field;
     if (!field) return;
-    const state = _scriptRows.find(r => r.id === id);
+    const state = window._scriptRows.find(r => r.id === id);
     if (state) {
       if (field === 'role') state.role = e.target.value;
       else if (field === 'text') state.text = e.target.value;
@@ -4934,7 +5559,7 @@ function handleStopAsyncPolling() {
     const id = parseInt(row.dataset.lineId);
     const field = e.target.dataset.field;
     if (field === 'profile') {
-      const state = _scriptRows.find(r => r.id === id);
+      const state = window._scriptRows.find(r => r.id === id);
       if (state) state.profileId = e.target.value;
       updateScriptLineVoiceHint(id);
     }
@@ -5116,8 +5741,7 @@ function handleStopAsyncPolling() {
   // Script batch hints
 
   function getScriptRowsSafe() {
-    if (typeof _scriptRows === 'undefined') return [];
-    return _scriptRows;
+    return Array.isArray(window._scriptRows) ? window._scriptRows : [];
   }
 
   function collectScriptStats() {

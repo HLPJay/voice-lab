@@ -66,8 +66,28 @@ class TestMinimaxCostEstimation:
     def test_non_minimax_returns_unknown_price(self):
         est = estimate_t2a_cost("openai", "gpt-4", "hello")
         assert est["unknown_price"] is True
-        assert est["warnings"] == ["当前 provider 暂未配置价格估算"]
+        assert len(est["warnings"]) == 1
+        assert "暂未配置价格估算" in est["warnings"][0]
         assert est["estimated_cost_cny"] is None
+
+    def test_non_minimax_warning_mentions_no_official_billing(self):
+        """Non-minimax warning must clarify local chars != official billing."""
+        est = estimate_t2a_cost("openai", "gpt-4", "hello")
+        assert "不代表官方扣费" in est["warnings"][0]
+
+    def test_xiaomi_mimo_unknown_price(self):
+        """xiaomi_mimo must return unknown_price=True, no estimated cost."""
+        est = estimate_t2a_cost("xiaomi_mimo", "mimo-v2.5-tts", "你好世界")
+        assert est["unknown_price"] is True
+        assert est["estimated_cost_cny"] is None
+        assert len(est["warnings"]) == 1
+        assert "暂未配置价格估算" in est["warnings"][0]
+        assert "不代表官方扣费" in est["warnings"][0]
+
+    def test_xiaomi_mimo_no_unit_price(self):
+        """xiaomi_mimo must not yield a unit price."""
+        est = estimate_t2a_cost("xiaomi_mimo", "mimo-v2.5-tts", "test")
+        assert est["unit_price_cny_per_10k_chars"] is None
 
     def test_cost_guard_service_wrapper(self):
         svc = CostGuardService()
@@ -229,6 +249,7 @@ class TestCostEstimateAPI:
         data = resp.json()
         assert data["unknown_price"] is True
         assert "暂未配置" in data["warnings"][0]
+        assert "不代表官方扣费" in data["warnings"][0]
 
 
 class TestCostGuardServiceRequireConfirmed:

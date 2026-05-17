@@ -64,5 +64,6 @@ async def import_provider_voice(
         preview_text=request.preview_text,
         verify=request.verify,
         model=request.model,
+        audio_format=request.audio_format,
     )
     return await import_service.import_voice(session, request)
