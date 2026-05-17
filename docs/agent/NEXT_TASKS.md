@@ -2,7 +2,9 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-A1（已完成）→ 下一步：P17-XIANGTA-A2**
+**P17-XIANGTA-DOCS-FIX1（已完成）→ 下一步：P17-XIANGTA-PRODUCT-CONFIG-B1**
+
+`docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
 ## 下一步（P17 阶段路线图）
 
@@ -13,7 +15,9 @@
 | P17-XIANGTA-A1 | 配置协议 + bootstrap/status 只读接口，不接真实 TTS | ✅ |
 | P17-XIANGTA-A1-FIX1 | 抽离配置加载（config/loader.py）与 Bootstrap 组装（BootstrapService），消除 product_service.py 责任膨胀 | ✅ |
 | P17-XIANGTA-A2 | TtsOrchestrator + VoiceLabGateway dry-run 合约：产品层 → Core 边界完整 dry-run，不调用真实 Provider | ✅ |
-| P17-XIANGTA-A3 | 真实 Core TTS 接入，通过 gateway 调用 Core 稳定入口 | TODO |
+| P17-XIANGTA-DOCS-FIX1 | 修正 docs/xiangta 路径、示例值和 XiangTa→Core 调用边界 | ✅ |
+| P17-XIANGTA-PRODUCT-CONFIG-B1 | 产品配置模型落地：ProductConfigRepository + VoicePresetMappingService，不接真实 Provider | NEXT |
+| P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
 
@@ -24,6 +28,10 @@
 > 不得直接修改 src/voice_lab/* 解决，需独立 Core 修复任务。
 
 （暂无）
+
+## XiangTa 下一步约束
+
+下一步只进入 `P17-XIANGTA-PRODUCT-CONFIG-B1`。不得跳过配置模型直接进入真实 Provider 接入；不得在 B1 中实现真实 Provider 调用、读取 API key 或运行真实 probe。
 
 ## P16 已完成历史
 
@@ -211,7 +219,7 @@
 
 | 后续阶段 | 内容 | 前提 |
 |---|---|---|
-| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3 | validate adapter render_sync with real API | 用户授权 + MIMO_API_KEY |
+| P16-XIAOMI-MIMO-TTS-REAL-PROBE-B3 | historical P16 real-probe follow-up, not XiangTa next step | 后置评估 |
 | P16-XIAOMI-MIMO-TTS-VOICE-DESIGN-A0 | analyze MiMo voicedesign semantic mapping | B3 成功后评估 |
 | P16-XIAOMI-MIMO-TTS-VOICE-CLONE-A0 | analyze MiMo voiceclone semantic mapping | B3 成功后评估 |
 | P16-OPENAI-COMPATIBLE-TTS-A0 | design OpenAI-compatible TTS adapter | 可后置 |

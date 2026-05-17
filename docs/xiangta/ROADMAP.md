@@ -18,10 +18,12 @@ P17-XIANGTA-PRODUCT-CONFIG-A0：只做文档和架构校正，不改业务代码
 
 目标：在不接真实前端的前提下，把声线映射从静态 `voice_presets.json` 迁移到产品配置仓储。
 
+B1 不实现真实 Provider 接入，不调用真实 Provider，不读取真实 API key。它只落地产品配置模型和映射服务边界。
+
 建议任务：
 
-1. 新增 `ProductConfigRepository`
-2. 新增 `VoicePresetMappingService`
+1. 优先实现 `ProductConfigRepository`
+2. 新增 `VoicePresetMappingService`，必须从配置映射读取 `coreProfileId`
 3. 新增 `TonePresetService`
 4. 新增 `CoreRenderTarget`
 5. 调整 `BootstrapService` 的 `voicePresets` 数据源
@@ -32,6 +34,7 @@ P17-XIANGTA-PRODUCT-CONFIG-A0：只做文档和架构校正，不改业务代码
 
 - 用户端 bootstrap 不含 `core_binding_key`、`profile_id`、`provider`
 - TTS dry-run 或测试链路使用 `voicePresetId → coreProfileId`
+- `coreProfileId` 必须来自 Core profiles 选择结果
 - `TtsOrchestrator` 不直接查配置文件或配置表
 
 ## B2：Gateway 接 Core render
@@ -42,7 +45,7 @@ P17-XIANGTA-PRODUCT-CONFIG-A0：只做文档和架构校正，不改业务代码
 
 1. `VoiceLabGateway.generate_tts()` 接收 `CoreRenderTarget`
 2. 组装 Core `VoiceRenderRequest`
-3. 调用 Core render 服务或 HTTP API
+3. 调用 Core 对外 API 或等价 high-level facade
 4. 转换 Core `VoiceRenderResponse` 为产品响应
 5. 音频 URL 复用 Core assets 下载地址
 6. 保留 dry-run 测试方法用于合约测试
@@ -52,6 +55,7 @@ P17-XIANGTA-PRODUCT-CONFIG-A0：只做文档和架构校正，不改业务代码
 - mock provider 下可生成可下载音频
 - 用户端响应仍不暴露 Core 技术字段
 - Core 错误经 `ErrorTranslator` 翻译
+- 不直接调用 `app.repositories`、`app.providers`、`get_provider()`、`RenderPlan` 或 adapter
 
 ## B3：Provider 状态接入
 
@@ -59,7 +63,7 @@ P17-XIANGTA-PRODUCT-CONFIG-A0：只做文档和架构校正，不改业务代码
 
 建议任务：
 
-1. Gateway 新增 runtime status 调用
+1. Gateway 新增 `GET /api/voice/runtime/status` 调用
 2. `ProviderStatusService` 映射 Core 状态
 3. bootstrap 使用真实 providerStatus
 4. 增加 quota/auth/network/unknown 等测试
@@ -95,4 +99,3 @@ P17-XIANGTA-PRODUCT-CONFIG-A0：只做文档和架构校正，不改业务代码
 - WebSocket 流式生成
 - 批量长文本生成
 - 多用户 SaaS 权限系统
-

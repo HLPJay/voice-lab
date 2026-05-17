@@ -90,7 +90,15 @@
 }
 ```
 
-用户端响应不返回 Core `profile_id`、provider、model、binding。
+用户端响应不返回：
+
+- `profile_id`
+- `provider`
+- `model`
+- `provider_voice_id`
+- `params_json`
+- `binding_id`
+- API key
 
 ### GET /api/xiangta/provider/status
 
@@ -134,7 +142,7 @@
       "id": "female-gentle",
       "label": "温柔女声",
       "enabled": true,
-      "coreProfileId": "xiangta_female_gentle",
+      "coreProfileId": "<core_profile_id_from_core_profiles>",
       "providerPolicy": "default",
       "bindingStatus": "available",
       "renderOverrides": {
@@ -155,7 +163,7 @@
   "label": "温柔女声",
   "desc": "适合想念、晚安、轻声表达",
   "enabled": true,
-  "coreProfileId": "xiangta_female_gentle",
+  "coreProfileId": "<core_profile_id_from_core_profiles>",
   "providerPolicy": "default",
   "renderOverrides": {
     "speed": 0.95
@@ -171,7 +179,13 @@
 
 代理或聚合 Core `GET /api/voice/profiles/{profile_id}/bindings`，用于判断 profile 是否可生成。
 
+管理端可以展示 `coreProfileId`、`bindingStatus`、`providerPolicy` 等配置字段，但这些字段不得进入普通用户端 API。`coreProfileId` 必须来自 Core `GET /api/voice/profiles` 的真实返回值，不得由开发者手写猜测。
+
 ## Gateway 到 Core 契约
+
+`VoiceLabGateway` 是唯一允许接触 Core 调用细节的 XiangTa 模块。`routes.py`、`ProductService`、`TtsOrchestrator` 不得直接 import `app.repositories`、`app.providers`、`app.models`、`app.domain.render_plan` 或 provider adapter。
+
+Gateway 可以选择 HTTP 调用 Core API，也可以选择等价的进程内 high-level facade；无论哪种方式，都必须维持与 Core 对外 API 等价的请求/响应契约。
 
 ### VoiceLabGateway.generate_tts
 
@@ -181,7 +195,7 @@
 await gateway.generate_tts(
     text=text,
     target=CoreRenderTarget(
-        profile_id="xiangta_female_gentle",
+        profile_id="<core_profile_id_from_core_profiles>",
         provider=None,
         need_subtitle=True,
         output_format="url",
@@ -200,7 +214,7 @@ Core 请求：
 ```json
 {
   "text": "我今天又想起你了。",
-  "profile_id": "xiangta_female_gentle",
+  "profile_id": "<core_profile_id_from_core_profiles>",
   "provider": null,
   "need_subtitle": true,
   "output_format": "url",
@@ -221,4 +235,3 @@ Core 响应转产品响应：
 | `audio_asset.duration_ms` | `durationMs` |
 | `provider` | 内部 metadata/admin，不给用户端 |
 | `model` | 内部 metadata/admin，不给用户端 |
-

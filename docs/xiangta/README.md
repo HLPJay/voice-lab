@@ -31,5 +31,4 @@ A0-A2 不需要推翻。保留 API 层、ProductService、BootstrapService、Tts
 - `tone_presets` 是 XiangTa 自有产品配置，不来自 Core
 - TTS 生成复用 Core `POST /api/voice/render`
 - 音频下载复用 Core `GET /api/voice/assets/{asset_id}/download`
-- Provider 状态复用 Core `GET /api/runtime/status`
-
+- Provider 状态复用 Core `GET /api/voice/runtime/status`
