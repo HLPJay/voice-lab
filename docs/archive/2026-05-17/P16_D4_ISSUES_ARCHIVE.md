@@ -66,13 +66,20 @@
 - **处理**: API 请求体补充 `provider: "mock"`；两个 `ProviderVoicePreviewRequest(...)` 对象构造补充 `provider="minimax"`，保持原有断言不变
 - **状态**: 已完成
 
+### D4-F5：Xiaomi MiMo 测试口径对齐
+
+- **commit**: 本任务（见下方）
+- **问题**: `tests/test_xiaomi_mimo_chat_tts_adapter.py` 中 4 个测试仍按旧口径断言 `xiaomi_mimo` disabled / unsupported / not in capabilities
+- **根因**: P16 已将 `xiaomi_mimo` 作为启用的单段同步 TTS Provider 样板，但测试未同步更新
+- **处理**: 更新测试断言为当前 enabled / capabilities 可见口径；clone/design 测试改为校验当前配置声明，不等同于 V1 产品承诺
+- **状态**: 已完成
+
 ---
 
 ## 4. 当前仍未处理问题
 
 | 问题 | 计划任务 | 优先级 |
 |------|----------|--------|
-| `test_xiaomi_mimo_chat_tts_adapter.py` 4 个失败：旧断言 disabled/unsupported，与 V1 口径不符 | D4-F5 | 阻塞合并 |
 | jsdom npm 包未安装，33 个静态 JS 测试失败（context_store / cancel_confirmation / workspace_restore） | D4-F6 / 环境 | 可延后 |
 | Playwright E2E 4 个失败：UI 结构变化导致 locator 过期 | D4-F7 / E2E 专项 | 可延后 |
 | full suite 测试顺序污染（11 个 voice clone/design/import 仅在全量套件中失败） | D4-F8 / 低优先级 | 可延后 |
@@ -97,7 +104,6 @@
 
 按优先顺序：
 
-1. **D4-F5**：对齐 `test_xiaomi_mimo_chat_tts_adapter.py` 4 个旧测试口径（改为当前 V1 enabled 断言）— 阻塞合并
-2. **D4-F6**：`npm install jsdom` 解锁 33 个 Node.js 静态 JS 测试 — 可延后
-3. **D4-CLOSEOUT**：P16 V1 收口文档 + 合并 main
-4. **V2 规划**：官方账单接入、model-level stats、日志清理策略
+1. **D4-F6**：`npm install jsdom` 解锁 33 个 Node.js 静态 JS 测试 — 可延后
+2. **D4-CLOSEOUT**：P16 V1 收口文档 + 合并 main
+3. **V2 规划**：官方账单接入、model-level stats、日志清理策略

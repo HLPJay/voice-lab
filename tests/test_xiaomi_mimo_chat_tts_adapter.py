@@ -5,7 +5,7 @@ P16-XIAOMI-MIMO-TTS-B1: Tests for Xiaomi MiMo Chat TTS adapter.
 
 Covers:
 - Plugin discovery via config/adapters/xiaomi_mimo_chat_tts.yaml
-- ProviderConfig for xiaomi_mimo (disabled by default)
+- ProviderConfig for xiaomi_mimo (enabled in current V1 baseline)
 - render_sync request construction and response parsing
 - list_voices static preset voices
 - Error handling (missing API key, missing audio data, invalid base64, HTTP errors)
@@ -122,12 +122,14 @@ class TestProviderConfig:
         assert cfg is not None
         assert cfg.name == "xiaomi_mimo"
 
-    def test_xiaomi_mimo_disabled_by_default(self):
-        """xiaomi_mimo provider is disabled."""
+    def test_xiaomi_mimo_enabled_by_default(self):
+        """xiaomi_mimo provider is enabled and visible in current V1 baseline."""
         from app.config.provider_config_loader import get_provider_config
 
         cfg = get_provider_config("xiaomi_mimo")
-        assert cfg.enabled is False
+        assert cfg.name == "xiaomi_mimo"
+        assert cfg.enabled is True
+        assert cfg.metadata.get("ui_visible") is True
 
     def test_xiaomi_mimo_adapter_type(self):
         """xiaomi_mimo adapter_type is xiaomi_mimo_chat_tts."""
@@ -225,23 +227,37 @@ class TestAdapterConfig:
         cfg = get_adapter_config("xiaomi_mimo_chat_tts")
         assert "wav" in cfg.tts.audio_formats
 
-    def test_xiaomi_mimo_adapter_config_voice_clone_unsupported(self):
-        """xiaomi_mimo_chat_tts voice_clone is not supported."""
+    def test_xiaomi_mimo_adapter_config_voice_clone_matches_current_declaration(self):
+        """Adapter config should match the current voice_clone declaration.
+
+        V1 does not formally promise Xiaomi MiMo voice clone as a productized
+        capability; this test only verifies the adapter config that is currently
+        declared in YAML.
+        """
         from app.config.adapter_config_loader import get_adapter_config
 
         cfg = get_adapter_config("xiaomi_mimo_chat_tts")
-        assert cfg.voice_clone.supported is False
+        assert cfg is not None
+        assert cfg.voice_clone is not None
+        assert cfg.voice_clone.supported is True
 
-    def test_xiaomi_mimo_adapter_config_voice_design_unsupported(self):
-        """xiaomi_mimo_chat_tts voice_design is not supported."""
+    def test_xiaomi_mimo_adapter_config_voice_design_matches_current_declaration(self):
+        """Adapter config should match the current voice_design declaration.
+
+        V1 does not formally promise Xiaomi MiMo voice design as a productized
+        capability; this test only verifies the adapter config that is currently
+        declared in YAML.
+        """
         from app.config.adapter_config_loader import get_adapter_config
 
         cfg = get_adapter_config("xiaomi_mimo_chat_tts")
-        assert cfg.voice_design.supported is False
+        assert cfg is not None
+        assert cfg.voice_design is not None
+        assert cfg.voice_design.supported is True
 
 
 class TestCapabilityAPI:
-    """Capability API for xiaomi_mimo (disabled by default)."""
+    """Capability API for xiaomi_mimo in the current V1 baseline."""
 
     def setup_method(self):
         """Reset caches."""
@@ -257,13 +273,25 @@ class TestCapabilityAPI:
         clear_provider_config_cache()
         clear_capability_registry_cache()
 
-    def test_xiaomi_mimo_not_in_capabilities_when_disabled(self):
-        """xiaomi_mimo does not appear in list_capabilities when disabled."""
+    def test_xiaomi_mimo_in_capabilities_when_enabled(self):
+        """xiaomi_mimo appears in capabilities with current enabled V1 semantics."""
         from app.providers.capability_registry import list_capabilities
 
         caps = list_capabilities()
         providers = [c.provider for c in caps]
-        assert "xiaomi_mimo" not in providers
+        assert "xiaomi_mimo" in providers
+
+        xiaomi_cap = next(c for c in caps if c.provider == "xiaomi_mimo")
+        assert xiaomi_cap.enabled is True
+        assert xiaomi_cap.metadata.get("ui_visible") is True
+        assert xiaomi_cap.tts is not None
+        assert xiaomi_cap.tts.supported is True
+        assert xiaomi_cap.batch is not None
+        assert xiaomi_cap.batch.supported is False
+        assert xiaomi_cap.voice_clone is not None
+        assert xiaomi_cap.voice_clone.supported is False
+        assert xiaomi_cap.voice_design is not None
+        assert xiaomi_cap.voice_design.supported is False
 
 
 class TestRenderSync:
