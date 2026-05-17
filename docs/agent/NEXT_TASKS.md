@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-DOCS-FIX1（已完成）→ 下一步：P17-XIANGTA-PRODUCT-CONFIG-B1**
+**P17-XIANGTA-PRODUCT-CONFIG-B1-1（当前）→ 下一步：P17-XIANGTA-PRODUCT-CONFIG-B1-2**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -16,7 +16,11 @@
 | P17-XIANGTA-A1-FIX1 | 抽离配置加载（config/loader.py）与 Bootstrap 组装（BootstrapService），消除 product_service.py 责任膨胀 | ✅ |
 | P17-XIANGTA-A2 | TtsOrchestrator + VoiceLabGateway dry-run 合约：产品层 → Core 边界完整 dry-run，不调用真实 Provider | ✅ |
 | P17-XIANGTA-DOCS-FIX1 | 修正 docs/xiangta 路径、示例值和 XiangTa→Core 调用边界 | ✅ |
-| P17-XIANGTA-PRODUCT-CONFIG-B1 | 产品配置模型落地：ProductConfigRepository + VoicePresetMappingService，不接真实 Provider | NEXT |
+| P17-XIANGTA-PRODUCT-CONFIG-B1 | 产品配置模型落地总阶段：先仓储，再 bootstrap，再映射服务，再状态收口 | Active |
+| P17-XIANGTA-PRODUCT-CONFIG-B1-1 | ProductConfigRepository 与产品配置模型基础落地 | Current |
+| P17-XIANGTA-PRODUCT-CONFIG-B1-2 | BootstrapService 接入 ProductConfigRepository | Next |
+| P17-XIANGTA-PRODUCT-CONFIG-B1-3 | VoicePresetMappingService 接入 ProductConfigRepository | Planned |
+| P17-XIANGTA-PRODUCT-CONFIG-B1-4 | ProviderStatus / limits / tone 配置读取边界收口 | Planned |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
 | P17-XIANGTA-A4 | copywriting_service + suggestions 文案接口 | TODO |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
@@ -31,7 +35,7 @@
 
 ## XiangTa 下一步约束
 
-下一步只进入 `P17-XIANGTA-PRODUCT-CONFIG-B1`。不得跳过配置模型直接进入真实 Provider 接入；不得在 B1 中实现真实 Provider 调用、读取 API key 或运行真实 probe。
+下一步只进入 `P17-XIANGTA-PRODUCT-CONFIG-B1-2`。不得跳过配置模型直接进入真实 Provider 接入；不得在 B1 中实现真实 Provider 调用、读取 API key 或运行真实 probe。
 
 ## P16 已完成历史
 

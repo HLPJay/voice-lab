@@ -23,6 +23,18 @@ FORBIDDEN_KEYS = {
     "mimo_api_key",
 }
 
+FORBIDDEN_PUBLIC_FIELDS = {
+    "coreProfileId",
+    "core_profile_id",
+    "profile_id",
+    "provider",
+    "model",
+    "provider_voice_id",
+    "binding_id",
+    "params_json",
+    "api_key",
+}
+
 _CONFIGS_DIR = Path(__file__).parent.parent.parent / "src" / "xiangta" / "configs"
 
 
@@ -274,4 +286,41 @@ class TestA2ImportBoundary:
         bad = param_names & FORBIDDEN_KEYS
         assert not bad, (
             f"VoiceLabGateway.generate_tts_dry_run() 签名包含禁止参数：{bad}"
+        )
+
+
+class TestProductConfigRepositoryBoundary:
+
+    def _get_source(self, module_path: str) -> str:
+        import importlib
+        import inspect
+        mod = importlib.import_module(module_path)
+        return inspect.getsource(mod)
+
+    def test_repository_does_not_import_app_modules(self):
+        src = self._get_source("src.xiangta.config.product_config_repository")
+        assert "from app." not in src
+        assert "import app." not in src
+
+    def test_repository_does_not_import_voice_lab_directly(self):
+        src = self._get_source("src.xiangta.config.product_config_repository")
+        assert "from src.voice_lab" not in src
+        assert "import src.voice_lab" not in src
+
+    def test_repository_does_not_read_environment(self):
+        src = self._get_source("src.xiangta.config.product_config_repository")
+        forbidden_tokens = ["os.environ", "MINIMAX_API_KEY", "MIMO_API_KEY", "OPENAI_API_KEY"]
+        for token in forbidden_tokens:
+            assert token not in src, (
+                f"product_config_repository.py 不得读取环境或 API key（检测到：{token}）"
+            )
+
+    def test_public_voice_preset_model_does_not_expose_core_fields(self):
+        from dataclasses import fields
+
+        from src.xiangta.config.product_config_models import PublicVoicePreset
+
+        public_fields = {field.name for field in fields(PublicVoicePreset)}
+        assert FORBIDDEN_PUBLIC_FIELDS.isdisjoint(public_fields), (
+            f"PublicVoicePreset 不得暴露 Core 字段：{FORBIDDEN_PUBLIC_FIELDS & public_fields}"
         )
