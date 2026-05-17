@@ -59,13 +59,19 @@
 - **处理**: adapter 新增 `_save_call_log()`/`update_call_log()`，`_request()` 使用 `time.monotonic()` 记录真实耗时并写 ProviderCallLog，`render_sync()` 成功后回填 `usage_characters` 和 `provider_trace_id`；stats_service 补充 AudioAsset-only provider 合并逻辑
 - **状态**: 已完成
 
+### D4-F4：Voice preview 测试适配 provider 必填字段
+
+- **commit**: 本任务（见下方）
+- **问题**: `tests/test_voice_preview.py` 中 3 个独立测试未适配 `ProviderVoicePreviewRequest.provider` 已变为必填字段的当前 schema
+- **处理**: API 请求体补充 `provider: "mock"`；两个 `ProviderVoicePreviewRequest(...)` 对象构造补充 `provider="minimax"`，保持原有断言不变
+- **状态**: 已完成
+
 ---
 
 ## 4. 当前仍未处理问题
 
 | 问题 | 计划任务 | 优先级 |
 |------|----------|--------|
-| `test_voice_preview.py` 3 个独立失败：`ProviderVoicePreviewRequest` 缺少 `provider` 字段（schema 变更后测试未更新） | D4-F4 | 阻塞合并 |
 | `test_xiaomi_mimo_chat_tts_adapter.py` 4 个失败：旧断言 disabled/unsupported，与 V1 口径不符 | D4-F5 | 阻塞合并 |
 | jsdom npm 包未安装，33 个静态 JS 测试失败（context_store / cancel_confirmation / workspace_restore） | D4-F6 / 环境 | 可延后 |
 | Playwright E2E 4 个失败：UI 结构变化导致 locator 过期 | D4-F7 / E2E 专项 | 可延后 |
@@ -91,8 +97,7 @@
 
 按优先顺序：
 
-1. **D4-F4**：修复 `test_voice_preview.py` 3 个独立失败（`ProviderVoicePreviewRequest` 补 `provider` 字段）— 阻塞合并
-2. **D4-F5**：对齐 `test_xiaomi_mimo_chat_tts_adapter.py` 4 个旧测试口径（改为当前 V1 enabled 断言）— 阻塞合并
-3. **D4-F6**：`npm install jsdom` 解锁 33 个 Node.js 静态测试 — 可延后
-4. **D4-CLOSEOUT**：P16 V1 收口文档 + 合并 main
-5. **V2 规划**：官方账单接入、model-level stats、日志清理策略
+1. **D4-F5**：对齐 `test_xiaomi_mimo_chat_tts_adapter.py` 4 个旧测试口径（改为当前 V1 enabled 断言）— 阻塞合并
+2. **D4-F6**：`npm install jsdom` 解锁 33 个 Node.js 静态 JS 测试 — 可延后
+3. **D4-CLOSEOUT**：P16 V1 收口文档 + 合并 main
+4. **V2 规划**：官方账单接入、model-level stats、日志清理策略
