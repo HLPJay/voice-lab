@@ -300,3 +300,21 @@ textarea {
 /* ── Utilities ─────────────────────────────────────────────────────────── */
 
 .hidden { display: none !important; }
+
+/* ── Dev panel ─────────────────────────────────────────────────────────── */
+
+.dev-panel {
+  border: 1px dashed var(--c-warn);
+  background: #fffaf0;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.dev-panel-title {
+  font-size: 0.75rem;
+  color: var(--c-warn);
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}

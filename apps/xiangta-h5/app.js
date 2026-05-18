@@ -12,7 +12,23 @@ const state = {
   selectedIndex:   -1,
   ttsResult:       null,
   coreProfiles:    [],   // B9: Core profile list
+  mode:            "formal",
 };
+
+// ── Mode detection ───────────────────────────────────────────────────────────
+
+function getAppMode() {
+  const params = new URLSearchParams(window.location.search || "");
+  return params.get("mode") === "dev" ? "dev" : "formal";
+}
+
+function applyModeUi() {
+  const devPanel = el("devPanel");
+  if (devPanel) {
+    devPanel.classList.toggle("hidden", state.mode !== "dev");
+  }
+  document.body.setAttribute("data-mode", state.mode);
+}
 
 // ── 工具函数 ──────────────────────────────────────────────────────────────────
 
@@ -85,8 +101,12 @@ async function loadBootstrap() {
   renderProviderStatus(providerStatus);
   setStatus("就绪", "ok");
 
-  // B9: load Core profiles after bootstrap
-  loadCoreProfiles();
+  // B9: load Core profiles only in dev mode
+  if (state.mode === "dev") {
+    loadCoreProfiles();
+  } else {
+    state.coreProfiles = [];
+  }
 }
 
 function renderProviderStatus(ps) {
@@ -241,8 +261,8 @@ async function generateTts() {
   }
 
   const payload = { text, voicePreset, tone, recipient, scene };
-  // B9: pass profileId if user selected a Core profile
-  if (profileId) {
+  // B9: pass profileId only in dev mode when user explicitly selected a Core profile
+  if (state.mode === "dev" && profileId) {
     payload.profileId = profileId;
   }
 
@@ -411,6 +431,8 @@ function initCharCounter() {
 // ── 入口 ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", function() {
+  state.mode = getAppMode();
+  applyModeUi();
   initCharCounter();
   loadBootstrap();
   loadLetters();
