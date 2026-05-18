@@ -58,7 +58,7 @@
     "defaultTone": "sincere",
     "enabled": true,
     "sortOrder": 30,
-    "coreProfileId": "deep_night_programmer",
+    "coreProfileId": "Korean_CalmLady",
     "providerPolicy": "default",
     "renderOverrides": {},
     "notes": "coreProfileId must be selected from Core GET /api/voice/profiles before real render"

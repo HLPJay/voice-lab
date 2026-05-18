@@ -157,6 +157,7 @@ const state = {
   letters: [],
   coreProfiles: [],
   voiceBindingStatus: null,  // loaded from GET /voice-bindings/status
+  resultSaved: false,
 };
 
 function el(id) {
@@ -1009,9 +1010,19 @@ function renderTtsTask(result) {
   const div = el("ttsResult");
   if (!div) return;
   state.ttsResult = result;
+
+  // Success case: navigate to result screen instead of showing inline card
+  if (result.status === "completed" && result.audioUrl) {
+    state.resultSaved = false;
+    renderResultScreen(result);
+    showScreen("result");
+    return;
+  }
+
+  // Failure / no-audio case: show inline diagnostic card
   div.classList.remove("hidden");
   div.innerHTML = "";
-  const badgeClass = result.status === "completed" ? "completed" : (result.status === "failed" ? "failed" : "");
+  const badgeClass = result.status === "failed" ? "failed" : "";
   let html =
     '<div class="tts-state-card">' +
     '<div class="tts-state-top">' +
@@ -1026,7 +1037,6 @@ function renderTtsTask(result) {
   if (result.audioUrl) {
     html += `<div class="tts-audio"><audio controls preload="none" src="${escHtml(result.audioUrl)}"></audio></div>`;
   } else if (result.status === "completed") {
-    // Completed but no audio — show diagnostic hint
     html += '<div class="tts-hint">任务已完成，但没有返回可播放音频地址。请检查 Core render 返回的 audio_asset.url。</div>';
   } else {
     html += '<div class="tts-hint">语音暂未生成，可先保存文字信笺。</div>';
@@ -1034,6 +1044,244 @@ function renderTtsTask(result) {
   html += "</div>";
   div.innerHTML = html;
   revealSaveLetterSection();
+}
+
+// ─────────────────────────────────────────────────────────────
+// Result screen — "今晚的信笺" — rendered after TTS success
+// ─────────────────────────────────────────────────────────────
+function renderResultScreen(result) {
+  const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
+  const audioUrl = result.audioUrl || "";
+  const durationMs = result.durationMs || 0;
+  const durationSecs = durationMs / 1000;
+
+  // Meta labels
+  const recipientLabel = getBootstrapRecipientLabel(state.selectedRecipient) || RECIPIENT_META[state.selectedRecipient]?.label || "恋人";
+  const sceneLabel = getBootstrapSceneLabel(state.selectedScene) || SCENE_META[state.selectedScene]?.label || "想念";
+  const styleLabel = STYLE_LABELS[state.selectedStyle] || "温柔版";
+  const voiceLabel = getBootstrapVoiceLabel(state.selectedVoice);
+  const toneLabel = getBootstrapToneLabel(state.selectedTone);
+
+  // Date string
+  const now = new Date();
+  const dateStr = `${now.getFullYear()} · ${String(now.getMonth() + 1).padStart(2, '0')} · ${String(now.getDate()).padStart(2, '0')}  ·  ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const signatureStr = now.getHours() >= 18 || now.getHours() < 5 ? "今晚" : "今天";
+
+  // Render meta pills
+  const pillsNode = el("resultMetaPills");
+  if (pillsNode) {
+    pillsNode.innerHTML =
+      `<span class="result-pill active">给${escHtml(recipientLabel)}</span>` +
+      `<span class="result-pill">${escHtml(sceneLabel)}</span>` +
+      `<span class="result-pill">${escHtml(styleLabel)}</span>`;
+  }
+
+  // Render letter date
+  const dateNode = el("resultLetterDate");
+  if (dateNode) dateNode.textContent = dateStr;
+
+  // Render letter body
+  const bodyNode = el("resultLetterBody");
+  if (bodyNode) bodyNode.textContent = finalText;
+
+  // Render signature
+  const sigNode = el("resultLetterSignature");
+  if (sigNode) sigNode.textContent = `—— 写于${signatureStr}`;
+
+  // Render audio
+  const voiceNameNode = el("resultVoiceName");
+  if (voiceNameNode) voiceNameNode.textContent = `${voiceLabel} · ${toneLabel}`;
+
+  const audioTimeNode = el("resultAudioTime");
+  if (audioTimeNode) {
+    const mins = Math.floor(durationSecs / 60);
+    const secs = Math.floor(durationSecs % 60);
+    audioTimeNode.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  const audioNode = el("resultAudio");
+  if (audioNode) {
+    audioNode.src = audioUrl;
+    audioNode.load();
+  }
+
+  // Update save button state
+  updateResultSaveButton();
+}
+
+function getBootstrapVoiceLabel(voiceId) {
+  const presets = state.bootstrap?.voicePresets || [];
+  const found = presets.find(p => p.id === voiceId);
+  if (found) return found.label;
+  // Fallback hardcoded names
+  const names = {
+    "female-gentle": "温柔女声",
+    "male-gentle": "温柔男声",
+    "female-bright": "清亮女声",
+    "male-mature": "成熟男声",
+  };
+  return names[voiceId] || "温柔女声";
+}
+
+function getBootstrapToneLabel(toneId) {
+  const tones = state.bootstrap?.tonePresets || TONE_META;
+  const found = tones.find(t => t.id === toneId);
+  if (found) return found.label;
+  const names = {
+    "restrained": "克制",
+    "gentle": "温柔",
+    "sincere": "真诚",
+    "whisper": "轻声",
+    "bedtime": "睡前",
+  };
+  return names[toneId] || "温柔";
+}
+
+function updateResultSaveButton() {
+  const btn = el("btnResultSave");
+  const label = el("resultSaveLabel");
+  if (!btn || !label) return;
+  if (state.resultSaved) {
+    btn.classList.add("saved");
+    label.textContent = "已保存";
+    btn.disabled = true;
+  } else {
+    btn.classList.remove("saved");
+    label.textContent = "保存到信笺夹";
+    btn.disabled = false;
+  }
+}
+
+// Result screen action handlers
+function resultGoBack() {
+  // Go back to voice screen
+  showScreen("voice");
+}
+
+async function resultRestart() {
+  const audio = el("resultAudio");
+  if (!audio) return;
+  try {
+    audio.currentTime = 0;
+    await audio.play();
+  } catch (e) {
+    showToast("请手动点击播放");
+  }
+}
+
+function resultDownload() {
+  const audioUrl = state.ttsResult?.audioUrl;
+  if (!audioUrl) {
+    showToast("没有可下载的音频");
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = audioUrl;
+  a.download = "xiangta-letter.mp3";
+  a.target = "_blank";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function resultCopy() {
+  const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
+  if (!finalText) {
+    showToast("没有可复制的文字");
+    return;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(finalText);
+      showToast("已复制文字");
+      return;
+    }
+  } catch (e) {
+    // Fall through to textarea fallback
+  }
+  try {
+    const area = document.createElement("textarea");
+    area.value = finalText;
+    area.setAttribute("readonly", "readonly");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    showToast(ok ? "已复制文字" : "复制失败，请手动复制");
+  } catch (e) {
+    showToast("复制失败，请手动复制");
+  }
+}
+
+async function resultShare() {
+  const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
+  const body = `${finalText}\n\n— 由 想Ta了 写下`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "今晚的信笺", text: body });
+      return;
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+    }
+  }
+  // Fallback: copy to clipboard
+  await resultCopy();
+  showToast("系统不支持分享，已复制文字");
+}
+
+function resultReEdit() {
+  // Go back to compose screen, preserve rawText
+  showScreen("compose");
+}
+
+function resultChangeTone() {
+  // Go back to voice screen, reset saved state
+  state.resultSaved = false;
+  showScreen("voice");
+}
+
+async function resultSave() {
+  if (state.resultSaved) return;
+  const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
+  if (!finalText) {
+    setStatus("没有可保存的文字", "warn");
+    return;
+  }
+  setBusy("btnResultSave", true, "保存中...");
+  const suggestion = state.suggestions[state.selectedIndex];
+  const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
+  const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
+
+  const response = await apiFetch("/api/xiangta/letters", {
+    method: "POST",
+    body: JSON.stringify({
+      recipient: state.selectedRecipient,
+      scene: state.selectedScene,
+      style: suggestion?.style || state.selectedStyle || "gentle",
+      rawText: (el("rawTextArea")?.value || "").trim(),
+      finalText: finalText,
+      voicePreset: state.selectedVoice || null,
+      tone: state.selectedTone || null,
+      audioUrl: audioUrl,
+      durationSecs: durationMs ? durationMs / 1000 : null,
+      title: null,
+    }),
+  });
+
+  if (!response) {
+    setBusy("btnResultSave", false, "保存到信笺夹");
+    return;
+  }
+
+  state.resultSaved = true;
+  setBusy("btnResultSave", false, "已保存");
+  updateResultSaveButton();
+  showToast("已保存到信笺夹");
+  setStatus("信笺已保存", "ok");
 }
 
 async function generateTts() {
