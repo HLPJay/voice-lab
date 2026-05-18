@@ -834,6 +834,7 @@ body {
   font-size: 15px;
   line-height: 1.9;
   color: var(--text);
+  white-space: pre-line;
 }
 
 .suggestion-fit {

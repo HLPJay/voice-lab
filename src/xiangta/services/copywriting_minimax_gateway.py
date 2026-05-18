@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import urllib.request
 import urllib.error
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from src.xiangta.services.copywriting_gateway import (
@@ -374,7 +375,8 @@ class MiniMaxCopywritingGateway:
         )
         contract = build_copywriting_prompt_contract(contract_input)
 
-        # Call MiniMax
+        # Call MiniMax with latency tracking
+        t0 = time.monotonic()
         messages = self._to_chat_messages(contract)
         payload = await self._client.create_chat_completion(
             base_url=self.base_url,
@@ -384,6 +386,8 @@ class MiniMaxCopywritingGateway:
             messages=messages,
             timeout_seconds=self.timeout_seconds,
         )
+        latency_ms = int((time.monotonic() - t0) * 1000)
 
         # Parse and validate response
-        return parse_minimax_copywriting_response(payload)
+        raw_result = parse_minimax_copywriting_response(payload)
+        return replace(raw_result, latency_ms=latency_ms)

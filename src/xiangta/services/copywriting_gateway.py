@@ -34,12 +34,84 @@ class CopywritingResult:
     summary: str
     intent: str
     suggestions: list[CopywritingSuggestion]
-    source: str = "template"  # "template" | "fake_llm"
+    source: str = "template"  # "template" | "fake_llm" | "minimax"
+    degraded: bool = False    # True when LLM failed and template was used as fallback
+    latency_ms: int | None = None  # Milliseconds for LLM call (template/fake_llm = None)
 
 
 class CopywritingGateway(Protocol):
     async def generate(self, request: CopywritingRequest) -> CopywritingResult:
         ...
+
+
+# ── Text normalization ─────────────────────────────────────────────────────────
+
+def normalize_copy_text(raw_text: str | None) -> str:
+    """
+    Normalize Chinese emotional copy text:
+
+    1. Clean duplicate punctuation:
+       ``。。`` → ``。``，``！！`` → ``！``，``？？`` → ``？``，``，，`` → ``，``
+
+    2. Add readable paragraph breaks:
+       Split by full-width sentence-ending punctuation (。！？).
+       Group 1-2 sentences per paragraph, max 3 paragraphs.
+       Empty lines become single newlines.
+    """
+    if not raw_text:
+        return raw_text or ""
+
+    # Step 1: clean duplicate punctuation
+    text = raw_text
+    text = text.replace("、、", "、")   # 、、
+    text = text.replace("，，", "，")   # ，， (fullwidth)
+    text = text.replace("。。", "。")   # 。。
+    text = text.replace("！！", "！")   # ！！ (fullwidth)
+    text = text.replace("？？", "？")   # ？？ (fullwidth)
+    text = text.replace("。。", "。")
+    text = text.replace("！！", "！")
+    text = text.replace("？？", "？")
+    text = text.replace("，，", "，")
+
+    # Step 2: paragraph splitting
+    # Split into sentences by 。！？ (keeping the punctuation)
+    sentences = _split_into_sentences(text)
+
+    # Group into paragraphs: 1-2 sentences each, max 3 paragraphs
+    paragraphs = []
+    for i in range(0, len(sentences), 2):
+        chunk = sentences[i : i + 2]
+        paragraphs.append("".join(chunk))
+
+    # Trim and limit to 3 paragraphs
+    paragraphs = [p.strip() for p in paragraphs if p.strip()]
+    if len(paragraphs) > 3:
+        paragraphs = paragraphs[:3]
+
+    return "\n".join(paragraphs)
+
+
+def _split_into_sentences(text: str) -> list[str]:
+    """Split text into sentences preserving the ending punctuation."""
+    result: list[str] = []
+    current = ""
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch in "。！？":
+            current += ch
+            result.append(current)
+            current = ""
+        elif ch in "\n\r":
+            if current:
+                result.append(current)
+                current = ""
+        else:
+            current += ch
+        i += 1
+    if current:
+        result.append(current)
+    return result
 
 
 # ── Template implementation ───────────────────────────────────────────────────

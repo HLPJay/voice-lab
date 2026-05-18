@@ -170,6 +170,13 @@ class SuggestionItem(BaseModel):
 class SuggestionsData(BaseModel):
     summary: str
     intent: str
+    source: str = "template"
+    degraded: bool = False
+    latency_ms: int | None = Field(
+        default=None,
+        validation_alias="latencyMs",
+        serialization_alias="latencyMs",
+    )
     suggestions: list[SuggestionItem]
 
 

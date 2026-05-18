@@ -85,6 +85,60 @@ const TONE_META = [
   { id: "bedtime", label: "睡前" },
 ];
 
+// Full-flow examples: when user clicks "用一个例子开始"，pre-fill entire 3-step flow
+const FLOW_EXAMPLES = {
+  miss: {
+    recipient: "lover",
+    scene: "miss",
+    rawText: "今天下雨了，我突然想起你。那天一起淋雨的时候，其实我心里很安静，也很想靠近你。",
+    preferredStyle: "gentle",
+    preferredVoice: "female-gentle",
+    preferredTone: "gentle",
+    title: "雨天的想念",
+    sampleGoal: "把模糊的想念说成一句温柔的话",
+  },
+  sorry: {
+    recipient: "lover",
+    scene: "sorry",
+    rawText: "昨天那句话我说重了。后来我一直在想，我不是想伤害你，只是当时没处理好自己的情绪。",
+    preferredStyle: "sincere",
+    preferredVoice: "male-gentle",
+    preferredTone: "sincere",
+    title: "认真的道歉",
+    sampleGoal: "把道歉说成更真诚、更清楚的一句",
+  },
+  thanks: {
+    recipient: "friend",
+    scene: "thanks",
+    rawText: "那天你没有问太多，就一直在我身边。后来我想了很久，还是想认真跟你说一声谢谢。",
+    preferredStyle: "gentle",
+    preferredVoice: "female-gentle",
+    preferredTone: "gentle",
+    title: "一句迟到的谢谢",
+    sampleGoal: "把感谢说成温暖的陪伴",
+  },
+  comfort: {
+    recipient: "friend",
+    scene: "comfort",
+    rawText: "如果你今天很累，就先不用解释。想说的时候我会听，不想说也没有关系。",
+    preferredStyle: "restrained",
+    preferredVoice: "male-gentle",
+    preferredTone: "restrained",
+    title: "陪你一会儿",
+    sampleGoal: "把安慰说成不带压力的陪伴",
+  },
+  night: {
+    recipient: "lover",
+    scene: "night",
+    rawText: "今天先到这里吧。别再想工作和烦心的事了，先把自己交给夜晚，好好睡一觉。",
+    preferredStyle: "gentle",
+    preferredVoice: "female-gentle",
+    preferredTone: "gentle",
+    title: "今晚，说晚安",
+    sampleGoal: "把晚安说成温柔的结束语",
+  },
+};
+
 const state = {
   mode: "formal",
   screen: "home",
@@ -114,6 +168,46 @@ function escHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// Normalize Chinese emotional copy text:
+// 1. Clean duplicate punctuation: 。。→。， ！！→！，？？→？，，→，
+// 2. Split into readable paragraphs (1-2 sentences each, max 3 paragraphs)
+function normalizeCopyText(text) {
+  if (!text) return text;
+  // Step 1: clean duplicate punctuation
+  let result = text;
+  result = result.replace(/。。/g, "。");
+  result = result.replace(/！！/g, "！");
+  result = result.replace(/？？/g, "？");
+  result = result.replace(/，，/g, "，");
+  result = result.replace(/、、/g, "、");
+  // Step 2: paragraph splitting
+  const sentences = [];
+  let current = "";
+  for (let i = 0; i < result.length; i++) {
+    const ch = result[i];
+    if ("。！？".includes(ch)) {
+      current += ch;
+      sentences.push(current);
+      current = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (current) {
+        sentences.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) sentences.push(current);
+  // Group into paragraphs: 1-2 sentences each, max 3 paragraphs
+  const paragraphs = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    const chunk = sentences.slice(i, i + 2).join("");
+    if (chunk.trim()) paragraphs.push(chunk.trim());
+  }
+  return paragraphs.slice(0, 3).join("\n");
 }
 
 function getAppMode() {
@@ -478,13 +572,16 @@ function goCompose() {
 
 function buildSuggestionViewModel(data) {
   if (data.suggestions && Array.isArray(data.suggestions)) {
-    return data.suggestions.map((item, index) => ({
-      text: item.text || "",
-      style: item.style || ["restrained", "gentle", "sincere"][index] || "gentle",
-      styleLabel: item.styleLabel || STYLE_LABELS[item.style] || `版本 ${index + 1}`,
-      fitsFor: item.fitsFor || "适合想把话说得更稳一些的时候",
-      charCount: item.charCount || (item.text || "").length,
-    }));
+    return data.suggestions.map((item, index) => {
+      const normalizedText = normalizeCopyText(item.text || "");
+      return {
+        text: normalizedText,
+        style: item.style || ["restrained", "gentle", "sincere"][index] || "gentle",
+        styleLabel: item.styleLabel || STYLE_LABELS[item.style] || `版本 ${index + 1}`,
+        fitsFor: item.fitsFor || "适合想把话说得更稳一些的时候",
+        charCount: normalizedText.length,
+      };
+    });
   }
   return [];
 }
@@ -535,9 +632,10 @@ async function copySuggestion(index, event) {
     showToast("没有可复制的内容");
     return;
   }
+  const textToCopy = normalizeCopyText(suggestion.text);
   try {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(suggestion.text);
+      await navigator.clipboard.writeText(textToCopy);
       showToast("已复制");
       return;
     }
@@ -547,7 +645,7 @@ async function copySuggestion(index, event) {
 
   try {
     const area = document.createElement("textarea");
-    area.value = suggestion.text;
+    area.value = textToCopy;
     area.setAttribute("readonly", "readonly");
     area.style.position = "fixed";
     area.style.opacity = "0";
@@ -572,10 +670,11 @@ function editSuggestion(index, event) {
     showToast("内容不能为空");
     return;
   }
+  const normalizedText = normalizeCopyText(text);
   state.suggestions[index] = {
     ...suggestion,
-    text,
-    charCount: text.length,
+    text: normalizedText,
+    charCount: normalizedText.length,
   };
   selectSuggestion(index);
 }
@@ -615,9 +714,10 @@ function selectSuggestion(index) {
   state.selectedIndex = index;
   const suggestion = state.suggestions[index];
   if (!suggestion) return;
-  state.finalText = suggestion.text;
+  const normalizedText = normalizeCopyText(suggestion.text);
+  state.finalText = normalizedText;
   state.selectedStyle = suggestion.style;
-  el("finalTextArea").value = suggestion.text;
+  el("finalTextArea").value = normalizedText;
   renderSuggestionCards({
     summary: state.suggestionMeta?.summary || "你已经选中一个更接近此刻心情的版本。",
     intent: state.suggestionMeta?.intent || "下一步可以直接进入语音生成。",
@@ -724,7 +824,8 @@ function goVoice() {
 }
 
 async function generateTtsTask() {
-  const text = state.finalText || (el("finalTextArea")?.value || "").trim();
+  const rawText = state.finalText || (el("finalTextArea")?.value || "").trim();
+  const text = normalizeCopyText(rawText);
   if (!text) {
     setStatus("先确认要生成语音的文字", "warn");
     return;
@@ -847,7 +948,9 @@ async function generateTts() {
 }
 
 async function saveLetter() {
-  if (!state.finalText) {
+  const rawFinal = state.finalText || (el("finalTextArea")?.value || "").trim();
+  const finalText = normalizeCopyText(rawFinal);
+  if (!finalText) {
     setStatus("没有可保存的文字", "warn");
     return;
   }
@@ -862,7 +965,7 @@ async function saveLetter() {
       scene: state.selectedScene,
       style: suggestion?.style || state.selectedStyle || "gentle",
       rawText: (el("rawTextArea")?.value || "").trim(),
-      finalText: state.finalText,
+      finalText: finalText,
       voicePreset: state.selectedVoice || null,
       tone: state.selectedTone || null,
       audioUrl: audioUrl,
@@ -937,17 +1040,32 @@ function initComposeListeners() {
 function fillSceneExample() {
   const textarea = el("rawTextArea");
   if (!textarea) return;
-  const example = RAW_EXAMPLES[state.selectedScene] || RAW_EXAMPLES.miss || "";
+  const example = FLOW_EXAMPLES[state.selectedScene] || FLOW_EXAMPLES.miss;
   if (!example) return;
   const current = (textarea.value || "").trim();
   if (current.length === 0) {
-    textarea.value = example;
-  } else if (!current.includes(example)) {
-    textarea.value = (current + "\n\n" + example).slice(0, 500);
+    textarea.value = example.rawText;
+  } else if (!current.includes(example.rawText)) {
+    textarea.value = (current + "\n\n" + example.rawText).slice(0, 500);
+  }
+  // Pre-fill title if title input is empty
+  const titleInput = el("titleInput");
+  if (titleInput && !titleInput.value.trim() && example.title) {
+    titleInput.value = example.title;
+  }
+  // Auto-select preferred style/voice/tone
+  if (example.preferredStyle) {
+    state.selectedStyle = example.preferredStyle;
+  }
+  if (example.preferredVoice) {
+    state.selectedVoice = example.preferredVoice;
+  }
+  if (example.preferredTone) {
+    state.selectedTone = example.preferredTone;
   }
   updateComposeState();
   textarea.focus();
-  showToast("已放入一个例子，可以直接改成你的话");
+  showToast("已放入一个完整例子，可以直接改成你的话");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
