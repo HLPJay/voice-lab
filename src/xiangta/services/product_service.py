@@ -129,7 +129,11 @@ class ProductService:
             })
 
         return {"items": items, "allBound": all_bound, "source": "config"}
-        """Query Core profiles via VoiceLabGateway.list_profiles() with stable degradation."""
+
+    async def list_core_profiles(self) -> dict:
+        """
+        Query Core profiles via VoiceLabGateway.list_profiles() with stable degradation.
+        """
         if self._tts is None or self._tts._gw is None:
             return {
                 "profiles": [],
@@ -166,7 +170,6 @@ class ProductService:
                 "message": "Core is currently unavailable",
             }
 
-        # 转换为 camelCase 安全字段返回给 H5
         def _to_camel(p: dict) -> dict:
             return {
                 "id": p.get("id", ""),

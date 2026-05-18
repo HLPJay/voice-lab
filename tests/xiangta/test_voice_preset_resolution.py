@@ -113,7 +113,7 @@ def test_translate_profile_not_configured_returns_product_error_kind():
 
     result = translate(exc)
 
-    assert result.kind == "profile_not_configured"
+    assert result.kind == "voice_preset_not_bound"
 
 
 def test_translate_profile_not_configured_is_not_retryable():

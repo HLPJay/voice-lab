@@ -213,6 +213,19 @@ def svc_without_core(four_voice_mappings, monkeypatch):
     return TestClient(app), tmp_path
 
 
+# ── Test 0: ProductService.list_core_profiles exists ───────────────────────────
+
+class TestListCoreProfilesMethod:
+    def test_product_service_has_list_core_profiles_method(self, svc_with_core_available):
+        """list_core_profiles is an independent method on ProductService."""
+        import src.xiangta.api.routes as routes_module
+        svc = routes_module.create_product_service()
+        assert hasattr(svc, "list_core_profiles"), \
+            "ProductService 必须有独立的 list_core_profiles() 方法"
+        # Verify it is async/callable
+        assert callable(svc.list_core_profiles)
+
+
 # ── Test 1-4: GET /voice-bindings/status ─────────────────────────────────────
 
 class TestVoiceBindingsStatus:
@@ -418,3 +431,23 @@ class TestAdminPageFiles:
         assert "/api/xiangta/admin/voice-mappings" in content
         assert "/api/xiangta/admin/voice-mappings/" in content
         assert "X-XiangTa-Admin-Token" in content
+
+
+# ── Test: No duplicate voice_mappings.json ─────────────────────────────────────
+
+class TestNoDuplicateVoiceMappingsConfig:
+    def test_root_configs_voice_mappings_deleted(self):
+        """Root configs/voice_mappings.json must be deleted to avoid config drift."""
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[2]
+        root_vm = root / "configs" / "voice_mappings.json"
+        assert not root_vm.exists(), \
+            f"configs/voice_mappings.json 必须删除，唯一的 voice mappings 配置在 src/xiangta/configs/voice_mappings.json"
+
+    def test_src_configs_voice_mappings_still_exists(self):
+        """src/xiangta/configs/voice_mappings.json is the single source of truth."""
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[2]
+        src_vm = root / "src" / "xiangta" / "configs" / "voice_mappings.json"
+        assert src_vm.exists(), \
+            "src/xiangta/configs/voice_mappings.json 必须保留作为唯一配置源"

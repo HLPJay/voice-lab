@@ -846,7 +846,7 @@ function renderDurationEstimate() {
   node.textContent = `预计时长 · ${min}:${sec}`;
 }
 
-async function autoSelectBoundVoice() {
+function autoSelectBoundVoice() {
   if (!state.voiceBindingStatus) return;
   const items = state.voiceBindingStatus.items || [];
   const currentBound = items.find(function(item) {
@@ -881,7 +881,7 @@ function updateGenTtsButton() {
   }
 }
 
-function goVoice() {
+async function goVoice() {
   if (!state.finalText) {
     setStatus("先选一条最像你的表达", "warn");
     return;

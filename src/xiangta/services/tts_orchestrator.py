@@ -24,6 +24,9 @@ from src.xiangta.services.error_translator import (
     TextTooLongError,
     TtsFailedError,
 )
+from src.xiangta.services.voice_preset_mapping_service import (
+    VoicePresetProfileNotConfigured,
+)
 from src.xiangta.services.voice_lab_gateway import (
     CoreRenderUnavailableError,
     CoreRenderResponseError,
@@ -125,6 +128,8 @@ class TtsOrchestrator:
                 )
             try:
                 mapping = self._voice_mapping_service.resolve(voice_preset)
+            except VoicePresetProfileNotConfigured:
+                raise
             except Exception as exc:
                 raise PresetNotFoundError(str(exc)) from exc
             try:

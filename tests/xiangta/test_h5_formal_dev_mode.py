@@ -105,6 +105,14 @@ class TestAppJs:
                    "state.mode === 'dev'" in section, \
                    "profileId must only be set in dev mode"
 
+    def test_go_voice_is_async(self):
+        """goVoice() must be declared as async function because it uses await loadVoiceBindingStatus()."""
+        js = _read(H5_APP)
+        assert "async function goVoice" in js, \
+            "goVoice 必须声明为 async function（因为内部使用 await loadVoiceBindingStatus）"
+        assert "await loadVoiceBindingStatus()" in js, \
+            "goVoice 内部必须 await loadVoiceBindingStatus()"
+
 
 class TestStylesCss:
     def test_hidden_utility_explicit(self):
