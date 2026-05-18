@@ -2401,6 +2401,78 @@ body {
   margin-left: 1px;
 }
 
+/* ─── Result Save Seal Overlay ─────────────────────────────────── */
+
+@keyframes resultSealOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes resultSealStampIn {
+  0% { opacity: 0; transform: scale(1.35) rotate(-6deg); }
+  60% { opacity: 1; transform: scale(0.94) rotate(2deg); }
+  80% { transform: scale(1.04) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes resultSealFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.result-save-seal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 14, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: resultSealOverlayIn 0.18s ease both;
+}
+
+.result-save-seal-overlay.hidden {
+  display: none !important;
+}
+
+.result-save-seal-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.result-save-seal-stamp {
+  width: 92px;
+  height: 92px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--xt-accent);
+  border: 1px solid rgba(217, 149, 74, 0.55);
+  background: rgba(217, 149, 74, 0.10);
+  animation: resultSealStampIn 0.42s cubic-bezier(0.2, 0.9, 0.2, 1.18) both;
+}
+
+.result-save-seal-label {
+  font-family: var(--xt-serif, serif);
+  font-size: 18px;
+  letter-spacing: 0.24em;
+  color: var(--xt-text);
+}
+
+.result-save-seal-subtitle {
+  font-size: 12px;
+  color: var(--xt-text-3);
+}
+
+.result-save-seal-fadeout {
+  animation: resultSealFadeOut 0.22s ease both;
+}
+
 .hidden {
   display: none !important;
 }

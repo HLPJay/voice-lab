@@ -1289,6 +1289,70 @@ function resultChangeTone() {
   showScreen("voice");
 }
 
+function buildSavedLetterViewModel(responseData) {
+  // Try response.data first, then response.data.letter, then response itself
+  const src = (responseData && responseData.data)
+    ? (responseData.data.letter || responseData.data)
+    : (responseData || {});
+  const letter = {
+    id: src.id || src.letterId || null,
+    letterId: src.letterId || src.id || null,
+    recipient: state.selectedRecipient,
+    scene: state.selectedScene,
+    style: src.style || state.selectedStyle || null,
+    rawText: (el("rawTextArea")?.value || "").trim(),
+    finalText: state.finalText || (el("finalTextArea")?.value || "").trim(),
+    voicePreset: state.selectedVoice || src.voicePreset || null,
+    tone: state.selectedTone || src.tone || null,
+    audioUrl: state.ttsResult ? (state.ttsResult.audioUrl || null) : (src.audioUrl || null),
+    durationSecs: state.ttsResult ? (state.ttsResult.durationMs ? state.ttsResult.durationMs / 1000 : null) : (src.durationSecs || null),
+    title: src.title || null,
+    createdAt: src.createdAt || new Date().toISOString(),
+    favorited: true,
+  };
+  return letter;
+}
+
+function upsertLetterIntoState(letter) {
+  if (!letter || !(letter.id || letter.letterId)) return;
+  const id = letter.id || letter.letterId;
+  const existing = (state.letters || []).findIndex(function(item) {
+    return (item.id || item.letterId) === id;
+  });
+  if (existing >= 0) {
+    state.letters[existing] = letter;
+  } else {
+    state.letters.unshift(letter);
+  }
+}
+
+function showResultSaveSealThenOpenDetail(letter) {
+  const overlay = el("resultSaveSealOverlay");
+  if (!overlay) {
+    // Fallback: go directly to detail
+    state.activeLetterDetailId = letter.id || letter.letterId;
+    state.activeLetterDetail = letter;
+    state.letterDetailFavoritedMap[letter.id || letter.letterId] = true;
+    showScreen("letterDetail");
+    return;
+  }
+  overlay.classList.remove("hidden");
+  overlay.classList.remove("result-save-seal-fadeout");
+  // Force reflow
+  void overlay.offsetWidth;
+  setTimeout(function() {
+    overlay.classList.add("result-save-seal-fadeout");
+    setTimeout(function() {
+      overlay.classList.add("hidden");
+      overlay.classList.remove("result-save-seal-fadeout");
+      state.activeLetterDetailId = letter.id || letter.letterId;
+      state.activeLetterDetail = letter;
+      state.letterDetailFavoritedMap[letter.id || letter.letterId] = true;
+      showScreen("letterDetail");
+    }, 240);
+  }, 900);
+}
+
 async function resultSave() {
   if (state.resultSaved) return;
   const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
@@ -1323,10 +1387,11 @@ async function resultSave() {
   }
 
   state.resultSaved = true;
-  setBusy("btnResultSave", false, "已保存");
-  updateResultSaveButton();
-  showToast("已保存到信笺夹");
-  setStatus("信笺已保存", "ok");
+
+  const savedLetter = buildSavedLetterViewModel(response);
+  upsertLetterIntoState(savedLetter);
+
+  showResultSaveSealThenOpenDetail(savedLetter);
 }
 
 async function generateTts() {

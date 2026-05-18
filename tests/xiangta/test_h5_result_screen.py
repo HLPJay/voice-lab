@@ -201,3 +201,138 @@ class TestResultScreenStyles:
         for style in required_styles:
             assert f".{style}" in css or f"#{style}" in css, \
                 f"{style} style not found in styles.css"
+
+
+class TestResultSaveCeremony:
+    """P22F: Result save ceremony and letter detail navigation."""
+
+    def test_result_save_seal_overlay_exists(self):
+        """index.html has resultSaveSealOverlay element."""
+        html = _read(H5_INDEX)
+        assert 'id="resultSaveSealOverlay"' in html, \
+            "resultSaveSealOverlay not found"
+
+    def test_result_save_seal_label_text(self):
+        """.result-save-seal-label contains '已 · 收 · 好'."""
+        html = _read(H5_INDEX)
+        assert "已 · 收 · 好" in html, \
+            "'已 · 收 · 好' not found in index.html"
+
+    def test_result_save_seal_overlay_css_exists(self):
+        """styles.css has .result-save-seal-overlay class."""
+        css = _read("apps/xiangta-h5/styles.css")
+        assert ".result-save-seal-overlay" in css, \
+            ".result-save-seal-overlay CSS not found"
+
+    def test_result_save_seal_stamp_keyframes_exist(self):
+        """styles.css has resultSealStampIn keyframe."""
+        css = _read("apps/xiangta-h5/styles.css")
+        assert "@keyframes resultSealStampIn" in css, \
+            "@keyframes resultSealStampIn not found"
+
+    def test_show_result_save_seal_then_open_detail_exists(self):
+        """app.js has showResultSaveSealThenOpenDetail function."""
+        js = _read(H5_APP)
+        assert "function showResultSaveSealThenOpenDetail" in js or \
+               "showResultSaveSealThenOpenDetail =" in js, \
+            "showResultSaveSealThenOpenDetail function not found"
+
+    def test_result_save_calls_seal_then_open_detail(self):
+        """resultSave calls showResultSaveSealThenOpenDetail on success."""
+        js = _read(H5_APP)
+        start = js.find("function resultSave")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "showResultSaveSealThenOpenDetail" in section, \
+            "resultSave must call showResultSaveSealThenOpenDetail"
+
+    def test_result_save_sets_active_letter_detail(self):
+        """resultSave (via showResultSaveSealThenOpenDetail) sets activeLetterDetailId and activeLetterDetail."""
+        js = _read(H5_APP)
+        # Check resultSave calls showResultSaveSealThenOpenDetail
+        start = js.find("function resultSave")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "showResultSaveSealThenOpenDetail" in section, \
+            "resultSave must call showResultSaveSealThenOpenDetail"
+        # Check showResultSaveSealThenOpenDetail sets activeLetterDetailId
+        seal_start = js.find("function showResultSaveSealThenOpenDetail")
+        if seal_start != -1:
+            seal_end = js.find("\n}", seal_start)
+            seal_section = js[seal_start:seal_end]
+            assert "activeLetterDetailId" in seal_section, \
+                "showResultSaveSealThenOpenDetail must set activeLetterDetailId"
+            assert "activeLetterDetail" in seal_section, \
+                "showResultSaveSealThenOpenDetail must set activeLetterDetail"
+
+    def test_result_save_writes_to_state_letters(self):
+        """resultSave writes saved letter to state.letters or upsertLetterIntoState."""
+        js = _read(H5_APP)
+        start = js.find("function resultSave")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "upsertLetterIntoState" in section or "state.letters" in section, \
+            "resultSave must write to state.letters"
+
+    def test_result_save_sets_favorited_true(self):
+        """resultSave sets favorited = true via buildSavedLetterViewModel or showResultSaveSealThenOpenDetail."""
+        js = _read(H5_APP)
+        # Check buildSavedLetterViewModel sets favorited: true
+        build_start = js.find("function buildSavedLetterViewModel")
+        if build_start != -1:
+            build_end = js.find("\n}", build_start)
+            build_section = js[build_start:build_end]
+            assert "favorited: true" in build_section, \
+                "buildSavedLetterViewModel must set favorited: true"
+        # Or check showResultSaveSealThenOpenDetail sets letterDetailFavoritedMap
+        seal_start = js.find("function showResultSaveSealThenOpenDetail")
+        if seal_start != -1:
+            seal_end = js.find("\n}", seal_start)
+            seal_section = js[seal_start:seal_end]
+            assert "letterDetailFavoritedMap" in seal_section, \
+                "showResultSaveSealThenOpenDetail must set letterDetailFavoritedMap"
+
+    def test_result_save_no_detail_api_call(self):
+        """resultSave does not call GET /api/xiangta/letters/{id}."""
+        js = _read(H5_APP)
+        start = js.find("function resultSave")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "/api/xiangta/letters/" not in section, \
+            "resultSave must not call GET /api/xiangta/letters/{id}"
+
+    def test_result_save_no_real_provider_call(self):
+        """resultSave does not call real MiniMax provider."""
+        js = _read(H5_APP)
+        start = js.find("function resultSave")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "_silentWav" not in section, \
+            "resultSave must not use _silentWav"
+        assert "speechSynthesis" not in section, \
+            "resultSave must not use speechSynthesis"
+
+    def test_upsert_letter_into_state_exists(self):
+        """app.js has upsertLetterIntoState function."""
+        js = _read(H5_APP)
+        assert "function upsertLetterIntoState" in js or \
+               "upsertLetterIntoState =" in js, \
+            "upsertLetterIntoState function not found"
+
+    def test_build_saved_letter_view_model_exists(self):
+        """app.js has buildSavedLetterViewModel function."""
+        js = _read(H5_APP)
+        assert "function buildSavedLetterViewModel" in js or \
+               "buildSavedLetterViewModel =" in js, \
+            "buildSavedLetterViewModel function not found"
+
+    def test_result_save_seal_overlay_hidden_by_default(self):
+        """resultSaveSealOverlay is hidden by default in index.html."""
+        html = _read(H5_INDEX)
+        # Should have class="result-save-seal-overlay hidden"
+        assert 'result-save-seal-overlay' in html, \
+            "result-save-seal-overlay class not found"
+        # Should be hidden initially
+        assert 'class="result-save-seal-overlay hidden"' in html or \
+               "class='result-save-seal-overlay hidden'" in html, \
+            "resultSaveSealOverlay must be hidden by default"
