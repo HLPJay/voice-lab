@@ -195,3 +195,33 @@ class TestComposeExampleStarter:
         section = src[start:end]
         assert "fillExampleLink" in section
         assert "addEventListener" in section
+
+
+class TestSuggestParity:
+
+    def _js(self):
+        return (_H5_DIR / "app.js").read_text(encoding="utf-8")
+
+    def _html(self):
+        return (_H5_DIR / "index.html").read_text(encoding="utf-8")
+
+    def _css(self):
+        return (_H5_DIR / "styles.css").read_text(encoding="utf-8")
+
+    def test_suggest_screen_has_understanding_and_cards(self):
+        html = self._html()
+        assert 'id="aiUnderstanding"' in html
+        assert 'id="suggestionsArea"' in html
+        assert 'id="btnToVoice"' in html
+
+    def test_edit_and_copy_actions_exist_in_js(self):
+        js = self._js()
+        assert "function copySuggestion" in js
+        assert "function editSuggestion" in js
+        assert 'data-action="edit"' in js
+        assert 'data-action="copy"' in js
+
+    def test_suggestion_card_visual_tokens_exist(self):
+        css = self._css()
+        for token in [".small-pill-btn", ".suggestion-action-left", ".insight-dot", ".suggestion-card.selected"]:
+            assert token in css

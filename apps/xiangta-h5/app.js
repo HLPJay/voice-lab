@@ -92,6 +92,7 @@ const state = {
   selectedRecipient: null,
   selectedScene: null,
   suggestions: [],
+  suggestionMeta: null,
   selectedIndex: -1,
   selectedStyle: "gentle",
   selectedVoice: "female-gentle",
@@ -493,15 +494,14 @@ function renderSuggestionCards(meta) {
   const list = el("suggestionsArea");
   if (!list || !insight) return;
   insight.innerHTML =
-    `<div class="insight-label">我读到的是</div>` +
+    '<div class="insight-label"><span class="insight-dot"></span><span>我读到的是</span></div>' +
     `<div class="insight-summary">${escHtml(meta.summary || "你想把没说完的话，说得更稳一些。")}</div>` +
     '<div class="insight-divider"></div>' +
     `<div class="insight-intent">表达目标 · ${escHtml(meta.intent || "更贴近关系，也更贴近你")}</div>`;
   list.innerHTML = "";
   state.suggestions.forEach((item, index) => {
     const selected = state.selectedIndex === index;
-    const card = document.createElement("button");
-    card.type = "button";
+    const card = document.createElement("article");
     card.className = "suggestion-card" + (selected ? " selected" : "");
     card.innerHTML =
       '<div class="suggestion-meta">' +
@@ -510,10 +510,74 @@ function renderSuggestionCards(meta) {
       "</div>" +
       `<div class="suggestion-text">${escHtml(item.text)}</div>` +
       `<div class="suggestion-fit">适合：${escHtml(item.fitsFor)}</div>` +
-      '<div class="suggestion-actions"><span class="expr-select-btn">' + (selected ? "已选择" : "选这条") + "</span></div>";
+      '<div class="suggestion-actions">' +
+      '<div class="suggestion-action-left">' +
+      `<button type="button" class="small-pill-btn" data-index="${index}" data-action="edit">编辑</button>` +
+      `<button type="button" class="small-pill-btn" data-index="${index}" data-action="copy">复制</button>` +
+      "</div>" +
+      `<button type="button" class="expr-select-btn" data-index="${index}" data-action="select">${selected ? "已选择" : "选这条"}</button>` +
+      "</div>";
     card.addEventListener("click", () => selectSuggestion(index));
+    card.querySelector('[data-action="edit"]')?.addEventListener("click", (event) => editSuggestion(index, event));
+    card.querySelector('[data-action="copy"]')?.addEventListener("click", (event) => copySuggestion(index, event));
+    card.querySelector('[data-action="select"]')?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectSuggestion(index);
+    });
     list.appendChild(card);
   });
+}
+
+async function copySuggestion(index, event) {
+  event?.stopPropagation();
+  const suggestion = state.suggestions[index];
+  if (!suggestion?.text) {
+    showToast("没有可复制的内容");
+    return;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(suggestion.text);
+      showToast("已复制");
+      return;
+    }
+  } catch (error) {
+    // Fallback below.
+  }
+
+  try {
+    const area = document.createElement("textarea");
+    area.value = suggestion.text;
+    area.setAttribute("readonly", "readonly");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    showToast(ok ? "已复制" : "复制失败，请手动复制");
+  } catch (error) {
+    showToast("复制失败，请手动复制");
+  }
+}
+
+function editSuggestion(index, event) {
+  event?.stopPropagation();
+  const suggestion = state.suggestions[index];
+  if (!suggestion) return;
+  const nextText = window.prompt("编辑这段表达", suggestion.text);
+  if (nextText === null) return;
+  const text = nextText.trim();
+  if (!text) {
+    showToast("内容不能为空");
+    return;
+  }
+  state.suggestions[index] = {
+    ...suggestion,
+    text,
+    charCount: text.length,
+  };
+  selectSuggestion(index);
 }
 
 async function generateSuggestions() {
@@ -533,11 +597,12 @@ async function generateSuggestions() {
   });
   setBusy("btnGenSuggestions", false, "帮我整理表达");
   if (!response) return;
+  state.suggestionMeta = response.data;
   state.suggestions = buildSuggestionViewModel(response.data);
   state.selectedIndex = -1;
   state.finalText = "";
   state.selectedStyle = "gentle";
-  el("suggestSubtitle").textContent = `${getBootstrapSceneLabel(state.selectedScene)} · 给${getBootstrapRecipientLabel(state.selectedRecipient)}`;
+  el("suggestSubtitle").textContent = `给${getBootstrapRecipientLabel(state.selectedRecipient)} · ${getBootstrapSceneLabel(state.selectedScene)}`;
   renderStepDots("suggestStepDots", 1, STEP_LABELS);
   renderSuggestionCards(response.data);
   renderRiskHint("suggestRiskHint", rawText);
@@ -553,7 +618,10 @@ function selectSuggestion(index) {
   state.finalText = suggestion.text;
   state.selectedStyle = suggestion.style;
   el("finalTextArea").value = suggestion.text;
-  renderSuggestionCards({ summary: "你已经选中一个更接近此刻心情的版本。", intent: "下一步可以直接进入语音生成。" });
+  renderSuggestionCards({
+    summary: state.suggestionMeta?.summary || "你已经选中一个更接近此刻心情的版本。",
+    intent: state.suggestionMeta?.intent || "下一步可以直接进入语音生成。",
+  });
   const button = el("btnToVoice");
   if (button) button.disabled = false;
 }

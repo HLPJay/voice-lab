@@ -107,7 +107,7 @@
 
           <section class="content-section content-section-tight">
             <div class="composer-box" id="rawTextWrap">
-              <textarea id="rawTextArea" rows="7" maxlength="500" placeholder="比如：今天又下雨了，我突然想起你。"></textarea>
+              <textarea id="rawTextArea" rows="7" maxlength="500" placeholder="比如：今天又下雨了，突然想起我们一起淋雨的那天。那时候我没说，其实那一刻我觉得跟你在一起好幸福。"></textarea>
             </div>
             <div class="composer-meta">
               <button class="text-link" id="fillExampleLink" type="button">用一个例子开始</button>
@@ -140,9 +140,11 @@
               <div class="step-caption">第 2 步 / 共 3 步</div>
               <div class="step-context" id="suggestSubtitle">想念 · 给恋人</div>
             </div>
-            <button class="icon-button" type="button" aria-label="关闭" onclick="showScreen('home')">
+            <button class="icon-button" type="button" aria-label="更多操作" onclick="showScreen('home')">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+                <circle cx="4.5" cy="9" r="1.2" fill="currentColor"></circle>
+                <circle cx="9" cy="9" r="1.2" fill="currentColor"></circle>
+                <circle cx="13.5" cy="9" r="1.2" fill="currentColor"></circle>
               </svg>
             </button>
           </div>
@@ -150,8 +152,8 @@
           <div class="step-progress" id="suggestStepDots"></div>
 
           <section class="step-hero step-hero-compact">
-            <h2 class="step-title-small">已经帮你整理出几种表达</h2>
-            <p class="step-subtitle">挑一个最像你的版本，再进入下一步生成语音。</p>
+            <h2 class="step-title-small">挑一个最像你的版本</h2>
+            <p class="step-subtitle">已经帮你整理出几种表达，挑一个最贴近此刻心情的版本吧。</p>
           </section>
 
           <div id="aiUnderstanding" class="insight-card"></div>
