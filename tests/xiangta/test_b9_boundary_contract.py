@@ -54,6 +54,32 @@ class TestB9CoreAudioLinkBoundary:
         for token in ["MINIMAX_API_KEY", "MIMO_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY"]:
             assert token not in src
 
+    def test_core_http_client_has_absolute_url_method(self):
+        """B9-FIX3: CoreHttpClient has absolute_url() for converting relative audio paths."""
+        from src.xiangta.services.core_http_client import CoreHttpClient
+        assert hasattr(CoreHttpClient, "absolute_url")
+
+    def test_core_http_client_absolute_url_relative_path(self):
+        """B9-FIX3: absolute_url('/api/voice/assets/a/download') returns full Core URL."""
+        from src.xiangta.services.core_http_client import CoreHttpClient
+        client = CoreHttpClient("http://127.0.0.1:8000")
+        result = client.absolute_url("/api/voice/assets/a/download")
+        assert result == "http://127.0.0.1:8000/api/voice/assets/a/download"
+
+    def test_core_http_client_absolute_url_absolute_unchanged(self):
+        """B9-FIX3: absolute_url('https://cdn.example.com/audio.mp3') returns unchanged."""
+        from src.xiangta.services.core_http_client import CoreHttpClient
+        client = CoreHttpClient("http://127.0.0.1:8000")
+        result = client.absolute_url("https://cdn.example.com/audio.mp3")
+        assert result == "https://cdn.example.com/audio.mp3"
+
+    def test_core_http_client_absolute_url_empty_string(self):
+        """B9-FIX3: absolute_url('') returns ''."""
+        from src.xiangta.services.core_http_client import CoreHttpClient
+        client = CoreHttpClient("http://127.0.0.1:8000")
+        result = client.absolute_url("")
+        assert result == ""
+
     def test_tts_request_schema_has_profile_id_field(self):
         from src.xiangta.api.schemas import TtsRequest
         fields = set(TtsRequest.model_fields.keys())

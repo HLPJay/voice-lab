@@ -173,6 +173,10 @@ class VoiceLabGateway:
         if not audio_url:
             raise CoreRenderResponseError("Core render response missing audio_asset.url")
 
+        # B9-FIX3: convert relative audio URL to absolute so browser can play it
+        if hasattr(self._http_client, "absolute_url"):
+            audio_url = self._http_client.absolute_url(audio_url)
+
         duration_ms = audio_asset.get("duration_ms")
         contract = self._build_contract(
             tone=tone,

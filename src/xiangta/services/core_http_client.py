@@ -70,3 +70,17 @@ class CoreHttpClient:
         except Exception as exc:
             logger.warning("Core HTTP POST %s failed: %s", path, exc)
             return {"error": "network_error", "detail": "Failed to reach Core"}
+
+    def absolute_url(self, url_or_path: str) -> str:
+        """
+        将相对路径转换为绝对 URL。
+
+        - 以 http:// 或 https:// 开头的 URL 原样返回。
+        - 以 /api/ 开头的相对路径拼接 Core base_url。
+        - 空字符串原样返回。
+        """
+        if not url_or_path:
+            return url_or_path
+        if url_or_path.startswith("http://") or url_or_path.startswith("https://"):
+            return url_or_path
+        return self._url(url_or_path)

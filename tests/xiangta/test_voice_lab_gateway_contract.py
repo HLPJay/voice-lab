@@ -297,6 +297,94 @@ class TestGenerateTtsContract:
         )
 
 
+class FakeCoreClientWithAbsoluteUrl:
+    """Fake client that has absolute_url() method for testing B9-FIX3."""
+    def __init__(self, payload: dict) -> None:
+        self.payload = payload
+        self.requests: list[tuple[str, dict]] = []
+
+    async def post(self, path: str, json: dict):
+        self.requests.append((path, json))
+        return FakeResponse(self.payload)
+
+    def absolute_url(self, url_or_path: str) -> str:
+        """Simulate CoreHttpClient.absolute_url()."""
+        if not url_or_path:
+            return url_or_path
+        if url_or_path.startswith("http://") or url_or_path.startswith("https://"):
+            return url_or_path
+        # Simulate Core base_url = "http://127.0.0.1:8000"
+        return f"http://127.0.0.1:8000{url_or_path}"
+
+
+class TestGenerateTtsAbsoluteUrl:
+    """B9-FIX3: VoiceLabGateway converts relative audio URLs to absolute."""
+
+    @pytest.mark.asyncio
+    async def test_generate_tts_converts_relative_audio_url_to_absolute(self):
+        """When http_client has absolute_url(), relative audio URLs are converted."""
+        fake_client = FakeCoreClientWithAbsoluteUrl(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider=None),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        # Relative URL /api/voice/assets/audio_123/download should be converted
+        # to http://127.0.0.1:8000/api/voice/assets/audio_123/download
+        assert result["audioUrl"] == "http://127.0.0.1:8000/api/voice/assets/audio_123/download"
+
+    @pytest.mark.asyncio
+    async def test_generate_tts_keeps_absolute_audio_url_unchanged(self):
+        """When audio_url is already absolute, it should not be modified."""
+        payload_with_absolute_url = {
+            "job_id": "job_456",
+            "status": "success",
+            "audio_asset": {
+                "id": "audio_456",
+                "url": "https://cdn.example.com/audio.mp3",
+                "duration_ms": 2000,
+                "format": "mp3",
+            },
+            "subtitle_asset": None,
+            "provider": "mock",
+            "model": "mock-model",
+        }
+        fake_client = FakeCoreClientWithAbsoluteUrl(payload_with_absolute_url)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider=None),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        assert result["audioUrl"] == "https://cdn.example.com/audio.mp3"
+
+    @pytest.mark.asyncio
+    async def test_generate_tts_without_absolute_url_keeps_relative_url(self):
+        """When http_client has no absolute_url(), relative URL is kept (backward compat)."""
+        fake_client = FakeCoreClient(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.generate_tts(
+            text="晚安",
+            target=CoreRenderTarget(profile_id="profile_002"),
+            tone="gentle",
+            scene="night",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        # Without absolute_url(), the relative URL should be kept as-is
+        assert result["audioUrl"] == "/api/voice/assets/audio_123/download"
+
+
 STATUS_FORBIDDEN_KEYS = {
     "api_key",
     "env",
