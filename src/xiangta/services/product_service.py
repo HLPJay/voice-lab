@@ -341,7 +341,27 @@ def create_product_service() -> "ProductService":
     )
     writer = ProductConfigWriter()
     admin_config_svc = AdminConfigService(writer=writer)
-    copywriting = CopywritingService(gateway=gateway)
+
+    # Wire copywriting gateway based on runtime config
+    from src.xiangta.services.copywriting_gateway import (
+        CopywritingGateway,
+        FakeLlmCopywritingGateway,
+        TemplateCopywritingGateway,
+    )
+    if (
+        runtime_config.feature_llm_copywriting_enabled
+        and runtime_config.copywriting_mode == "llm"
+        and runtime_config.copywriting_provider == "fake"
+    ):
+        cw_gateway: "CopywritingGateway" = FakeLlmCopywritingGateway()
+    else:
+        # Default: template gateway (safe, no external calls)
+        cw_gateway = TemplateCopywritingGateway()
+
+    copywriting = CopywritingService(
+        gateway=cw_gateway,
+        fallback_to_template=runtime_config.copywriting_fallback_to_template,
+    )
     tts_task_svc = TtsTaskService(tts_orchestrator=tts)
 
     # Wire letter storage based on runtime config

@@ -1,18 +1,48 @@
 """
-CopywritingService — 生成文案建议。
+Copywriting Gateway — abstract LLM provider interface for copywriting suggestions.
 
-B5-1 版本：基于模板，不调用 LLM / 外部 API。
-C8 版本：支持可选 CopywritingGateway（fake LLM）+ template fallback。
+C8 MVP:
+- TemplateCopywritingGateway: uses built-in template logic
+- FakeLlmCopywritingGateway: returns predictable fake LLM-style suggestions
 
-输入：recipient, scene, raw_text
-输出：summary + intent + 3 条 style 建议（restrained / gentle / sincere）
+No real API calls, no API key access.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import Protocol
 
-if TYPE_CHECKING:
-    from src.xiangta.services.copywriting_gateway import CopywritingGateway
+
+@dataclass(frozen=True)
+class CopywritingRequest:
+    recipient: str
+    scene: str
+    raw_text: str
+    max_suggestions: int = 3
+
+
+@dataclass(frozen=True)
+class CopywritingSuggestion:
+    style: str
+    style_label: str
+    fits_for: str
+    text: str
+
+
+@dataclass(frozen=True)
+class CopywritingResult:
+    summary: str
+    intent: str
+    suggestions: list[CopywritingSuggestion]
+    source: str = "template"  # "template" | "fake_llm"
+
+
+class CopywritingGateway(Protocol):
+    async def generate(self, request: CopywritingRequest) -> CopywritingResult:
+        ...
+
+
+# ── Template implementation ───────────────────────────────────────────────────
 
 _SCENE_SUMMARY = {
     "miss":    "表达想念与牵挂",
@@ -63,91 +93,63 @@ _STYLE_LABELS = {
 _STYLES_ORDER = ["restrained", "gentle", "sincere"]
 
 
-class CopywritingService:
-
-    def __init__(
-        self,
-        gateway: "CopywritingGateway | None" = None,
-        fallback_to_template: bool = True,
-    ) -> None:
-        self._gateway = gateway
-        self._fallback_to_template = fallback_to_template
-
-    def _to_dict(self, gateway_result) -> dict:
-        """Convert CopywritingResult to API dict (camelCase)."""
-        return {
-            "summary": gateway_result.summary,
-            "intent":  gateway_result.intent,
-            "suggestions": [
-                {
-                    "style":      s.style,
-                    "styleLabel": s.style_label,
-                    "fitsFor":    s.fits_for,
-                    "text":       s.text,
-                    "charCount":  len(s.text),
-                }
-                for s in gateway_result.suggestions
-            ],
-        }
-
-    def _template_suggestions(self, scene: str, raw_text: str) -> dict:
-        """Build template-based suggestions dict (for fallback path)."""
-        summary = _SCENE_SUMMARY.get(scene, "表达你的心意")
-        intent  = _SCENE_INTENT.get(scene, "把原文整理成更合适的表达方式")
+class TemplateCopywritingGateway:
+    async def generate(self, request: CopywritingRequest) -> CopywritingResult:
+        summary = _SCENE_SUMMARY.get(request.scene, "表达你的心意")
+        intent  = _SCENE_INTENT.get(request.scene, "把原文整理成更合适的表达方式")
 
         suggestions = []
         for style in _STYLES_ORDER:
             opener, closer, fits_for = _TEMPLATES.get(
-                (scene, style), _DEFAULT_TEMPLATES[style]
+                (request.scene, style), _DEFAULT_TEMPLATES[style]
             )
-            text = f"{opener}{raw_text}{closer}"
-            suggestions.append({
-                "style":      style,
-                "styleLabel": _STYLE_LABELS[style],
-                "fitsFor":    fits_for,
-                "text":       text,
-                "charCount":  len(text),
-            })
+            text = f"{opener}{request.raw_text}{closer}"
+            suggestions.append(CopywritingSuggestion(
+                style=style,
+                style_label=_STYLE_LABELS[style],
+                fits_for=fits_for,
+                text=text,
+            ))
 
-        return {
-            "summary":     summary,
-            "intent":      intent,
-            "suggestions": suggestions,
-        }
+        return CopywritingResult(
+            summary=summary,
+            intent=intent,
+            suggestions=suggestions,
+            source="template",
+        )
 
-    async def generate_suggestions(
-        self,
-        *,
-        recipient: str,
-        scene: str,
-        raw_text: str,
-    ) -> dict:
-        """
-        Generate 3 style suggestions (restrained / gentle / sincere).
 
-        If gateway is set, try gateway.generate() first.
-        On gateway failure with fallback=True, fall back to template.
-        On gateway failure with fallback=False, raise LlmFailedError.
-        """
-        raw_text = raw_text.strip()
-        if not raw_text:
-            raise ValueError("raw_text 不能为空")
+# ── Fake LLM implementation ────────────────────────────────────────────────────
 
-        if self._gateway is None:
-            return self._template_suggestions(scene, raw_text)
+_FAKE_LLM_STYLE_FORMATS = {
+    "restrained": "我想把这句话轻轻说给你听：{raw_text}",
+    "gentle":     "有些话想慢慢告诉你：{raw_text}。愿你听见我的在意。",
+    "sincere":    "认真说：{raw_text}。这是我现在最真实的心情。",
+}
 
-        from src.xiangta.services.copywriting_gateway import CopywritingRequest
-        from src.xiangta.services.error_translator import LlmFailedError
 
-        try:
-            request = CopywritingRequest(
-                recipient=recipient,
-                scene=scene,
-                raw_text=raw_text,
-            )
-            result = await self._gateway.generate(request)
-            return self._to_dict(result)
-        except Exception:
-            if self._fallback_to_template:
-                return self._template_suggestions(scene, raw_text)
-            raise LlmFailedError()
+class FakeLlmCopywritingGateway:
+    def __init__(self, should_fail: bool = False) -> None:
+        self._should_fail = should_fail
+
+    async def generate(self, request: CopywritingRequest) -> CopywritingResult:
+        if self._should_fail:
+            raise RuntimeError("fake LLM unavailable")
+
+        suggestions = []
+        for style in _STYLES_ORDER:
+            text_template = _FAKE_LLM_STYLE_FORMATS[style]
+            text = text_template.format(raw_text=request.raw_text)
+            suggestions.append(CopywritingSuggestion(
+                style=style,
+                style_label=_STYLE_LABELS[style],
+                fits_for="AI 整理，保持原意，更适合发送",
+                text=text,
+            ))
+
+        return CopywritingResult(
+            summary="AI 整理你的表达",
+            intent="在保留原意的基础上，生成更适合发送的情绪文案",
+            suggestions=suggestions,
+            source="fake_llm",
+        )
