@@ -34,8 +34,8 @@ class TestHomeScreenSettingsButton:
         assert 'aria-label="刷新首页"' not in html and "aria-label='刷新首页'" not in html, \
             "Refresh button should be replaced with settings button"
 
-    def test_settings_button_calls_show_toast(self):
-        """Settings button calls showToast('设置页后续支持')."""
+    def test_settings_button_calls_show_screen(self):
+        """Settings button calls showScreen('settings')."""
         html = _read(H5_INDEX)
         # Find the settings button onclick
         settings_match = re.search(
@@ -51,8 +51,8 @@ class TestHomeScreenSettingsButton:
             )
         assert settings_match, "Settings button not found"
         onclick = settings_match.group(1)
-        assert "showToast" in onclick and "设置页后续支持" in onclick, \
-            "Settings button must call showToast('设置页后续支持')"
+        assert "showScreen" in onclick and "settings" in onclick, \
+            "Settings button must call showScreen('settings')"
 
     def test_home_topbar_has_history_and_settings(self):
         """Home topbar has both history and settings buttons."""

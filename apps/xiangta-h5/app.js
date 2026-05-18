@@ -245,6 +245,9 @@ function showScreen(screen) {
     setupHistoryScreen();
     loadLetters();
   }
+  if (screen === "settings") {
+    renderSettingsScreen();
+  }
 }
 
 function setBusy(buttonId, busy, label) {
@@ -1419,8 +1422,8 @@ function renderLetters() {
     const durationStr = letter.durationSecs ? formatDuration(letter.durationSecs) : "";
 
     const iconHtml = letter.audioUrl
-      ? `<div class="prototype-history-card-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></div>`
-      : `<div class="prototype-history-card-icon no-audio"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor" opacity="0.4"/></svg></div>`;
+      ? `<div class="prototype-history-card-icon"><svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></div>`
+      : `<div class="prototype-history-card-icon no-audio"><svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor" opacity="0.4"/></svg></div>`;
 
     card.innerHTML =
       iconHtml +
@@ -1493,7 +1496,7 @@ function renderHomeRecentLetter() {
     <div class="home-recent-card" onclick="showScreen('history')">
       <div class="home-recent-icon ${hasAudio ? 'has-audio' : ''}">
         ${hasAudio
-          ? '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg>'
+          ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg>'
           : '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="3" y="4" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3 6l6 4 6-4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>'}
       </div>
       <div class="home-recent-info">
@@ -1784,9 +1787,9 @@ function updateHistoryPlayIcon(isPlaying) {
   const icon = el("historyPlayIcon");
   if (!icon) return;
   if (isPlaying) {
-    icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" rx="1" fill="white"/><rect x="8" y="2" width="3" height="10" rx="1" fill="white"/></svg>`;
+    icon.innerHTML = `<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><rect x="3" y="2" width="3" height="10" rx="1" fill="white"/><rect x="8" y="2" width="3" height="10" rx="1" fill="white"/></svg>`;
   } else {
-    icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="white"/></svg>`;
+    icon.innerHTML = `<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="white"/></svg>`;
   }
 }
 
@@ -1838,6 +1841,130 @@ function fillSceneExample() {
   updateComposeState();
   textarea.focus();
   showToast("已放入一个完整例子，可以直接改成你的话");
+}
+
+// ─── Settings Screen ─────────────────────────────────────────
+
+function renderSettingsScreen() {
+  const container = el("settingsContent");
+  if (!container) return;
+
+  const providerStatus = state.bootstrap?.providerStatus;
+  const voiceStatus = state.voiceBindingStatus;
+  const lettersCount = (state.letters || []).length;
+
+  // Provider status display
+  const providerKind = providerStatus?.kind || "unknown";
+  const providerLabel = providerStatus?.label || "检查中";
+  const providerDetail = providerStatus?.detail || "";
+  const providerOk = providerKind === "ok";
+  const providerWarn = providerKind === "quota" || providerKind === "degraded" || providerKind === "not_integrated";
+  const providerError = providerKind === "error";
+  const providerDotClass = providerOk ? "status-dot-ok" : providerWarn ? "status-dot-warn" : providerError ? "status-dot-error" : "status-dot-idle";
+
+  // Voice binding display
+  const bindingItems = voiceStatus?.items || [];
+  const boundCount = bindingItems.filter(function(item) { return item.bound; }).length;
+  const totalVoices = 4;
+
+  // Build voice binding rows
+  const voiceNames = {
+    "female-gentle": "温柔女声",
+    "male-gentle": "温柔男声",
+    "female-bright": "明亮女声",
+    "male-mature": "成熟男声",
+  };
+  const voiceOrder = ["female-gentle", "male-gentle", "female-bright", "male-mature"];
+
+  let bindingRowsHtml = "";
+  voiceOrder.forEach(function(voiceId) {
+    const item = bindingItems.find(function(i) { return i.voicePreset === voiceId; });
+    const bound = item?.bound || false;
+    const badgeClass = bound ? "binding-badge-ok" : "binding-badge-warn";
+    const badgeText = bound ? "已绑定" : "未绑定";
+    const name = voiceNames[voiceId] || voiceId;
+    bindingRowsHtml +=
+      "<div class=\"settings-binding-row\">" +
+        "<span class=\"settings-binding-name\">" + escHtml(name) + "</span>" +
+        "<span class=\"settings-binding-badge " + badgeClass + "\">" + badgeText + "</span>" +
+      "</div>";
+  });
+
+  if (bindingRowsHtml === "") {
+    bindingRowsHtml = "<div class=\"settings-binding-empty\">加载中...</div>";
+  }
+
+  // Local save note
+  const localNoteHtml =
+    "<div class=\"settings-card\">" +
+      "<div class=\"settings-card-title\">本地保存说明</div>" +
+      "<div class=\"settings-card-body\">" +
+        "<div class=\"settings-note-row\">" +
+          "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\"><path d=\"M3 7l3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
+          "<span>本机保存，不替你发送</span>" +
+        "</div>" +
+        "<div class=\"settings-note-row\">" +
+          "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\"><path d=\"M3 7l3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
+          "<span>不自动分享给对方</span>" +
+        "</div>" +
+        "<div class=\"settings-note-row\">" +
+          "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\"><path d=\"M3 7l3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
+          "<span>信笺仅保存在这台设备</span>" +
+        "</div>" +
+      "</div>" +
+    "</div>";
+
+  container.innerHTML =
+    // Status overview cards
+    "<div class=\"settings-status-grid\">" +
+      "<div class=\"settings-status-card\">" +
+        "<div class=\"settings-status-label\">文案生成</div>" +
+        "<div class=\"settings-status-value\">" +
+          "<span class=\"settings-status-dot " + providerDotClass + "\"></span>" +
+          escHtml(providerLabel) +
+        "</div>" +
+        providerDetail ? "<div class=\"settings-status-detail\">" + escHtml(providerDetail) + "</div>" : "" +
+      "</div>" +
+      "<div class=\"settings-status-card\">" +
+        "<div class=\"settings-status-label\">声音绑定</div>" +
+        "<div class=\"settings-status-value\">" +
+          boundCount + " / " + totalVoices + " 已绑定" +
+        "</div>" +
+      "</div>" +
+      "<div class=\"settings-status-card\">" +
+        "<div class=\"settings-status-label\">本地信笺</div>" +
+        "<div class=\"settings-status-value\">" + lettersCount + " 封</div>" +
+      "</div>" +
+    "</div>" +
+
+    // Voice binding detail
+    "<div class=\"settings-card\">" +
+      "<div class=\"settings-card-title\">声线绑定状态</div>" +
+      "<div class=\"settings-card-subtitle\">用于把四种产品声线绑定到 Core 中已有的人设</div>" +
+      "<div class=\"settings-binding-list\">" + bindingRowsHtml + "</div>" +
+      "<button class=\"ghost-button settings-voice-bind-btn\" type=\"button\" onclick=\"window.location.href='/h5/admin-voice-bindings.html'\">" +
+        "打开声线绑定配置页" +
+      "</button>" +
+    "</div>" +
+
+    // Local save note
+    localNoteHtml;
+}
+
+async function refreshSettingsStatus() {
+  // Reload bootstrap for provider status
+  const response = await apiFetch("/api/xiangta/bootstrap");
+  if (response) {
+    state.bootstrap = response.data;
+  }
+  // Reload voice binding status
+  await loadVoiceBindingStatus();
+  // Reload letters count
+  const lettersResp = await apiFetch("/api/xiangta/letters?limit=1&offset=0");
+  if (lettersResp) {
+    state.letters = lettersResp.data?.letters || [];
+  }
+  renderSettingsScreen();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
