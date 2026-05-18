@@ -1587,7 +1587,7 @@ body {
 
 .history-filter-chip.active {
   background: var(--xt-accent-soft);
-  border-color: var(--xt-accent-deep);
+  border-color: var(--xt-accent);
   color: var(--xt-accent-ink);
 }
 
@@ -1710,7 +1710,7 @@ body {
 .history-mini-player-btn {
   width: 40px;
   height: 40px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 0;
   padding: 0;
   background: var(--xt-accent);
@@ -1763,8 +1763,11 @@ body {
 }
 
 .history-empty-state {
-  padding: 40px 22px;
+  padding: 36px 22px;
   text-align: center;
+  border: 1px dashed var(--xt-hairline-2);
+  border-radius: 22px;
+  margin: 16px;
 }
 
 .history-empty-icon {

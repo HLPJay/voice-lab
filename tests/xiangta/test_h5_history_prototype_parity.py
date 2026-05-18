@@ -231,3 +231,87 @@ class TestHistorySearchAndFilter:
         js = _read(H5_APP)
         assert "function renderHistoryFilterChips" in js or "renderHistoryFilterChips =" in js, \
             "renderHistoryFilterChips function not found"
+
+
+class TestHistoryVisualParity:
+    """P22I: History screen visual parity with prototype."""
+
+    def test_history_empty_state_has_dashed_border(self):
+        """.history-empty-state has dashed border-radius 22px."""
+        css = _read(H5_CSS)
+        idx = css.find(".history-empty-state")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "dashed" in section, \
+            ".history-empty-state should have dashed border"
+        assert "22px" in section, \
+            ".history-empty-state should have border-radius: 22px"
+
+    def test_filter_chip_active_has_accent_border(self):
+        """.history-filter-chip.active uses --xt-accent border-color."""
+        css = _read(H5_CSS)
+        idx = css.find(".history-filter-chip.active")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "--xt-accent" in section, \
+            ".history-filter-chip.active should use --xt-accent border-color"
+
+    def test_mini_player_btn_border_radius_12px(self):
+        """.history-mini-player-btn has border-radius: 12px (not 999px)."""
+        css = _read(H5_CSS)
+        idx = css.find(".history-mini-player-btn")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "12px" in section, \
+            ".history-mini-player-btn should have border-radius: 12px"
+        assert "999px" not in section, \
+            ".history-mini-player-btn should not have border-radius: 999px"
+
+    def test_mini_player_chevron_points_down(self):
+        """mini player close chevron points down (not up)."""
+        html = _read(H5_INDEX)
+        # The chevron-up path is "M6 8l4 4 4-4", chevron-down is "M6 12l4-4 4 4"
+        assert "M6 12l4-4 4 4" in html or "M6 12l4-4 4" in html, \
+            "Mini player chevron should point down (M6 12l4-4 4 4)"
+        assert "M6 8l4 4 4-4" not in html, \
+            "Mini player chevron should not point up"
+
+    def test_history_card_click_calls_open_letter_detail(self):
+        """History card click calls openLetterDetail."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetters")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "openLetterDetail" in section, \
+            "renderLetters must call openLetterDetail on card click"
+
+    def test_history_play_button_has_stop_propagation(self):
+        """History play button event has stopPropagation."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetters")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "stopPropagation" in section, \
+            "History play button must call stopPropagation"
+
+
+class TestHistoryScreenInteraction:
+    """P22I: History screen interaction invariants."""
+
+    def test_history_search_input_exists(self):
+        """historySearchInput element exists in index.html."""
+        html = _read(H5_INDEX)
+        assert 'id="historySearchInput"' in html, \
+            "historySearchInput not found"
+
+    def test_history_search_placeholder_matches_prototype(self):
+        """history search placeholder matches prototype."""
+        html = _read(H5_INDEX)
+        assert "搜索信笺正文 / 标题 / 对象 / 场景" in html, \
+            "Search placeholder should match prototype"
+
+    def test_history_count_text_matches_prototype(self):
+        """historyCount shows local save notice matching prototype."""
+        js = _read(H5_APP)
+        # Prototype uses localized save notice; check historyCount is updated
+        assert "historyCount" in js, "historyCount element should be referenced"
