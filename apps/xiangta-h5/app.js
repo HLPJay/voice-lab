@@ -811,6 +811,19 @@ function renderVoicePicker() {
     });
     node.appendChild(option);
   });
+
+  // Show hint when all voices are unbound in formal mode
+  const hintNode = el("voiceBindHint");
+  if (hintNode) {
+    const bindingItems = state.voiceBindingStatus?.items || [];
+    const allUnbound = bindingItems.length > 0 && bindingItems.every(function(item) { return !item.bound; });
+    if (state.mode !== "dev" && allUnbound) {
+      hintNode.textContent = "当前还没有绑定真实声音，请先到 Admin 配置页绑定 Core profile。";
+      hintNode.classList.remove("hidden");
+    } else {
+      hintNode.classList.add("hidden");
+    }
+  }
 }
 
 function getVoiceBindingInfo(voicePresetId) {
