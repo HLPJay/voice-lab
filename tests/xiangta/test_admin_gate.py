@@ -11,7 +11,6 @@ def _create_client() -> TestClient:
 
 
 def test_admin_config_returns_403_by_default(monkeypatch):
-    monkeypatch.setenv("XIANGTA_TEST_AUTO_ADMIN_HEADER", "0")
     monkeypatch.delenv("XIANGTA_ADMIN_ENABLED", raising=False)
     monkeypatch.delenv("XIANGTA_ADMIN_TOKEN", raising=False)
 
@@ -21,7 +20,6 @@ def test_admin_config_returns_403_by_default(monkeypatch):
 
 
 def test_admin_config_returns_403_when_enabled_without_token(monkeypatch):
-    monkeypatch.setenv("XIANGTA_TEST_AUTO_ADMIN_HEADER", "0")
     monkeypatch.setenv("XIANGTA_ADMIN_ENABLED", "true")
     monkeypatch.delenv("XIANGTA_ADMIN_TOKEN", raising=False)
 
@@ -31,7 +29,6 @@ def test_admin_config_returns_403_when_enabled_without_token(monkeypatch):
 
 
 def test_admin_config_returns_403_when_token_is_invalid(monkeypatch):
-    monkeypatch.setenv("XIANGTA_TEST_AUTO_ADMIN_HEADER", "0")
     monkeypatch.setenv("XIANGTA_ADMIN_ENABLED", "true")
     monkeypatch.setenv("XIANGTA_ADMIN_TOKEN", "expected-token")
 
@@ -46,7 +43,6 @@ def test_admin_config_returns_403_when_token_is_invalid(monkeypatch):
 
 
 def test_admin_config_returns_200_when_token_matches(monkeypatch):
-    monkeypatch.setenv("XIANGTA_TEST_AUTO_ADMIN_HEADER", "0")
     monkeypatch.setenv("XIANGTA_ADMIN_ENABLED", "true")
     monkeypatch.setenv("XIANGTA_ADMIN_TOKEN", "test-admin-token")
 
@@ -61,7 +57,6 @@ def test_admin_config_returns_200_when_token_matches(monkeypatch):
 
 
 def test_public_voice_presets_does_not_require_admin_token(monkeypatch):
-    monkeypatch.setenv("XIANGTA_TEST_AUTO_ADMIN_HEADER", "0")
     monkeypatch.delenv("XIANGTA_ADMIN_ENABLED", raising=False)
     monkeypatch.delenv("XIANGTA_ADMIN_TOKEN", raising=False)
 

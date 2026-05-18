@@ -52,6 +52,14 @@ _TONE_PRESETS = [
     }
 ]
 
+_ADMIN_HEADERS = {"X-XiangTa-Admin-Token": "test-admin-token"}
+
+
+@pytest.fixture(autouse=True)
+def _admin_env(monkeypatch):
+    monkeypatch.setenv("XIANGTA_ADMIN_ENABLED", "true")
+    monkeypatch.setenv("XIANGTA_ADMIN_TOKEN", "test-admin-token")
+
 
 @pytest.fixture
 def write_client(tmp_path, monkeypatch):
@@ -75,7 +83,21 @@ def write_client(tmp_path, monkeypatch):
 
     app = FastAPI()
     app.include_router(router)
-    return TestClient(app), tmp_path
+
+    class AdminTestClient(TestClient):
+        def put(self, url, *args, **kwargs):
+            kwargs.setdefault("headers", _ADMIN_HEADERS)
+            return super().put(url, *args, **kwargs)
+
+        def patch(self, url, *args, **kwargs):
+            kwargs.setdefault("headers", _ADMIN_HEADERS)
+            return super().patch(url, *args, **kwargs)
+
+        def get(self, url, *args, **kwargs):
+            kwargs.setdefault("headers", _ADMIN_HEADERS)
+            return super().get(url, *args, **kwargs)
+
+    return AdminTestClient(app), tmp_path
 
 
 # ── PUT /admin/voice-mappings/{id} ────────────────────────────────────────────

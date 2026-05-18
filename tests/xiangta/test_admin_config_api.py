@@ -8,8 +8,6 @@ P17-XIANGTA-ADMIN-CONFIG-B4-1 — Admin Config API 集成测试（只读）
   - Admin 接口不泄露 api_key / provider_voice_id / binding_id / params_json / model
   - 用户端 bootstrap 仍不暴露 coreProfileId / providerPolicy / renderOverrides
 """
-import os
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -31,30 +29,6 @@ ADMIN_FORBIDDEN_KEYS = {
 
 
 ADMIN_HEADERS = {"X-XiangTa-Admin-Token": "test-admin-token"}
-
-os.environ.setdefault("XIANGTA_ADMIN_ENABLED", "true")
-os.environ.setdefault("XIANGTA_ADMIN_TOKEN", "test-admin-token")
-os.environ.setdefault("XIANGTA_TEST_AUTO_ADMIN_HEADER", "1")
-
-_ORIGINAL_REQUEST = TestClient.request
-
-
-def _patched_request(self, method, url, *args, **kwargs):
-    headers = dict(kwargs.get("headers") or {})
-    if (
-        os.environ.get("XIANGTA_TEST_AUTO_ADMIN_HEADER", "1") == "1"
-        and "/api/xiangta/admin/" in str(url)
-        and "X-XiangTa-Admin-Token" not in headers
-    ):
-        token = os.environ.get("XIANGTA_ADMIN_TOKEN")
-        if token:
-            headers["X-XiangTa-Admin-Token"] = token
-            kwargs["headers"] = headers
-    return _ORIGINAL_REQUEST(self, method, url, *args, **kwargs)
-
-
-if TestClient.request is not _patched_request:
-    TestClient.request = _patched_request
 
 
 @pytest.fixture(scope="module")
