@@ -289,3 +289,40 @@ class TestResultScreenVisualParity:
             rest = section[idx:]
             assert "renderResultScreen" in rest, \
                 "showScreen must call renderResultScreen for result screen"
+
+
+class TestMobileSafeArea:
+    """P22K-FIX1: Mobile sticky CTA safe area fixes."""
+
+    def test_bottom_safe_area_variable_exists(self):
+        """styles.css has --xt-bottom-safe CSS variable."""
+        css = _read(H5_CSS)
+        assert "--xt-bottom-safe" in css, \
+            "--xt-bottom-safe variable not found"
+
+    def test_screen_scroll_uses_bottom_safe_padding(self):
+        """.screen-scroll uses --xt-bottom-safe for padding-bottom."""
+        css = _read(H5_CSS)
+        idx = css.find(".screen-scroll {")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "--xt-bottom-safe" in section, \
+            ".screen-scroll should use --xt-bottom-safe for padding-bottom"
+
+    def test_sticky_cta_uses_safe_area_inset_bottom(self):
+        """.sticky-cta uses env(safe-area-inset-bottom)."""
+        css = _read(H5_CSS)
+        idx = css.find(".sticky-cta {")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "safe-area-inset-bottom" in section, \
+            ".sticky-cta should use env(safe-area-inset-bottom)"
+
+    def test_history_mini_player_uses_safe_area_inset_bottom(self):
+        """.history-mini-player uses env(safe-area-inset-bottom)."""
+        css = _read(H5_CSS)
+        idx = css.find(".history-mini-player {")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "safe-area-inset-bottom" in section, \
+            ".history-mini-player should use env(safe-area-inset-bottom)"
