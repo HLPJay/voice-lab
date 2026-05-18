@@ -9,6 +9,7 @@ Exports:
 - connect, init_schema (database utilities)
 """
 from src.xiangta.storage.database import (
+    DEFAULT_SQLITE_PATH,
     SCHEMA_VERSION,
     connect,
     ensure_dir_for,
@@ -27,6 +28,7 @@ __all__ = [
     "MemoryLetterRepository",
     "SQLiteLetterRepository",
     "resolve_sqlite_path",
+    "DEFAULT_SQLITE_PATH",
     "connect",
     "init_schema",
     "ensure_dir_for",

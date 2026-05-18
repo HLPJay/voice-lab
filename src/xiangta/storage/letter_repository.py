@@ -51,7 +51,7 @@ class LetterRepository(Protocol):
 # ── Memory implementation ──────────────────────────────────────────────────
 
 class MemoryLetterRepository:
-    """In-process list storage, shared across instances via module global."""
+    """In-process list storage owned by this repository instance."""
 
     def __init__(self) -> None:
         self._letters: list[dict] = []
@@ -102,14 +102,14 @@ class SQLiteLetterRepository:
     """Persistent SQLite storage for letters."""
 
     def __init__(self, database_url: str | None = None) -> None:
-        self._path: Path | None = resolve_sqlite_path(database_url)
-        if self._path is not None:
-            ensure_dir_for(self._path)
+        self._target: str | Path = resolve_sqlite_path(database_url)
+        if isinstance(self._target, Path):
+            ensure_dir_for(self._target)
         self._conn: sqlite3.Connection | None = None
 
     def _ensure_connection(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = connect(self._path)
+            self._conn = connect(self._target)
             init_schema(self._conn)
         return self._conn
 
@@ -182,11 +182,11 @@ class SQLiteLetterRepository:
         total_row = conn.execute("SELECT COUNT(*) as cnt FROM letters").fetchone()
         total = total_row["cnt"] if total_row else 0
 
-        # Page with ORDER BY created_at DESC, then by letter_id DESC for stability
+        # Page with ORDER BY created_at DESC, then by rowid DESC for same-second stability
         rows = conn.execute(
             """
             SELECT * FROM letters
-            ORDER BY created_at DESC, letter_id DESC
+            ORDER BY created_at DESC, rowid DESC
             LIMIT ? OFFSET ?
             """,
             (limit, offset),

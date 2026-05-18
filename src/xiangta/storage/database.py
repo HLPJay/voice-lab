@@ -8,12 +8,14 @@ Handles:
 """
 from __future__ import annotations
 
-import os
 import sqlite3
 from pathlib import Path
 
 # Schema version for future migration compatibility
 SCHEMA_VERSION = 1
+
+# Default SQLite file path when STORAGE_TYPE=sqlite but no DATABASE_URL is set
+DEFAULT_SQLITE_PATH = ".data/xiangta.sqlite3"
 
 # Minimal schema: letters + storage_meta
 _LETTERS_SCHEMA = """
@@ -44,25 +46,26 @@ CREATE TABLE IF NOT EXISTS storage_meta (
 """
 
 
-def resolve_sqlite_path(database_url: str | None) -> Path | None:
+def resolve_sqlite_path(database_url: str | None) -> str | Path:
     """
-    Resolve XIANGTA_STORAGE_DATABASE_URL to a file Path.
+    Resolve XIANGTA_STORAGE_DATABASE_URL to a database target.
 
     Supports:
-      sqlite:///absolute/or/relative/path.db  → strip prefix, use as path
-      /absolute/path.db                       → use as absolute path
-      relative/path.db                        → use relative to cwd
-      :memory:                                → return None (special :memory: signal)
+      None or ""           → DEFAULT_SQLITE_PATH (persistent file)
+      :memory:             → ":memory:" (SQLite in-memory)
+      sqlite:///path.db    → strip prefix, use as path
+      /absolute/path.db    → use as absolute path
+      relative/path.db     → use relative to cwd
 
     Raises ValueError for unsupported formats.
     """
-    if database_url is None:
-        return None
+    if database_url is None or database_url.strip() == "":
+        return DEFAULT_SQLITE_PATH
 
     url = database_url.strip()
 
     if url == ":memory:":
-        return None
+        return ":memory:"
 
     if url.startswith("sqlite:///"):
         path_str = url[len("sqlite:///"):]
@@ -82,20 +85,20 @@ def ensure_dir_for(path: Path) -> None:
         parent.mkdir(parents=True, exist_ok=True)
 
 
-def connect(path: Path | None) -> sqlite3.Connection:
+def connect(target: str | Path) -> sqlite3.Connection:
     """
     Open a SQLite connection.
 
     Args:
-        path: File path for the database, or None for :memory:
+        target: File path or ":memory:" for in-memory SQLite.
 
     Returns:
         sqlite3.Connection with row_factory = sqlite3.Row
     """
-    if path is None:
+    if target == ":memory:":
         conn = sqlite3.connect(":memory:")
     else:
-        conn = sqlite3.connect(str(path))
+        conn = sqlite3.connect(str(target))
     conn.row_factory = sqlite3.Row
     return conn
 
