@@ -36,8 +36,8 @@
     </header>
 
     <main class="app-main">
-      <section id="screenHome" class="screen active">
-        <div class="screen-scroll">
+      <section id="screenHome" class="screen active home-screen">
+        <div class="home-content">
           <section class="home-hero hero">
             <div class="home-date-line" id="homeDateLine"></div>
             <h1 class="home-title">今晚，<br>想对谁说话？</h1>
@@ -59,16 +59,6 @@
             <div id="homeRecentLetter" class="home-recent-letter-card"></div>
           </section>
 
-          <div class="sticky-cta home-actions bottom-actions">
-            <button id="btnStartCompose" class="cta-button btn-cta" type="button" onclick="goCompose()" disabled>开始表达</button>
-            <div class="home-status">
-              <div class="status-pill-bar">
-                <div class="status-pill" id="statusPill">MiniMax · 检查中</div>
-              </div>
-              <div class="status-note">本机保存 · 不替你发送</div>
-            </div>
-          </div>
-
           <div id="devPanel" class="dev-panel hidden">
             <div class="dev-panel-title">Dev Mode</div>
             <div class="dev-panel-row">
@@ -78,6 +68,16 @@
               </select>
             </div>
             <div id="providerStatus" class="provider-status">检查中...</div>
+          </div>
+        </div>
+
+        <div class="home-bottom-cta">
+          <button id="btnStartCompose" class="cta-button btn-cta" type="button" onclick="goCompose()" disabled>开始表达</button>
+          <div class="home-status">
+            <div class="status-pill-bar">
+              <div class="status-pill" id="statusPill">MiniMax · 检查中</div>
+            </div>
+            <div class="status-note">本机保存 · 不替你发送</div>
           </div>
         </div>
       </section>

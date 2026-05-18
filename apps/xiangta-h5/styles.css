@@ -92,7 +92,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 430px;
-  min-height: 100dvh;
+  height: 100dvh;
   background: linear-gradient(180deg, #120e17 0%, var(--bg) 14%, var(--bg) 100%);
   border-inline: 1px solid rgba(255, 255, 255, 0.03);
   overflow: hidden;
@@ -233,16 +233,53 @@ body {
 }
 
 .app-main {
-  min-height: calc(100dvh - 58px);
+  height: 100%;
 }
 
 .screen {
   display: none;
-  min-height: calc(100dvh - 58px);
+  height: 100%;
 }
 
 .screen.active {
   display: block;
+}
+
+/* Home screen: fixed-height shell with internal scroll + fixed bottom CTA */
+.home-screen {
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding: 0 16px calc(var(--home-bottom-cta-height, 118px) + env(safe-area-inset-bottom) + 24px);
+}
+
+.home-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.home-content::-webkit-scrollbar-thumb {
+  background: rgba(244, 239, 230, 0.18);
+  border-radius: 999px;
+}
+
+.home-bottom-cta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(16, 13, 20, 0.96) 70%, rgba(16, 13, 20, 0));
 }
 
 .screen-scroll {
