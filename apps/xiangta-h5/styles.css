@@ -242,7 +242,7 @@ body {
 }
 
 .screen.active {
-  display: block;
+  /* display:block handled by each screen type's specific rule */
 }
 
 /* Home screen: fixed-height shell with internal scroll + fixed bottom CTA */
@@ -250,8 +250,16 @@ body {
   height: 100%;
   overflow: hidden;
   position: relative;
+}
+
+/* Only apply flex layout when .home-screen is active */
+.screen.home-screen.active {
   display: flex;
   flex-direction: column;
+}
+
+.home-topbar {
+  flex-shrink: 0;
 }
 
 .home-content {

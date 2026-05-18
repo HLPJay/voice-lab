@@ -1,25 +1,27 @@
 """
-Tests for H5 Home Layout Contract (P22M-FIX1).
+Tests for H5 Home Layout Contract (P22M-FIX2).
 
 Covers:
-1. screenHome has home-screen class
-2. Home has home-content (scrollable) container
-3. Home has home-bottom-cta (fixed) container
-4. btnStartCompose is in home-bottom-cta, not in home-content
-5. Home has no ghost "查看历史" button
-6. Home has no statusBar div
-7. .home-content has overflow-y: auto
-8. .home-content has scrollbar-gutter or scrollbar styles
-9. .home-bottom-cta uses position: absolute or fixed
-10. .home-bottom-cta uses env(safe-area-inset-bottom)
-11. .home-content padding-bottom reserves space for CTA height
-12. selectRecipient / selectScene / goCompose still exist
-13. screenResult still exists
-14. screenHistory still exists
-15. screenSettings still exists
-16. Formal H5 payload does not include profileId/coreProfileId
-17. Dev mode profileId passthrough preserved
-18. No new backend API paths
+1. appTopbar is inside screenHome (not outside phone-shell)
+2. showScreen no longer manually controls appTopbar.style.display
+3. .home-screen does not have display:flex directly
+4. .screen.home-screen.active has display:flex
+5. screenHome non-active has display:none (via .screen rule)
+6. Home has home-content container
+7. Home has home-bottom-cta container
+8. btnStartCompose is in home-bottom-cta
+9. Home has no ghost "查看历史" button
+10. Home has no statusBar div
+11. .home-content has overflow-y: auto
+12. .home-content has scrollbar styles
+13. .home-bottom-cta uses position: absolute or fixed
+14. .home-bottom-cta uses env(safe-area-inset-bottom)
+15. .home-content padding-bottom reserves CTA height
+16. selectRecipient / selectScene / goCompose still exist
+17. screenResult / screenHistory / screenSettings still exist
+18. Formal H5 payload does not include profileId/coreProfileId
+19. Dev mode profileId passthrough preserved
+20. No new backend API paths
 """
 import re
 
@@ -89,6 +91,72 @@ class TestHomeLayoutStructure:
         html = _read(H5_INDEX)
         assert 'id="statusBar"' not in html and "id='statusBar'" not in html, \
             "statusBar div must not exist"
+
+    def test_app_topbar_inside_screen_home(self):
+        """appTopbar is inside screenHome, not a direct child of phone-shell."""
+        html = _read(H5_INDEX)
+        # Find screenHome boundaries
+        home_start = html.find('id="screenHome"')
+        home_end = html.find("</section>", home_start)
+        home_section = html[home_start:home_end]
+        # appTopbar must be inside screenHome
+        assert 'id="appTopbar"' in home_section, \
+            "appTopbar must be inside screenHome"
+
+    def test_history_button_calls_show_screen_history(self):
+        """History button in Home topbar calls showScreen('history')."""
+        html = _read(H5_INDEX)
+        # Find appTopbar section
+        topbar_start = html.find('id="appTopbar"')
+        topbar_end = html.find("</header>", topbar_start)
+        topbar_section = html[topbar_start:topbar_end]
+        assert "showScreen('history')" in topbar_section or 'showScreen("history")' in topbar_section, \
+            "History button must call showScreen('history')"
+
+    def test_settings_button_calls_show_screen_settings(self):
+        """Settings button in Home topbar calls showScreen('settings')."""
+        html = _read(H5_INDEX)
+        topbar_start = html.find('id="appTopbar"')
+        topbar_end = html.find("</header>", topbar_start)
+        topbar_section = html[topbar_start:topbar_end]
+        assert "showScreen('settings')" in topbar_section or 'showScreen("settings")' in topbar_section, \
+            "Settings button must call showScreen('settings')"
+
+
+class TestHomeScreenDisplayFix:
+    """Home screen display rules — home-screen must not override .screen {display:none}."""
+
+    def test_home_screen_does_not_have_display_flex_directly(self):
+        """.home-screen must not have display:flex directly (would override .screen{display:none})."""
+        css = _read(H5_CSS)
+        # Find .home-screen block
+        idx = css.find(".home-screen {")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        # Must NOT have display:flex (only .screen.home-screen.active should have it)
+        lines = [l.strip() for l in section.splitlines() if l.strip()]
+        for line in lines:
+            assert not line.startswith("display:") or "display:" not in line, \
+                ".home-screen must not set display:flex directly"
+
+    def test_screen_home_screen_active_has_display_flex(self):
+        """.screen.home-screen.active must have display:flex."""
+        css = _read(H5_CSS)
+        idx = css.find(".screen.home-screen.active {")
+        assert idx != -1, ".screen.home-screen.active rule not found"
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "display: flex" in section or "display:flex" in section, \
+            ".screen.home-screen.active must have display:flex"
+
+    def test_show_screen_no_longer_controls_app_topbar_display(self):
+        """showScreen must not manually set appTopbar.style.display."""
+        js = _read(H5_APP)
+        start = js.find("function showScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "appTopbar" not in section or "style.display" not in section, \
+            "showScreen must not manually control appTopbar.style.display"
 
 
 class TestHomeLayoutCSS:

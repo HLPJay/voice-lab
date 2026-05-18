@@ -243,8 +243,6 @@ function showScreen(screen) {
   const target = el("screen" + screen.charAt(0).toUpperCase() + screen.slice(1));
   if (target) target.classList.add("active");
   state.screen = screen;
-  const topbar = el("appTopbar");
-  if (topbar) topbar.style.display = screen === "home" ? "flex" : "none";
   if (screen === "history") {
     setupHistoryScreen();
     loadLetters();
