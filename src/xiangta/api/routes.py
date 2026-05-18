@@ -10,6 +10,8 @@ NOTE: 本模块不注册到主应用（app/main.py）。
   GET  /voice-presets         ✅ 可用，公开产品声线（无 coreProfileId）
   GET  /core/profiles         ✅ B9 可用，读取 Core profiles
   POST /tts                   ✅ B9 可用，支持 profileId → Core render
+  POST /tts/tasks             ✅ C7 可用，同步执行 TTS，内存存储 task
+  GET  /tts/tasks/{taskId}   ✅ C7 可用，轮询 task 状态
   POST /suggestions           ✅ 可用，当前为模板文案，不调用真实 LLM
   POST /letters               ✅ 可用，当前为进程内内存存储
   GET  /letters               ✅ 可用，当前为进程内内存存储
@@ -38,6 +40,8 @@ from src.xiangta.api.schemas import (
     SuggestionsResponse,
     TtsRequest,
     TtsResponse,
+    TtsTaskCreateResponse,
+    TtsTaskStatusResponse,
     VoicePresetsResponse,
 )
 from src.xiangta.config.product_config_writer import (
@@ -269,6 +273,45 @@ async def tts(body: TtsRequest):
             message=exc.message,
             retryable=exc.retryable,
         )
+
+
+@router.post("/tts/tasks", response_model=TtsTaskCreateResponse)
+async def create_tts_task(body: TtsRequest):
+    """
+    C7: Submit a TTS task and immediately execute it synchronously.
+
+    Returns taskId/status/pollUrl.
+    Business errors are stored as failed tasks (not HTTP 400).
+    """
+    svc = create_product_service()
+    data = await svc.create_tts_task(
+        text=body.text,
+        voice_preset=body.voicePreset,
+        tone=body.tone,
+        recipient=body.recipient,
+        scene=body.scene,
+        profile_id=body.profileId,
+    )
+    return TtsTaskCreateResponse(data=data)
+
+
+@router.get("/tts/tasks/{task_id}", response_model=TtsTaskStatusResponse)
+async def get_tts_task(task_id: str):
+    """
+    C7: Poll task status by taskId.
+
+    Returns task data or 404 flat error if not found.
+    """
+    svc = create_product_service()
+    task = svc.get_tts_task(task_id)
+    if task is None:
+        return error_response(
+            status_code=404,
+            error_kind="not_found",
+            message="TTS task not found.",
+            retryable=False,
+        )
+    return TtsTaskStatusResponse(data=task)
 
 
 @router.post("/letters", response_model=CreateLetterResponse)

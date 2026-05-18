@@ -362,3 +362,34 @@ class ListLettersData(BaseModel):
 
 class ListLettersResponse(OkResponse):
     data: ListLettersData
+
+
+# ── POST /tts/tasks ───────────────────────────────────────────────────────────
+
+class TtsTaskCreateData(BaseModel):
+    taskId: str
+    status: str                          # "queued" | "running" | "completed" | "failed"
+    pollUrl: str
+
+
+class TtsTaskCreateResponse(OkResponse):
+    data: TtsTaskCreateData
+
+
+class TtsTaskData(BaseModel):
+    taskId: str
+    status: str                          # "queued" | "running" | "completed" | "failed"
+    audioUrl: Optional[str] = None
+    durationMs: Optional[int] = None
+    charCount: Optional[int] = None
+    voicePreset: Optional[str] = None
+    tone: Optional[str] = None
+    message: Optional[str] = None
+    errorKind: Optional[str] = None
+    retryable: bool = False
+    createdAt: str
+    updatedAt: str
+
+
+class TtsTaskStatusResponse(OkResponse):
+    data: TtsTaskData

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.config.product_config_repository import ProductConfigRepository
     from src.xiangta.services.admin_config_service import AdminConfigService
+    from src.xiangta.services.tts_task_service import TtsTaskService
 
 
 class ProductService:
@@ -36,6 +37,7 @@ class ProductService:
         letters: "LetterService | None" = None,
         config_repository: "ProductConfigRepository | None" = None,
         admin_config_service: "AdminConfigService | None" = None,
+        tts_tasks: "TtsTaskService | None" = None,
     ) -> None:
         self._bootstrap             = bootstrap
         self._provider_status       = provider_status
@@ -44,6 +46,7 @@ class ProductService:
         self._letters               = letters
         self._config_repository     = config_repository
         self._admin_config_service  = admin_config_service
+        self._tts_tasks            = tts_tasks
 
     async def get_bootstrap(self) -> dict:
         return await self._bootstrap.get_bootstrap()
@@ -253,6 +256,28 @@ class ProductService:
             profile_id=profile_id,
         )
 
+    async def create_tts_task(
+        self, *, text: str, voice_preset: str, tone: str, recipient: str, scene: str,
+        profile_id: str | None = None,
+    ) -> dict:
+        """委托给 TtsTaskService；ProductService 只做门面。"""
+        if self._tts_tasks is None:
+            raise RuntimeError("tts_tasks service not wired")
+        return await self._tts_tasks.create_task(
+            text=text,
+            voice_preset=voice_preset,
+            tone=tone,
+            recipient=recipient,
+            scene=scene,
+            profile_id=profile_id,
+        )
+
+    def get_tts_task(self, task_id: str) -> dict | None:
+        """委托给 TtsTaskService；ProductService 只做门面。"""
+        if self._tts_tasks is None:
+            raise RuntimeError("tts_tasks service not wired")
+        return self._tts_tasks.get_task(task_id)
+
 
 def create_product_service() -> "ProductService":
     """
@@ -273,6 +298,7 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.admin_config_service import AdminConfigService
     from src.xiangta.services.copywriting_service import CopywritingService
     from src.xiangta.services.letter_service import LetterService
+    from src.xiangta.services.tts_task_service import TtsTaskService
     from src.xiangta.storage import MemoryLetterRepository, SQLiteLetterRepository
 
     config_repository = ProductConfigRepository()
@@ -316,6 +342,7 @@ def create_product_service() -> "ProductService":
     writer = ProductConfigWriter()
     admin_config_svc = AdminConfigService(writer=writer)
     copywriting = CopywritingService(gateway=gateway)
+    tts_task_svc = TtsTaskService(tts_orchestrator=tts)
 
     # Wire letter storage based on runtime config
     if runtime_config.storage_type == "sqlite":
@@ -333,4 +360,5 @@ def create_product_service() -> "ProductService":
         admin_config_service=admin_config_svc,
         copywriting=copywriting,
         letters=letter_svc,
+        tts_tasks=tts_task_svc,
     )
