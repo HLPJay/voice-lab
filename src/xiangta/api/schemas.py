@@ -32,6 +32,36 @@ class ErrorResponse(BaseModel):
     retryable: bool = False
 
 
+# ── Core Profiles 子模型（B9）────────────────────────────────────────────────────
+
+class CoreProfileItem(BaseModel):
+    """安全字段的 Core profile（已过滤 forbidden fields）。"""
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    name: str
+    description: Optional[str] = None
+    genderStyle: Optional[str] = Field(default=None, alias="genderStyle")
+    ageStyle: Optional[str] = Field(default=None, alias="ageStyle")
+    toneStyle: Optional[str] = Field(default=None, alias="toneStyle")
+    emotionStyle: Optional[str] = Field(default=None, alias="emotionStyle")
+    speedStyle: Optional[str] = Field(default=None, alias="speedStyle")
+    pauseStyle: Optional[str] = Field(default=None, alias="pauseStyle")
+    sceneTags: list[str] = Field(default_factory=list, alias="sceneTags")
+    isActive: bool = Field(default=True, alias="isActive")
+
+
+class CoreProfilesData(BaseModel):
+    profiles: list[CoreProfileItem]
+    total: int
+    source: str  # "core" | "not_integrated"
+    message: Optional[str] = None
+
+
+class CoreProfilesResponse(OkResponse):
+    data: CoreProfilesData
+
+
 # ── Bootstrap 子模型 ───────────────────────────────────────────────────────────
 
 class RecipientItem(BaseModel):
@@ -138,11 +168,16 @@ class SuggestionsResponse(OkResponse):
 # ── POST /tts ─────────────────────────────────────────────────────────────────
 
 class TtsRequest(BaseModel):
+    """B9: profileId is optional — if provided, bypasses voicePreset mapping and uses Core profile directly."""
+    model_config = ConfigDict(extra="allow")
+
     text: str = Field(min_length=1, max_length=500)
     voicePreset: VoicePresetId
     tone: ToneId
     recipient: RecipientId
     scene: SceneId
+    # B9: optional direct Core profile path
+    profileId: Optional[str] = Field(default=None, alias="profileId")
 
 
 class TtsContract(BaseModel):

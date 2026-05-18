@@ -11,6 +11,7 @@ const state = {
   suggestions:     [],
   selectedIndex:   -1,
   ttsResult:       null,
+  coreProfiles:    [],   // B9: Core profile list
 };
 
 // ── 工具函数 ──────────────────────────────────────────────────────────────────
@@ -83,6 +84,9 @@ async function loadBootstrap() {
 
   renderProviderStatus(providerStatus);
   setStatus("就绪", "ok");
+
+  // B9: load Core profiles after bootstrap
+  loadCoreProfiles();
 }
 
 function renderProviderStatus(ps) {
@@ -98,6 +102,62 @@ function renderProviderStatus(ps) {
   }[ps.kind] || "provider-warn";
   div.className   = "provider-status " + kindClass;
   div.textContent = ps.label + "　" + ps.detail;
+}
+
+// ── Core Profiles (B9) ──────────────────────────────────────────────────────────
+
+async function loadCoreProfiles() {
+  setStatus("加载人设…", "loading");
+  const res = await apiFetch("/api/xiangta/core/profiles");
+  if (!res) {
+    state.coreProfiles = [];
+    return;
+  }
+
+  state.coreProfiles = res.data.profiles || [];
+  renderCoreProfileSelect(res.data);
+  setStatus("就绪", "ok");
+}
+
+function renderCoreProfileSelect(data) {
+  const sel = el("coreProfileSelect");
+  if (!sel) return;
+
+  // Clear existing options
+  sel.innerHTML = "";
+
+  if (data.source === "not_integrated") {
+    const opt = document.createElement("option");
+    opt.value  = "";
+    opt.text   = "未连接 Core";
+    opt.disabled = true;
+    sel.appendChild(opt);
+    return;
+  }
+
+  const profiles = data.profiles || [];
+  if (profiles.length === 0) {
+    const opt = document.createElement("option");
+    opt.value  = "";
+    opt.text   = "暂无人设";
+    opt.disabled = true;
+    sel.appendChild(opt);
+    return;
+  }
+
+  // Add placeholder
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value  = "";
+  placeholderOpt.text   = "请选择人设…";
+  placeholderOpt.selected = true;
+  sel.appendChild(placeholderOpt);
+
+  profiles.forEach(function(profile) {
+    const opt = document.createElement("option");
+    opt.value  = profile.id || "";
+    opt.text   = (profile.name || profile.id) + "（" + (profile.id || "") + "）";
+    sel.appendChild(opt);
+  });
 }
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
@@ -173,15 +233,22 @@ async function generateTts() {
   const tone        = el("toneSelect").value;
   const recipient   = el("recipientSelect").value;
   const scene       = el("sceneSelect").value;
+  const profileId   = (el("coreProfileSelect") || {}).value || null;
 
   if (!text) {
     setStatus("请先输入或选择文案", "warn");
     return;
   }
 
+  const payload = { text, voicePreset, tone, recipient, scene };
+  // B9: pass profileId if user selected a Core profile
+  if (profileId) {
+    payload.profileId = profileId;
+  }
+
   const res = await apiFetch("/api/xiangta/tts", {
     method: "POST",
-    body: JSON.stringify({ text, voicePreset, tone, recipient, scene }),
+    body: JSON.stringify(payload),
   });
   if (!res) return;
 
@@ -191,15 +258,45 @@ async function generateTts() {
 
 function renderTtsResult(d) {
   const div = el("ttsResult");
-  div.innerHTML =
+  let html =
     row("任务 ID", d.taskId)
   + row("状态",   d.status)
   + row("字数",   d.charCount)
   + row("音色",   d.voicePreset)
-  + row("语调",   d.tone)
-  + (d.durationMs ? row("时长", (d.durationMs / 1000).toFixed(1) + " s") : "")
-  + (d.audioUrl   ? row("音频", d.audioUrl) : "")
-  + (d.message    ? row("消息", d.message) : "");
+  + row("语调",   d.tone);
+
+  if (d.durationMs) {
+    html += row("时长", (d.durationMs / 1000).toFixed(1) + " s");
+  }
+
+  // B9: render audio player using DOM API (no innerHTML concatenation for audioUrl)
+  if (d.audioUrl) {
+    const audioRow = document.createElement("div");
+    audioRow.className = "tts-row";
+    const keySpan = document.createElement("span");
+    keySpan.className = "tts-key";
+    keySpan.textContent = "音频";
+    const valSpan = document.createElement("span");
+    valSpan.className = "tts-val";
+    const audioEl = document.createElement("audio");
+    audioEl.controls = true;
+    audioEl.preload = "none";
+    audioEl.src = d.audioUrl;
+    valSpan.appendChild(audioEl);
+    audioRow.appendChild(keySpan);
+    audioRow.appendChild(valSpan);
+    div.appendChild(audioRow);
+  }
+
+  if (d.message) {
+    html += row("消息", d.message);
+  }
+
+  // Keep text rows in innerHTML (audio appended above via DOM API)
+  if (html) {
+    div.insertAdjacentHTML("beforeend", html);
+  }
+
   div.classList.remove("hidden");
 }
 

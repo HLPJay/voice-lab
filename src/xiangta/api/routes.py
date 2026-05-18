@@ -25,6 +25,7 @@ from src.xiangta.api.schemas import (
     AdminVoiceMappingUpdateRequest,
     AdminVoiceMappingsResponse,
     BootstrapResponse,
+    CoreProfilesResponse,
     CreateLetterRequest,
     CreateLetterResponse,
     ListLettersResponse,
@@ -44,6 +45,19 @@ from src.xiangta.services.error_translator import XiangTaError
 from src.xiangta.services.product_service import create_product_service
 
 router = APIRouter(prefix="/api/xiangta", tags=["xiangta"])
+
+
+@router.get("/core/profiles", response_model=CoreProfilesResponse)
+async def core_profiles():
+    """
+    B9: 返回 Core 已有人设列表，供 H5 选择 profileId 后发起 TTS。
+    - 配置了 Core：返回真实 profiles，source="core"。
+    - 未配置 Core：返回空列表，source="not_integrated"，不 500。
+    - 响应不包含 forbidden fields（api_key, provider_voice_id, binding_id 等）。
+    """
+    svc = create_product_service()
+    data = await svc.list_core_profiles()
+    return CoreProfilesResponse(data=data)
 
 
 @router.get("/bootstrap", response_model=BootstrapResponse)
@@ -177,6 +191,7 @@ async def tts(body: TtsRequest):
             tone=body.tone,
             recipient=body.recipient,
             scene=body.scene,
+            profile_id=body.profileId,  # B9: optional direct profileId path
         )
         return TtsResponse(data=data)
     except XiangTaError as exc:

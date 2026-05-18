@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-RUNTIME-B8-1（已完成）→ 下一步：P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2 或 P17-XIANGTA-MERGE-DEV-EXECUTE**
+**P17-XIANGTA-CORE-AUDIO-LINK-B9（已完成）→ 下一步：P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2 或 P17-XIANGTA-MERGE-DEV-EXECUTE**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -37,6 +37,8 @@
 | P17-XIANGTA-MVP-CLOSEOUT-B7 | 后端 + H5 MVP closeout / 合并前验收，生成 MVP_CLOSEOUT_REPORT.md，512 tests 全绿 | ✅ |
 | P17-XIANGTA-MERGE-DEV-REVIEW | 合并 p17/xiangta-product-init → dev 前代码审查，结论：PASS_WITH_NOTES | ✅ |
 | P17-XIANGTA-RUNTIME-B8-1 | 新增 apps/xiangta_runtime/main.py，同源挂载 H5 + /api/xiangta/*，scoped 530 tests 全绿 | ✅ |
+| P17-XIANGTA-CORE-AUDIO-LINK-B9 | XiangTa → Core HTTP API 链路：GET /api/voice/profiles、POST /api/voice/render、profileId 直传、H5 audio 展示，572 tests 全绿 | ✅ |
+| P17-XIANGTA-CORE-AUDIO-LINK-B9-MANUAL-SMOKE | 本地双服务联调（Core + XiangTa），验证完整音频链路 | Next |
 | P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2 | 本地浏览器手工冒烟测试（可选） | Next |
 | P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
@@ -62,9 +64,9 @@
 
 ## XiangTa 下一步约束
 
-下一步进入 `P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2`（本地手工冒烟）或 `P17-XIANGTA-MERGE-DEV-EXECUTE`（直接合并）。
+下一步进入 `P17-XIANGTA-CORE-AUDIO-LINK-B9-MANUAL-SMOKE`（本地双服务联调）或 `P17-XIANGTA-MERGE-DEV-EXECUTE`（直接合并）。
 
-runtime app 已就绪（`apps/xiangta_runtime/main.py`），启动命令：
+B9 已就绪（`apps/xiangta_runtime/main.py` + Core HTTP client），启动命令：
 ```bash
 python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5173
 ```

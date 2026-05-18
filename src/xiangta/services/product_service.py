@@ -51,6 +51,67 @@ class ProductService:
     async def get_provider_status(self) -> dict:
         return await self._provider_status.get_status()
 
+    async def list_core_profiles(self) -> dict:
+        """Query Core profiles via VoiceLabGateway.list_profiles() with stable degradation."""
+        if self._tts is None or self._tts._gw is None:
+            return {
+                "profiles": [],
+                "total": 0,
+                "source": "not_integrated",
+                "message": "Core base URL is not configured",
+            }
+        from src.xiangta.services.voice_lab_gateway import (
+            CoreProfilesUnavailableError,
+            CoreProfilesResponseError,
+        )
+
+        try:
+            raw_profiles = await self._tts._gw.list_profiles()
+        except CoreProfilesUnavailableError:
+            return {
+                "profiles": [],
+                "total": 0,
+                "source": "not_integrated",
+                "message": "Core base URL is not configured",
+            }
+        except CoreProfilesResponseError:
+            return {
+                "profiles": [],
+                "total": 0,
+                "source": "core_error",
+                "message": "Failed to parse Core profiles response",
+            }
+        except Exception:
+            return {
+                "profiles": [],
+                "total": 0,
+                "source": "core_unavailable",
+                "message": "Core is currently unavailable",
+            }
+
+        # 转换为 camelCase 安全字段返回给 H5
+        def _to_camel(p: dict) -> dict:
+            return {
+                "id": p.get("id", ""),
+                "name": p.get("name", ""),
+                "description": p.get("description"),
+                "genderStyle": p.get("gender_style"),
+                "ageStyle": p.get("age_style"),
+                "toneStyle": p.get("tone_style"),
+                "emotionStyle": p.get("emotion_style"),
+                "speedStyle": p.get("speed_style"),
+                "pauseStyle": p.get("pause_style"),
+                "sceneTags": p.get("scene_tags", []),
+                "isActive": p.get("is_active", True),
+            }
+
+        return {
+            "profiles": [_to_camel(p) for p in raw_profiles],
+            "total": len(raw_profiles),
+            "source": "core",
+            "message": None,
+        }
+
     def get_admin_voice_mappings(self) -> list[dict]:
         """Return full voice mapping data including admin fields (coreProfileId, etc.)."""
         if self._config_repository is None:
@@ -159,7 +220,8 @@ class ProductService:
         )
 
     async def generate_tts(
-        self, *, text: str, voice_preset: str, tone: str, recipient: str, scene: str
+        self, *, text: str, voice_preset: str, tone: str, recipient: str, scene: str,
+        profile_id: str | None = None,  # B9: optional direct profileId path
     ) -> dict:
         """委托给 TtsOrchestrator；ProductService 只做门面。"""
         return await self._tts.generate(
@@ -168,11 +230,17 @@ class ProductService:
             tone=tone,
             recipient=recipient,
             scene=scene,
+            profile_id=profile_id,
         )
 
 
 def create_product_service() -> "ProductService":
-    """默认工厂：装配安全的 Core render mock-path 编排，不真实访问网络。"""
+    """
+    默认工厂：装配 XiangTa 产品服务。
+    如果配置了 XIANGTA_CORE_BASE_URL，则创建 Core HTTP client 并注入 VoiceLabGateway。
+    如果未配置，保持安全降级（profiles 返回空，tts 返回 no_provider 错误）。
+    不读取任何真实 Provider API key。
+    """
     from src.xiangta.config.product_config_repository import ProductConfigRepository
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.services.bootstrap_service import BootstrapService
@@ -187,7 +255,29 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.letter_service import LetterService
 
     config_repository = ProductConfigRepository()
-    gateway         = VoiceLabGateway()
+
+    # 读取 XiangTa 运行时配置，决定是否连接 Core
+    from src.xiangta.config.runtime_config import load_runtime_config
+    runtime_config = load_runtime_config()
+
+    # 如果配置了 Core Base URL，则注入 Core HTTP client；否则保持安全降级
+    if runtime_config.core_base_url:
+        try:
+            from src.xiangta.services.core_http_client import CoreHttpClient
+            core_http_client = CoreHttpClient(
+                base_url=runtime_config.core_base_url,
+                timeout=runtime_config.core_timeout_secs,
+            )
+            gateway = VoiceLabGateway(
+                core_base_url=runtime_config.core_base_url,
+                http_client=core_http_client,
+            )
+        except Exception:
+            # Core HTTP client 初始化失败，降级为无 client
+            gateway = VoiceLabGateway()
+    else:
+        gateway = VoiceLabGateway()
+
     provider_status = ProviderStatusService(gateway=gateway)
     bootstrap       = BootstrapService(
         provider_status=provider_status,

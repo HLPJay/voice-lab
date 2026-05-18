@@ -51,6 +51,16 @@ class TestAppJsApiPaths:
     def test_calls_letters(self):
         assert "/api/xiangta/letters" in self._src()
 
+    # B9: Core profiles API
+    def test_calls_core_profiles(self):
+        assert "/api/xiangta/core/profiles" in self._src()
+
+    def test_loads_core_profiles_function(self):
+        assert "loadCoreProfiles" in self._src()
+
+    def test_has_core_profile_select_render(self):
+        assert "renderCoreProfileSelect" in self._src()
+
 
 # ── app.js 必要函数 ───────────────────────────────────────────────────────────
 
@@ -110,8 +120,17 @@ class TestAppJsNoForbiddenContent:
     def test_no_params_json(self):
         assert "params_json" not in self._src()
 
-    def test_no_profile_id_field(self):
-        assert "profile_id" not in self._src()
+    # B9: H5 may use profileId (camelCase product field) but NOT snake_case profile_id
+    def test_no_snake_case_profile_id(self):
+        assert "profile_id" not in self._src(), (
+            "app.js must not use snake_case profile_id (internal Core field). "
+            "Use camelCase profileId as product-layer input field."
+        )
+
+    def test_has_core_profile_select_dom_id(self):
+        """B9: index.html should have coreProfileSelect element."""
+        index_src = (_H5_DIR / "index.html").read_text(encoding="utf-8")
+        assert "coreProfileSelect" in index_src
 
 
 # ── index.html 不引用外部 CDN ─────────────────────────────────────────────────

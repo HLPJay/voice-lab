@@ -5,6 +5,8 @@ import inspect
 import pytest
 
 from src.xiangta.services.voice_lab_gateway import (
+    CoreProfilesResponseError,
+    CoreProfilesUnavailableError,
     CoreRenderResponseError,
     CoreRenderTarget,
     CoreRenderUnavailableError,
@@ -85,33 +87,93 @@ def _success_payload() -> dict:
 
 class TestGenerateTtsContract:
     @pytest.mark.asyncio
-    async def test_posts_to_core_render_contract_with_forced_mock_provider(self):
+    async def test_provider_none_does_not_include_provider_in_payload(self):
+        """B9: target.provider=None 时，payload 不包含 provider 字段，让 Core 使用默认策略。"""
         fake_client = FakeCoreClient(_success_payload())
         gateway = VoiceLabGateway(http_client=fake_client)
 
-        result = await gateway.generate_tts(
+        await gateway.generate_tts(
             text="想念你",
-            target=CoreRenderTarget(profile_id="profile_001"),
+            target=CoreRenderTarget(profile_id="profile_001", provider=None),
             tone="gentle",
             scene="miss",
             metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
         )
 
-        assert fake_client.requests == [
-            (
-                "/api/voice/render",
-                {
-                    "text": "想念你",
-                    "profile_id": "profile_001",
-                    "provider": "mock",
-                    "need_subtitle": True,
-                    "output_format": "url",
-                    "audio_format": "mp3",
-                    "confirm_cost": False,
-                },
-            )
-        ]
-        assert result["status"] == "completed"
+        _, payload = fake_client.requests[0]
+        assert "provider" not in payload, "provider=None 时不应传给 Core"
+        assert payload["profile_id"] == "profile_001"
+        assert payload["output_format"] == "url"
+        assert payload["need_subtitle"] is True
+
+    @pytest.mark.asyncio
+    async def test_provider_default_does_not_include_provider_in_payload(self):
+        """B9: target.provider="default" 时，payload 不包含 provider 字段。"""
+        fake_client = FakeCoreClient(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider="default"),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        _, payload = fake_client.requests[0]
+        assert "provider" not in payload
+
+    @pytest.mark.asyncio
+    async def test_provider_mock_is_forwarded_to_core(self):
+        """B9: target.provider="mock" 时，显式传给 Core。"""
+        fake_client = FakeCoreClient(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider="mock"),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        _, payload = fake_client.requests[0]
+        assert payload.get("provider") == "mock"
+
+    @pytest.mark.asyncio
+    async def test_provider_minimax_is_forwarded_to_core(self):
+        """B9: target.provider="minimax" 时，显式传给 Core。"""
+        fake_client = FakeCoreClient(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider="minimax"),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        _, payload = fake_client.requests[0]
+        assert payload.get("provider") == "minimax"
+
+    @pytest.mark.asyncio
+    async def test_output_format_url_is_always_in_payload(self):
+        """B9: output_format 必须为 url。"""
+        fake_client = FakeCoreClient(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider=None),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        _, payload = fake_client.requests[0]
+        assert payload["output_format"] == "url"
+        assert payload["audio_format"] == "mp3"
 
     @pytest.mark.asyncio
     async def test_optional_render_fields_are_only_sent_when_present(self):
@@ -122,6 +184,7 @@ class TestGenerateTtsContract:
             text="晚安",
             target=CoreRenderTarget(
                 profile_id="profile_002",
+                provider="mock",
                 speed=1.1,
                 vol=0.7,
                 pitch=2,
@@ -380,3 +443,153 @@ class TestGenerateTtsDryRunContract:
         param_names = set(sig.parameters.keys()) - {"self"}
         bad = param_names & FORBIDDEN_KEYS
         assert not bad
+
+
+# ── B9: list_profiles tests ─────────────────────────────────────────────────
+
+_PROFILES_PAYLOAD = [
+    {
+        "id": "deep_night_programmer",
+        "name": "深夜程序员",
+        "description": "适合深夜场景的沉稳人设",
+        "gender_style": "male",
+        "age_style": "adult",
+        "tone_style": "reserved",
+        "emotion_style": "calm",
+        "speed_style": "normal",
+        "pause_style": "moderate",
+        "scene_tags": ["night", "work", "coding"],
+        "is_active": True,
+        # forbidden fields - must be filtered
+        "api_key": "DO_NOT_EXPOSE",
+        "provider_voice_id": "voice_abc",
+        "binding_id": "binding_123",
+        "params_json": '{"key": "value"}',
+        "model_id": "mock-model",
+        "voice_id": "some_voice_id",
+        "provider": "mock",
+        "stack_trace": "some error trace",
+    },
+    {
+        "id": "gentle_carer",
+        "name": "温柔守护者",
+        "gender_style": "female",
+        "scene_tags": ["comfort", "care"],
+        "is_active": True,
+        "api_key": "another_secret_key",
+    },
+]
+
+
+class FakeProfilesClient:
+    def __init__(self, payload: dict) -> None:
+        self.payload = payload
+        self.requests: list[tuple[str, ...]] = []
+
+    async def get(self, path: str) -> FakeResponse:
+        self.requests.append(("GET", path))
+        return FakeResponse(self.payload)
+
+
+class TestListProfiles:
+    @pytest.mark.asyncio
+    async def test_calls_core_profiles_path(self):
+        fake_client = FakeProfilesClient(_PROFILES_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.list_profiles()
+
+        assert fake_client.requests == [("GET", "/api/voice/profiles")]
+
+    @pytest.mark.asyncio
+    async def test_returns_list_of_dicts(self):
+        fake_client = FakeProfilesClient(_PROFILES_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.list_profiles()
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["id"] == "deep_night_programmer"
+        assert result[0]["name"] == "深夜程序员"
+
+    @pytest.mark.asyncio
+    async def test_forbidden_fields_are_filtered_out(self):
+        fake_client = FakeProfilesClient(_PROFILES_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.list_profiles()
+
+        for profile in result:
+            bad = set(profile.keys()) & FORBIDDEN_KEYS
+            assert not bad, f"list_profiles output contains forbidden fields: {bad}"
+
+    @pytest.mark.asyncio
+    async def test_safe_fields_remain(self):
+        fake_client = FakeProfilesClient(_PROFILES_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.list_profiles()
+
+        # Check first profile has expected safe fields
+        p0 = result[0]
+        assert p0["id"] == "deep_night_programmer"
+        assert p0["name"] == "深夜程序员"
+        assert p0["gender_style"] == "male"
+        assert p0["is_active"] is True
+        assert "scene_tags" in p0
+
+    @pytest.mark.asyncio
+    async def test_no_http_client_raises_unavailable_error(self):
+        gateway = VoiceLabGateway()
+
+        with pytest.raises(CoreProfilesUnavailableError):
+            await gateway.list_profiles()
+
+    @pytest.mark.asyncio
+    async def test_non_list_response_raises_response_error(self):
+        class BadClient:
+            async def get(self, path: str):
+                return FakeResponse({"profiles": []})  # dict, not list
+
+        gateway = VoiceLabGateway(http_client=BadClient())
+
+        with pytest.raises(CoreProfilesResponseError):
+            await gateway.list_profiles()
+
+    @pytest.mark.asyncio
+    async def test_uses_core_base_url_when_set(self):
+        fake_client = FakeProfilesClient(_PROFILES_PAYLOAD)
+        gateway = VoiceLabGateway(core_base_url="http://core:8000", http_client=fake_client)
+
+        await gateway.list_profiles()
+
+        path = fake_client.requests[0][1]
+        assert path == "http://core:8000/api/voice/profiles"
+
+    @pytest.mark.asyncio
+    async def test_filters_non_dict_items(self):
+        mixed_payload = [
+            {"id": "valid_profile", "name": "Valid"},
+            "not a dict",
+            None,
+            {"id": "another_valid", "api_key": "secret"},
+        ]
+        fake_client = FakeProfilesClient(mixed_payload)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.list_profiles()
+
+        assert len(result) == 2
+        assert all(isinstance(p, dict) for p in result)
+
+    @pytest.mark.asyncio
+    async def test_does_not_read_api_key_env(self, monkeypatch):
+        monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+        monkeypatch.delenv("MIMO_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        fake_client = FakeProfilesClient(_PROFILES_PAYLOAD)
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        result = await gateway.list_profiles()
+        assert len(result) == 2

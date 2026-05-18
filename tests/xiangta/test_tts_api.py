@@ -57,7 +57,7 @@ def _collect_keys(obj, seen=None):
 
 
 async def _fake_generate_tts(self, *, text, target, tone, scene, style=None, metadata=None):
-    _ = (self, text, target, tone, scene, style, metadata)
+    _ = (text, target, tone, scene, style, metadata)
     return {
         "taskId": "job_123",
         "status": "completed",
@@ -70,6 +70,27 @@ async def _fake_generate_tts(self, *, text, target, tone, scene, style=None, met
             "toneHint": "soft",
             "scene": "miss",
             "mode": "core_render_mock",
+        },
+    }
+
+
+async def _fake_generate_tts_with_profile(self, *, text, target, tone, scene, style=None, metadata=None):
+    _ = (text, tone, scene, style, metadata)
+    assert target.provider is None, "profileId path should use provider=None for Core default"
+    assert target.profile_id == "deep_night_programmer"
+    return {
+        "taskId": "job_profile_456",
+        "status": "completed",
+        "audioUrl": "/api/voice/assets/profile_audio_456/download",
+        "durationMs": 2000,
+        "message": None,
+        "contract": {
+            "voicePresetId": "female-gentle",
+            "tone": "gentle",
+            "toneHint": "soft",
+            "scene": "miss",
+            "mode": "core_render_mock",
+            "profileId": "deep_night_programmer",
         },
     }
 
@@ -111,6 +132,56 @@ class TestTtsHappyPath:
         assert data["audioUrl"] == "/api/voice/assets/audio_123/download"
         assert data["durationMs"] == 1800
         assert data["status"] == "completed"
+
+    def test_tts_with_profile_id_uses_direct_profile_path(self, client, monkeypatch):
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts_with_profile)
+        payload = {**VALID_PAYLOAD, "profileId": "deep_night_programmer"}
+        r = client.post("/api/xiangta/tts", json=payload)
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert data["status"] == "completed"
+        assert data["audioUrl"] == "/api/voice/assets/profile_audio_456/download"
+
+    def test_tts_without_profile_id_uses_voice_preset_mapping_path(self, client, monkeypatch):
+        """Without profileId, should still use voicePreset mapping path (backward compatible)."""
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
+        r = client.post("/api/xiangta/tts", json=VALID_PAYLOAD)
+        assert r.status_code == 200
+
+    def test_tts_profile_id_omitted_from_response(self, client, monkeypatch):
+        """profileId is an input field, not exposed in output."""
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
+        body = client.post("/api/xiangta/tts", json={**VALID_PAYLOAD, "profileId": "test_profile"}).json()
+        bad = _collect_keys(body) & {"profileId", "profile_id", "provider_voice_id", "binding_id"}
+        assert not bad
+
+
+# ── B9: /api/xiangta/core/profiles tests ─────────────────────────────────────────
+
+class TestCoreProfilesApi:
+    def test_returns_200_without_core_configured(self, client):
+        """未配置 Core 时返回空列表，不 500。"""
+        r = client.get("/api/xiangta/core/profiles")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["ok"] is True
+        assert data["data"]["profiles"] == []
+        assert data["data"]["total"] == 0
+        assert data["data"]["source"] == "not_integrated"
+
+    def test_response_no_forbidden_fields_without_core(self, client):
+        """未配置 Core 时响应不包含 forbidden fields。"""
+        body = client.get("/api/xiangta/core/profiles").json()
+        bad = _collect_keys(body) & FORBIDDEN_KEYS
+        assert not bad, f"响应包含禁止字段：{bad}"
+
+    def test_profiles_schema_has_expected_fields(self, client):
+        """验证响应 schema 包含所有安全字段。"""
+        r = client.get("/api/xiangta/core/profiles")
+        data = r.json()["data"]
+        assert "profiles" in data
+        assert "total" in data
+        assert "source" in data
 
 
 class TestValidationAndBusinessErrors:

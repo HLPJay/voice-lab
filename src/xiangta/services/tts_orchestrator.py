@@ -55,6 +55,7 @@ class TtsOrchestrator:
         tone: str,
         recipient: str,
         scene: str,
+        profile_id: str | None = None,
     ) -> dict:
         """
         Product-layer TTS orchestration.
@@ -84,34 +85,69 @@ class TtsOrchestrator:
         if len(text) > max_chars:
             raise TextTooLongError(max_chars)
 
-        try:
-            mapping = self._voice_mapping_service.resolve(voice_preset)
-            tone_preset = self._tone_preset_service.resolve(tone)
-        except Exception as exc:
-            raise PresetNotFoundError(str(exc)) from exc
-
+        # B9 profileId 优先路径：profile_id 直接构造 render target
+        # 旧 voicePreset 路径：仍走 VoicePresetMappingService.resolve()
         from src.xiangta.services.voice_lab_gateway import CoreRenderTarget
 
-        render_overrides = {}
-        render_overrides.update(mapping.render_overrides)
-        render_overrides.update(tone_preset.render_overrides)
-        target = CoreRenderTarget(
-            profile_id=mapping.core_profile_id,
-            provider=mapping.provider_policy,
-            need_subtitle=bool(render_overrides.get("need_subtitle", True)),
-            output_format=str(render_overrides.get("output_format", "url")),
-            audio_format=str(render_overrides.get("audio_format", "mp3")),
-            speed=render_overrides.get("speed"),
-            vol=render_overrides.get("vol"),
-            pitch=render_overrides.get("pitch"),
-            emotion=render_overrides.get("emotion"),
-        )
+        # B9 profileId 优先路径：profile_id 直接构造 render target
+        # 旧 voicePreset 路径：仍走 VoicePresetMappingService.resolve()
+        from src.xiangta.services.voice_lab_gateway import CoreRenderTarget
 
-        metadata = {
-            "recipient": recipient,
-            "voicePresetId": voice_preset,
-            "toneHint": tone_preset.style_hint,
-        }
+        if profile_id:
+            # 情况 A：直接使用 profileId，跳过 voicePreset → coreProfileId 映射
+            tone_preset = self._tone_preset_service.resolve(tone)
+            render_overrides = dict(tone_preset.render_overrides)
+            target = CoreRenderTarget(
+                profile_id=profile_id,
+                provider=None,  # 让 Core 使用默认策略
+                need_subtitle=bool(render_overrides.get("need_subtitle", True)),
+                output_format=str(render_overrides.get("output_format", "url")),
+                audio_format=str(render_overrides.get("audio_format", "mp3")),
+                speed=render_overrides.get("speed"),
+                vol=render_overrides.get("vol"),
+                pitch=render_overrides.get("pitch"),
+                emotion=render_overrides.get("emotion"),
+            )
+            metadata = {
+                "recipient": recipient,
+                "voicePresetId": voice_preset,
+                "toneHint": tone_preset.style_hint,
+                "profileId": profile_id,
+            }
+        else:
+            # 情况 B：使用 voicePreset → VoicePresetMappingService 路径（不破坏旧测试）
+            if self._voice_mapping_service is None:
+                raise PresetNotFoundError(
+                    "voicePreset requires VoicePresetMappingService but it is not configured"
+                )
+            try:
+                mapping = self._voice_mapping_service.resolve(voice_preset)
+            except Exception as exc:
+                raise PresetNotFoundError(str(exc)) from exc
+            try:
+                tone_preset = self._tone_preset_service.resolve(tone)
+            except Exception as exc:
+                raise PresetNotFoundError(str(exc)) from exc
+
+            render_overrides = {}
+            render_overrides.update(mapping.render_overrides)
+            render_overrides.update(tone_preset.render_overrides)
+            target = CoreRenderTarget(
+                profile_id=mapping.core_profile_id,
+                provider=mapping.provider_policy,
+                need_subtitle=bool(render_overrides.get("need_subtitle", True)),
+                output_format=str(render_overrides.get("output_format", "url")),
+                audio_format=str(render_overrides.get("audio_format", "mp3")),
+                speed=render_overrides.get("speed"),
+                vol=render_overrides.get("vol"),
+                pitch=render_overrides.get("pitch"),
+                emotion=render_overrides.get("emotion"),
+            )
+            metadata = {
+                "recipient": recipient,
+                "voicePresetId": voice_preset,
+                "toneHint": tone_preset.style_hint,
+            }
         try:
             if self._use_dry_run:
                 result = await self._gw.generate_tts_dry_run(
