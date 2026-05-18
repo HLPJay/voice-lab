@@ -89,13 +89,12 @@ class TtsOrchestrator:
         # 旧 voicePreset 路径：仍走 VoicePresetMappingService.resolve()
         from src.xiangta.services.voice_lab_gateway import CoreRenderTarget
 
-        # B9 profileId 优先路径：profile_id 直接构造 render target
-        # 旧 voicePreset 路径：仍走 VoicePresetMappingService.resolve()
-        from src.xiangta.services.voice_lab_gateway import CoreRenderTarget
-
         if profile_id:
             # 情况 A：直接使用 profileId，跳过 voicePreset → coreProfileId 映射
-            tone_preset = self._tone_preset_service.resolve(tone)
+            try:
+                tone_preset = self._tone_preset_service.resolve(tone)
+            except Exception as exc:
+                raise PresetNotFoundError(str(exc)) from exc
             render_overrides = dict(tone_preset.render_overrides)
             target = CoreRenderTarget(
                 profile_id=profile_id,

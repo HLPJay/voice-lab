@@ -127,6 +127,14 @@ class TestAppJsNoForbiddenContent:
             "Use camelCase profileId as product-layer input field."
         )
 
+    def test_render_tts_result_clears_before_render(self):
+        """B9-FIX1: renderTtsResult must clear innerHTML before rendering to avoid stacking."""
+        src = self._src()
+        # renderTtsResult should set div.innerHTML = "" at the start
+        assert "div.innerHTML = \"\"" in src or "div.innerHTML=''" in src, (
+            "renderTtsResult must clear div.innerHTML before rendering"
+        )
+
     def test_has_core_profile_select_dom_id(self):
         """B9: index.html should have coreProfileSelect element."""
         index_src = (_H5_DIR / "index.html").read_text(encoding="utf-8")

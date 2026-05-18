@@ -368,6 +368,52 @@ class TestPresetErrors:
                 scene="miss",
             )
 
+    @pytest.mark.asyncio
+    async def test_profile_id_with_disabled_tone_raises_preset_not_found_error(
+        self, mock_gateway, mock_voice_mapping_service
+    ):
+        """B9-FIX1: profileId path tone disabled must raise PresetNotFoundError, not propagate."""
+        tone_preset_service = MagicMock()
+        tone_preset_service.resolve.side_effect = TonePresetDisabled("tone 'x' is disabled")
+        orch = TtsOrchestrator(
+            gateway=mock_gateway,
+            voice_mapping_service=mock_voice_mapping_service,
+            tone_preset_service=tone_preset_service,
+            max_tts_chars=500,
+        )
+        with pytest.raises(PresetNotFoundError, match="disabled"):
+            await orch.generate(
+                text="想念你",
+                voice_preset="female-gentle",
+                tone="x",
+                recipient="lover",
+                scene="miss",
+                profile_id="deep_night_programmer",
+            )
+
+    @pytest.mark.asyncio
+    async def test_profile_id_with_unknown_tone_raises_preset_not_found_error(
+        self, mock_gateway, mock_voice_mapping_service
+    ):
+        """B9-FIX1: profileId path tone not found must raise PresetNotFoundError, not propagate."""
+        tone_preset_service = MagicMock()
+        tone_preset_service.resolve.side_effect = TonePresetNotFound("tone preset 'x' does not exist")
+        orch = TtsOrchestrator(
+            gateway=mock_gateway,
+            voice_mapping_service=mock_voice_mapping_service,
+            tone_preset_service=tone_preset_service,
+            max_tts_chars=500,
+        )
+        with pytest.raises(PresetNotFoundError, match="does not exist"):
+            await orch.generate(
+                text="想念你",
+                voice_preset="female-gentle",
+                tone="x",
+                recipient="lover",
+                scene="miss",
+                profile_id="deep_night_programmer",
+            )
+
 
 class TestGatewayErrors:
     @pytest.mark.asyncio

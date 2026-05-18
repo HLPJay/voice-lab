@@ -258,6 +258,7 @@ async function generateTts() {
 
 function renderTtsResult(d) {
   const div = el("ttsResult");
+  div.innerHTML = "";
   let html =
     row("任务 ID", d.taskId)
   + row("状态",   d.status)
