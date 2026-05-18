@@ -166,6 +166,10 @@ const state = {
   historyAudioPlaying: false,
   historyAudioCurrentTime: 0,
   historyAudioDuration: 0,
+  // Letter detail state
+  activeLetterDetailId: null,
+  activeLetterDetail: null,
+  letterDetailFavoritedMap: {},
 };
 
 function el(id) {
@@ -247,6 +251,11 @@ function showScreen(screen) {
   }
   if (screen === "settings") {
     renderSettingsScreen();
+  }
+  if (screen === "letterDetail") {
+    // Pause history audio to avoid conflict
+    const histAudio = el("historyAudio");
+    if (histAudio) histAudio.pause();
   }
 }
 
@@ -1413,7 +1422,7 @@ function renderLetters() {
     const card = document.createElement("div");
     card.className = "prototype-history-card";
     card.style.animationDelay = `${index * 0.05}s`;
-    card.onclick = () => onHistoryCardClick(letter);
+    card.onclick = () => openLetterDetail(letter.id || letter.letterId);
 
     const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || letter.recipient || "";
     const sceneLabel = getBootstrapSceneLabel(letter.scene) || letter.scene || "";
@@ -1422,8 +1431,8 @@ function renderLetters() {
     const durationStr = letter.durationSecs ? formatDuration(letter.durationSecs) : "";
 
     const iconHtml = letter.audioUrl
-      ? `<div class="prototype-history-card-icon"><svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></div>`
-      : `<div class="prototype-history-card-icon no-audio"><svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor" opacity="0.4"/></svg></div>`;
+      ? `<button class="prototype-history-card-playbtn" type="button" aria-label="播放" onclick="event.stopPropagation(); playHistoryLetter('${letter.id || letter.letterId}')"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></button>`
+      : `<div class="prototype-history-card-icon no-audio"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor" opacity="0.4"/></svg></div>`;
 
     card.innerHTML =
       iconHtml +
@@ -1965,6 +1974,222 @@ async function refreshSettingsStatus() {
     state.letters = lettersResp.data?.letters || [];
   }
   renderSettingsScreen();
+}
+
+// ─── Letter Detail Screen ─────────────────────────────────────
+
+function openLetterDetail(letterId) {
+  const letter = (state.letters || []).find(function(item) {
+    return (item.id || item.letterId) === letterId;
+  });
+  if (!letter) {
+    showToast("没有找到这封信笺");
+    return;
+  }
+  state.activeLetterDetailId = letterId;
+  state.activeLetterDetail = letter;
+  renderLetterDetailScreen(letter);
+  showScreen("letterDetail");
+}
+
+function renderLetterDetailScreen(letter) {
+  // Subtitle: recipient · scene · time
+  const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || RECIPIENT_META[letter.recipient]?.label || "";
+  const sceneLabel = getBootstrapSceneLabel(letter.scene) || SCENE_META[letter.scene]?.label || "";
+  const subtitle = [recipientLabel, sceneLabel].filter(Boolean).join(" · ") || "—";
+  const subtitleEl = el("letterDetailSubtitle");
+  if (subtitleEl) subtitleEl.textContent = subtitle;
+
+  // Meta pills
+  const pillsEl = el("letterDetailMetaPills");
+  if (pillsEl) {
+    const styleLabel = letter.style ? getBootstrapToneLabel(letter.style) : "";
+    const voiceLabel = letter.voicePreset ? getBootstrapVoiceLabel(letter.voicePreset) : "";
+    const toneLabel = letter.tone ? getBootstrapToneLabel(letter.tone) : "";
+    const pills = [recipientLabel, sceneLabel, styleLabel, voiceLabel, toneLabel].filter(Boolean);
+    pillsEl.innerHTML = pills.map(function(p) {
+      return "<span class=\"letter-meta-pill\">" + escHtml(p) + "</span>";
+    }).join("");
+  }
+
+  // Date
+  const dateEl = el("letterDetailDate");
+  if (dateEl) {
+    if (letter.createdAt) {
+      const d = new Date(letter.createdAt);
+      const isNight = d.getHours() >= 18 || d.getHours() < 5;
+      dateEl.textContent = d.getFullYear() + " · " +
+        String(d.getMonth() + 1).padStart(2, "0") + " · " +
+        String(d.getDate()).padStart(2, "0") + " · " +
+        String(d.getHours()).padStart(2, "0") + ":" +
+        String(d.getMinutes()).padStart(2, "0");
+    } else {
+      dateEl.textContent = "";
+    }
+  }
+
+  // Body - preserve line breaks
+  const bodyEl = el("letterDetailBody");
+  if (bodyEl) {
+    const text = letter.finalText || "";
+    const withBreaks = text.replace(/\n/g, "<br>");
+    bodyEl.innerHTML = withBreaks;
+  }
+
+  // Signature
+  const sigEl = el("letterDetailSignature");
+  if (sigEl) {
+    if (letter.createdAt) {
+      const d = new Date(letter.createdAt);
+      const period = (d.getHours() >= 18 || d.getHours() < 5) ? "今晚" : "今天";
+      sigEl.textContent = "—— 写于" + period;
+    } else {
+      sigEl.textContent = "—— 写于信笺夹";
+    }
+  }
+
+  // Audio section
+  const audioSection = el("letterDetailAudioSection");
+  const emptyAudio = el("letterDetailEmptyAudio");
+  const audio = el("letterDetailAudio");
+
+  if (letter.audioUrl) {
+    if (audioSection) audioSection.classList.remove("hidden");
+    if (emptyAudio) emptyAudio.classList.add("hidden");
+    if (audio) {
+      audio.src = letter.audioUrl || "";
+      audio.load();
+    }
+    // Voice name and time
+    const voiceEl = el("letterDetailVoiceName");
+    if (voiceEl) {
+      voiceEl.textContent = letter.voiceLabel || getBootstrapVoiceLabel(letter.voicePreset) || "未知声音";
+    }
+  } else {
+    if (audioSection) audioSection.classList.add("hidden");
+    if (emptyAudio) emptyAudio.classList.remove("hidden");
+  }
+
+  // Favorite button
+  renderLetterDetailFavoriteButton();
+}
+
+function renderLetterDetailFavoriteButton() {
+  const letterId = state.activeLetterDetailId;
+  const isFavorited = state.letterDetailFavoritedMap[letterId] || false;
+  const labelEl = el("letterDetailFavoriteLabel");
+  const btn = el("btnLetterDetailFavorite");
+  if (labelEl) {
+    labelEl.textContent = isFavorited ? "已收藏" : "加入收藏";
+  }
+  if (btn) {
+    if (isFavorited) {
+      btn.classList.add("favorited");
+    } else {
+      btn.classList.remove("favorited");
+    }
+  }
+}
+
+function toggleLetterDetailFavorite() {
+  const letterId = state.activeLetterDetailId;
+  if (!letterId) return;
+  state.letterDetailFavoritedMap[letterId] = !state.letterDetailFavoritedMap[letterId];
+  renderLetterDetailFavoriteButton();
+  const isFavorited = state.letterDetailFavoritedMap[letterId];
+  showToast(isFavorited ? "已收藏" : "已取消收藏");
+}
+
+async function restartLetterDetailAudio() {
+  const audio = el("letterDetailAudio");
+  if (!audio || !audio.src) {
+    showToast("请手动点击播放");
+    return;
+  }
+  audio.currentTime = 0;
+  try {
+    await audio.play();
+  } catch (e) {
+    showToast("请手动点击播放");
+  }
+}
+
+function downloadLetterDetailAudio() {
+  const letter = state.activeLetterDetail;
+  if (!letter || !letter.audioUrl) {
+    showToast("这封信笺没有音频");
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = letter.audioUrl;
+  a.download = "xiangta-letter.mp3";
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.click();
+}
+
+async function copyLetterDetailText() {
+  const letter = state.activeLetterDetail;
+  if (!letter || !letter.finalText) {
+    showToast("没有可复制的文字");
+    return;
+  }
+  const text = letter.finalText;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("文字已复制");
+    return;
+  } catch (e) {
+    // Fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showToast("文字已复制");
+    } catch (e2) {
+      showToast("复制失败");
+    }
+    document.body.removeChild(ta);
+  }
+}
+
+async function shareLetterDetail() {
+  const letter = state.activeLetterDetail;
+  if (!letter || !letter.finalText) {
+    showToast("没有可分享的内容");
+    return;
+  }
+  const text = letter.finalText;
+  const shareData = {
+    title: "一封信笺",
+    text: text,
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") return;
+    }
+  }
+  // Fallback to copy
+  await copyLetterDetailText();
+  showToast("系统不支持分享，已复制文字");
+}
+
+function retoneLetterDetail() {
+  const letter = state.activeLetterDetail;
+  if (!letter) return;
+  state.finalText = letter.finalText || "";
+  if (letter.recipient) state.selectedRecipient = letter.recipient;
+  if (letter.scene) state.selectedScene = letter.scene;
+  if (letter.voicePreset) state.selectedVoice = letter.voicePreset;
+  if (letter.tone) state.selectedTone = letter.tone;
+  goVoice();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
