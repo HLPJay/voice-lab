@@ -226,59 +226,41 @@ class TestPrototypeStyleTokens:
 class TestHomeScreenVisualParity:
     """P22H: Home screen visual parity with prototype."""
 
-    def test_home_brand_row_exists(self):
-        """index.html screenHome has home-brand-row element."""
+    def test_app_topbar_has_brand_name(self):
+        """appTopbar has 想Ta了 brand name."""
         html = _read(H5_INDEX)
-        # screenHome ends at the next section id
-        home_start = html.find('id="screenHome"')
-        screen_compose = html.find('id="screenCompose"')
-        section = html[home_start:screen_compose]
-        assert "home-brand-row" in section, \
-            "home-brand-row not found in screenHome"
-
-    def test_home_brand_has_seal_svg(self):
-        """screenHome brand row has LetterSeal SVG icon."""
-        html = _read(H5_INDEX)
-        home_start = html.find('id="screenHome"')
-        screen_compose = html.find('id="screenCompose"')
-        section = html[home_start:screen_compose]
-        assert "home-brand-seal" in section, \
-            "home-brand-seal SVG not found"
-
-    def test_home_brand_has_name(self):
-        """screenHome brand row has 想Ta了 text."""
-        html = _read(H5_INDEX)
-        home_start = html.find('id="screenHome"')
-        screen_compose = html.find('id="screenCompose"')
-        section = html[home_start:screen_compose]
+        app_topbar_start = html.find('id="appTopbar"')
+        app_topbar_end = html.find('</header>', app_topbar_start)
+        section = html[app_topbar_start:app_topbar_end]
         assert "想Ta了" in section, \
-            "想Ta了 brand name not found"
+            "想Ta了 brand name not found in appTopbar"
 
-    def test_home_brand_has_history_button(self):
-        """screenHome brand row has history navigation button."""
+    def test_app_topbar_has_history_button(self):
+        """appTopbar has history navigation button."""
+        html = _read(H5_INDEX)
+        app_topbar_start = html.find('id="appTopbar"')
+        app_topbar_end = html.find('</header>', app_topbar_start)
+        section = html[app_topbar_start:app_topbar_end]
+        assert "showScreen('history')" in section, \
+            "history button not found in appTopbar"
+
+    def test_app_topbar_has_settings_button(self):
+        """appTopbar has settings navigation button."""
+        html = _read(H5_INDEX)
+        app_topbar_start = html.find('id="appTopbar"')
+        app_topbar_end = html.find('</header>', app_topbar_start)
+        section = html[app_topbar_start:app_topbar_end]
+        assert "showScreen('settings')" in section, \
+            "settings button not found in appTopbar"
+
+    def test_home_screen_no_duplicate_brand_row(self):
+        """screenHome no longer has duplicate home-brand-row."""
         html = _read(H5_INDEX)
         home_start = html.find('id="screenHome"')
         screen_compose = html.find('id="screenCompose"')
         section = html[home_start:screen_compose]
-        # Check in the brand row area (before the literary-greeting)
-        brand_row_end = section.find('id="literaryGreeting"')
-        brand_row = section[:brand_row_end] if brand_row_end != -1 else section
-        # HTML uses single quotes: onclick="showScreen('history')"
-        assert "showScreen('history')" in brand_row, \
-            "history button not found in home brand row"
-
-    def test_home_brand_has_settings_button(self):
-        """screenHome brand row has settings navigation button."""
-        html = _read(H5_INDEX)
-        home_start = html.find('id="screenHome"')
-        screen_compose = html.find('id="screenCompose"')
-        section = html[home_start:screen_compose]
-        # Check in the brand row area (before the literary-greeting)
-        brand_row_end = section.find('id="literaryGreeting"')
-        brand_row = section[:brand_row_end] if brand_row_end != -1 else section
-        # HTML uses single quotes: onclick="showScreen('settings')"
-        assert "showScreen('settings')" in brand_row, \
-            "settings button not found in home brand row"
+        assert "home-brand-row" not in section, \
+            "Duplicate home-brand-row found in screenHome"
 
 
 class TestResultScreenVisualParity:
