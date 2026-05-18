@@ -158,6 +158,14 @@ const state = {
   coreProfiles: [],
   voiceBindingStatus: null,  // loaded from GET /voice-bindings/status
   resultSaved: false,
+  // History page state
+  historyFilter: "all",
+  historySearchOpen: false,
+  historySearchQuery: "",
+  activeHistoryLetterId: null,
+  historyAudioPlaying: false,
+  historyAudioCurrentTime: 0,
+  historyAudioDuration: 0,
 };
 
 function el(id) {
@@ -233,7 +241,10 @@ function showScreen(screen) {
   state.screen = screen;
   const topbar = el("appTopbar");
   if (topbar) topbar.style.display = screen === "home" ? "" : "none";
-  if (screen === "history") loadLetters();
+  if (screen === "history") {
+    setupHistoryScreen();
+    loadLetters();
+  }
 }
 
 function setBusy(buttonId, busy, label) {
@@ -1349,44 +1360,394 @@ function formatLetterDate(value) {
 }
 
 async function loadLetters() {
-  setBusy("btnRefreshHistory", true);
   const response = await apiFetch("/api/xiangta/letters?limit=20&offset=0");
-  setBusy("btnRefreshHistory", false);
   if (!response) return;
   state.letters = response.data.letters || [];
-  renderLetters(response.data);
+  renderLetters();
 }
 
-function renderLetters(data) {
-  const count = el("historyCount");
+function renderLetters() {
   const list = el("lettersArea");
+  const countNode = el("historyCount");
   if (!list) return;
-  const letters = data.letters || [];
-  if (count) {
-    count.textContent = letters.length > 0 ? `${data.total} 封 · 本机保存` : "";
+
+  const letters = getFilteredLetters();
+  const total = state.letters.length;
+
+  if (countNode) {
+    countNode.textContent = total > 0 ? `${total} 封 · 本机保存，不会上传` : "";
   }
-  if (letters.length === 0) {
-    list.innerHTML = '<div class="empty-state">还没有留下任何信笺。<br>当你写下第一段想说的话，它就会出现在这里。</div>';
+
+  if (state.letters.length === 0) {
+    list.innerHTML = `
+      <div class="history-empty-state">
+        <div class="history-empty-icon">
+          <svg width="28" height="28" viewBox="0 0 22 22" fill="none">
+            <rect x="2" y="2" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+            <rect x="6" y="6" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1"/>
+            <path d="M11 8v6M8 11h6" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+          </svg>
+        </div>
+        <div class="history-empty-title">还没有写过一封信</div>
+        <div class="history-empty-body">
+          想说的话，写下来之后<br/>就会变成一封小信笺，<br/>留在这里。
+        </div>
+        <button class="xt-btn primary history-empty-cta" onclick="showScreen('home')">写第一封</button>
+      </div>`;
+    hideHistoryMiniPlayer();
     return;
   }
+
+  if (letters.length === 0) {
+    list.innerHTML = `<div class="history-empty-state"><div class="history-empty-title">这个筛选下还没有信笺。</div></div>`;
+    return;
+  }
+
   list.innerHTML = "";
-  letters.forEach((letter) => {
-    const card = document.createElement("article");
-    card.className = "history-card";
-    const title = letter.title || `${getBootstrapSceneLabel(letter.scene) || letter.scene} · 给${getBootstrapRecipientLabel(letter.recipient) || letter.recipient}`;
-    const preview = (letter.finalText || "").slice(0, 76);
+  letters.forEach((letter, index) => {
+    const card = document.createElement("div");
+    card.className = "prototype-history-card";
+    card.style.animationDelay = `${index * 0.05}s`;
+    card.onclick = () => onHistoryCardClick(letter);
+
+    const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || letter.recipient || "";
+    const sceneLabel = getBootstrapSceneLabel(letter.scene) || letter.scene || "";
+    const title = letter.title || getLetterTitle(letter);
+    const preview = (letter.finalText || "").slice(0, 42);
+    const durationStr = letter.durationSecs ? formatDuration(letter.durationSecs) : "";
+
+    const iconHtml = letter.audioUrl
+      ? `<div class="prototype-history-card-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></div>`
+      : `<div class="prototype-history-card-icon no-audio"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor" opacity="0.4"/></svg></div>`;
+
     card.innerHTML =
-      '<div class="history-card-head">' +
-      `<div class="history-card-title">${escHtml(title)}</div>` +
-      `<div class="history-card-date">${escHtml(formatLetterDate(letter.createdAt))}</div>` +
-      "</div>" +
-      `<div class="history-card-meta">${escHtml(getBootstrapRecipientLabel(letter.recipient) || letter.recipient)} · ${escHtml(getBootstrapSceneLabel(letter.scene) || letter.scene)}${letter.audioUrl ? " · 含语音" : " · 仅文字"}</div>` +
-      `<div class="history-card-body">${escHtml(preview)}${(letter.finalText || "").length > preview.length ? "..." : ""}</div>`;
-    if (letter.audioUrl) {
-      card.innerHTML += `<div class="history-card-audio"><audio controls preload="none" src="${escHtml(letter.audioUrl)}"></audio></div>`;
-    }
+      iconHtml +
+      `<div class="prototype-history-card-info">` +
+      `<div class="prototype-history-card-title">${escHtml(title)}</div>` +
+      `<div class="prototype-history-card-meta">` +
+      `<span>${escHtml(recipientLabel)}</span>` +
+      `<span class="separator">·</span>` +
+      `<span>${escHtml(sceneLabel)}</span>` +
+      `<span class="separator">·</span>` +
+      `<span>${escHtml(letterTime(letter.createdAt))}</span>` +
+      `</div>` +
+      `</div>` +
+      `<div class="prototype-history-card-right">` +
+      (durationStr ? `<span class="prototype-history-card-duration">${durationStr}</span>` : `<span class="prototype-history-card-duration" style="color: var(--xt-text-4)">仅文字</span>`) +
+      (letter.favorited ? `<span class="prototype-history-card-star active">★</span>` : `<span class="prototype-history-card-star">☆</span>`) +
+      `</div>`;
+
     list.appendChild(card);
   });
+
+  // Set up mini player with first letter that has audio
+  const firstWithAudio = state.letters.find(l => l.audioUrl);
+  if (firstWithAudio) {
+    setupHistoryMiniPlayer(firstWithAudio);
+  } else {
+    hideHistoryMiniPlayer();
+  }
+}
+
+function getLetterTitle(letter) {
+  if (letter.title) return letter.title;
+  const text = letter.finalText || "";
+  const firstLine = text.split(/[。！？\n]/)[0] || text;
+  return firstLine.slice(0, 20) + (firstLine.length > 20 ? "..." : "");
+}
+
+function formatDuration(secs) {
+  const s = Math.round(secs);
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}:${String(ss).padStart(2, "0")}`;
+}
+
+function letterTime(timestamp) {
+  if (!timestamp) return "";
+  const d = new Date(timestamp);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday) {
+    return `今天 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `昨天 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function getFilteredLetters() {
+  let letters = state.letters || [];
+
+  // Apply filter
+  if (state.historyFilter === "fav") {
+    letters = letters.filter(l => l.favorited);
+  } else if (state.historyFilter !== "all") {
+    letters = letters.filter(l => l.recipient === state.historyFilter);
+  }
+
+  // Apply search
+  if (state.historySearchQuery.trim()) {
+    const q = state.historySearchQuery.toLowerCase();
+    letters = letters.filter(l => {
+      const recipientLabel = getBootstrapRecipientLabel(l.recipient) || "";
+      const sceneLabel = getBootstrapSceneLabel(l.scene) || "";
+      const haystack = [
+        l.finalText || "",
+        l.title || "",
+        recipientLabel,
+        sceneLabel,
+        l.recipient || "",
+        l.scene || ""
+      ].join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }
+
+  return letters;
+}
+
+function setupHistoryScreen() {
+  // Reset history page state when entering
+  state.historySearchOpen = false;
+  state.historySearchQuery = "";
+  state.activeHistoryLetterId = null;
+  state.historyAudioPlaying = false;
+  state.historyAudioCurrentTime = 0;
+  state.historyAudioDuration = 0;
+
+  // Hide search box
+  const searchBox = el("historySearchBox");
+  if (searchBox) searchBox.classList.add("hidden");
+
+  // Clear search input
+  const searchInput = el("historySearchInput");
+  if (searchInput) searchInput.value = "";
+
+  // Setup audio listeners
+  setupHistoryAudioListeners();
+
+  // Render filter chips
+  renderHistoryFilterChips();
+}
+
+function toggleHistorySearch() {
+  state.historySearchOpen = !state.historySearchOpen;
+  const searchBox = el("historySearchBox");
+  if (!searchBox) return;
+
+  if (state.historySearchOpen) {
+    searchBox.classList.remove("hidden");
+    searchBox.style.animation = "spaCardIn 0.22s both";
+    const input = el("historySearchInput");
+    if (input) input.focus();
+  } else {
+    searchBox.classList.add("hidden");
+    state.historySearchQuery = "";
+    const input = el("historySearchInput");
+    if (input) input.value = "";
+    renderLetters();
+  }
+}
+
+function onHistorySearchInput(value) {
+  state.historySearchQuery = value;
+  renderLetters();
+}
+
+function renderHistoryFilterChips() {
+  const container = el("historyFilterChips");
+  if (!container) return;
+
+  const letters = state.letters || [];
+  const counts = { lover: 0, family: 0, friend: 0, self: 0, fav: 0 };
+  letters.forEach(l => {
+    if (l.recipient && counts.hasOwnProperty(l.recipient)) counts[l.recipient]++;
+    if (l.favorited) counts.fav++;
+  });
+
+  const filters = [
+    { id: "all", label: "全部", count: letters.length },
+    { id: "lover", label: "恋人", count: counts.lover },
+    { id: "family", label: "父母", count: counts.family },
+    { id: "friend", label: "朋友", count: counts.friend },
+    { id: "self", label: "自己", count: counts.self },
+    { id: "fav", label: "收藏", count: counts.fav },
+  ];
+
+  container.innerHTML = "";
+  filters.forEach(f => {
+    // Show "all" always, others only if count > 0
+    if (f.id !== "all" && f.count === 0) return;
+
+    const chip = document.createElement("button");
+    chip.className = "history-filter-chip" + (state.historyFilter === f.id ? " active" : "");
+    chip.textContent = f.label + (f.count > 0 && state.historyFilter !== f.id ? ` · ${f.count}` : "");
+    chip.onclick = () => {
+      state.historyFilter = f.id;
+      renderHistoryFilterChips();
+      renderLetters();
+    };
+    container.appendChild(chip);
+  });
+}
+
+function onHistoryCardClick(letter) {
+  if (letter.audioUrl) {
+    playHistoryLetter(letter.id || letter);
+  }
+}
+
+// History audio playback
+function setupHistoryAudioListeners() {
+  const audio = el("historyAudio");
+  if (!audio) return;
+
+  // Remove old listeners by cloning
+  const newAudio = audio.cloneNode(false);
+  audio.parentNode.replaceChild(newAudio, audio);
+
+  newAudio.addEventListener("loadedmetadata", () => {
+    state.historyAudioDuration = newAudio.duration;
+    renderHistoryMiniPlayer();
+  });
+
+  newAudio.addEventListener("timeupdate", () => {
+    state.historyAudioCurrentTime = newAudio.currentTime;
+    renderHistoryMiniPlayerProgress();
+  });
+
+  newAudio.addEventListener("play", () => {
+    state.historyAudioPlaying = true;
+    updateHistoryPlayIcon(true);
+  });
+
+  newAudio.addEventListener("pause", () => {
+    state.historyAudioPlaying = false;
+    updateHistoryPlayIcon(false);
+  });
+
+  newAudio.addEventListener("ended", () => {
+    state.historyAudioPlaying = false;
+    state.historyAudioCurrentTime = 0;
+    updateHistoryPlayIcon(false);
+    renderHistoryMiniPlayerProgress();
+  });
+
+  newAudio.addEventListener("error", () => {
+    state.historyAudioPlaying = false;
+    showToast("音频链接暂不可访问");
+    hideHistoryMiniPlayer();
+  });
+}
+
+function playHistoryLetter(letterOrId) {
+  let letter;
+  if (typeof letterOrId === "object") {
+    letter = letterOrId;
+  } else {
+    letter = state.letters.find(l => (l.id || "") === letterOrId);
+  }
+
+  if (!letter || !letter.audioUrl) {
+    showToast("这封信没有音频");
+    return;
+  }
+
+  const audio = el("historyAudio");
+  if (!audio) return;
+
+  audio.src = letter.audioUrl;
+  state.activeHistoryLetterId = letter.id || letter;
+  state.historyAudioPlaying = false;
+  state.historyAudioCurrentTime = 0;
+
+  audio.load();
+  setupHistoryAudioListeners();
+
+  audio.play().catch(e => {
+    showToast("请手动点击播放");
+  });
+
+  renderHistoryMiniPlayer(letter);
+}
+
+function toggleHistoryPlayback() {
+  const audio = el("historyAudio");
+  if (!audio || !audio.src) return;
+
+  if (state.historyAudioPlaying) {
+    audio.pause();
+  } else {
+    audio.play().catch(e => {
+      showToast("请手动点击播放");
+    });
+  }
+}
+
+function renderHistoryMiniPlayer(letter) {
+  const player = el("historyMiniPlayer");
+  if (!player || !letter) return;
+
+  const title = letter.title || getLetterTitle(letter);
+  const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || "";
+  const sceneLabel = getBootstrapSceneLabel(letter.scene) || "";
+  const timeStr = `${formatTime(state.historyAudioCurrentTime)} / ${formatTime(state.historyAudioDuration)}`;
+
+  const titleNode = el("historyMiniTitle");
+  const subtitleNode = el("historyMiniSubtitle");
+  if (titleNode) titleNode.textContent = title;
+  if (subtitleNode) subtitleNode.textContent = `${recipientLabel} · ${sceneLabel} · ${timeStr}`;
+
+  player.classList.remove("hidden");
+  player.style.animation = "spaMiniPlayerUp 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both";
+}
+
+function renderHistoryMiniPlayerProgress() {
+  const fill = el("historyMiniProgress");
+  if (!fill) return;
+  const pct = state.historyAudioDuration > 0
+    ? Math.min(100, (state.historyAudioCurrentTime / state.historyAudioDuration) * 100)
+    : 0;
+  fill.style.width = `${pct}%`;
+
+  // Update subtitle time
+  const subtitleNode = el("historyMiniSubtitle");
+  if (subtitleNode) {
+    const letter = state.letters.find(l => (l.id || l) === state.activeHistoryLetterId);
+    if (letter) {
+      const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || "";
+      const sceneLabel = getBootstrapSceneLabel(letter.scene) || "";
+      const timeStr = `${formatTime(state.historyAudioCurrentTime)} / ${formatTime(state.historyAudioDuration)}`;
+      subtitleNode.textContent = `${recipientLabel} · ${sceneLabel} · ${timeStr}`;
+    }
+  }
+}
+
+function hideHistoryMiniPlayer() {
+  const player = el("historyMiniPlayer");
+  if (player) player.classList.add("hidden");
+}
+
+function updateHistoryPlayIcon(isPlaying) {
+  const icon = el("historyPlayIcon");
+  if (!icon) return;
+  if (isPlaying) {
+    icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" rx="1" fill="white"/><rect x="8" y="2" width="3" height="10" rx="1" fill="white"/></svg>`;
+  } else {
+    icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="white"/></svg>`;
+  }
+}
+
+function formatTime(secs) {
+  if (!secs || isNaN(secs)) return "0:00";
+  const s = Math.round(secs);
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}:${String(ss).padStart(2, "0")}`;
 }
 
 function initComposeListeners() {
