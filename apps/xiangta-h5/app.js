@@ -522,17 +522,29 @@ async function pollTtsTask(task) {
   }
 }
 
+function revealSaveLetterSection() {
+  var finalText = (el("finalTextArea").value || "").trim();
+  var section = el("saveLetterSection");
+  if (!section || !finalText) return;
+  section.classList.remove("hidden");
+}
+
 function renderTtsTask(d) {
   var div = el("ttsResult");
   div.innerHTML = "";
   div.classList.remove("hidden");
+
+  // Always allow saving text letter for any terminal state
+  state.ttsResult = d;
 
   if (d.status === "failed") {
     div.innerHTML =
       '<div class="tts-error">'
       + '<span class="tts-error-kind">' + escHtml(d.errorKind || "生成失败") + '</span>'
       + '<span class="tts-error-msg">' + escHtml(d.message || "") + '</span>'
-      + '</div>';
+      + '</div>'
+      + '<div class="tts-hint">语音暂未生成，可先保存文字信笺</div>';
+    revealSaveLetterSection();
     return;
   }
 
@@ -558,17 +570,16 @@ function renderTtsTask(d) {
     audioRow.appendChild(keySpan);
     audioRow.appendChild(valSpan);
     div.appendChild(audioRow);
+  } else {
+    div.insertAdjacentHTML("beforeend", '<div class="tts-hint">语音暂未生成，可先保存文字信笺</div>');
   }
 
   if (html) {
     div.insertAdjacentHTML("beforeend", html);
   }
 
-  // Show save section only when we have audio
-  if (d.audioUrl) {
-    state.ttsResult = d;
-    el("saveLetterSection").classList.remove("hidden");
-  }
+  // Allow saving text letter even without audioUrl
+  revealSaveLetterSection();
 }
 
 function row(key, val) {

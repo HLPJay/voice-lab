@@ -142,3 +142,59 @@ class TestStyles:
         assert ".choice-chip" in css, "choice-chip style not found"
         assert ".bottom-actions" in css, "bottom-actions style not found"
         assert ".toast" in css, "toast style not found"
+
+
+class TestTextLetterSaveFix:
+    """FIX1: allow saving text letter even without audioUrl."""
+
+    def test_reveal_save_letter_section_exists(self):
+        """revealSaveLetterSection() function exists."""
+        js = _read(H5_APP)
+        assert "function revealSaveLetterSection" in js or "revealSaveLetterSection =" in js, \
+            "revealSaveLetterSection not found"
+
+    def test_render_tts_task_calls_reveal_save_letter(self):
+        """renderTtsTask calls revealSaveLetterSection regardless of audioUrl."""
+        js = _read(H5_APP)
+        start = js.find("function renderTtsTask")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
+        assert "revealSaveLetterSection" in section, \
+            "renderTtsTask must call revealSaveLetterSection"
+
+    def test_render_tts_task_failed_branch_calls_reveal(self):
+        """renderTtsTask failed branch does not return before revealSaveLetterSection."""
+        js = _read(H5_APP)
+        start = js.find("function renderTtsTask")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
+
+        # Find the failed branch
+        failed_start = section.find('status === "failed"')
+        if failed_start != -1:
+            # Extract the failed block
+            failed_block = section[failed_start:]
+            # revealSaveLetterSection should appear after the return in failed block
+            reveal_pos = failed_block.find("revealSaveLetterSection")
+            return_pos = failed_block.find("return")
+            if return_pos != -1:
+                # If there's a return, revealSaveLetterSection must come before it
+                assert reveal_pos != -1 and reveal_pos < return_pos, \
+                    "failed branch must call revealSaveLetterSection before return"
+
+    def test_tts_hint_style_exists(self):
+        """.tts-hint style exists for no-audio hint message."""
+        css = _read(H5_CSS)
+        assert ".tts-hint" in css, ".tts-hint style not found"
+
+    def test_save_letter_allows_null_audio(self):
+        """saveLetter allows audioUrl to be null."""
+        js = _read(H5_APP)
+        start = js.find("function saveLetter")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
+        # Should have audioUrl with null fallback
+        assert "audioUrl" in section, "saveLetter must handle audioUrl"
+        # Should not require audioUrl to be truthy
+        assert "|| null" in section or "||null" in section, \
+            "saveLetter must allow audioUrl to be null"
