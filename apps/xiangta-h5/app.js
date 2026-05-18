@@ -244,7 +244,7 @@ function showScreen(screen) {
   if (target) target.classList.add("active");
   state.screen = screen;
   const topbar = el("appTopbar");
-  if (topbar) topbar.style.display = screen === "home" ? "" : "none";
+  if (topbar) topbar.style.display = screen === "home" ? "flex" : "none";
   if (screen === "history") {
     setupHistoryScreen();
     loadLetters();
@@ -334,8 +334,8 @@ async function apiFetch(path, options) {
   }
 }
 
-function renderLiteraryGreeting() {
-  const node = el("literaryGreeting");
+function renderHomeDateLine() {
+  const node = el("homeDateLine");
   if (!node) return;
   const now = new Date();
   const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -348,7 +348,7 @@ function renderLiteraryGreeting() {
   else if (hour < 18) period = "下午";
   else if (hour < 21) period = "傍晚";
   else if (hour < 24) period = "晚上";
-  node.textContent = `${now.getMonth() + 1} / ${now.getDate()} · ${weekdays[now.getDay()]} · ${period} · ${hour}:${minute}`;
+  node.textContent = `${now.getMonth() + 1} / ${now.getDate()} · ${weekdays[now.getDay()]} · ${hour}:${minute}`;
 }
 
 function renderStatusPill(providerStatus) {
@@ -2369,7 +2369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   state.mode = getAppMode();
   applyModeUi();
   initComposeListeners();
-  renderLiteraryGreeting();
+  renderHomeDateLine();
   renderStepDots("composeStepDots", 0, STEP_LABELS);
   renderStepDots("suggestStepDots", 1, STEP_LABELS);
   renderStepDots("voiceStepDots", 2, STEP_LABELS);

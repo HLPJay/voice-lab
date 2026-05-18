@@ -111,7 +111,17 @@ body {
   }
 }
 
-.home-topbar,
+.home-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 0;
+  position: static;
+  background: transparent;
+  border-bottom: none;
+}
+
 .step-appbar {
   display: flex;
   align-items: center;
@@ -164,8 +174,8 @@ body {
 .brand-text {
   font-family: var(--font-serif);
   font-size: 15px;
-  letter-spacing: 0.12em;
-  color: var(--text-soft);
+  letter-spacing: 0.16em;
+  color: var(--xt-text-2);
 }
 
 .topbar-actions {
@@ -328,23 +338,24 @@ body {
   margin: 0;
   font-family: var(--font-serif);
   font-weight: 500;
-  color: var(--text);
+  color: var(--xt-text);
+  letter-spacing: 0.02em;
 }
 
 .home-title {
   font-size: 34px;
-  line-height: 1.34;
+  line-height: 1.35;
 }
 
 .home-subtitle,
 .step-subtitle {
   margin: 14px 0 0;
-  color: var(--text-faint);
+  color: var(--xt-text-3);
   line-height: 1.75;
 }
 
 .home-subtitle {
-  max-width: 260px;
+  max-width: 280px;
   font-size: 13px;
 }
 
@@ -435,7 +446,7 @@ body {
 .recipient-card.selected,
 .scene-chip.selected,
 .voice-option.selected {
-  border-color: rgba(217, 149, 74, 0.42);
+  border-color: var(--xt-accent);
   background: var(--accent-soft);
 }
 
@@ -473,11 +484,29 @@ body {
 }
 
 .home-actions {
-  position: sticky;
-  bottom: 0;
-  margin-top: 28px;
-  padding: 18px 0 8px;
-  background: linear-gradient(to top, rgba(16, 13, 20, 1), rgba(16, 13, 20, 0.84) 65%, transparent);
+  /* sticky-cta handles position:sticky and bottom, just add vertical spacing here */
+  margin-top: 24px;
+}
+
+/* Date line — matches prototype: mono font, letter-spaced, with leading dash */
+.home-date-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--xt-text-3);
+  font-family: var(--xt-mono);
+  font-size: 11px;
+  letter-spacing: 0.24;
+}
+
+.home-date-line::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  background: var(--xt-text-4);
+  flex-shrink: 0;
 }
 
 /* Home recent letter card — mirrors prototype xt-card with dashed border */

@@ -4,7 +4,7 @@ Tests for H5 Home/Compose Prototype Parity (P22C-FIX1).
 Covers:
 1. Home has history button
 2. Home has settings button or settings toast
-3. Home has literaryGreeting
+3. Home has homeDateLine
 4. Home has homeRecentLetter section
 5. Home uses state.letters for recent letter rendering
 6. Home recipient-card and scene-chip preserved
@@ -47,11 +47,11 @@ class TestHomeScreenStructure:
         assert 'aria-label="设置"' in html or "showToast" in html, \
             "Settings button or toast not found"
 
-    def test_home_has_literary_greeting(self):
-        """Home has literaryGreeting element."""
+    def test_home_has_home_date_line(self):
+        """Home has homeDateLine element."""
         html = _read(H5_INDEX)
-        assert 'id="literaryGreeting"' in html, \
-            "literaryGreeting not found"
+        assert 'id="homeDateLine"' in html, \
+            "homeDateLine not found"
 
     def test_home_has_recent_letter_section(self):
         """Home has homeRecentLetter or equivalent recent letter area."""
