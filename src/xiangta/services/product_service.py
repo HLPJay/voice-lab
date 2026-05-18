@@ -135,6 +135,26 @@ class ProductService:
             for m in self._config_repository.list_voice_mappings()
         ]
 
+    def list_public_voice_presets(self) -> dict:
+        """Return public voice presets (no Core/Provider/Admin fields) for formal H5."""
+        if self._config_repository is None:
+            return {"presets": [], "total": 0, "source": "config"}
+        items = self._config_repository.list_public_voice_presets()
+        presets = [
+            {
+                "id": p.id,
+                "label": p.label,
+                "desc": p.desc,
+                "genderStyle": p.gender_style,
+                "suitableRecipients": list(p.suitable_recipients),
+                "recommendedScenes": list(p.recommended_scenes),
+                "defaultTone": p.default_tone,
+                "enabled": p.enabled,
+            }
+            for p in items
+        ]
+        return {"presets": presets, "total": len(presets), "source": "config"}
+
     def get_admin_tone_presets(self) -> list[dict]:
         """Return full tone preset data including admin fields (renderOverrides, etc.)."""
         if self._config_repository is None:

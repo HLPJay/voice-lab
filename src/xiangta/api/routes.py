@@ -7,6 +7,7 @@ NOTE: 本模块不注册到主应用（app/main.py）。
 实现状态：
   GET  /bootstrap             ✅ 可用
   GET  /provider/status       ✅ 可用（固定 not_integrated）
+  GET  /voice-presets         ✅ 可用，公开产品声线（无 coreProfileId）
   GET  /core/profiles         ✅ B9 可用，读取 Core profiles
   POST /tts                   ✅ B9 可用，支持 profileId → Core render
   POST /suggestions           ✅ 可用，当前为模板文案，不调用真实 LLM
@@ -36,6 +37,7 @@ from src.xiangta.api.schemas import (
     SuggestionsResponse,
     TtsRequest,
     TtsResponse,
+    VoicePresetsResponse,
 )
 from src.xiangta.config.product_config_writer import (
     ConfigNotFoundError,
@@ -60,6 +62,18 @@ async def core_profiles():
     svc = create_product_service()
     data = await svc.list_core_profiles()
     return CoreProfilesResponse(data=data)
+
+
+@router.get("/voice-presets", response_model=VoicePresetsResponse)
+async def voice_presets():
+    """
+    Public voice presets API for formal H5.
+    Returns only product-layer fields (no coreProfileId, providerPolicy, renderOverrides, etc.).
+    Only enabled presets are returned.
+    """
+    svc = create_product_service()
+    data = svc.list_public_voice_presets()
+    return VoicePresetsResponse(data=data)
 
 
 @router.get("/bootstrap", response_model=BootstrapResponse)

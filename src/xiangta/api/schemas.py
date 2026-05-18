@@ -139,6 +139,18 @@ class ProviderStatusResponse(OkResponse):
     data: ProviderStatusData
 
 
+# ── GET /voice-presets (public) ────────────────────────────────────────────────
+
+class VoicePresetsData(BaseModel):
+    presets: list[VoicePresetItem]
+    total: int
+    source: str = "config"
+
+
+class VoicePresetsResponse(OkResponse):
+    data: VoicePresetsData
+
+
 # ── POST /suggestions ─────────────────────────────────────────────────────────
 
 class SuggestionsRequest(BaseModel):
