@@ -308,16 +308,17 @@ body {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  color: var(--text-faint);
+  color: var(--xt-text-3);
   font-size: 12px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .section-eyebrow::before {
   content: "";
   width: 14px;
   height: 1px;
-  background: var(--text-dim);
+  background: var(--xt-text-4);
 }
 
 .recipient-grid,
@@ -424,6 +425,74 @@ body {
   margin-top: 28px;
   padding: 18px 0 8px;
   background: linear-gradient(to top, rgba(16, 13, 20, 1), rgba(16, 13, 20, 0.84) 65%, transparent);
+}
+
+/* Home recent letter card — mirrors prototype xt-card with dashed border */
+.home-recent-letter-card {
+  animation: spaCardIn 0.26s both;
+}
+
+.home-recent-card,
+.home-recent-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px;
+  border-radius: var(--radius-card);
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.home-recent-card:hover,
+.home-recent-empty:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.home-recent-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-recent-icon.has-audio {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.home-recent-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-recent-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-recent-meta {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.home-recent-duration {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  flex-shrink: 0;
 }
 
 .bottom-actions {
@@ -723,13 +792,14 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 15px 14px;
-  background: linear-gradient(180deg, rgba(31, 24, 38, 0.98), rgba(23, 18, 29, 0.96));
-  border-color: rgba(255, 255, 255, 0.06);
+  padding: 14px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
 }
 
 .prompt-index {
-  color: var(--accent-ink);
+  color: var(--xt-text-3);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.14em;
@@ -741,7 +811,7 @@ body {
   flex: 1;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--text-soft);
+  color: var(--xt-text-2);
 }
 
 .prompt-tail {
