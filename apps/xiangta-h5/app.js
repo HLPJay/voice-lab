@@ -256,6 +256,27 @@ function showScreen(screen) {
     // Pause history audio to avoid conflict
     const histAudio = el("historyAudio");
     if (histAudio) histAudio.pause();
+    // Fallback: if activeLetterDetail exists, re-render it
+    if (state.activeLetterDetail) {
+      renderLetterDetailScreen(state.activeLetterDetail);
+    } else if (state.activeLetterDetailId) {
+      // Try to recover from letters array
+      const letter = (state.letters || []).find(function(item) {
+        return (item.id || item.letterId) === state.activeLetterDetailId;
+      });
+      if (letter) {
+        state.activeLetterDetail = letter;
+        renderLetterDetailScreen(letter);
+      } else {
+        showToast("没有找到这封信笺");
+        showScreen("history");
+        return;
+      }
+    } else {
+      showToast("没有选择信笺");
+      showScreen("history");
+      return;
+    }
   }
 }
 
@@ -1431,7 +1452,7 @@ function renderLetters() {
     const durationStr = letter.durationSecs ? formatDuration(letter.durationSecs) : "";
 
     const iconHtml = letter.audioUrl
-      ? `<button class="prototype-history-card-playbtn" type="button" aria-label="播放" onclick="event.stopPropagation(); playHistoryLetter('${letter.id || letter.letterId}')"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></button>`
+      ? `<button class="prototype-history-card-playbtn" type="button" aria-label="播放"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg></button>`
       : `<div class="prototype-history-card-icon no-audio"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor" opacity="0.4"/></svg></div>`;
 
     card.innerHTML =
@@ -1452,6 +1473,17 @@ function renderLetters() {
       `</div>`;
 
     list.appendChild(card);
+
+    // Safe event binding — no inline onclick string concatenation
+    if (letter.audioUrl) {
+      const playBtn = card.querySelector(".prototype-history-card-playbtn");
+      if (playBtn) {
+        playBtn.addEventListener("click", function(event) {
+          event.stopPropagation();
+          playHistoryLetter(letter);
+        });
+      }
+    }
   });
 
   // Set up mini player with first letter that has audio
@@ -1988,6 +2020,8 @@ function openLetterDetail(letterId) {
   }
   state.activeLetterDetailId = letterId;
   state.activeLetterDetail = letter;
+  // Initialize favorite map from letter.favorited
+  state.letterDetailFavoritedMap[letterId] = !!letter.favorited;
   renderLetterDetailScreen(letter);
   showScreen("letterDetail");
 }
@@ -2028,12 +2062,10 @@ function renderLetterDetailScreen(letter) {
     }
   }
 
-  // Body - preserve line breaks
+  // Body - safe text rendering, preserve line breaks via CSS white-space
   const bodyEl = el("letterDetailBody");
   if (bodyEl) {
-    const text = letter.finalText || "";
-    const withBreaks = text.replace(/\n/g, "<br>");
-    bodyEl.innerHTML = withBreaks;
+    bodyEl.textContent = letter.finalText || "";
   }
 
   // Signature
@@ -2065,6 +2097,10 @@ function renderLetterDetailScreen(letter) {
     if (voiceEl) {
       voiceEl.textContent = letter.voiceLabel || getBootstrapVoiceLabel(letter.voicePreset) || "未知声音";
     }
+    const timeEl = el("letterDetailAudioTime");
+    if (timeEl) {
+      timeEl.textContent = letter.durationSecs ? formatDuration(letter.durationSecs) : "--:--";
+    }
   } else {
     if (audioSection) audioSection.classList.add("hidden");
     if (emptyAudio) emptyAudio.classList.remove("hidden");
@@ -2094,10 +2130,16 @@ function renderLetterDetailFavoriteButton() {
 function toggleLetterDetailFavorite() {
   const letterId = state.activeLetterDetailId;
   if (!letterId) return;
-  state.letterDetailFavoritedMap[letterId] = !state.letterDetailFavoritedMap[letterId];
+  const newValue = !state.letterDetailFavoritedMap[letterId];
+  state.letterDetailFavoritedMap[letterId] = newValue;
+  // Sync to letter object and activeLetterDetail so history list reflects the change
+  const letter = (state.letters || []).find(function(item) {
+    return (item.id || item.letterId) === letterId;
+  });
+  if (letter) letter.favorited = newValue;
+  if (state.activeLetterDetail) state.activeLetterDetail.favorited = newValue;
   renderLetterDetailFavoriteButton();
-  const isFavorited = state.letterDetailFavoritedMap[letterId];
-  showToast(isFavorited ? "已收藏" : "已取消收藏");
+  showToast(newValue ? "已收藏" : "已取消收藏");
 }
 
 async function restartLetterDetailAudio() {
@@ -2190,6 +2232,25 @@ function retoneLetterDetail() {
   if (letter.voicePreset) state.selectedVoice = letter.voicePreset;
   if (letter.tone) state.selectedTone = letter.tone;
   goVoice();
+}
+
+function writeAnotherFromLetterDetail() {
+  const letter = state.activeLetterDetail;
+  if (!letter) {
+    showScreen("home");
+    return;
+  }
+  // Preserve recipient and scene for quick re-compose
+  if (letter.recipient) state.selectedRecipient = letter.recipient;
+  if (letter.scene) state.selectedScene = letter.scene;
+  // Reset all downstream state — no suggestions, no TTS
+  state.finalText = "";
+  state.suggestions = [];
+  state.selectedIndex = -1;
+  state.ttsTask = null;
+  state.ttsResult = null;
+  state.resultSaved = false;
+  showScreen("compose");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

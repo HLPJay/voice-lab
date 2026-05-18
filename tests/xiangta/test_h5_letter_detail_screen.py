@@ -280,3 +280,183 @@ class TestLetterDetailCSS:
         css = _read(H5_CSS)
         assert "prototype-history-card-playbtn" in css, \
             "prototype-history-card-playbtn styles not found"
+
+
+class TestLetterDetailHardening:
+    """P22E-FIX1: Security and consistency hardening."""
+
+    def test_letter_detail_body_uses_text_content(self):
+        """renderLetterDetailScreen uses textContent or escHtml for body, not innerHTML."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetterDetailScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        # Must NOT use innerHTML = withBreaks
+        assert "innerHTML = withBreaks" not in section, \
+            "bodyEl.innerHTML = withBreaks is unsafe"
+        # Must use textContent or escHtml
+        assert "bodyEl.textContent" in section or "escHtml" in section, \
+            "body must use textContent or escHtml"
+
+    def test_letter_detail_body_white_space_pre_wrap(self):
+        """.letter-detail-body CSS has white-space: pre-wrap."""
+        css = _read(H5_CSS)
+        body_start = css.find(".letter-detail-body")
+        body_end = css.find("}", body_start)
+        section = css[body_start:body_end]
+        assert "white-space:" in section and "pre-wrap" in section, \
+            ".letter-detail-body must have white-space: pre-wrap"
+
+    def test_write_another_from_letter_detail_exists(self):
+        """app.js has writeAnotherFromLetterDetail function."""
+        js = _read(H5_APP)
+        assert "function writeAnotherFromLetterDetail" in js or "writeAnotherFromLetterDetail =" in js, \
+            "writeAnotherFromLetterDetail function not found"
+
+    def test_write_another_does_not_call_suggestions_or_tts(self):
+        """writeAnotherFromLetterDetail does not call generateSuggestions or generateTtsTask."""
+        js = _read(H5_APP)
+        start = js.find("function writeAnotherFromLetterDetail")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "generateSuggestions" not in section, \
+            "writeAnotherFromLetterDetail must not call generateSuggestions"
+        assert "generateTtsTask" not in section, \
+            "writeAnotherFromLetterDetail must not call generateTtsTask"
+
+    def test_write_another_resets_downstream_state(self):
+        """writeAnotherFromLetterDetail resets finalText, suggestions, selectedIndex, ttsTask, ttsResult."""
+        js = _read(H5_APP)
+        start = js.find("function writeAnotherFromLetterDetail")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert 'state.finalText = ""' in section, "must reset state.finalText"
+        assert "state.suggestions = []" in section, "must reset state.suggestions"
+        assert "state.selectedIndex = -1" in section, "must reset state.selectedIndex"
+        assert "state.ttsTask = null" in section, "must reset state.ttsTask"
+        assert "state.ttsResult = null" in section, "must reset state.ttsResult"
+
+    def test_write_another_navigates_to_compose(self):
+        """writeAnotherFromLetterDetail calls showScreen('compose')."""
+        js = _read(H5_APP)
+        start = js.find("function writeAnotherFromLetterDetail")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert 'showScreen("compose")' in section, \
+            "writeAnotherFromLetterDetail must navigate to compose"
+
+    def test_re_write_button_calls_write_another(self):
+        """index.html 再写一封 button calls writeAnotherFromLetterDetail."""
+        html = _read(H5_INDEX)
+        detail_start = html.find('id="screenLetterDetail"')
+        detail_end = html.find("</section>", detail_start)
+        section = html[detail_start:detail_end]
+        # The 再写一封 button should call writeAnotherFromLetterDetail, not showScreen('home')
+        assert "writeAnotherFromLetterDetail" in section, \
+            "再写一封 button must call writeAnotherFromLetterDetail"
+        assert 'onclick="showScreen(\'home\')"' not in section, \
+            "再写一封 button must not call showScreen('home')"
+
+    def test_toggle_favorite_syncs_letter_favorited(self):
+        """toggleLetterDetailFavorite syncs to letter.favorited."""
+        js = _read(H5_APP)
+        start = js.find("function toggleLetterDetailFavorite")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "letter.favorited" in section, \
+            "toggleLetterDetailFavorite must sync to letter.favorited"
+
+    def test_toggle_favorite_no_backend_calls(self):
+        """toggleLetterDetailFavorite does not call PATCH/PUT/DELETE /api/xiangta/letters."""
+        js = _read(H5_APP)
+        start = js.find("function toggleLetterDetailFavorite")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "PATCH" not in section and "PUT" not in section and "DELETE" not in section, \
+            "toggleLetterDetailFavorite must not call backend HTTP methods"
+        assert "/api/xiangta/letters/" not in section, \
+            "toggleLetterDetailFavorite must not call letters detail API"
+
+    def test_open_letter_detail_initializes_favorite_map(self):
+        """openLetterDetail initializes letterDetailFavoritedMap from letter.favorited."""
+        js = _read(H5_APP)
+        start = js.find("function openLetterDetail")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "letterDetailFavoritedMap[letterId]" in section, \
+            "openLetterDetail must initialize letterDetailFavoritedMap"
+
+    def test_render_letter_detail_sets_audio_time(self):
+        """renderLetterDetailScreen sets letterDetailAudioTime element."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetterDetailScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "letterDetailAudioTime" in section, \
+            "renderLetterDetailScreen must set letterDetailAudioTime"
+
+    def test_render_letter_detail_uses_format_duration(self):
+        """renderLetterDetailScreen uses formatDuration for audio time."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetterDetailScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "formatDuration" in section, \
+            "renderLetterDetailScreen must use formatDuration for time"
+
+    def test_render_letters_no_inline_onclick_play_history(self):
+        """renderLetters does not use inline onclick string with playHistoryLetter letter.id."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetters")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        # Must NOT have the old inline onclick pattern
+        assert "playHistoryLetter('${letter.id" not in section and \
+               'playHistoryLetter(\'${letter.id' not in section and \
+               "playHistoryLetter(`${letter.id" not in section, \
+            "renderLetters must not use inline onclick string with letter.id"
+
+    def test_render_letters_uses_add_event_listener(self):
+        """renderLetters uses addEventListener for play button."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetters")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert 'addEventListener("click"' in section or "addEventListener('click'" in section, \
+            "renderLetters must use addEventListener for play button"
+
+    def test_render_letters_uses_stop_propagation(self):
+        """renderLetters play handler uses event.stopPropagation."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetters")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "event.stopPropagation()" in section or "event.stopPropagation" in section, \
+            "renderLetters play handler must use event.stopPropagation"
+
+    def test_show_screen_letter_detail_fallback_exists(self):
+        """showScreen handles letterDetail fallback when activeLetterDetail is missing."""
+        js = _read(H5_APP)
+        show_screen_match = re.search(
+            r'function showScreen\([^)]*\)\s*\{(.*?)\n\}',
+            js,
+            re.DOTALL
+        )
+        if show_screen_match:
+            body = show_screen_match.group(1)
+            # Must have fallback logic for when activeLetterDetailId exists but activeLetterDetail doesn't
+            assert "activeLetterDetailId" in body, \
+                "showScreen letterDetail must handle activeLetterDetailId fallback"
+
+    def test_show_screen_letter_detail_renders_on_fallback(self):
+        """showScreen letterDetail calls renderLetterDetailScreen in fallback."""
+        js = _read(H5_APP)
+        show_screen_match = re.search(
+            r'function showScreen\([^)]*\)\s*\{(.*?)\n\}',
+            js,
+            re.DOTALL
+        )
+        if show_screen_match:
+            body = show_screen_match.group(1)
+            assert "renderLetterDetailScreen" in body, \
+                "showScreen letterDetail must call renderLetterDetailScreen"
