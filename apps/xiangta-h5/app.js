@@ -807,9 +807,12 @@ function buildVoiceOptions() {
 function renderVoiceTextPreview() {
   const node = el("voiceTextPreview");
   if (!node) return;
+  const recLabel = getBootstrapRecipientLabel(state.selectedRecipient) || "恋人";
+  const sceneLabel = getBootstrapSceneLabel(state.selectedScene);
+  const styleLabel = STYLE_LABELS[state.selectedStyle] || "温柔版";
   node.innerHTML =
     '<div class="voice-copy-meta">' +
-    `<span class="voice-copy-tag">${escHtml(getBootstrapSceneLabel(state.selectedScene))} · ${escHtml(STYLE_LABELS[state.selectedStyle] || "温柔版")}</span>` +
+    `<span class="voice-copy-tag">给${escHtml(recLabel)} · ${escHtml(sceneLabel)} · ${escHtml(styleLabel)}</span>` +
     '<button class="voice-copy-edit" type="button" onclick="showScreen(\'suggest\')">返回改字</button>' +
     "</div>" +
     `<div class="voice-copy-text">${escHtml(state.finalText)}</div>`;
