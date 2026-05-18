@@ -225,10 +225,10 @@ class TestResultSaveCeremony:
             ".result-save-seal-overlay CSS not found"
 
     def test_result_save_seal_stamp_keyframes_exist(self):
-        """styles.css has resultSealStampIn keyframe."""
+        """styles.css has @keyframes spaStamp keyframe."""
         css = _read("apps/xiangta-h5/styles.css")
-        assert "@keyframes resultSealStampIn" in css, \
-            "@keyframes resultSealStampIn not found"
+        assert "@keyframes spaStamp" in css, \
+            "@keyframes spaStamp not found"
 
     def test_show_result_save_seal_then_open_detail_exists(self):
         """app.js has showResultSaveSealThenOpenDetail function."""
@@ -336,3 +336,44 @@ class TestResultSaveCeremony:
         assert 'class="result-save-seal-overlay hidden"' in html or \
                "class='result-save-seal-overlay hidden'" in html, \
             "resultSaveSealOverlay must be hidden by default"
+
+    def test_result_save_seal_spa_stamp_keyframe(self):
+        """styles.css has @keyframes spaStamp matching prototype."""
+        css = _read("apps/xiangta-h5/styles.css")
+        assert "@keyframes spaStamp" in css, \
+            "@keyframes spaStamp not found"
+        # Prototype uses rotate(-22deg) scale(1.6) at 0%
+        idx = css.find("@keyframes spaStamp")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "rotate(-22deg)" in section or "rotate(-22" in section, \
+            "spaStamp should start with rotate(-22deg)"
+        assert "scale(1.6)" in section, \
+            "spaStamp should scale to 1.6 at 0%"
+
+    def test_result_save_seal_spa_label_in_keyframe(self):
+        """styles.css has @keyframes spaLabelIn for label animation."""
+        css = _read("apps/xiangta-h5/styles.css")
+        assert "@keyframes spaLabelIn" in css, \
+            "@keyframes spaLabelIn not found"
+
+    def test_result_save_seal_overlay_uses_saturate(self):
+        """result-save-seal-overlay backdrop-filter uses saturate."""
+        css = _read("apps/xiangta-h5/styles.css")
+        overlay_start = css.find(".result-save-seal-overlay")
+        overlay_end = css.find("}", overlay_start)
+        section = css[overlay_start:overlay_end]
+        assert "saturate" in section, \
+            "result-save-seal-overlay should use saturate in backdrop-filter"
+
+    def test_result_save_seal_stamp_is_116px(self):
+        """.result-save-seal-stamp is 116x116px with border-radius 20px."""
+        css = _read("apps/xiangta-h5/styles.css")
+        stamp_start = css.find(".result-save-seal-stamp")
+        stamp_end = css.find("}", stamp_start)
+        section = css[stamp_start:stamp_end]
+        assert "116px" in section, \
+            ".result-save-seal-stamp should be 116px"
+        assert "20px" in section, \
+            ".result-save-seal-stamp should have border-radius 20px"
+

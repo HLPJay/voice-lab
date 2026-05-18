@@ -2092,38 +2092,55 @@ function openLetterDetail(letterId) {
 }
 
 function renderLetterDetailScreen(letter) {
-  // Subtitle: recipient · scene · time
+  // Title in appbar
+  const titleEl = el("letterDetailTitle");
+  if (titleEl) {
+    titleEl.textContent = letter.title || "今晚的信笺";
+  }
+
+  // Subtitle: recipient · scene
   const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || RECIPIENT_META[letter.recipient]?.label || "";
   const sceneLabel = getBootstrapSceneLabel(letter.scene) || SCENE_META[letter.scene]?.label || "";
   const subtitle = [recipientLabel, sceneLabel].filter(Boolean).join(" · ") || "—";
   const subtitleEl = el("letterDetailSubtitle");
   if (subtitleEl) subtitleEl.textContent = subtitle;
 
-  // Meta pills
+  // Meta pills — prototype order: 给{recipient}(accent) · {scene} · {styleLabel} · {voiceLabel} · {toneLabel} [+ ★ 收藏]
   const pillsEl = el("letterDetailMetaPills");
   if (pillsEl) {
-    const styleLabel = letter.style ? getBootstrapToneLabel(letter.style) : "";
+    const styleLabel = letter.style ? (STYLE_LABELS[letter.style] || getBootstrapToneLabel(letter.style)) : "";
     const voiceLabel = letter.voicePreset ? getBootstrapVoiceLabel(letter.voicePreset) : "";
     const toneLabel = letter.tone ? getBootstrapToneLabel(letter.tone) : "";
-    const pills = [recipientLabel, sceneLabel, styleLabel, voiceLabel, toneLabel].filter(Boolean);
-    pillsEl.innerHTML = pills.map(function(p) {
-      return "<span class=\"letter-meta-pill\">" + escHtml(p) + "</span>";
+    const isFavorited = !!(letter.favorited || state.letterDetailFavoritedMap[letter.id || letter.letterId]);
+    const parts = [
+      { text: "给" + recipientLabel, accent: true },
+      { text: sceneLabel, accent: false },
+      { text: styleLabel, accent: false },
+      { text: voiceLabel, accent: false },
+      { text: toneLabel, accent: false },
+    ].filter(function(p) { return p.text; });
+    if (isFavorited) {
+      parts.push({ text: "★ 收藏", accent: false, favorited: true });
+    }
+    pillsEl.innerHTML = parts.map(function(p) {
+      var cls = "letter-meta-pill" + (p.accent ? " letter-meta-pill-accent" : "") + (p.favorited ? " letter-meta-pill-favorited" : "");
+      return "<span class=\"" + cls + "\">" + escHtml(p.text) + "</span>";
     }).join("");
   }
 
-  // Date
-  const dateEl = el("letterDetailDate");
-  if (dateEl) {
+  // Date with separator line
+  const dateRowEl = el("letterDetailDate");
+  if (dateRowEl) {
     if (letter.createdAt) {
       const d = new Date(letter.createdAt);
-      const isNight = d.getHours() >= 18 || d.getHours() < 5;
-      dateEl.textContent = d.getFullYear() + " · " +
+      dateRowEl.textContent =
+        String(d.getFullYear()) + " · " +
         String(d.getMonth() + 1).padStart(2, "0") + " · " +
         String(d.getDate()).padStart(2, "0") + " · " +
         String(d.getHours()).padStart(2, "0") + ":" +
         String(d.getMinutes()).padStart(2, "0");
     } else {
-      dateEl.textContent = "";
+      dateRowEl.textContent = "";
     }
   }
 

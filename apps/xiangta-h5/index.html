@@ -435,7 +435,7 @@
               </svg>
             </button>
             <div class="step-appbar-center">
-              <div class="step-caption">信笺</div>
+              <div class="letter-detail-title" id="letterDetailTitle">信笺</div>
               <div class="step-context" id="letterDetailSubtitle">—</div>
             </div>
             <button class="icon-button" type="button" aria-label="更多" onclick="showToast('更多功能后续支持')">
@@ -450,7 +450,17 @@
           <div id="letterDetailMetaPills" class="letter-detail-meta-pills"></div>
 
           <div id="letterDetailCard" class="letter-detail-letter-card">
-            <div class="letter-detail-date" id="letterDetailDate"></div>
+            <div class="letter-detail-seal" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                <rect x="2" y="2" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.1"/>
+                <path d="M6 8h10M6 11h10M6 14h7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                <circle cx="11" cy="11" r="5" stroke="currentColor" stroke-width="0.7" stroke-dasharray="1.5 2" opacity="0.6"/>
+              </svg>
+            </div>
+            <div class="letter-detail-date-row">
+              <span class="letter-detail-date-line"></span>
+              <span class="letter-detail-date" id="letterDetailDate"></span>
+            </div>
             <div class="letter-detail-body" id="letterDetailBody"></div>
             <div class="letter-detail-signature" id="letterDetailSignature"></div>
           </div>

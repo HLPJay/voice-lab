@@ -460,3 +460,120 @@ class TestLetterDetailHardening:
             body = show_screen_match.group(1)
             assert "renderLetterDetailScreen" in body, \
                 "showScreen letterDetail must call renderLetterDetailScreen"
+
+
+class TestLetterDetailVisualParity:
+    """P22G: Letter detail visual parity with prototype LetterScreen."""
+
+    def test_letter_detail_title_element_exists(self):
+        """index.html has letterDetailTitle element in appbar."""
+        html = _read(H5_INDEX)
+        detail_start = html.find('id="screenLetterDetail"')
+        detail_end = html.find("</section>", detail_start)
+        section = html[detail_start:detail_end]
+        assert 'id="letterDetailTitle"' in section, \
+            "letterDetailTitle element not found in screenLetterDetail"
+
+    def test_letter_detail_subtitle_still_exists(self):
+        """index.html has letterDetailSubtitle element."""
+        html = _read(H5_INDEX)
+        assert 'id="letterDetailSubtitle"' in html, \
+            "letterDetailSubtitle not found"
+
+    def test_render_letter_detail_sets_title(self):
+        """renderLetterDetailScreen sets letterDetailTitle from letter.title."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetterDetailScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "letterDetailTitle" in section, \
+            "renderLetterDetailScreen must set letterDetailTitle"
+        assert "letter.title" in section or "letterTitle" in section, \
+            "renderLetterDetailScreen should use letter.title for title"
+
+    def test_render_letter_detail_sets_meta_pills_with_accent(self):
+        """renderLetterDetailScreen builds meta pills with first pill accent style."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetterDetailScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "letter-meta-pill-accent" in section, \
+            "renderLetterDetailScreen must apply letter-meta-pill-accent class"
+
+    def test_render_letter_detail_meta_pills_include_favorited(self):
+        """renderLetterDetailScreen adds favorited pill when letter is favorited."""
+        js = _read(H5_APP)
+        start = js.find("function renderLetterDetailScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "favorited" in section, \
+            "renderLetterDetailScreen should include favorited in meta pills"
+
+    def test_letter_meta_pill_accent_css_exists(self):
+        """styles.css has .letter-meta-pill-accent class."""
+        css = _read(H5_CSS)
+        assert ".letter-meta-pill-accent" in css, \
+            ".letter-meta-pill-accent CSS not found"
+
+    def test_letter_card_has_gradient_background(self):
+        """.letter-detail-letter-card has gradient background."""
+        css = _read(H5_CSS)
+        card_start = css.find(".letter-detail-letter-card")
+        card_end = css.find("}", card_start)
+        section = css[card_start:card_end]
+        assert "gradient" in section or ("var(--xt-surface-2)" in section and "var(--xt-surface)" in section), \
+            ".letter-detail-letter-card should have gradient background"
+
+    def test_letter_card_border_radius_22px(self):
+        """.letter-detail-letter-card has border-radius 22px."""
+        css = _read(H5_CSS)
+        card_start = css.find(".letter-detail-letter-card")
+        card_end = css.find("}", card_start)
+        section = css[card_start:card_end]
+        assert "22px" in section or "22" in section, \
+            ".letter-detail-letter-card should have border-radius 22px"
+
+    def test_letter_detail_body_font_size_17px(self):
+        """.letter-detail-body has font-size 17px."""
+        css = _read(H5_CSS)
+        body_start = css.find(".letter-detail-body")
+        body_end = css.find("}", body_start)
+        section = css[body_start:body_end]
+        assert "17px" in section, \
+            ".letter-detail-body should have font-size 17px"
+
+    def test_letter_detail_body_line_height_34px(self):
+        """.letter-detail-body has line-height 34px."""
+        css = _read(H5_CSS)
+        body_start = css.find(".letter-detail-body")
+        body_end = css.find("}", body_start)
+        section = css[body_start:body_end]
+        assert "34px" in section, \
+            ".letter-detail-body should have line-height 34px"
+
+    def test_letter_detail_has_seal_svg(self):
+        """index.html letter detail card has letter seal SVG."""
+        html = _read(H5_INDEX)
+        detail_start = html.find('id="screenLetterDetail"')
+        detail_end = html.find("</section>", detail_start)
+        section = html[detail_start:detail_end]
+        assert "letter-detail-seal" in section or "LetterSeal" in section, \
+            "letter detail card should have seal SVG element"
+
+    def test_letter_detail_has_date_separator(self):
+        """index.html letter detail card has date row with separator line."""
+        html = _read(H5_INDEX)
+        detail_start = html.find('id="screenLetterDetail"')
+        detail_end = html.find("</section>", detail_start)
+        section = html[detail_start:detail_end]
+        assert "letter-detail-date-row" in section or "letter-detail-date-line" in section, \
+            "letter detail card should have date row with separator"
+
+    def test_favorite_button_uses_accent_when_favorited(self):
+        """.letter-detail-favorite-btn.favorited uses accent-soft background."""
+        css = _read(H5_CSS)
+        fav_start = css.find(".letter-detail-favorite-btn.favorited")
+        fav_end = css.find("}", fav_start)
+        section = css[fav_start:fav_end]
+        assert "accent-soft" in section or "xt-accent-soft" in section, \
+            ".letter-detail-favorite-btn.favorited should use accent-soft"
