@@ -97,10 +97,6 @@ class TestSuggestionsBasic:
         data = client.post("/api/xiangta/suggestions", json=_REQUEST).json()["data"]
         for s in data["suggestions"]:
             assert "charCount" in s
-
-    def test_char_count_equals_len_text(self, client):
-        data = client.post("/api/xiangta/suggestions", json=_REQUEST).json()["data"]
-        for s in data["suggestions"]:
             assert s["charCount"] == len(s["text"]), (
                 f"charCount={s['charCount']} != len(text)={len(s['text'])}"
             )
@@ -144,6 +140,26 @@ class TestSuggestionsSecurity:
         keys = _collect_keys(body)
         bad = keys & FORBIDDEN_KEYS
         assert not bad, f"suggestions 响应包含禁止字段：{bad}"
+
+    def test_llm_failed_returns_flat_error(self, monkeypatch):
+        """LlmFailedError → 400 flat error contract (no detail)."""
+        from src.xiangta.services.copywriting_service import CopywritingService
+        from src.xiangta.services.error_translator import LlmFailedError
+
+        async def raise_llm_failed(*args, **kwargs):
+            raise LlmFailedError()
+
+        monkeypatch.setattr(CopywritingService, "generate_suggestions", raise_llm_failed)
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        r = client.post("/api/xiangta/suggestions", json=_REQUEST)
+        assert r.status_code == 400
+        body = r.json()
+        assert body["ok"] is False
+        assert body["errorKind"] == "llm_failed"
+        assert "detail" not in body
 
 
 # ── 多场景 ────────────────────────────────────────────────────────────────────
