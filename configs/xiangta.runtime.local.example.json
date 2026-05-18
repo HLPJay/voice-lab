@@ -10,7 +10,7 @@
     "minimax": {
       "baseUrl": "https://api.minimaxi.com",
       "endpointPath": "/v1/chat/completions",
-      "model": "<MINIMAX_MODEL_NAME>",
+      "model": "MiniMax-M2.7-highspeed",
       "apiKey": "<DO_NOT_COMMIT_REAL_KEY>"
     }
   }
