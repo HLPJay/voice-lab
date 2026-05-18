@@ -101,13 +101,13 @@ class TestShowScreenSettings:
 
 class TestSettingsPageContent:
     def test_settings_page_has_title(self):
-        """Settings page has '设置' title in appbar."""
+        """Settings page has '本机状态' title in appbar."""
         html = _read(H5_INDEX)
         settings_start = html.find('id="screenSettings"')
         settings_end = html.find("</section>", settings_start)
         settings_section = html[settings_start:settings_end]
-        assert "设置" in settings_section, \
-            "Settings page must have 设置 title"
+        assert "本机状态" in settings_section, \
+            "Settings page must have 本机状态 title"
 
     def test_settings_page_has_refresh_button(self):
         """Settings page has '刷新状态' button."""
@@ -259,6 +259,35 @@ class TestNoNewBackendApis:
         for api in found_apis:
             assert any(api.startswith(allowed_api) for allowed_api in allowed), \
                 f"Unexpected API path found: {api}"
+
+
+class TestSettingsVisualParity:
+    """P22J: Settings screen visual parity with prototype."""
+
+    def test_settings_quota_bar_css_exists(self):
+        """styles.css has settings-quota-bar class."""
+        css = _read(H5_CSS)
+        assert ".settings-quota-bar" in css, \
+            ".settings-quota-bar CSS not found"
+
+    def test_settings_quota_track_css_exists(self):
+        """styles.css has settings-quota-track class."""
+        css = _read(H5_CSS)
+        assert ".settings-quota-track" in css, \
+            ".settings-quota-track CSS not found"
+
+    def test_voice_binding_subtitle_product_friendly(self):
+        """Voice binding card uses product-friendly subtitle, not engineering text."""
+        js = _read(H5_APP)
+        start = js.find("function renderSettingsScreen")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        # Should NOT have engineering description
+        assert "用于把四种产品声线绑定" not in section, \
+            "Voice binding subtitle should not be engineering text"
+        # Should have product-friendly text
+        assert "选择你最想听到的声音" in section or "声音风格" in section, \
+            "Voice binding should have product-friendly subtitle"
 
 
 class TestSettingsCSS:

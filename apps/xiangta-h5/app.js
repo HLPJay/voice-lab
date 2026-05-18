@@ -2031,6 +2031,11 @@ function renderSettingsScreen() {
       "</div>" +
     "</div>";
 
+  // Quota percentage for progress bar
+  const quotaPct = providerStatus?.quotaPct ?? 1;
+  const quotaDisplay = providerKind === "quota" ? "不足" : providerKind === "no_provider" ? "—" : Math.round(quotaPct * 100) + "%";
+  const quotaBarColor = providerKind === "quota" ? "var(--warn)" : providerKind === "error" ? "var(--danger)" : "var(--xt-accent)";
+
   container.innerHTML =
     // Status overview cards
     "<div class=\"settings-status-grid\">" +
@@ -2054,10 +2059,21 @@ function renderSettingsScreen() {
       "</div>" +
     "</div>" +
 
+    // Quota progress bar (prototype parity)
+    "<div class=\"settings-quota-bar\">" +
+      "<div class=\"settings-quota-label\">" +
+        "<span>本月剩余额度</span>" +
+        "<span class=\"settings-quota-pct\">" + quotaDisplay + "</span>" +
+      "</div>" +
+      "<div class=\"settings-quota-track\">" +
+        "<div class=\"settings-quota-fill\" style=\"width:" + Math.round(quotaPct * 100) + "%;background:" + quotaBarColor + ";\"></div>" +
+      "</div>" +
+    "</div>" +
+
     // Voice binding detail
     "<div class=\"settings-card\">" +
       "<div class=\"settings-card-title\">声线绑定状态</div>" +
-      "<div class=\"settings-card-subtitle\">用于把四种产品声线绑定到 Core 中已有的人设</div>" +
+      "<div class=\"settings-card-subtitle\">选择你最想听到的声音风格</div>" +
       "<div class=\"settings-binding-list\">" + bindingRowsHtml + "</div>" +
       "<button class=\"ghost-button settings-voice-bind-btn\" type=\"button\" onclick=\"window.location.href='/h5/admin-voice-bindings.html'\">" +
         "打开声线绑定配置页" +
