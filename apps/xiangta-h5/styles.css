@@ -352,8 +352,11 @@ body {
 .recipient-card,
 .scene-chip,
 .prompt-card,
-.voice-option {
+.voice-option,
+.suggestion-card,
+.tone-chip {
   cursor: pointer;
+  animation: spaCardIn 0.26s both;
 }
 
 .recipient-card,
