@@ -15,6 +15,8 @@ import asyncio
 import pytest
 
 from src.xiangta.services.letter_service import LetterService
+from pathlib import Path
+
 from src.xiangta.storage import (
     DEFAULT_SQLITE_PATH,
     SQLiteLetterRepository,
@@ -66,9 +68,11 @@ class TestSqliteSchema:
 class TestResolveSqlitePath:
     @pytest.mark.parametrize("url", [None, "", ":memory:"])
     def test_resolve_sqlite_path(self, url):
-        """resolve_sqlite_path: None/''→default, :memory:→memory."""
+        """resolve_sqlite_path: None/''→Path, :memory:→':memory:'."""
         if url in (None, ""):
-            assert resolve_sqlite_path(url) == DEFAULT_SQLITE_PATH
+            result = resolve_sqlite_path(url)
+            assert isinstance(result, Path)
+            assert result == Path(".data/xiangta.sqlite3")
         else:
             assert resolve_sqlite_path(url) == ":memory:"
 

@@ -15,7 +15,7 @@ from pathlib import Path
 SCHEMA_VERSION = 1
 
 # Default SQLite file path when STORAGE_TYPE=sqlite but no DATABASE_URL is set
-DEFAULT_SQLITE_PATH = ".data/xiangta.sqlite3"
+DEFAULT_SQLITE_PATH = Path(".data/xiangta.sqlite3")
 
 # Minimal schema: letters + storage_meta
 _LETTERS_SCHEMA = """
