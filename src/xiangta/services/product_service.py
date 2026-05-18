@@ -273,6 +273,7 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.admin_config_service import AdminConfigService
     from src.xiangta.services.copywriting_service import CopywritingService
     from src.xiangta.services.letter_service import LetterService
+    from src.xiangta.storage import MemoryLetterRepository, SQLiteLetterRepository
 
     config_repository = ProductConfigRepository()
 
@@ -315,7 +316,15 @@ def create_product_service() -> "ProductService":
     writer = ProductConfigWriter()
     admin_config_svc = AdminConfigService(writer=writer)
     copywriting = CopywritingService(gateway=gateway)
-    letter_svc = LetterService()
+
+    # Wire letter storage based on runtime config
+    if runtime_config.storage_type == "sqlite":
+        db_url = runtime_config.storage_database_url
+        letter_svc = LetterService(repository=SQLiteLetterRepository(database_url=db_url))
+    else:
+        # Default: memory storage
+        letter_svc = LetterService(repository=None)
+
     return ProductService(
         bootstrap=bootstrap,
         provider_status=provider_status,
