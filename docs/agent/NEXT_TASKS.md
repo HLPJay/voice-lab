@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P18-XIANGTA-ERROR-CONTRACT-MIN-C4 ✅ → 当前阶段：P18-XIANGTA-H5-DEV-FORMAL-MODE-C5**
+**P18-XIANGTA-H5-DEV-FORMAL-MODE-C5 ✅ → 当前阶段：P18-XIANGTA-STORAGE-FOUNDATION-C6**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 

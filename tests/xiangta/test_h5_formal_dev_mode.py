@@ -1,18 +1,17 @@
 """
-Tests for H5 formal/dev mode separation.
+Tests for H5 formal/dev mode separation (trimmed to 8 tests).
 
 Covers:
-1. index.html contains devPanel
-2. index.html coreProfileSelect is inside devPanel
-3. app.js default mode is formal
-4. app.js supports ?mode=dev
-5. app.js formal mode doesn't unconditionally call loadCoreProfiles()
-6. app.js only dev mode allows payload.profileId
-7. styles.css contains dev-panel and hidden styles
+1. index.html contains devPanel with coreProfileSelect inside
+2. devPanel has hidden class
+3. app.js default mode is formal and supports ?mode=dev
+4. app.js applyModeUi toggles devPanel and sets body[data-mode]
+5. app.js loadCoreProfiles() guarded by dev mode
+6. app.js payload.profileId guarded by dev mode
+7. styles.css has explicit .hidden with display: none
+8. styles.css has .dev-panel style
 """
 import re
-
-import pytest
 
 H5_INDEX = "apps/xiangta-h5/index.html"
 H5_APP = "apps/xiangta-h5/app.js"
@@ -25,18 +24,15 @@ def _read(path):
 
 
 class TestIndexHtml:
-    def test_contains_dev_panel(self):
+    def test_dev_panel_exists_and_contains_core_profile_select(self):
+        """devPanel exists in index.html and coreProfileSelect is inside it."""
         html = _read(H5_INDEX)
         assert 'id="devPanel"' in html
 
-    def test_core_profile_select_inside_dev_panel(self):
-        html = _read(H5_INDEX)
-        # Extract devPanel section by finding the opening div and counting matching close
         dev_panel_start = html.find('<div id="devPanel"')
         assert dev_panel_start != -1, "devPanel not found"
 
-        # Find the matching closing </div> for devPanel
-        # We scan from dev_panel_start and count div nesting
+        # Find matching closing </div>
         pos = dev_panel_start
         depth = 0
         while pos < len(html):
@@ -50,80 +46,74 @@ class TestIndexHtml:
             else:
                 depth -= 1
                 if depth == 0:
-                    # found matching close for devPanel
                     dev_panel_end = next_close
                     break
                 pos = next_close + 1
 
         core_profile_start = html.find('id="coreProfileSelect"')
         assert core_profile_start != -1, "coreProfileSelect not found"
-
-        # coreProfileSelect must be between devPanel open and its closing tag
         assert dev_panel_start < core_profile_start < dev_panel_end, \
             "coreProfileSelect must be inside devPanel"
 
-    def test_dev_panel_has_hidden_class_initially(self):
+    def test_dev_panel_has_hidden_class(self):
+        """devPanel has 'hidden' class so formal mode hides it by default."""
         html = _read(H5_INDEX)
-        # devPanel should have hidden class so formal mode hides it by default
         assert re.search(r'id="devPanel"\s+class="[^"]*hidden', html) or \
                re.search(r'class="[^"]*hidden[^"]*"\s+id="devPanel"', html), \
                "devPanel must have 'hidden' class"
 
 
 class TestAppJs:
-    def test_default_mode_is_formal(self):
+    def test_default_mode_is_formal_and_supports_dev_param(self):
+        """state.mode defaults to formal, and getAppMode() checks ?mode=dev."""
         js = _read(H5_APP)
-        # state.mode should default to "formal"
-        assert 'mode:            "formal"' in js or \
-               'mode: "formal"' in js
-
-    def test_supports_mode_dev_param(self):
-        js = _read(H5_APP)
-        # getAppMode() should check for ?mode=dev
-        assert "params.get(\"mode\")" in js or \
-               "params.get('mode')" in js
+        assert 'mode:            "formal"' in js or 'mode: "formal"' in js
+        assert "params.get(\"mode\")" in js or "params.get('mode')" in js
         assert '=== "dev"' in js or "=== 'dev'" in js
 
-    def test_apply_mode_ui_toggles_dev_panel(self):
+    def test_apply_mode_ui_toggles_dev_panel_and_sets_body_attribute(self):
+        """applyModeUi toggles devPanel hidden and sets body[data-mode]."""
         js = _read(H5_APP)
-        # applyModeUi should toggle hidden class on devPanel
         assert "applyModeUi" in js
         assert 'devPanel.classList.toggle("hidden"' in js or \
                "devPanel.classList.toggle('hidden'" in js
+        assert 'document.body.setAttribute("data-mode"' in js or \
+               "document.body.setAttribute('data-mode'" in js
 
-    def test_formal_mode_does_not_call_load_core_profiles_unconditionally(self):
+    def test_load_core_profiles_guard(self):
+        """loadCoreProfiles() call is guarded by state.mode === 'dev'."""
         js = _read(H5_APP)
-        # loadBootstrap should NOT unconditionally call loadCoreProfiles()
-        # It should be wrapped in a mode check
-        loadbootstrap_section = js[js.find("function loadBootstrap"):]
-        loadbootstrap_section = loadbootstrap_section[:loadbootstrap_section.find("\n}\n")]
+        # Find loadBootstrap function
+        start = js.find("function loadBootstrap")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
 
-        # Should NOT have bare loadCoreProfiles() call
-        # Should have it inside an if (state.mode === "dev") block
-        if "loadCoreProfiles()" in loadbootstrap_section:
-            # The bare call should NOT exist without the mode guard
-            assert "if (state.mode === \"dev\")" in loadbootstrap_section or \
-                   "if (state.mode === 'dev')" in loadbootstrap_section, \
+        if "loadCoreProfiles()" in section:
+            assert 'state.mode === "dev"' in section or \
+                   "state.mode === 'dev'" in section, \
                    "loadCoreProfiles() must be guarded by dev mode check"
 
-    def test_profile_id_only_in_dev_mode(self):
+    def test_profile_id_guard(self):
+        """payload.profileId is only set when state.mode === 'dev'."""
         js = _read(H5_APP)
-        # generateTts should only add profileId when in dev mode
-        # The condition should include state.mode === "dev"
-        generatetts_section = js[js.find("function generateTts"):]
-        generatetts_section = generatetts_section[:generatetts_section.find("\n}\n")]
+        start = js.find("function generateTts")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
 
-        if "payload.profileId" in generatetts_section:
-            assert 'state.mode === "dev"' in generatetts_section or \
-                   "state.mode === 'dev'" in generatetts_section, \
+        if "payload.profileId" in section:
+            assert 'state.mode === "dev"' in section or \
+                   "state.mode === 'dev'" in section, \
                    "profileId must only be set in dev mode"
 
 
 class TestStylesCss:
-    def test_hidden_utility_exists(self):
+    def test_hidden_utility_explicit(self):
+        """.hidden utility explicitly sets display: none."""
         css = _read(H5_CSS)
-        assert ".hidden" in css or "#" not in css  # .hidden { display: none }
+        assert ".hidden" in css
+        assert "display: none" in css
 
     def test_dev_panel_style_exists(self):
+        """.dev-panel style exists for dev-only section."""
         css = _read(H5_CSS)
         assert ".dev-panel" in css
