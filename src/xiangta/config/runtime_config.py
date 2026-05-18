@@ -112,6 +112,9 @@ class XiangTaRuntimeConfig:
     copywriting_provider: str = "none"
     copywriting_timeout_secs: float = 20.0
     copywriting_fallback_to_template: bool = True
+    minimax_copywriting_base_url: str | None = None
+    minimax_copywriting_model: str | None = None
+    minimax_copywriting_api_key: str | None = None
 
     # TTS
     tts_mode: str = "sync"
@@ -224,6 +227,13 @@ def _apply_env_overrides(config: dict) -> dict:
             if v is not None:
                 config.setdefault("copywriting", {})["fallbackToTemplate"] = v
 
+    # MiniMax copywriting
+    if _get_env("XIANGTA_MINIMAX_COPYWRITING_BASE_URL"):
+        config.setdefault("copywriting", {})["minimaxBaseUrl"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_BASE_URL")
+    if _get_env("XIANGTA_MINIMAX_COPYWRITING_MODEL"):
+        config.setdefault("copywriting", {})["minimaxModel"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_MODEL")
+    # Note: XIANGTA_MINIMAX_COPYWRITING_API_KEY is read directly in return statement (never stored in config dict)
+
     # TTS
     if _get_env("XIANGTA_TTS_MODE"):
         config.setdefault("tts", {})["mode"] = _get_env("XIANGTA_TTS_MODE")
@@ -328,6 +338,9 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
         copywriting_provider=str(copywriting.get("provider", "none")),
         copywriting_timeout_secs=_sanitize_timeout(copywriting.get("timeoutSecs")),
         copywriting_fallback_to_template=bool(copywriting.get("fallbackToTemplate", True)),
+        minimax_copywriting_base_url=(str(copywriting["minimaxBaseUrl"]) if copywriting.get("minimaxBaseUrl") else None),
+        minimax_copywriting_model=(str(copywriting["minimaxModel"]) if copywriting.get("minimaxModel") else None),
+        minimax_copywriting_api_key=_get_env("XIANGTA_MINIMAX_COPYWRITING_API_KEY"),
         # TTS
         tts_mode=str(tts.get("mode", "sync")),
         tts_max_concurrent=max(1, int(tts.get("maxConcurrent", 1))),

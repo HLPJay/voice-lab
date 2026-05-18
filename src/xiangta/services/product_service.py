@@ -354,6 +354,23 @@ def create_product_service() -> "ProductService":
         and runtime_config.copywriting_provider == "fake"
     ):
         cw_gateway: "CopywritingGateway" = FakeLlmCopywritingGateway()
+    elif (
+        runtime_config.feature_llm_copywriting_enabled
+        and runtime_config.copywriting_mode == "llm"
+        and runtime_config.copywriting_provider == "minimax"
+        and runtime_config.minimax_copywriting_api_key
+        and runtime_config.minimax_copywriting_base_url
+        and runtime_config.minimax_copywriting_model
+    ):
+        from src.xiangta.services.copywriting_minimax_gateway import (
+            MiniMaxCopywritingGateway,
+        )
+        cw_gateway = MiniMaxCopywritingGateway(
+            api_key=runtime_config.minimax_copywriting_api_key,
+            base_url=runtime_config.minimax_copywriting_base_url,
+            model=runtime_config.minimax_copywriting_model,
+            timeout_seconds=runtime_config.copywriting_timeout_secs,
+        )
     else:
         # Default: template gateway (safe, no external calls)
         cw_gateway = TemplateCopywritingGateway()
