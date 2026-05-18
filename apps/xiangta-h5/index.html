@@ -2,167 +2,262 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#100D14" />
   <title>想Ta了</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
   <div class="phone-shell">
-
-    <!-- App topbar -->
-    <header class="app-topbar">
-      <div class="topbar-brand">
-        <svg class="letter-seal" width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <rect x="2" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.2"/>
-          <path d="M2 6l9 6 9-6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-        </svg>
-        <span class="topbar-title">想Ta了</span>
+    <header class="home-topbar app-topbar" id="appTopbar">
+      <div class="brand-mark">
+        <span class="seal-icon letter-seal" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" stroke-width="1.2"></rect>
+            <path d="M2.5 6l7.5 5 7.5-5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+        <span class="brand-text topbar-title">想Ta了</span>
       </div>
       <div class="topbar-actions">
-        <button class="topbar-btn" onclick="showScreen('history')" aria-label="历史">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.3"/><path d="M9 5v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <button class="icon-button" type="button" aria-label="历史信笺" onclick="showScreen('history')">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M9 4.5v4l2.8 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+            <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.3"></circle>
+          </svg>
+        </button>
+        <button class="icon-button" type="button" aria-label="刷新首页" onclick="loadBootstrap()">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M14 9a5 5 0 10-1.5 3.5M14 5v3.2h-3.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
         </button>
       </div>
     </header>
 
-    <!-- Operational status bar (used by setStatus) -->
     <div id="statusBar" class="status-bar status-idle">准备就绪</div>
 
     <main class="app-main">
-
-      <!-- ── screenHome ─────────────────────────────────────── -->
       <section id="screenHome" class="screen active">
-        <!-- Literary greeting with date/time -->
-        <div class="literary-greeting" id="literaryGreeting"></div>
+        <div class="screen-scroll">
+          <div class="literary-greeting" id="literaryGreeting"></div>
 
-        <div class="hero-greeting">
-          <div class="hero-question">
-            今晚，<br/>想对谁说话？
+          <section class="home-hero hero">
+            <h1 class="home-title">今晚，<br>想对谁说话？</h1>
+            <p class="home-subtitle">把想说的话，变成更合适的文字和语音</p>
+          </section>
+
+          <section class="content-section">
+            <div class="section-eyebrow">说给谁</div>
+            <div class="recipient-grid" id="recipientGrid"></div>
+          </section>
+
+          <section class="content-section">
+            <div class="section-eyebrow">想表达什么</div>
+            <div class="scene-grid" id="sceneGrid"></div>
+          </section>
+
+          <div class="home-actions bottom-actions">
+            <button id="btnStartCompose" class="cta-button btn-cta" type="button" onclick="goCompose()" disabled>开始表达</button>
+            <button class="ghost-button" type="button" onclick="showScreen('history')">查看历史</button>
           </div>
-          <p class="hero-subtitle">把想说的话，<br/>变成更合适的文字和语音。</p>
-        </div>
 
-        <!-- Recipient selection (2×2 cards with icons) -->
-        <div class="choice-section">
-          <div class="section-heading">说给谁</div>
-          <div class="recipient-grid" id="recipientGrid"></div>
-        </div>
-
-        <!-- Scene quick picks (2-col chips with hints) -->
-        <div class="choice-section">
-          <div class="section-heading">想表达什么</div>
-          <div class="scene-grid" id="sceneGrid"></div>
-        </div>
-
-        <!-- Sticky CTA -->
-        <div class="bottom-actions">
-          <button id="btnStartCompose" class="btn btn-cta" onclick="goCompose()">开始表达</button>
-          <button class="btn btn-ghost" onclick="showScreen('history')">查看历史</button>
-        </div>
-
-        <!-- Bottom status pill -->
-        <div class="status-pill-bar">
-          <div class="status-pill" id="statusPill">MiniMax · 检查中…</div>
-          <div class="status-note">本机保存 · 不替你发送</div>
-        </div>
-
-        <!-- Dev-only: provider status + core profiles -->
-        <div id="devPanel" class="dev-panel hidden">
-          <div class="dev-panel-title">Dev Mode</div>
-          <div class="field-row">
-            <label for="coreProfileSelect">人设（Core）</label>
-            <select id="coreProfileSelect"><option value="">加载中…</option></select>
+          <div class="home-status status-pill-bar">
+            <div class="status-pill" id="statusPill">MiniMax · 检查中</div>
+            <div class="status-note">本机保存 · 不替你发送</div>
           </div>
-          <div id="providerStatus" class="provider-status">检查中…</div>
+
+          <div id="devPanel" class="dev-panel hidden">
+            <div class="dev-panel-title">Dev Mode</div>
+            <div class="dev-panel-row">
+              <label for="coreProfileSelect">Core 人设</label>
+              <select id="coreProfileSelect">
+                <option value="">加载中...</option>
+              </select>
+            </div>
+            <div id="providerStatus" class="provider-status">检查中...</div>
+          </div>
         </div>
       </section>
 
-      <!-- ── screenCompose ─────────────────────────────────── -->
       <section id="screenCompose" class="screen">
-        <div class="screen-nav">
-          <button class="btn btn-icon" onclick="showScreen('home')">←</button>
-          <span class="screen-title">写给 Ta</span>
-        </div>
-
-        <div class="meta-chip-row" id="composeMetaRow"></div>
-
-        <div class="field-col">
-          <label for="rawTextArea">此刻的心情</label>
-          <textarea id="rawTextArea" rows="5" maxlength="500"
-            placeholder="随便写，比如：我今天突然很想你…"></textarea>
-          <div class="char-count"><span id="rawTextCount">0</span> / 500</div>
-        </div>
-
-        <div class="bottom-actions">
-          <button id="btnGenSuggestions" class="btn btn-primary" onclick="generateSuggestions()">生成文案建议</button>
-        </div>
-      </section>
-
-      <!-- ── screenSuggest ──────────────────────────────────── -->
-      <section id="screenSuggest" class="screen">
-        <div class="screen-nav">
-          <button class="btn btn-icon" onclick="showScreen('compose')">←</button>
-          <span class="screen-title">选择文案</span>
-        </div>
-
-        <div id="suggSummary" class="sugg-summary"></div>
-        <div id="suggestionsArea" class="suggestions-area"></div>
-
-        <div class="field-col" style="margin-top:12px;">
-          <label for="finalTextArea">最终文案（可编辑）</label>
-          <textarea id="finalTextArea" rows="4" maxlength="800"
-            placeholder="选择上方建议或直接编辑"></textarea>
-        </div>
-
-        <div class="bottom-actions">
-          <button id="btnToVoice" class="btn btn-primary" onclick="goVoice()">生成语音</button>
-        </div>
-      </section>
-
-      <!-- ── screenVoice ───────────────────────────────────── -->
-      <section id="screenVoice" class="screen">
-        <div class="screen-nav">
-          <button class="btn btn-icon" onclick="showScreen('suggest')">←</button>
-          <span class="screen-title">生成语音</span>
-        </div>
-
-        <div id="voiceMeta" class="meta-chip-row"></div>
-
-        <div id="ttsTaskArea" class="tts-task-area">
-          <button id="btnGenTtsTask" class="btn btn-primary" onclick="generateTtsTask()">生成语音</button>
-        </div>
-
-        <div id="ttsResult" class="tts-result hidden"></div>
-
-        <div id="saveLetterSection" class="card hidden">
-          <div class="field-col">
-            <label for="titleInput">标题（选填）</label>
-            <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+        <div class="screen-scroll screen-scroll-step">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回上一页" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption">第 1 步 / 共 3 步</div>
+              <div class="step-context" id="composeTitle">想念 · 给恋人</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="关闭" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+              </svg>
+            </button>
           </div>
-          <button id="btnSaveLetter" class="btn btn-accent" onclick="saveLetter()">保存信笺</button>
-        </div>
 
-        <div id="devTtsSection" class="dev-panel hidden">
-          <div class="dev-panel-title">Dev: 旧接口</div>
-          <button class="btn btn-ghost" onclick="generateTts()">/tts（dry-run）</button>
+          <div class="step-progress" id="composeStepDots"></div>
+
+          <section class="step-hero">
+            <h2 class="step-title">先说说，<br>你现在最想说的一句话？</h2>
+            <p class="step-subtitle">写得粗糙、不通顺、零碎都没关系 —— 之后会帮你整理。</p>
+          </section>
+
+          <section class="content-section content-section-tight">
+            <div class="composer-box" id="rawTextWrap">
+              <textarea id="rawTextArea" rows="7" maxlength="500" placeholder="比如：今天又下雨了，我突然想起你。"></textarea>
+            </div>
+            <div class="composer-meta">
+              <button class="text-link" id="fillExampleLink" type="button">用一个例子开始</button>
+              <span class="char-count"><span id="rawTextCount">0</span> / 500</span>
+            </div>
+            <div id="riskHint" class="risk-hint hidden"></div>
+          </section>
+
+          <section class="content-section content-section-tight">
+            <div class="section-eyebrow">想再说几句也可以</div>
+            <div id="guidancePrompts" class="prompt-card-list"></div>
+          </section>
+
+          <div class="sticky-cta bottom-actions">
+            <button id="btnGenSuggestions" class="cta-button btn-cta" type="button" onclick="generateSuggestions()" disabled>帮我整理表达</button>
+            <div id="composeCTAHint" class="cta-hint">写几个字试试 · 不用一次写完</div>
+          </div>
         </div>
       </section>
 
-      <!-- ── screenHistory ─────────────────────────────────── -->
+      <section id="screenSuggest" class="screen">
+        <div class="screen-scroll screen-scroll-step">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回输入页" onclick="showScreen('compose')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption">第 2 步 / 共 3 步</div>
+              <div class="step-context" id="suggestSubtitle">想念 · 给恋人</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="关闭" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="step-progress" id="suggestStepDots"></div>
+
+          <section class="step-hero step-hero-compact">
+            <h2 class="step-title-small">已经帮你整理出几种表达</h2>
+            <p class="step-subtitle">挑一个最像你的版本，再进入下一步生成语音。</p>
+          </section>
+
+          <div id="aiUnderstanding" class="insight-card"></div>
+          <div id="suggestRiskHint" class="risk-hint hidden"></div>
+          <div id="suggestionsArea" class="suggestion-list"></div>
+          <textarea id="finalTextArea" class="hidden" rows="6" maxlength="800"></textarea>
+
+          <div class="sticky-cta bottom-actions">
+            <button id="btnToVoice" class="cta-button btn-cta" type="button" onclick="goVoice()" disabled>用这条 · 生成语音</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenVoice" class="screen">
+        <div class="screen-scroll screen-scroll-step">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回建议页" onclick="showScreen('suggest')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption">第 3 步 / 共 3 步</div>
+              <div class="step-context" id="voiceSubtitle">想念 · 温柔</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="关闭" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="step-progress" id="voiceStepDots"></div>
+
+          <section class="step-hero step-hero-compact">
+            <h2 class="step-title-small">给这段话，配一个声音</h2>
+            <p class="step-subtitle">先确认文字，再挑一个更适合此刻的语气。</p>
+          </section>
+
+          <div id="voiceTextPreview" class="voice-copy-card"></div>
+
+          <section class="content-section content-section-tight">
+            <div class="section-eyebrow">声音</div>
+            <div id="voicePicker" class="voice-picker"></div>
+          </section>
+
+          <section class="content-section content-section-tight">
+            <div class="section-eyebrow">语气</div>
+            <div id="toneChips" class="tone-chip-list"></div>
+          </section>
+
+          <div id="durationEstimate" class="duration-estimate"></div>
+
+          <div class="sticky-cta sticky-cta-voice bottom-actions">
+            <button id="btnGenTtsTask" class="cta-button btn-cta" type="button" onclick="generateTtsTask()">生成语音</button>
+          </div>
+
+          <div id="ttsResult" class="tts-result hidden"></div>
+
+          <section id="saveLetterSection" class="save-letter-card hidden">
+            <div class="save-letter-copy">
+              <div class="save-letter-title">保存成一封信笺</div>
+              <div class="save-letter-subtitle">语音暂未生成，也可以先保存文字信笺。</div>
+            </div>
+            <label class="field-label" for="titleInput">标题（选填）</label>
+            <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+            <button id="btnSaveLetter" class="cta-button cta-button-secondary btn-cta" type="button" onclick="saveLetter()">保存信笺</button>
+          </section>
+
+          <div id="devTtsSection" class="dev-panel hidden">
+            <div class="dev-panel-title">Dev: 旧 /tts 调试入口</div>
+            <button class="ghost-button" type="button" onclick="generateTts()">调用 /api/xiangta/tts</button>
+          </div>
+        </div>
+      </section>
+
       <section id="screenHistory" class="screen">
-        <div class="screen-nav">
-          <button class="btn btn-icon" onclick="showScreen('home')">←</button>
-          <span class="screen-title">历史信笺</span>
+        <div class="screen-scroll">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回首页" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption">历史信笺</div>
+              <div class="step-context">把说过的话，留在这里</div>
+            </div>
+            <button id="btnRefreshHistory" class="icon-button" type="button" aria-label="刷新历史" onclick="loadLetters()">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M14 9a5 5 0 10-1.5 3.5M14 5v3.2h-3.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+          </div>
+
+          <section class="step-hero step-hero-compact">
+            <h2 class="step-title-small">信笺夹</h2>
+            <p class="step-subtitle">每一次没来得及说完的话，都可以在这里重新读一遍。</p>
+          </section>
+
+          <div id="historyCount" class="history-count"></div>
+          <div id="lettersArea" class="history-list"></div>
         </div>
-
-        <button id="btnRefreshHistory" class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
-        <div id="lettersArea" class="letters-area"></div>
       </section>
-
     </main>
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,846 +1,874 @@
 "use strict";
 
-// ── 配置 ──────────────────────────────────────────────────────────────────────
-
 const API_BASE = "";
+const STEP_LABELS = ["整理想法", "挑选表达", "生成语音"];
+const PLACEHOLDER_PROFILE = "<coreProfileIdFromCoreProfiles>";
 
-// ── UI meta maps (from prototype tokens/screens) ─────────────────────────────
-
-var RECIPIENT_META = {
-  lover:  {
-    label: "恋人", hint: "想他想她",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="10" cy="13" r="6" stroke="currentColor" stroke-width="1.1" opacity="0.55"/><circle cx="16" cy="13" r="6" stroke="currentColor" stroke-width="1.1"/><circle cx="13" cy="13" r="1" fill="currentColor"/></svg>'
+const RECIPIENT_META = {
+  lover: {
+    label: "恋人",
+    hint: "想他 / 想她",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="9.5" cy="13" r="5.5" stroke="currentColor" stroke-width="1.2" opacity="0.6"></circle><circle cx="16.5" cy="13" r="5.5" stroke="currentColor" stroke-width="1.2"></circle><circle cx="13" cy="13" r="1.1" fill="currentColor"></circle></svg>',
   },
   family: {
-    label: "父母", hint: "爸妈",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M4 21V11l9-6 9 6v10" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M10 21v-5h6v5" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>'
+    label: "父母",
+    hint: "爸爸 / 妈妈",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M4 21v-9.2L13 5l9 6.8V21" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path><path d="M10 21v-5h6v5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path></svg>',
   },
   friend: {
-    label: "朋友", hint: "老友",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M5 19v-5a4 4 0 014-4M21 19v-5a4 4 0 00-4-4M9 10V8a2 2 0 014 0M13 8a2 2 0 014 0v2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    label: "朋友",
+    hint: "老朋友 / 新朋友",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M7 18v-2.2A3.8 3.8 0 0110.8 12h4.4A3.8 3.8 0 0119 15.8V18M10 10.5a2.5 2.5 0 105 0 2.5 2.5 0 00-5 0z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path></svg>',
   },
-  self:   {
-    label: "自己", hint: "独白",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="9" stroke="currentColor" stroke-width="1.1" opacity="0.45"/><path d="M13 6v14M6 13h14" stroke="currentColor" stroke-width="1.1" opacity="0.45"/><circle cx="13" cy="13" r="2.5" fill="currentColor"/></svg>'
+  self: {
+    label: "自己",
+    hint: "写给自己",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="8.5" stroke="currentColor" stroke-width="1.2" opacity="0.58"></circle><circle cx="13" cy="13" r="2.4" fill="currentColor"></circle></svg>',
   },
 };
 
-var SCENE_META = {
-  miss:    { label: "想念", hint: "想你了" },
-  sorry:   { label: "道歉", hint: "对不起" },
-  thanks:  { label: "感谢", hint: "谢谢你" },
-  comfort: { label: "安慰", hint: "会好的" },
-  night:   { label: "晚安", hint: "好好休息" },
+const SCENE_META = {
+  miss: { label: "想念", hint: "不知不觉就想起你" },
+  sorry: { label: "道歉", hint: "那天，是我不好" },
+  thanks: { label: "感谢", hint: "一直没有好好说" },
+  comfort: { label: "安慰", hint: "陪你一会儿" },
+  night: { label: "晚安", hint: "睡前的一句话" },
 };
 
-// ── 应用状态 ──────────────────────────────────────────────────────────────────
+const RAW_EXAMPLES = {
+  miss: "今天下雨了，我突然想起你。那天一起淋雨的时候，其实我心里很安静，也很想靠近你。",
+  sorry: "昨天那句话我说重了。后来我一直在想，我不是想伤害你，只是当时没处理好自己的情绪。",
+  thanks: "那天你没有问太多，就一直在我身边。后来我想了很久，还是想认真跟你说一声谢谢。",
+  comfort: "如果你今天很累，就先不用解释。想说的时候我会听，不想说也没有关系。",
+  night: "今天先到这里吧。别再想工作和烦心事了，先把自己交给夜晚，好好睡一觉。",
+};
 
-var state = {
-  mode:            "formal",
-  screen:          "home",
-  bootstrap:       null,
-  selectedScene:   null,
+const GUIDANCE_PROMPTS = {
+  miss: [
+    "你希望 Ta 听完之后，感受到什么？",
+    "有没有不想说得太重、太直接的部分？",
+    "你们上一次好好说话，是什么时候？",
+  ],
+  sorry: [
+    "你想为哪件事认真道歉？",
+    "你希望对方知道，你看到了哪些做得不好的地方？",
+    "你不想把这段话说成找借口，最该避开的是什么？",
+  ],
+  thanks: [
+    "你最想感谢的是哪一个细节？",
+    "那件事对你来说，到底意味着什么？",
+    "有没有一直没说出口的那一句谢谢？",
+  ],
+  comfort: [
+    "对方现在在经历什么？",
+    "你想让对方感受到被怎样接住？",
+    "有什么是你不想说成说教的？",
+  ],
+  night: [
+    "今天的晚安里，你最想留下什么感觉？",
+    "有没有一句话是想让对方放松下来的？",
+    "今晚不说重话的话，你会怎么收尾？",
+  ],
+};
+
+const STYLE_LABELS = {
+  restrained: "克制版",
+  gentle: "温柔版",
+  sincere: "真诚版",
+};
+
+const TONE_META = [
+  { id: "restrained", label: "克制" },
+  { id: "gentle", label: "温柔" },
+  { id: "sincere", label: "真诚" },
+  { id: "whisper", label: "轻声" },
+  { id: "bedtime", label: "睡前" },
+];
+
+const state = {
+  mode: "formal",
+  screen: "home",
+  bootstrap: null,
   selectedRecipient: null,
-  suggestions:     [],
-  selectedIndex:   -1,
-  ttsTask:         null,
-  ttsResult:       null,
-  letters:         [],
-  coreProfiles:    [],
+  selectedScene: null,
+  suggestions: [],
+  selectedIndex: -1,
+  selectedStyle: "gentle",
+  selectedVoice: "female-gentle",
+  selectedTone: "gentle",
+  finalText: "",
+  ttsTask: null,
+  ttsResult: null,
+  letters: [],
+  coreProfiles: [],
 };
-
-// ── Mode detection ─────────────────────────────────────────────────────────────
-
-function getAppMode() {
-  var params = new URLSearchParams(window.location.search || "");
-  return params.get("mode") === "dev" ? "dev" : "formal";
-}
-
-function applyModeUi() {
-  var devPanel = el("devPanel");
-  if (devPanel) {
-    devPanel.classList.toggle("hidden", state.mode !== "dev");
-  }
-  var devTts = el("devTtsSection");
-  if (devTts) {
-    devTts.classList.toggle("hidden", state.mode !== "dev");
-  }
-  document.body.setAttribute("data-mode", state.mode);
-}
-
-// ── Screen navigation ─────────────────────────────────────────────────────────
-
-function showScreen(screen) {
-  document.querySelectorAll(".screen").forEach(function(s) {
-    s.classList.remove("active");
-  });
-  var target = el("screen" + capitalize(screen));
-  if (target) {
-    target.classList.add("active");
-  }
-  state.screen = screen;
-  setStatus("准备就绪", "idle");
-
-  if (screen === "history") {
-    loadLetters();
-  }
-}
-
-function capitalize(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// ── 按钮锁 ───────────────────────────────────────────────────────────────────
-
-function setBusy(buttonId, busy, text) {
-  var btn = el(buttonId);
-  if (!btn) return;
-  if (text !== undefined) {
-    btn.textContent = text;
-  }
-  btn.disabled = busy;
-}
-
-// ── 工具函数 ──────────────────────────────────────────────────────────────────
-
-function setStatus(message, kind) {
-  var bar = document.getElementById("statusBar");
-  if (!bar) return;
-  bar.textContent = message;
-  bar.className = "status-bar status-" + (kind || "idle");
-}
-
-async function apiFetch(path, options) {
-  setStatus("请求中…", "loading");
-  try {
-    var res = await fetch(API_BASE + path, {
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
-    var body = await res.json();
-    if (!res.ok || body.ok === false) {
-      var msg = body.message || body.errorKind || body.detail || ("HTTP " + res.status);
-      setStatus("错误：" + msg, "error");
-      showToast("错误：" + msg);
-      return null;
-    }
-    setStatus("完成", "ok");
-    return body;
-  } catch (err) {
-    setStatus("网络错误：" + err.message, "error");
-    showToast("网络错误");
-    return null;
-  }
-}
 
 function el(id) {
   return document.getElementById(id);
 }
 
-function escHtml(str) {
-  return String(str)
+function escHtml(value) {
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
 
-function showToast(msg) {
-  var existing = document.getElementById("toastEl");
-  if (existing) {
-    existing.textContent = msg;
-    existing.classList.remove("hidden");
-    return;
-  }
-  var toast = document.createElement("div");
-  toast.id = "toastEl";
-  toast.className = "toast";
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(function() {
-    toast.classList.add("hidden");
-  }, 3000);
+function getAppMode() {
+  const params = new URLSearchParams(window.location.search || "");
+  return params.get("mode") === "dev" ? "dev" : "formal";
 }
 
-// ── Literary greeting (date/time) ────────────────────────────────────────────
+function applyModeUi() {
+  const isDev = state.mode === "dev";
+  const devPanel = el("devPanel");
+  const devTtsSection = el("devTtsSection");
+  if (devPanel) devPanel.classList.toggle("hidden", !isDev);
+  if (devTtsSection) devTtsSection.classList.toggle("hidden", !isDev);
+  document.body.setAttribute("data-mode", state.mode);
+}
+
+function showScreen(screen) {
+  document.querySelectorAll(".screen").forEach((node) => node.classList.remove("active"));
+  const target = el("screen" + screen.charAt(0).toUpperCase() + screen.slice(1));
+  if (target) target.classList.add("active");
+  state.screen = screen;
+  const topbar = el("appTopbar");
+  if (topbar) topbar.style.display = screen === "home" ? "" : "none";
+  if (screen === "history") loadLetters();
+}
+
+function setBusy(buttonId, busy, label) {
+  const button = el(buttonId);
+  if (!button) return;
+  if (label !== undefined) button.textContent = label;
+  button.disabled = busy;
+}
+
+function setStatus(message, kind) {
+  const node = el("statusBar");
+  if (!node) return;
+  node.textContent = message;
+  node.className = "status-bar status-" + (kind || "idle");
+}
+
+function showToast(message) {
+  let toast = el("toastEl");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toastEl";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+  window.clearTimeout(showToast._timer);
+  showToast._timer = window.setTimeout(() => toast.classList.add("hidden"), 2800);
+}
+
+async function apiFetch(path, options) {
+  setStatus("正在请求...", "loading");
+  try {
+    const response = await fetch(API_BASE + path, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+    const body = await response.json();
+    if (!response.ok || body.ok === false) {
+      const message = body.message || body.errorKind || body.detail || ("HTTP " + response.status);
+      setStatus("请求失败：" + message, "error");
+      showToast(message);
+      return null;
+    }
+    setStatus("已更新", "ok");
+    return body;
+  } catch (error) {
+    setStatus("网络错误：" + error.message, "error");
+    showToast("网络错误，请稍后再试");
+    return null;
+  }
+}
 
 function renderLiteraryGreeting() {
-  var container = el("literaryGreeting");
-  if (!container) return;
-
-  var now = new Date();
-  var month = now.getMonth() + 1;
-  var day = now.getDate();
-  var weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-  var weekday = weekdays[now.getDay()];
-  var hour = now.getHours();
-  var minute = String(now.getMinutes()).padStart(2, "0");
-
-  var period;
+  const node = el("literaryGreeting");
+  if (!node) return;
+  const now = new Date();
+  const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  const hour = now.getHours();
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  let period = "深夜";
   if (hour >= 5 && hour < 8) period = "清晨";
-  else if (hour >= 8 && hour < 11) period = "上午";
-  else if (hour >= 11 && hour < 13) period = "中午";
-  else if (hour >= 13 && hour < 17) period = "下午";
-  else if (hour >= 17 && hour < 19) period = "傍晚";
-  else if (hour >= 19 && hour < 22) period = "晚上";
-  else period = "深夜";
-
-  container.textContent = month + "月" + day + "日 · " + weekday + " · " + period + " · " + hour + ":" + minute;
+  else if (hour < 12) period = "上午";
+  else if (hour < 14) period = "中午";
+  else if (hour < 18) period = "下午";
+  else if (hour < 21) period = "傍晚";
+  else if (hour < 24) period = "晚上";
+  node.textContent = `${now.getMonth() + 1} / ${now.getDate()} · ${weekdays[now.getDay()]} · ${period} · ${hour}:${minute}`;
 }
 
-// ── Status pill (provider status) ────────────────────────────────────────────
-
-function renderStatusPill(ps) {
-  var pill = el("statusPill");
-  if (!pill) return;
-
-  if (!ps) {
-    pill.textContent = "MiniMax · 检查中…";
-    pill.className = "status-pill pill-mute";
+function renderStatusPill(providerStatus) {
+  const node = el("statusPill");
+  if (!node) return;
+  if (!providerStatus) {
+    node.textContent = "MiniMax · 检查中";
+    node.className = "status-pill pill-mute";
     return;
   }
-
-  var kindMap = {
-    ok:             { cls: "",          prefix: "MiniMax" },
-    not_integrated: { cls: "pill-warn", prefix: "MiniMax" },
-    degraded:       { cls: "pill-warn", prefix: "MiniMax" },
-    quota:          { cls: "pill-warn", prefix: "MiniMax" },
-    error:          { cls: "pill-error", prefix: "MiniMax" },
-    unknown:        { cls: "pill-mute",  prefix: "MiniMax" },
-  };
-
-  var info = kindMap[ps.kind] || kindMap.unknown;
-  pill.className = "status-pill " + info.cls;
-  pill.textContent = info.prefix + " · " + (ps.label || ps.detail || "");
+  const kind = providerStatus.kind || "unknown";
+  node.className = "status-pill";
+  if (kind === "quota" || kind === "degraded" || kind === "not_integrated") node.classList.add("pill-warn");
+  if (kind === "error") node.classList.add("pill-error");
+  if (kind === "unknown") node.classList.add("pill-mute");
+  node.textContent = `MiniMax · ${providerStatus.label || providerStatus.detail || "待接入"}`;
 }
 
-// ── Bootstrap ────────────────────────────────────────────────────────────────
+function renderProviderStatus(providerStatus) {
+  const node = el("providerStatus");
+  if (!node || !providerStatus) return;
+  node.className = "provider-status";
+  if (providerStatus.kind === "ok") node.classList.add("provider-ok");
+  if (providerStatus.kind === "quota" || providerStatus.kind === "degraded" || providerStatus.kind === "not_integrated") node.classList.add("provider-warn");
+  if (providerStatus.kind === "error") node.classList.add("provider-error");
+  node.textContent = `${providerStatus.label || "待接入"} · ${providerStatus.detail || ""}`;
+}
 
-async function loadBootstrap() {
-  setStatus("加载配置…", "loading");
-  var res = await apiFetch("/api/xiangta/bootstrap");
-  if (!res) return;
-
-  state.bootstrap = res.data;
-  var data = res.data;
-
-  renderRecipientGrid(data.recipients || []);
-  renderSceneGrid(data.scenes || []);
-
-  populateSelect("sceneSelect", data.scenes, function(s) { return s.id; }, function(s) { return s.label; });
-  populateSelect("recipientSelect", data.recipients, function(r) { return r.id; }, function(r) { return r.label; });
-  populateSelect("voicePresetSelect", data.voicePresets,
-    function(v) { return v.id; },
-    function(v) { return v.label + (v.genderStyle ? "（" + v.genderStyle + "）" : ""); }
-  );
-  populateSelect("toneSelect", data.tonePresets,
-    function(t) { return t.id; },
-    function(t) { return t.label; }
-  );
-
-  renderProviderStatus(data.providerStatus);
-  renderStatusPill(data.providerStatus);
-  setStatus("就绪", "ok");
-
-  if (state.mode === "dev") {
-    loadCoreProfiles();
+function renderStepDots(containerId, active, labels) {
+  const node = el(containerId);
+  if (!node) return;
+  const total = labels.length;
+  const pct = total > 1 ? (active / (total - 1)) * 100 : 0;
+  let html = '<div class="step-track"><div class="step-track-bg"></div><div class="step-track-fill" style="width:' + pct + '%"></div>';
+  for (let i = 0; i < total; i += 1) {
+    const left = total > 1 ? (i / (total - 1)) * 100 : 50;
+    let cls = "step-dot";
+    if (i < active) cls += " done";
+    if (i === active) cls += " active";
+    html += `<span class="${cls}" style="left:${left}%"></span>`;
   }
+  html += '</div><div class="step-labels">';
+  labels.forEach((label, index) => {
+    const align = index === 0 ? "left" : (index === labels.length - 1 ? "right" : "center");
+    html += `<span class="step-label${index <= active ? ' active' : ''}" style="text-align:${align}">${escHtml(label)}</span>`;
+  });
+  html += "</div>";
+  node.innerHTML = html;
+}
+
+function detectRisk(text) {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  const groups = [
+    {
+      words: ["都是你", "都怪你", "凭什么", "你从来", "你就是"],
+      body: "这里有一点点责怪的味道。可以试试把焦点改成“我那一刻其实很难受”。",
+    },
+    {
+      words: ["必须", "不准", "不许", "听我的", "我说了算"],
+      body: "这句话听起来有些命令感。换成“我希望……”会更容易被听见。",
+    },
+    {
+      words: ["随便你", "算了", "你猜", "没什么好说"],
+      body: "这类表达容易把真正想说的话藏起来。可以试着再具体一点点。",
+    },
+  ];
+  for (const group of groups) {
+    if (group.words.some((word) => lower.includes(word.toLowerCase()))) {
+      return group.body;
+    }
+  }
+  return null;
+}
+
+function renderRiskHint(containerId, text) {
+  const node = el(containerId);
+  if (!node) return;
+  const risk = detectRisk(text);
+  if (!risk) {
+    node.classList.add("hidden");
+    node.innerHTML = "";
+    return;
+  }
+  node.classList.remove("hidden");
+  node.innerHTML = `<div>${escHtml(risk)}</div>`;
+}
+
+function getBootstrapRecipientLabel(recipientId) {
+  const recipients = state.bootstrap?.recipients || [];
+  const found = recipients.find((item) => item.id === recipientId);
+  return found?.label || RECIPIENT_META[recipientId]?.label || "";
+}
+
+function getBootstrapSceneLabel(sceneId) {
+  const scenes = state.bootstrap?.scenes || [];
+  const found = scenes.find((item) => item.id === sceneId);
+  return found?.label || SCENE_META[sceneId]?.label || "";
+}
+
+function updateHomeStartButton() {
+  const button = el("btnStartCompose");
+  if (!button) return;
+  button.disabled = !(state.selectedRecipient && state.selectedScene);
+}
+
+function selectRecipient(id) {
+  state.selectedRecipient = id;
+  document.querySelectorAll("[data-recipient]").forEach((node) => {
+    node.classList.toggle("selected", node.getAttribute("data-recipient") === id);
+  });
+  updateHomeStartButton();
+}
+
+function selectScene(id) {
+  state.selectedScene = id;
+  document.querySelectorAll("[data-scene]").forEach((node) => {
+    node.classList.toggle("selected", node.getAttribute("data-scene") === id);
+  });
+  updateHomeStartButton();
 }
 
 function renderRecipientGrid(recipients) {
-  var container = el("recipientGrid");
-  if (!container) return;
-  container.innerHTML = "";
-
-  recipients.forEach(function(r) {
-    var meta = RECIPIENT_META[r.id] || {};
-    var card = document.createElement("div");
+  const node = el("recipientGrid");
+  if (!node) return;
+  node.innerHTML = "";
+  recipients.forEach((recipient) => {
+    const meta = RECIPIENT_META[recipient.id] || {};
+    const card = document.createElement("button");
+    card.type = "button";
     card.className = "recipient-card";
-    card.setAttribute("data-recipient", r.id);
-
-    var iconDiv = document.createElement("div");
-    iconDiv.className = "recipient-card-icon";
-    iconDiv.innerHTML = meta.icon || "";
-
-    var textDiv = document.createElement("div");
-    var labelDiv = document.createElement("div");
-    labelDiv.className = "recipient-card-label";
-    labelDiv.textContent = r.label || meta.label || r.id;
-    var hintDiv = document.createElement("div");
-    hintDiv.className = "recipient-card-hint";
-    hintDiv.textContent = meta.hint || "";
-    textDiv.appendChild(labelDiv);
-    textDiv.appendChild(hintDiv);
-
-    card.appendChild(iconDiv);
-    card.appendChild(textDiv);
-
-    card.addEventListener("click", function() {
-      selectRecipient(r.id, r.label);
-    });
-    container.appendChild(card);
+    card.setAttribute("data-recipient", recipient.id);
+    card.innerHTML =
+      `<div class="recipient-card-icon">${meta.icon || ""}</div>` +
+      `<div class="recipient-card-label">${escHtml(recipient.label || meta.label || recipient.id)}</div>` +
+      `<div class="recipient-card-hint">${escHtml(meta.hint || "")}</div>`;
+    card.addEventListener("click", () => selectRecipient(recipient.id));
+    node.appendChild(card);
   });
 }
 
 function renderSceneGrid(scenes) {
-  var container = el("sceneGrid");
-  if (!container) return;
-  container.innerHTML = "";
-
-  scenes.forEach(function(scene) {
-    var meta = SCENE_META[scene.id] || {};
-    var chip = document.createElement("button");
-    chip.className = "scene-chip";
-    chip.setAttribute("data-scene", scene.id);
-
-    var labelDiv = document.createElement("div");
-    labelDiv.className = "scene-chip-label";
-    labelDiv.textContent = scene.label || meta.label || scene.id;
-
-    var hintDiv = document.createElement("div");
-    hintDiv.className = "scene-chip-hint";
-    hintDiv.textContent = meta.hint || "";
-
-    chip.appendChild(labelDiv);
-    chip.appendChild(hintDiv);
-
-    chip.addEventListener("click", function() {
-      selectScene(scene.id, scene.label);
-    });
-    container.appendChild(chip);
+  const node = el("sceneGrid");
+  if (!node) return;
+  node.innerHTML = "";
+  scenes.forEach((scene) => {
+    const meta = SCENE_META[scene.id] || {};
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "scene-chip";
+    card.setAttribute("data-scene", scene.id);
+    card.innerHTML =
+      `<div class="scene-chip-label">${escHtml(scene.label || meta.label || scene.id)}</div>` +
+      `<div class="scene-chip-hint">${escHtml(meta.hint || "")}</div>`;
+    card.addEventListener("click", () => selectScene(scene.id));
+    node.appendChild(card);
   });
 }
 
-function selectScene(id, label) {
-  state.selectedScene = id;
-  document.querySelectorAll("[data-scene]").forEach(function(c) {
-    c.classList.toggle("selected", c.getAttribute("data-scene") === id);
-  });
+async function loadBootstrap() {
+  const response = await apiFetch("/api/xiangta/bootstrap");
+  if (!response) return;
+  state.bootstrap = response.data;
+  renderRecipientGrid(state.bootstrap.recipients || []);
+  renderSceneGrid(state.bootstrap.scenes || []);
+  state.selectedVoice = state.bootstrap.voicePresets?.[0]?.id || state.selectedVoice;
+  state.selectedTone = state.bootstrap.tonePresets?.find((tone) => tone.id === "gentle")?.id || state.bootstrap.tonePresets?.[0]?.id || state.selectedTone;
+  renderStatusPill(state.bootstrap.providerStatus);
+  renderProviderStatus(state.bootstrap.providerStatus);
+  updateHomeStartButton();
+  if (state.mode === "dev") {
+    await loadCoreProfiles();
+  }
 }
-
-function selectRecipient(id, label) {
-  state.selectedRecipient = id;
-  document.querySelectorAll("[data-recipient]").forEach(function(c) {
-    c.classList.toggle("selected", c.getAttribute("data-recipient") === id);
-  });
-}
-
-function renderProviderStatus(ps) {
-  var div = el("providerStatus");
-  if (!div || !ps) return;
-  var kindClass = {
-    ok:             "provider-ok",
-    not_integrated: "provider-warn",
-    degraded:       "provider-warn",
-    quota:          "provider-warn",
-    error:          "provider-error",
-    unknown:        "provider-warn",
-  }[ps.kind] || "provider-warn";
-  div.className = "provider-status " + kindClass;
-  div.textContent = ps.label + "　" + ps.detail;
-}
-
-function populateSelect(selectId, items, valueFn, labelFn) {
-  var sel = el(selectId);
-  if (!sel) return;
-  sel.innerHTML = "";
-  items.forEach(function(item) {
-    var opt = document.createElement("option");
-    opt.value = valueFn(item);
-    opt.text = labelFn(item);
-    sel.appendChild(opt);
-  });
-}
-
-// ── Core Profiles (dev mode) ─────────────────────────────────────────────────
 
 async function loadCoreProfiles() {
-  setStatus("加载人设…", "loading");
-  var res = await apiFetch("/api/xiangta/core/profiles");
-  if (!res) {
+  const response = await apiFetch("/api/xiangta/core/profiles");
+  if (!response) {
     state.coreProfiles = [];
     return;
   }
-  state.coreProfiles = res.data.profiles || [];
-  renderCoreProfileSelect(res.data);
-  setStatus("就绪", "ok");
+  state.coreProfiles = response.data.profiles || [];
+  renderCoreProfileSelect(response.data);
 }
 
 function renderCoreProfileSelect(data) {
-  var sel = el("coreProfileSelect");
-  if (!sel) return;
-  sel.innerHTML = "";
-
+  const node = el("coreProfileSelect");
+  if (!node) return;
+  node.innerHTML = "";
   if (data.source === "not_integrated") {
-    var opt = document.createElement("option");
-    opt.value = "";
-    opt.text = "未连接 Core";
-    opt.disabled = true;
-    sel.appendChild(opt);
+    node.innerHTML = '<option value="">未接入 Core</option>';
     return;
   }
-
-  var profiles = data.profiles || [];
-  if (profiles.length === 0) {
-    var opt = document.createElement("option");
-    opt.value = "";
-    opt.text = "暂无人设";
-    opt.disabled = true;
-    sel.appendChild(opt);
-    return;
-  }
-
-  var placeholderOpt = document.createElement("option");
-  placeholderOpt.value = "";
-  placeholderOpt.text = "请选择人设…";
-  placeholderOpt.selected = true;
-  sel.appendChild(placeholderOpt);
-
-  profiles.forEach(function(profile) {
-    var opt = document.createElement("option");
-    opt.value = profile.id || "";
-    opt.text = (profile.name || profile.id) + "（" + (profile.id || "") + "）";
-    sel.appendChild(opt);
+  node.innerHTML = '<option value="">请选择人设...</option>';
+  state.coreProfiles.forEach((profile) => {
+    const option = document.createElement("option");
+    option.value = profile.id || "";
+    option.textContent = `${profile.name || profile.id} (${profile.id || ""})`;
+    node.appendChild(option);
   });
 }
 
-// ── Navigation helpers ───────────────────────────────────────────────────────
+function renderGuidancePrompts(sceneId) {
+  const node = el("guidancePrompts");
+  if (!node) return;
+  const prompts = GUIDANCE_PROMPTS[sceneId] || GUIDANCE_PROMPTS.miss;
+  node.innerHTML = "";
+  prompts.forEach((prompt, index) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "prompt-card";
+    card.innerHTML =
+      `<span class="prompt-index">0${index + 1}</span>` +
+      `<span class="prompt-text">${escHtml(prompt)}</span>` +
+      '<span class="prompt-tail">+</span>';
+    card.addEventListener("click", () => {
+      const textarea = el("rawTextArea");
+      if (!textarea) return;
+      const merged = `${textarea.value.trim()}\n\n${prompt}\n`.trim();
+      textarea.value = merged.slice(0, 500);
+      updateComposeState();
+      textarea.focus();
+    });
+    node.appendChild(card);
+  });
+}
+
+function updateComposeState() {
+  const textarea = el("rawTextArea");
+  if (!textarea) return;
+  const value = textarea.value || "";
+  const count = el("rawTextCount");
+  const wrap = el("rawTextWrap");
+  const button = el("btnGenSuggestions");
+  const hint = el("composeCTAHint");
+  if (count) count.textContent = String(value.length);
+  if (wrap) wrap.classList.toggle("has-text", value.trim().length > 0);
+  if (button) button.disabled = value.trim().length < 4;
+  if (hint) {
+    hint.textContent = value.trim().length >= 4 ? "会给你 3 种表达 · 你来挑一个最像自己的" : "写几个字试试 · 不用一次写完";
+  }
+  renderRiskHint("riskHint", value);
+}
 
 function goCompose() {
-  if (!state.selectedScene) {
-    setStatus("请选择心情", "warn");
-    return;
-  }
   if (!state.selectedRecipient) {
-    setStatus("请选择想说给谁", "warn");
+    setStatus("先选一个想说话的人", "warn");
     return;
   }
-
-  var metaRow = el("composeMetaRow");
-  if (metaRow) {
-    var scene = (state.bootstrap && state.bootstrap.scenes || [])
-      .find(function(s) { return s.id === state.selectedScene; });
-    var recipient = (state.bootstrap && state.bootstrap.recipients || [])
-      .find(function(r) { return r.id === state.selectedRecipient; });
-    metaRow.innerHTML =
-      '<span class="meta-chip">' + escHtml(scene ? scene.label : state.selectedScene) + '</span>'
-      + '<span class="meta-chip">' + escHtml(recipient ? recipient.label : state.selectedRecipient) + '</span>';
+  if (!state.selectedScene) {
+    setStatus("先选一种想表达的心情", "warn");
+    return;
   }
-
-  el("rawTextArea").value = "";
-  el("rawTextCount").textContent = "0";
-
+  const recipientLabel = getBootstrapRecipientLabel(state.selectedRecipient);
+  const sceneLabel = getBootstrapSceneLabel(state.selectedScene);
+  el("composeTitle").textContent = `${sceneLabel} · 给${recipientLabel}`;
+  renderStepDots("composeStepDots", 0, STEP_LABELS);
+  renderGuidancePrompts(state.selectedScene);
+  const textarea = el("rawTextArea");
+  if (textarea) {
+    textarea.value = "";
+    textarea.placeholder = `比如：${RAW_EXAMPLES[state.selectedScene] || RAW_EXAMPLES.miss}`;
+  }
+  state.finalText = "";
+  state.suggestions = [];
+  state.selectedIndex = -1;
+  updateComposeState();
   showScreen("compose");
 }
 
-function goVoice() {
-  var finalText = (el("finalTextArea").value || "").trim();
-  if (!finalText) {
-    setStatus("请先生成或填写文案", "warn");
-    return;
+function buildSuggestionViewModel(data) {
+  if (data.suggestions && Array.isArray(data.suggestions)) {
+    return data.suggestions.map((item, index) => ({
+      text: item.text || "",
+      style: item.style || ["restrained", "gentle", "sincere"][index] || "gentle",
+      styleLabel: item.styleLabel || STYLE_LABELS[item.style] || `版本 ${index + 1}`,
+      fitsFor: item.fitsFor || "适合想把话说得更稳一些的时候",
+      charCount: item.charCount || (item.text || "").length,
+    }));
   }
-
-  var metaRow = el("voiceMeta");
-  if (metaRow) {
-    var scene = (state.bootstrap && state.bootstrap.scenes || [])
-      .find(function(s) { return s.id === state.selectedScene; });
-    var recipient = (state.bootstrap && state.bootstrap.recipients || [])
-      .find(function(r) { return r.id === state.selectedRecipient; });
-    var voicePreset = (state.bootstrap && state.bootstrap.voicePresets || [])
-      .find(function(v) { return v.id === (el("voicePresetSelect") || {}).value; });
-    var tone = (state.bootstrap && state.bootstrap.tonePresets || [])
-      .find(function(t) { return t.id === (el("toneSelect") || {}).value; });
-    metaRow.innerHTML =
-      '<span class="meta-chip">' + escHtml(recipient ? recipient.label : state.selectedRecipient) + '</span>'
-      + '<span class="meta-chip">' + escHtml(scene ? scene.label : state.selectedScene) + '</span>'
-      + '<span class="meta-chip">' + escHtml(voicePreset ? voicePreset.label : "") + '</span>'
-      + '<span class="meta-chip">' + escHtml(tone ? tone.label : "") + '</span>';
-  }
-
-  state.ttsTask = null;
-  state.ttsResult = null;
-  el("ttsResult").classList.add("hidden");
-  el("ttsResult").innerHTML = "";
-  el("saveLetterSection").classList.add("hidden");
-  setBusy("btnGenTtsTask", false, "生成语音");
-
-  showScreen("voice");
+  return [];
 }
 
-// ── Suggestions ──────────────────────────────────────────────────────────────
+function renderSuggestionCards(meta) {
+  const insight = el("aiUnderstanding");
+  const list = el("suggestionsArea");
+  if (!list || !insight) return;
+  insight.innerHTML =
+    `<div class="insight-label">我读到的是</div>` +
+    `<div class="insight-summary">${escHtml(meta.summary || "你想把没说完的话，说得更稳一些。")}</div>` +
+    '<div class="insight-divider"></div>' +
+    `<div class="insight-intent">表达目标 · ${escHtml(meta.intent || "更贴近关系，也更贴近你")}</div>`;
+  list.innerHTML = "";
+  state.suggestions.forEach((item, index) => {
+    const selected = state.selectedIndex === index;
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "suggestion-card" + (selected ? " selected" : "");
+    card.innerHTML =
+      '<div class="suggestion-meta">' +
+      `<span class="suggestion-style">${escHtml(item.styleLabel)}</span>` +
+      `<span class="suggestion-count">${item.charCount} 字</span>` +
+      "</div>" +
+      `<div class="suggestion-text">${escHtml(item.text)}</div>` +
+      `<div class="suggestion-fit">适合：${escHtml(item.fitsFor)}</div>` +
+      '<div class="suggestion-actions"><span class="expr-select-btn">' + (selected ? "已选择" : "选这条") + "</span></div>";
+    card.addEventListener("click", () => selectSuggestion(index));
+    list.appendChild(card);
+  });
+}
 
 async function generateSuggestions() {
-  var rawText = (el("rawTextArea").value || "").trim();
-
+  const rawText = (el("rawTextArea")?.value || "").trim();
   if (rawText.length < 4) {
-    setStatus("原始心情至少需要 4 个字", "warn");
+    setStatus("先写下至少 4 个字", "warn");
     return;
   }
-
-  setBusy("btnGenSuggestions", true, "生成中…");
-
-  var res = await apiFetch("/api/xiangta/suggestions", {
+  setBusy("btnGenSuggestions", true, "整理中...");
+  const response = await apiFetch("/api/xiangta/suggestions", {
     method: "POST",
     body: JSON.stringify({
-      recipient:   state.selectedRecipient,
-      scene:       state.selectedScene,
-      rawText:     rawText,
+      recipient: state.selectedRecipient,
+      scene: state.selectedScene,
+      rawText: rawText,
     }),
   });
-
-  setBusy("btnGenSuggestions", false, "生成文案建议");
-
-  if (!res) return;
-
-  state.suggestions = res.data.suggestions || [];
+  setBusy("btnGenSuggestions", false, "帮我整理表达");
+  if (!response) return;
+  state.suggestions = buildSuggestionViewModel(response.data);
   state.selectedIndex = -1;
-
-  renderSuggestions(res.data);
+  state.finalText = "";
+  state.selectedStyle = "gentle";
+  el("suggestSubtitle").textContent = `${getBootstrapSceneLabel(state.selectedScene)} · 给${getBootstrapRecipientLabel(state.selectedRecipient)}`;
+  renderStepDots("suggestStepDots", 1, STEP_LABELS);
+  renderSuggestionCards(response.data);
+  renderRiskHint("suggestRiskHint", rawText);
+  setBusy("btnToVoice", false, "用这条 · 生成语音");
+  el("btnToVoice").disabled = true;
   showScreen("suggest");
-}
-
-function renderSuggestions(data) {
-  var area = el("suggestionsArea");
-  area.innerHTML = "";
-
-  var summaryEl = el("suggSummary");
-  if (summaryEl) {
-    summaryEl.textContent = (data.summary || "") + "　" + (data.intent || "");
-    summaryEl.className = "sugg-summary";
-  }
-
-  if (!state.suggestions || state.suggestions.length === 0) {
-    area.innerHTML = '<div class="sugg-empty">暂无建议</div>';
-    return;
-  }
-
-  state.suggestions.forEach(function(s, i) {
-    var card = document.createElement("div");
-    card.className = "suggestion-card";
-    card.setAttribute("data-index", i);
-    card.innerHTML =
-      '<div class="sugg-header">'
-      + '<span class="sugg-style-label">' + escHtml(s.styleLabel || "") + '</span>'
-      + '<span class="sugg-fits-for">' + escHtml(s.fitsFor || "") + '</span>'
-      + '</div>'
-      + '<div class="sugg-text">' + escHtml(s.text || "") + '</div>'
-      + '<div class="sugg-chars">' + (s.charCount || 0) + ' 字</div>';
-    card.addEventListener("click", function() { selectSuggestion(i); });
-    area.appendChild(card);
-  });
 }
 
 function selectSuggestion(index) {
   state.selectedIndex = index;
-  var cards = document.querySelectorAll(".suggestion-card");
-  cards.forEach(function(c, i) {
-    c.classList.toggle("selected", i === index);
-  });
-  var sugg = state.suggestions[index];
-  if (sugg) {
-    el("finalTextArea").value = sugg.text || "";
-  }
-  setStatus("已选择「" + (sugg ? sugg.styleLabel : "") + "」", "ok");
+  const suggestion = state.suggestions[index];
+  if (!suggestion) return;
+  state.finalText = suggestion.text;
+  state.selectedStyle = suggestion.style;
+  el("finalTextArea").value = suggestion.text;
+  renderSuggestionCards({ summary: "你已经选中一个更接近此刻心情的版本。", intent: "下一步可以直接进入语音生成。" });
+  const button = el("btnToVoice");
+  if (button) button.disabled = false;
 }
 
-// ── TTS Task API (C7) ────────────────────────────────────────────────────────
+function buildVoiceOptions() {
+  const presets = state.bootstrap?.voicePresets || [];
+  if (presets.length > 0) {
+    return presets.map((preset) => ({
+      id: preset.id,
+      name: preset.label,
+      desc: preset.desc || "适合这一刻的表达",
+    }));
+  }
+  return [
+    { id: "female-gentle", name: "温柔女声", desc: "适合想念、晚安、轻声表达" },
+    { id: "male-gentle", name: "温柔男声", desc: "更沉静，也更像夜里的电话" },
+    { id: "female-bright", name: "明亮女声", desc: "适合更轻盈、更直接的表达" },
+    { id: "male-mature", name: "成熟男声", desc: "更稳，更像一封慢慢打开的信" },
+  ];
+}
 
-async function generateTtsTask() {
-  var finalText = (el("finalTextArea").value || "").trim();
-  var rawText   = (el("rawTextArea").value   || "").trim();
-  var text      = finalText || rawText;
+function renderVoiceTextPreview() {
+  const node = el("voiceTextPreview");
+  if (!node) return;
+  node.innerHTML =
+    '<div class="voice-copy-meta">' +
+    `<span class="voice-copy-tag">${escHtml(getBootstrapSceneLabel(state.selectedScene))} · ${escHtml(STYLE_LABELS[state.selectedStyle] || "温柔版")}</span>` +
+    '<button class="voice-copy-edit" type="button" onclick="showScreen(\'suggest\')">返回改字</button>' +
+    "</div>" +
+    `<div class="voice-copy-text">${escHtml(state.finalText)}</div>`;
+}
 
-  if (!text) {
-    setStatus("请先输入或选择文案", "warn");
+function renderVoicePicker() {
+  const node = el("voicePicker");
+  if (!node) return;
+  node.innerHTML = "";
+  buildVoiceOptions().forEach((voice) => {
+    const selected = voice.id === state.selectedVoice;
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "voice-option" + (selected ? " selected" : "");
+    option.innerHTML =
+      '<span class="voice-wave"><span class="voice-wave-bar" style="height:12px"></span><span class="voice-wave-bar" style="height:18px"></span><span class="voice-wave-bar" style="height:10px"></span><span class="voice-wave-bar" style="height:20px"></span><span class="voice-wave-bar" style="height:14px"></span></span>' +
+      '<span class="voice-option-info">' +
+      `<span class="voice-option-name">${escHtml(voice.name)}</span>` +
+      `<span class="voice-option-desc">${escHtml(voice.desc)}</span>` +
+      "</span>" +
+      `<span class="voice-option-check">${selected ? "✓" : ""}</span>`;
+    option.addEventListener("click", () => {
+      state.selectedVoice = voice.id;
+      renderVoicePicker();
+    });
+    node.appendChild(option);
+  });
+}
+
+function renderToneChips() {
+  const tones = state.bootstrap?.tonePresets || TONE_META;
+  const node = el("toneChips");
+  if (!node) return;
+  node.innerHTML = "";
+  tones.forEach((tone) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "tone-chip" + (tone.id === state.selectedTone ? " selected" : "");
+    chip.textContent = tone.label;
+    chip.addEventListener("click", () => {
+      state.selectedTone = tone.id;
+      renderToneChips();
+    });
+    node.appendChild(chip);
+  });
+}
+
+function renderDurationEstimate() {
+  const node = el("durationEstimate");
+  if (!node) return;
+  const seconds = Math.max(3, Math.round((state.finalText || "").length * 0.28 + 1.5));
+  const min = Math.floor(seconds / 60);
+  const sec = String(seconds % 60).padStart(2, "0");
+  node.textContent = `预计时长 · ${min}:${sec}`;
+}
+
+function goVoice() {
+  if (!state.finalText) {
+    setStatus("先选一条最像你的表达", "warn");
     return;
   }
+  renderStepDots("voiceStepDots", 2, STEP_LABELS);
+  el("voiceSubtitle").textContent = `${getBootstrapSceneLabel(state.selectedScene)} · ${STYLE_LABELS[state.selectedStyle] || "温柔版"}`;
+  state.ttsTask = null;
+  state.ttsResult = null;
+  el("ttsResult").classList.add("hidden");
+  el("saveLetterSection").classList.add("hidden");
+  renderVoiceTextPreview();
+  renderVoicePicker();
+  renderToneChips();
+  renderDurationEstimate();
+  showScreen("voice");
+}
 
-  setBusy("btnGenTtsTask", true, "生成中…");
-
-  var voicePreset = (el("voicePresetSelect") || {}).value || null;
-  var tone        = (el("toneSelect")        || {}).value || null;
-  var profileId   = (el("coreProfileSelect") || {}).value || null;
-
-  var payload = {
-    text:        text,
-    voicePreset: voicePreset,
-    tone:        tone,
-    recipient:   state.selectedRecipient,
-    scene:       state.selectedScene,
+async function generateTtsTask() {
+  const text = state.finalText || (el("finalTextArea")?.value || "").trim();
+  if (!text) {
+    setStatus("先确认要生成语音的文字", "warn");
+    return;
+  }
+  const payload = {
+    text: text,
+    voicePreset: state.selectedVoice,
+    tone: state.selectedTone,
+    recipient: state.selectedRecipient,
+    scene: state.selectedScene,
   };
-
+  const profileId = el("coreProfileSelect")?.value || null;
   if (state.mode === "dev" && profileId) {
     payload.profileId = profileId;
   }
-
-  var res = await apiFetch("/api/xiangta/tts/tasks", {
+  setBusy("btnGenTtsTask", true, "生成中...");
+  const response = await apiFetch("/api/xiangta/tts/tasks", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-
-  if (!res) {
+  if (!response) {
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
   }
-
-  state.ttsTask = res.data;
-  pollTtsTask(res.data);
+  state.ttsTask = response.data;
+  await pollTtsTask(response.data);
 }
 
 async function pollTtsTask(task) {
   if (!task) return;
-
-  var pollUrl = task.pollUrl || ("/api/xiangta/tts/tasks/" + task.taskId);
-  var status  = task.status;
-
-  if (status === "completed") {
+  const status = task.status;
+  const pollUrl = task.pollUrl || `/api/xiangta/tts/tasks/${task.taskId}`;
+  if (status === "completed" || status === "failed") {
     renderTtsTask(task);
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
   }
-
-  if (status === "failed") {
-    renderTtsTask(task);
+  setBusy("btnGenTtsTask", true, `生成中...（${status}）`);
+  const response = await apiFetch(pollUrl);
+  if (!response) {
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
   }
-
-  setBusy("btnGenTtsTask", true, "生成中…（" + status + "）");
-
-  var res = await apiFetch(pollUrl);
-  if (!res) {
-    setBusy("btnGenTtsTask", false, "生成语音");
-    return;
-  }
-
-  var updated = res.data || res;
+  const updated = response.data || response;
   updated.pollUrl = pollUrl;
-
+  state.ttsTask = updated;
   if (updated.status === "completed" || updated.status === "failed") {
-    state.ttsTask = updated;
     renderTtsTask(updated);
     setBusy("btnGenTtsTask", false, "生成语音");
   } else {
-    state.ttsTask = updated;
-    setTimeout(function() { pollTtsTask(updated); }, 1500);
+    window.setTimeout(() => pollTtsTask(updated), 1500);
   }
 }
 
 function revealSaveLetterSection() {
-  var finalText = (el("finalTextArea").value || "").trim();
-  var section = el("saveLetterSection");
-  if (!section || !finalText) return;
+  const section = el("saveLetterSection");
+  if (!section || !state.finalText) return;
   section.classList.remove("hidden");
+  const subtitle = section.querySelector(".save-letter-subtitle");
+  if (!subtitle) return;
+  if (state.ttsResult?.status === "failed" || !state.ttsResult?.audioUrl) {
+    subtitle.textContent = "语音暂未生成，也可以先保存文字信笺。";
+  } else {
+    subtitle.textContent = "这段话和声音都可以一起保存下来。";
+  }
 }
 
-function renderTtsTask(d) {
-  var div = el("ttsResult");
-  div.innerHTML = "";
+function renderTtsTask(result) {
+  const div = el("ttsResult");
+  if (!div) return;
+  state.ttsResult = result;
   div.classList.remove("hidden");
-
-  state.ttsResult = d;
-
-  if (d.status === "failed") {
-    div.innerHTML =
-      '<div class="tts-error">'
-      + '<span class="tts-error-kind">' + escHtml(d.errorKind || "生成失败") + '</span>'
-      + '<span class="tts-error-msg">' + escHtml(d.message || "") + '</span>'
-      + '</div>'
-      + '<div class="tts-hint">语音暂未生成，可先保存文字信笺</div>';
-    revealSaveLetterSection();
-    return;
-  }
-
-  var html = "";
-  if (d.taskId)    html += row("任务 ID", d.taskId);
-  if (d.status)    html += row("状态",    d.status);
-  if (d.charCount) html += row("字数",    d.charCount);
-  if (d.durationMs) html += row("时长", (d.durationMs / 1000).toFixed(1) + " s");
-
-  if (d.audioUrl) {
-    var audioRow = document.createElement("div");
-    audioRow.className = "tts-row tts-audio-row";
-    var keySpan = document.createElement("span");
-    keySpan.className = "tts-key";
-    keySpan.textContent = "音频";
-    var valSpan = document.createElement("span");
-    valSpan.className = "tts-val";
-    var audioEl = document.createElement("audio");
-    audioEl.controls = true;
-    audioEl.preload = "none";
-    audioEl.src = d.audioUrl;
-    valSpan.appendChild(audioEl);
-    audioRow.appendChild(keySpan);
-    audioRow.appendChild(valSpan);
-    div.appendChild(audioRow);
+  div.innerHTML = "";
+  const badgeClass = result.status === "completed" ? "completed" : (result.status === "failed" ? "failed" : "");
+  let html =
+    '<div class="tts-state-card">' +
+    '<div class="tts-state-top">' +
+    `<div class="tts-state-title">${result.status === "failed" ? "这次语音还没顺利生成" : "语音结果"}</div>` +
+    `<div class="tts-state-badge ${badgeClass}">${escHtml(result.status || "processing")}</div>` +
+    "</div>" +
+    '<div class="tts-meta-list">';
+  if (result.taskId) html += `<div class="tts-meta-row"><span class="tts-meta-key">任务 ID</span><span class="tts-meta-value">${escHtml(result.taskId)}</span></div>`;
+  if (result.durationMs) html += `<div class="tts-meta-row"><span class="tts-meta-key">时长</span><span class="tts-meta-value">${(result.durationMs / 1000).toFixed(1)} 秒</span></div>`;
+  if (result.message) html += `<div class="tts-meta-row"><span class="tts-meta-key">说明</span><span class="tts-meta-value">${escHtml(result.message)}</span></div>`;
+  html += "</div>";
+  if (result.audioUrl) {
+    html += `<div class="tts-audio"><audio controls preload="none" src="${escHtml(result.audioUrl)}"></audio></div>`;
   } else {
-    div.insertAdjacentHTML("beforeend", '<div class="tts-hint">语音暂未生成，可先保存文字信笺</div>');
+    html += '<div class="tts-hint">语音暂未生成，可先保存文字信笺。</div>';
   }
-
-  if (html) {
-    div.insertAdjacentHTML("beforeend", html);
-  }
-
+  html += "</div>";
+  div.innerHTML = html;
   revealSaveLetterSection();
 }
 
-function row(key, val) {
-  return '<div class="tts-row"><span class="tts-key">' + escHtml(key)
-       + '</span><span class="tts-val">' + escHtml(String(val)) + '</span></div>';
-}
-
-// ── TTS dry-run (dev only alias) ─────────────────────────────────────────────
-
 async function generateTts() {
-  var finalText = (el("finalTextArea").value || "").trim();
-  var rawText   = (el("rawTextArea").value   || "").trim();
-  var text      = finalText || rawText;
-  var voicePreset = (el("voicePresetSelect") || {}).value || null;
-  var tone        = (el("toneSelect")        || {}).value || null;
-  var profileId   = (el("coreProfileSelect") || {}).value || null;
-
+  const text = state.finalText || (el("finalTextArea")?.value || "").trim();
   if (!text) {
-    setStatus("请先输入或选择文案", "warn");
+    setStatus("先确认要生成的文字", "warn");
     return;
   }
-
-  var payload = { text: text, voicePreset: voicePreset, tone: tone,
-                  recipient: state.selectedRecipient, scene: state.selectedScene };
+  const payload = {
+    text: text,
+    voicePreset: state.selectedVoice,
+    tone: state.selectedTone,
+    recipient: state.selectedRecipient,
+    scene: state.selectedScene,
+  };
+  const profileId = el("coreProfileSelect")?.value || null;
   if (state.mode === "dev" && profileId) {
     payload.profileId = profileId;
   }
-
-  var res = await apiFetch("/api/xiangta/tts", {
+  const response = await apiFetch("/api/xiangta/tts", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res) return;
-
-  state.ttsResult = res.data;
-  state.ttsTask  = res.data;
-  renderTtsTask(res.data);
+  if (!response) return;
+  state.ttsTask = response.data;
+  renderTtsTask(response.data);
 }
-
-// ── Save Letter ──────────────────────────────────────────────────────────────
 
 async function saveLetter() {
-  var finalText   = (el("finalTextArea").value || "").trim();
-  var rawText     = (el("rawTextArea").value   || "").trim();
-  var title       = (el("titleInput").value    || "").trim() || null;
-
-  if (!finalText) {
-    setStatus("最终文案不能为空", "warn");
+  if (!state.finalText) {
+    setStatus("没有可保存的文字", "warn");
     return;
   }
-
-  setBusy("btnSaveLetter", true, "保存中…");
-
-  var selectedSugg  = state.suggestions[state.selectedIndex];
-  var style         = selectedSugg ? selectedSugg.style : "gentle";
-  var audioUrl      = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
-  var durationMs    = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
-  var durationSecs  = durationMs ? durationMs / 1000 : null;
-
-  var res = await apiFetch("/api/xiangta/letters", {
+  setBusy("btnSaveLetter", true, "保存中...");
+  const suggestion = state.suggestions[state.selectedIndex];
+  const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
+  const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
+  const response = await apiFetch("/api/xiangta/letters", {
     method: "POST",
     body: JSON.stringify({
-      recipient:    state.selectedRecipient,
-      scene:        state.selectedScene,
-      style:        style,
-      rawText:      rawText,
-      finalText:    finalText,
-      voicePreset:  (el("voicePresetSelect") || {}).value || null,
-      tone:         (el("toneSelect") || {}).value || null,
-      audioUrl:     audioUrl,
-      durationSecs: durationSecs,
-      title:        title,
+      recipient: state.selectedRecipient,
+      scene: state.selectedScene,
+      style: suggestion?.style || state.selectedStyle || "gentle",
+      rawText: (el("rawTextArea")?.value || "").trim(),
+      finalText: state.finalText,
+      voicePreset: state.selectedVoice || null,
+      tone: state.selectedTone || null,
+      audioUrl: audioUrl,
+      durationSecs: durationMs ? durationMs / 1000 : null,
+      title: (el("titleInput")?.value || "").trim() || null,
     }),
   });
-
   setBusy("btnSaveLetter", false, "保存信笺");
-
-  if (!res) return;
-
+  if (!response) return;
+  showToast("已保存到信笺夹");
   setStatus("信笺已保存", "ok");
-  showToast("信笺已保存");
-  el("titleInput").value = "";
+  if (el("titleInput")) el("titleInput").value = "";
 }
 
-// ── Letters history ──────────────────────────────────────────────────────────
+function formatLetterDate(value) {
+  if (!value) return "";
+  return String(value).replace("T", " ").slice(0, 16);
+}
 
 async function loadLetters() {
-  setBusy("btnRefreshHistory", true, "加载中…");
-
-  var res = await apiFetch("/api/xiangta/letters?limit=20&offset=0");
-
-  setBusy("btnRefreshHistory", false, "刷新历史");
-
-  if (!res) return;
-  state.letters = res.data.letters || [];
-  renderLetters(res.data);
+  setBusy("btnRefreshHistory", true);
+  const response = await apiFetch("/api/xiangta/letters?limit=20&offset=0");
+  setBusy("btnRefreshHistory", false);
+  if (!response) return;
+  state.letters = response.data.letters || [];
+  renderLetters(response.data);
 }
 
 function renderLetters(data) {
-  var area = el("lettersArea");
-  if (!area) return;
-
-  if (!data.letters || data.letters.length === 0) {
-    area.innerHTML = '<div class="letters-empty">还没有保存过信笺</div>';
+  const count = el("historyCount");
+  const list = el("lettersArea");
+  if (!list) return;
+  const letters = data.letters || [];
+  if (count) {
+    count.textContent = letters.length > 0 ? `${data.total} 封 · 本机保存` : "";
+  }
+  if (letters.length === 0) {
+    list.innerHTML = '<div class="empty-state">还没有留下任何信笺。<br>当你写下第一段想说的话，它就会出现在这里。</div>';
     return;
   }
-
-  area.innerHTML = '<div class="letters-count">共 ' + data.total + ' 条</div>';
-
-  data.letters.forEach(function(letter) {
-    var card = document.createElement("div");
-    card.className = "letter-card";
-
-    var dateStr  = letter.createdAt ? letter.createdAt.replace("T", " ").replace("Z", " UTC") : "";
-    var titleStr = letter.title || (letter.scene + " · " + letter.recipient);
-    var metaArr  = [letter.recipient, letter.scene, letter.style, letter.voicePreset, letter.tone]
-      .filter(Boolean);
-    var metaStr  = metaArr.join(" · ");
-
+  list.innerHTML = "";
+  letters.forEach((letter) => {
+    const card = document.createElement("article");
+    card.className = "history-card";
+    const title = letter.title || `${getBootstrapSceneLabel(letter.scene) || letter.scene} · 给${getBootstrapRecipientLabel(letter.recipient) || letter.recipient}`;
+    const preview = (letter.finalText || "").slice(0, 76);
     card.innerHTML =
-      '<div class="letter-header">'
-      + '<span class="letter-title">' + escHtml(titleStr) + '</span>'
-      + '<span class="letter-date">' + escHtml(dateStr) + '</span>'
-      + '</div>'
-      + '<div class="letter-meta">' + escHtml(metaStr) + '</div>'
-      + '<div class="letter-text">' + escHtml(letter.finalText || letter.rawText || "") + '</div>';
-
+      '<div class="history-card-head">' +
+      `<div class="history-card-title">${escHtml(title)}</div>` +
+      `<div class="history-card-date">${escHtml(formatLetterDate(letter.createdAt))}</div>` +
+      "</div>" +
+      `<div class="history-card-meta">${escHtml(getBootstrapRecipientLabel(letter.recipient) || letter.recipient)} · ${escHtml(getBootstrapSceneLabel(letter.scene) || letter.scene)}${letter.audioUrl ? " · 含语音" : " · 仅文字"}</div>` +
+      `<div class="history-card-body">${escHtml(preview)}${(letter.finalText || "").length > preview.length ? "..." : ""}</div>`;
     if (letter.audioUrl) {
-      var audioDiv = document.createElement("div");
-      audioDiv.className = "letter-audio";
-      var audioEl = document.createElement("audio");
-      audioEl.controls = true;
-      audioEl.preload = "none";
-      audioEl.src = letter.audioUrl;
-      audioDiv.appendChild(audioEl);
-      card.appendChild(audioDiv);
+      card.innerHTML += `<div class="history-card-audio"><audio controls preload="none" src="${escHtml(letter.audioUrl)}"></audio></div>`;
     }
-
-    area.appendChild(card);
+    list.appendChild(card);
   });
 }
 
-// ── 字数统计 ──────────────────────────────────────────────────────────────────
-
-function initCharCounter() {
-  var ta = el("rawTextArea");
-  if (!ta) return;
-  ta.addEventListener("input", function() {
-    var cnt = el("rawTextCount");
-    if (cnt) cnt.textContent = ta.value.length;
-  });
+function initComposeListeners() {
+  const textarea = el("rawTextArea");
+  if (textarea) {
+    textarea.addEventListener("input", updateComposeState);
+  }
 }
 
-// ── 入口 ──────────────────────────────────────────────────────────────────────
-
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", async () => {
   state.mode = getAppMode();
   applyModeUi();
-  initCharCounter();
+  initComposeListeners();
   renderLiteraryGreeting();
-  loadBootstrap();
+  renderStepDots("composeStepDots", 0, STEP_LABELS);
+  renderStepDots("suggestStepDots", 1, STEP_LABELS);
+  renderStepDots("voiceStepDots", 2, STEP_LABELS);
+  await loadBootstrap();
 });
