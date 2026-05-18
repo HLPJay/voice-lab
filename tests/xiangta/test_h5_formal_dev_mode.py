@@ -113,6 +113,34 @@ class TestAppJs:
         assert "await loadVoiceBindingStatus()" in js, \
             "goVoice 内部必须 await loadVoiceBindingStatus()"
 
+    def test_fetch_tts_task_detail_exists(self):
+        """fetchTtsTaskDetail() helper exists and is async."""
+        js = _read(H5_APP)
+        assert "async function fetchTtsTaskDetail" in js, \
+            "fetchTtsTaskDetail 必须是 async function"
+        assert "task.pollUrl" in js or "pollUrl" in js, \
+            "fetchTtsTaskDetail 必须使用 pollUrl 获取完整 task detail"
+
+    def test_generate_tts_task_uses_detail_fetch(self):
+        """generateTtsTask() calls fetchTtsTaskDetail before renderTtsTask."""
+        js = _read(H5_APP)
+        start = js.find("async function generateTtsTask")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
+        assert "fetchTtsTaskDetail" in section, \
+            "generateTtsTask 必须调用 fetchTtsTaskDetail 获取完整 task"
+        assert "renderTtsTask" in section, \
+            "generateTtsTask 必须调用 renderTtsTask"
+
+    def test_poll_tts_task_fetches_detail_for_completed(self):
+        """pollTtsTask() fetches detail when status is completed or failed."""
+        js = _read(H5_APP)
+        start = js.find("async function pollTtsTask")
+        end = js.find("\n}\n", start)
+        section = js[start:end]
+        assert "fetchTtsTaskDetail" in section, \
+            "pollTtsTask 必须调用 fetchTtsTaskDetail 确保 audioUrl 已填充"
+
 
 class TestStylesCss:
     def test_hidden_utility_explicit(self):

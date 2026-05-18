@@ -188,6 +188,47 @@ class TestCreateTtsTask:
         r2 = client.get(f"/api/xiangta/tts/tasks/{task_id}")
         assert r2.status_code == 404
 
+    def test_create_response_includes_audio_url_and_duration(self, client, monkeypatch):
+        """POST /tts/tasks create response includes audioUrl/durationMs for completed tasks."""
+        _allow_configured_voice_mapping(monkeypatch)
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
+        r = client.post("/api/xiangta/tts/tasks", json=VALID_PAYLOAD)
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert data["status"] == "completed"
+        assert data["audioUrl"] == "/api/voice/assets/audio_123/download"
+        assert data["durationMs"] == 1800
+        assert data["charCount"] == len(VALID_PAYLOAD["text"])
+        assert data["voicePreset"] == "female-gentle"
+        assert data["tone"] == "gentle"
+
+    def test_create_response_failed_has_error_fields(self, client, monkeypatch):
+        """Failed create response includes errorKind/message/retryable."""
+        _allow_configured_voice_mapping(monkeypatch)
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts_failure)
+        r = client.post("/api/xiangta/tts/tasks", json=VALID_PAYLOAD)
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert data["status"] == "failed"
+        assert data["errorKind"] == "no_provider"
+        assert "message" in data
+        assert data["retryable"] is True
+
+    def test_create_and_get_response_consistent(self, client, monkeypatch):
+        """POST create and GET poll return consistent audioUrl/durationMs."""
+        _allow_configured_voice_mapping(monkeypatch)
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
+        r = client.post("/api/xiangta/tts/tasks", json=VALID_PAYLOAD)
+        task_id = r.json()["data"]["taskId"]
+        create_data = r.json()["data"]
+
+        r2 = client.get(f"/api/xiangta/tts/tasks/{task_id}")
+        get_data = r2.json()["data"]
+
+        assert create_data["audioUrl"] == get_data["audioUrl"]
+        assert create_data["durationMs"] == get_data["durationMs"]
+        assert create_data["charCount"] == get_data["charCount"]
+
 
 class TestOldSyncTtsUnaffected:
     def test_old_post_tts_still_works(self, client, monkeypatch):

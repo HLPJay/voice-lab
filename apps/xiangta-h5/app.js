@@ -944,8 +944,23 @@ async function generateTtsTask() {
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
   }
-  state.ttsTask = response.data;
-  await pollTtsTask(response.data);
+  // Fetch full task detail to ensure we have audioUrl/durationMs before rendering
+  const created = response.data;
+  const detailed = await fetchTtsTaskDetail(created);
+  state.ttsTask = detailed;
+  renderTtsTask(detailed);
+  setBusy("btnGenTtsTask", false, "生成语音");
+}
+
+async function fetchTtsTaskDetail(task) {
+  if (!task) return task;
+  const pollUrl = task.pollUrl || (task.taskId ? `/api/xiangta/tts/tasks/${task.taskId}` : null);
+  if (!pollUrl) return task;
+  const response = await apiFetch(pollUrl);
+  if (!response) return task;
+  const detail = response.data || response;
+  detail.pollUrl = pollUrl;
+  return detail;
 }
 
 async function pollTtsTask(task) {
@@ -953,7 +968,10 @@ async function pollTtsTask(task) {
   const status = task.status;
   const pollUrl = task.pollUrl || `/api/xiangta/tts/tasks/${task.taskId}`;
   if (status === "completed" || status === "failed") {
-    renderTtsTask(task);
+    // Completed/failed synchronously — fetch detail to ensure audioUrl is populated
+    const detailed = await fetchTtsTaskDetail(task);
+    state.ttsTask = detailed;
+    renderTtsTask(detailed);
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
   }
@@ -1007,6 +1025,9 @@ function renderTtsTask(result) {
   html += "</div>";
   if (result.audioUrl) {
     html += `<div class="tts-audio"><audio controls preload="none" src="${escHtml(result.audioUrl)}"></audio></div>`;
+  } else if (result.status === "completed") {
+    // Completed but no audio — show diagnostic hint
+    html += '<div class="tts-hint">任务已完成，但没有返回可播放音频地址。请检查 Core render 返回的 audio_asset.url。</div>';
   } else {
     html += '<div class="tts-hint">语音暂未生成，可先保存文字信笺。</div>';
   }

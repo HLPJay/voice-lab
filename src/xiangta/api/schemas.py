@@ -374,11 +374,20 @@ class ListLettersResponse(OkResponse):
 # ── POST /tts/tasks ───────────────────────────────────────────────────────────
 
 class TtsTaskCreateData(BaseModel):
+    """POST /tts/tasks response — includes full task summary so frontend can render without extra GET."""
     taskId: str
     status: str                          # "queued" | "running" | "completed" | "failed"
     pollUrl: str
-    errorKind: Optional[str] = None     # present when status="failed"
-    message: Optional[str] = None       # present when status="failed"
+    audioUrl: Optional[str] = None        # present when status="completed"
+    durationMs: Optional[int] = None      # present when status="completed"
+    charCount: Optional[int] = None
+    voicePreset: Optional[str] = None
+    tone: Optional[str] = None
+    errorKind: Optional[str] = None       # present when status="failed"
+    message: Optional[str] = None         # present when status="failed"
+    retryable: bool = False
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
 
 class TtsTaskCreateResponse(OkResponse):

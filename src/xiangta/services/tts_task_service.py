@@ -106,13 +106,9 @@ class TtsTaskService:
                 updatedAt=_utc_now(),
             )
 
-        return {
-            "taskId": task_id,
-            "status": _TASKS[task_id]["status"],
-            "pollUrl": f"/api/xiangta/tts/tasks/{task_id}",
-            "errorKind": _TASKS[task_id].get("errorKind"),
-            "message": _TASKS[task_id].get("message"),
-        }
+        task = dict(_TASKS[task_id])
+        task["pollUrl"] = f"/api/xiangta/tts/tasks/{task_id}"
+        return task
 
     def get_task(self, task_id: str) -> dict | None:
         """Return task data dict, or None if not found."""
