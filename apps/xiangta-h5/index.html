@@ -18,24 +18,30 @@
 
     <!-- ── screenHome ─────────────────────────────────────── -->
     <section id="screenHome" class="screen active">
-      <div class="hero-card">
-        <p class="hero-subtitle">把想说的话，变成一段可以发出去的文字和声音</p>
-      </div>
-
-      <!-- Scene quick picks -->
-      <div class="choice-section">
-        <div class="choice-label">此刻的心情</div>
-        <div class="choice-grid" id="sceneGrid"></div>
+      <!-- Literary greeting -->
+      <div class="hero-greeting">
+        <div class="hero-title">想Ta了</div>
+        <div class="hero-question">
+          今晚，<br/>
+          想对谁说话？
+        </div>
+        <p class="hero-subtitle">把想说的话，<br/>变成更合适的文字和语音。</p>
       </div>
 
       <!-- Recipient selection -->
       <div class="choice-section">
-        <div class="choice-label">想说给</div>
+        <div class="choice-label">说给谁</div>
         <div class="choice-grid" id="recipientGrid"></div>
       </div>
 
+      <!-- Scene quick picks -->
+      <div class="choice-section">
+        <div class="choice-label">想表达什么</div>
+        <div class="choice-grid" id="sceneGrid"></div>
+      </div>
+
       <div class="bottom-actions">
-        <button id="btnStartCompose" class="btn btn-primary" onclick="goCompose()">开始写给 Ta</button>
+        <button id="btnStartCompose" class="btn btn-primary" onclick="goCompose()">开始表达</button>
         <button class="btn btn-ghost" onclick="showScreen('history')">查看历史</button>
       </div>
 
