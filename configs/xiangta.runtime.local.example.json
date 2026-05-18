@@ -1,6 +1,7 @@
 {
   "admin": {
-    "enabled": true
+    "enabled": true,
+    "token": "change-me-local-only"
   },
   "core": {
     "enabled": true,
@@ -8,7 +9,8 @@
     "timeoutSecs": 20
   },
   "features": {
-    "llmCopywritingEnabled": true
+    "ttsTaskEnabled": true,
+    "devCoreProfileSelect": true
   },
   "copywriting": {
     "mode": "llm",

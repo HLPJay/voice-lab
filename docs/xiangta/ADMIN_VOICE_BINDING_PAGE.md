@@ -23,8 +23,26 @@ Core profiles
 | `XIANGTA_CORE_BASE_URL` | Core 服务地址，如 `http://127.0.0.1:8000`。配置后启用 Core 连接。 |
 | `XIANGTA_CORE_TIMEOUT_SECS` | Core 请求超时（秒），默认 20 |
 | `XIANGTA_ADMIN_ENABLED` | 设为 `true` 才允许 Admin API |
-| `XIANGTA_ADMIN_TOKEN` | Admin 认证 Token，通过请求头 `X-XiangTa-Admin-Token` 传入 |
 | `XIANGTA_FEATURE_DEV_CORE_PROFILE_SELECT` | 设为 `true` 开启 Dev Mode profile 下拉框 |
+
+**Admin Token 配置方式**（二选一）：
+
+方式 A：环境变量
+```
+XIANGTA_ADMIN_TOKEN=change-me-local-only
+```
+
+方式 B：本地私有配置文件 `configs/xiangta.runtime.local.json`
+```json
+{
+  "admin": {
+    "enabled": true,
+    "token": "change-me-local-only"
+  }
+}
+```
+
+**优先级**：`XIANGTA_ADMIN_TOKEN` 环境变量 > `configs/xiangta.runtime.local.json` admin.token
 
 > **注意**：不需要真实 Provider（TTS/MiniMax）API key。XiangTa 本身不持有 TTS provider key，TTS 路由由 Core 决策。
 

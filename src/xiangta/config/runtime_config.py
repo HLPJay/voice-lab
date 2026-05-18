@@ -139,12 +139,12 @@ class XiangTaRuntimeConfig:
     feature_llm_copywriting_enabled: bool = False
     feature_tts_task_enabled: bool = False
 
-    # Safe repr: never expose apiKey
+    # Safe repr: never expose apiKey or admin_token
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
         parts = []
         for field_name in self.__dataclass_fields__:
-            if field_name == "minimax_copywriting_api_key":
+            if field_name in {"minimax_copywriting_api_key", "admin_token"}:
                 parts.append(f"{field_name}=<hidden>")
             else:
                 parts.append(f"{field_name}={getattr(self, field_name)!r}")
@@ -388,13 +388,26 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
         pass  # silent — don't expose in logs
     _env_api_key = _get_env("XIANGTA_MINIMAX_COPYWRITING_API_KEY")
 
+    # admin_token: read directly from local config file only — never from merged runtime.json
+    _local_admin_token: str | None = None
+    try:
+        if _RUNTIME_LOCAL_JSON_PATH.exists():
+            with open(_RUNTIME_LOCAL_JSON_PATH, encoding="utf-8") as f:
+                _local_raw = json.load(f)
+            _local_admin = _local_raw.get("admin") or {}
+            if _local_admin.get("token"):
+                _local_admin_token = str(_local_admin["token"])
+    except Exception:
+        pass  # silent — don't expose in logs
+    _env_admin_token = _get_env("XIANGTA_ADMIN_TOKEN")
+
     return XiangTaRuntimeConfig(
         # Core (backward-compatible)
         core_base_url=core_base_url,
         core_timeout_secs=core_timeout,
         # Admin
         admin_enabled=bool(admin.get("enabled", False)),
-        admin_token=_get_env("XIANGTA_ADMIN_TOKEN"),
+        admin_token=_env_admin_token or _local_admin_token,
         # Core (new fields)
         core_enabled=bool(core.get("enabled", False)),
         core_url=(str(core["baseUrl"]) if core.get("baseUrl") else None),

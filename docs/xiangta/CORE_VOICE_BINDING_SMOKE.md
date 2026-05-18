@@ -16,15 +16,35 @@ Admin Voice Binding 配置页到 H5 Step 3 真实链路已可闭环：
 | `XIANGTA_CORE_BASE_URL` | Core HTTP 地址，如 `http://127.0.0.1:8000` |
 | `XIANGTA_CORE_TIMEOUT_SECS` | Core 请求超时，默认 `20` |
 | `XIANGTA_ADMIN_ENABLED` | `true` 启用 Admin API |
-| `XIANGTA_ADMIN_TOKEN` | Admin 请求头 `X-XiangTa-Admin-Token` 的值 |
 | `XIANGTA_FEATURE_TTS_TASK_ENABLED` | `true` 启用 TTS task API |
+
+**Admin Token 配置方式**（二选一）：
+
+方式 A：环境变量
+```
+XIANGTA_ADMIN_TOKEN=change-me-local-only
+```
+
+方式 B：本地私有配置文件 `configs/xiangta.runtime.local.json`
+```json
+{
+  "admin": {
+    "enabled": true,
+    "token": "change-me-local-only"
+  }
+}
+```
+
+**优先级**：`XIANGTA_ADMIN_TOKEN` 环境变量 > `configs/xiangta.runtime.local.json` admin.token
 
 **说明**：
 - `XIANGTA_CORE_BASE_URL` 用于连接 Core
 - `XIANGTA_ADMIN_ENABLED=true` 后 Admin API 才可用
-- `XIANGTA_ADMIN_TOKEN` 通过 `X-XiangTa-Admin-Token` 请求头传入
+- Admin Token 通过 `X-XiangTa-Admin-Token` 请求头传入
 - formal H5 不需要知道 `coreProfileId`
 - 测试不需要真实 Provider API key
+- 不要把真实 token 写入 `src/xiangta/configs/runtime.json`
+- 不要把真实 token 提交到仓库
 
 ---
 
