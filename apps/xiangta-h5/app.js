@@ -860,6 +860,26 @@ function initComposeListeners() {
   if (textarea) {
     textarea.addEventListener("input", updateComposeState);
   }
+  const fillExampleLink = el("fillExampleLink");
+  if (fillExampleLink) {
+    fillExampleLink.addEventListener("click", fillSceneExample);
+  }
+}
+
+function fillSceneExample() {
+  const textarea = el("rawTextArea");
+  if (!textarea) return;
+  const example = RAW_EXAMPLES[state.selectedScene] || RAW_EXAMPLES.miss || "";
+  if (!example) return;
+  const current = (textarea.value || "").trim();
+  if (current.length === 0) {
+    textarea.value = example;
+  } else if (!current.includes(example)) {
+    textarea.value = (current + "\n\n" + example).slice(0, 500);
+  }
+  updateComposeState();
+  textarea.focus();
+  showToast("已放入一个例子，可以直接改成你的话");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

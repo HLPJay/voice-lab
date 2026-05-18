@@ -158,3 +158,40 @@ class TestDesignTokens:
 
     def test_accent_ink_token(self):
         assert "--c-accent-ink" in self._css()
+
+
+class TestComposeExampleStarter:
+
+    def _js(self):
+        return (_H5_DIR / "app.js").read_text(encoding="utf-8")
+
+    def _html(self):
+        return (_H5_DIR / "index.html").read_text(encoding="utf-8")
+
+    def test_fill_example_link_in_html(self):
+        assert 'id="fillExampleLink"' in self._html()
+
+    def test_fill_scene_example_function_exists(self):
+        assert "function fillSceneExample" in self._js()
+
+    def test_fill_scene_example_uses_raw_examples(self):
+        src = self._js()
+        start = src.find("function fillSceneExample")
+        end = src.find("\n}", start)
+        section = src[start:end]
+        assert "RAW_EXAMPLES" in section
+
+    def test_fill_scene_example_calls_update_compose_state(self):
+        src = self._js()
+        start = src.find("function fillSceneExample")
+        end = src.find("\n}", start)
+        section = src[start:end]
+        assert "updateComposeState" in section
+
+    def test_fill_example_link_bound_in_init_compose_listeners(self):
+        src = self._js()
+        start = src.find("function initComposeListeners")
+        end = src.find("\n}", start)
+        section = src[start:end]
+        assert "fillExampleLink" in section
+        assert "addEventListener" in section
