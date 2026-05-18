@@ -54,6 +54,53 @@ class TestTemplateGateway:
         assert {s.style_label for s in result.suggestions} == {"克制版", "温柔版", "真诚版"}
         assert result.source == "template"
 
+    @pytest.mark.asyncio
+    async def test_template_avoids_duplicate_terminal_punctuation(self):
+        gw = TemplateCopywritingGateway()
+        result = await gw.generate(CopywritingRequest(
+            recipient="lover",
+            scene="comfort",
+            raw_text="如果你今天很累，就先不用解释。想说的时候我会听，不想说也没有关系。",
+        ))
+        texts = [s.text for s in result.suggestions]
+        assert all("。。" not in text for text in texts)
+        assert all("。，" not in text for text in texts)
+
+    @pytest.mark.asyncio
+    async def test_comfort_templates_use_light_paragraph_break(self):
+        gw = TemplateCopywritingGateway()
+        result = await gw.generate(CopywritingRequest(
+            recipient="lover",
+            scene="comfort",
+            raw_text="如果你今天很累，就先不用解释。想说的时候我会听，不想说也没有关系。",
+        ))
+        texts = {s.style: s.text for s in result.suggestions}
+        assert "\n\n我在这里，随时找我。" in texts["restrained"]
+        assert "\n\n不管怎样，我陪着你。" in texts["gentle"]
+        assert "\n\n你不是一个人，我一直在。" in texts["sincere"]
+
+    @pytest.mark.asyncio
+    async def test_other_scenes_also_use_light_paragraph_break(self):
+        gw = TemplateCopywritingGateway()
+        for scene in ["miss", "sorry", "thanks", "night"]:
+            result = await gw.generate(CopywritingRequest(
+                recipient="lover",
+                scene=scene,
+                raw_text="今天突然想起你了。",
+            ))
+            assert all("\n\n" in s.text for s in result.suggestions), scene
+
+    @pytest.mark.asyncio
+    async def test_paragraph_break_adds_terminal_punctuation_when_missing(self):
+        gw = TemplateCopywritingGateway()
+        result = await gw.generate(CopywritingRequest(
+            recipient="lover",
+            scene="thanks",
+            raw_text="今天真的很想认真谢谢你",
+        ))
+        texts = [s.text for s in result.suggestions]
+        assert all("。\n\n" in text for text in texts)
+
 
 class TestFakeLlmGateway:
     @pytest.mark.parametrize("should_fail,expect_success", [(False, True), (True, False)])

@@ -61,21 +61,21 @@ _SCENE_INTENT = {
 }
 
 _TEMPLATES: dict[tuple[str, str], tuple[str, str, str]] = {
-    ("miss",    "restrained"): ("",             "。想了你一下。",                         "少修饰，保留原意，不给对方压力"),
-    ("miss",    "gentle"):     ("有些挂念你，", "，悄悄想了一会儿。",                     "更温柔，适合发给亲密对象"),
-    ("miss",    "sincere"):    ("想认真告诉你：","。这是真话，说出来感觉好一些。",         "直接真诚，表达重点更清楚"),
-    ("sorry",   "restrained"): ("",             "。想和你说一声，对不起。",               "少修饰，保留原意，不给对方压力"),
-    ("sorry",   "gentle"):     ("一直想和你说，","，希望你能感受到我的在意。",            "更温柔，适合发给亲密对象"),
-    ("sorry",   "sincere"):    ("认真地说：",   "。我真的很抱歉，希望你能接受这份心意。", "直接真诚，表达重点更清楚"),
-    ("thanks",  "restrained"): ("",             "。谢谢你。",                             "少修饰，保留原意，不给对方压力"),
-    ("thanks",  "gentle"):     ("一直很感谢你，","，你让我觉得很温暖。",                  "更温柔，适合发给亲密对象"),
-    ("thanks",  "sincere"):    ("想认真地谢谢你：","。你的好意我都记得，真心感谢。",       "直接真诚，表达重点更清楚"),
-    ("comfort", "restrained"): ("",             "。我在这里，随时找我。",                 "少修饰，保留原意，不给对方压力"),
-    ("comfort", "gentle"):     ("看到你这样，我有些担心——","，不管怎样，我陪着你。",     "更温柔，适合发给亲密对象"),
-    ("comfort", "sincere"):    ("想直接告诉你：","。你不是一个人，我一直在。",            "直接真诚，表达重点更清楚"),
-    ("night",   "restrained"): ("",             "。晚安，好好休息。",                     "少修饰，保留原意，不给对方压力"),
-    ("night",   "gentle"):     ("夜深了，想到你，","，愿你睡个好觉。",                    "更温柔，适合发给亲密对象"),
-    ("night",   "sincere"):    ("今晚想和你说：","。晚安，明天又是新的一天。",            "直接真诚，表达重点更清楚"),
+    ("miss",    "restrained"): ("",             "\n\n想了你一下。",                       "少修饰，保留原意，不给对方压力"),
+    ("miss",    "gentle"):     ("有些挂念你，", "\n\n悄悄想了一会儿。",                   "更温柔，适合发给亲密对象"),
+    ("miss",    "sincere"):    ("想认真告诉你：","\n\n这是真话，说出来感觉好一些。",       "直接真诚，表达重点更清楚"),
+    ("sorry",   "restrained"): ("",             "\n\n想和你说一声，对不起。",             "少修饰，保留原意，不给对方压力"),
+    ("sorry",   "gentle"):     ("一直想和你说，","\n\n希望你能感受到我的在意。",          "更温柔，适合发给亲密对象"),
+    ("sorry",   "sincere"):    ("认真地说：",   "\n\n我真的很抱歉，希望你能接受这份心意。", "直接真诚，表达重点更清楚"),
+    ("thanks",  "restrained"): ("",             "\n\n谢谢你。",                           "少修饰，保留原意，不给对方压力"),
+    ("thanks",  "gentle"):     ("一直很感谢你，","\n\n你让我觉得很温暖。",                "更温柔，适合发给亲密对象"),
+    ("thanks",  "sincere"):    ("想认真地谢谢你：","\n\n你的好意我都记得，真心感谢。",     "直接真诚，表达重点更清楚"),
+    ("comfort", "restrained"): ("",             "\n\n我在这里，随时找我。",               "少修饰，保留原意，不给对方压力"),
+    ("comfort", "gentle"):     ("看到你这样，我有些担心——","\n\n不管怎样，我陪着你。",   "更温柔，适合发给亲密对象"),
+    ("comfort", "sincere"):    ("想直接告诉你：","\n\n你不是一个人，我一直在。",          "直接真诚，表达重点更清楚"),
+    ("night",   "restrained"): ("",             "\n\n晚安，好好休息。",                   "少修饰，保留原意，不给对方压力"),
+    ("night",   "gentle"):     ("夜深了，想到你，","\n\n愿你睡个好觉。",                  "更温柔，适合发给亲密对象"),
+    ("night",   "sincere"):    ("今晚想和你说：","\n\n晚安，明天又是新的一天。",          "直接真诚，表达重点更清楚"),
 }
 
 _DEFAULT_TEMPLATES: dict[str, tuple[str, str, str]] = {
@@ -92,6 +92,36 @@ _STYLE_LABELS = {
 
 _STYLES_ORDER = ["restrained", "gentle", "sincere"]
 
+_TERMINAL_PUNCT = "。！？!?…"
+_ANY_PUNCT = "。！？!?…，、；："
+
+
+def _join_template_text(opener: str, raw_text: str, closer: str) -> str:
+    body = raw_text.strip()
+    if opener:
+        body = f"{opener}{body}"
+    if not closer:
+        return body
+    if closer.startswith("\n"):
+        if body.endswith(tuple(_TERMINAL_PUNCT)):
+            return f"{body}{closer}"
+        return f"{body}。{closer}"
+
+    leading = closer[0]
+    tail = closer[1:] if leading in _ANY_PUNCT else closer
+
+    if leading == "。":
+        if body.endswith(tuple(_TERMINAL_PUNCT)):
+            return f"{body}{tail}"
+        return f"{body}{closer}"
+
+    if leading == "，":
+        if body.endswith(tuple(_TERMINAL_PUNCT)):
+            return f"{body}{tail}"
+        return f"{body}{closer}"
+
+    return f"{body}{closer}"
+
 
 class TemplateCopywritingGateway:
     async def generate(self, request: CopywritingRequest) -> CopywritingResult:
@@ -103,7 +133,7 @@ class TemplateCopywritingGateway:
             opener, closer, fits_for = _TEMPLATES.get(
                 (request.scene, style), _DEFAULT_TEMPLATES[style]
             )
-            text = f"{opener}{request.raw_text}{closer}"
+            text = _join_template_text(opener, request.raw_text, closer)
             suggestions.append(CopywritingSuggestion(
                 style=style,
                 style_label=_STYLE_LABELS[style],
