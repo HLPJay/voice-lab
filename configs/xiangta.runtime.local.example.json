@@ -1,4 +1,12 @@
 {
+  "admin": {
+    "enabled": true
+  },
+  "core": {
+    "enabled": true,
+    "baseUrl": "http://127.0.0.1:8000",
+    "timeoutSecs": 20
+  },
   "features": {
     "llmCopywritingEnabled": true
   },
@@ -10,7 +18,7 @@
     "minimax": {
       "baseUrl": "https://api.minimaxi.com",
       "endpointPath": "/v1/chat/completions",
-      "model": "MiniMax-M2.7-highspeed",
+      "model": "<MINIMAX_MODEL_NAME>",
       "apiKey": "<DO_NOT_COMMIT_REAL_KEY>"
     }
   }

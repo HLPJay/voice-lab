@@ -377,6 +377,8 @@ class TtsTaskCreateData(BaseModel):
     taskId: str
     status: str                          # "queued" | "running" | "completed" | "failed"
     pollUrl: str
+    errorKind: Optional[str] = None     # present when status="failed"
+    message: Optional[str] = None       # present when status="failed"
 
 
 class TtsTaskCreateResponse(OkResponse):
@@ -400,3 +402,26 @@ class TtsTaskData(BaseModel):
 
 class TtsTaskStatusResponse(OkResponse):
     data: TtsTaskData
+
+
+# ── GET /voice-bindings/status (public) ────────────────────────────────────────
+
+class VoiceBindingStatusItem(BaseModel):
+    """Public voice binding status — no coreProfileId exposed."""
+    model_config = ConfigDict(populate_by_name=True)
+
+    voicePreset: str
+    label: str
+    bound: bool
+    coreAvailable: Optional[bool] = None  # None when Core unavailable
+    reason: Optional[str] = None          # null when bound
+
+
+class VoiceBindingsStatusData(BaseModel):
+    items: list[VoiceBindingStatusItem]
+    allBound: bool
+    source: str = "config"
+
+
+class VoiceBindingsStatusResponse(OkResponse):
+    data: VoiceBindingsStatusData

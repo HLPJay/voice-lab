@@ -156,6 +156,7 @@ const state = {
   ttsResult: null,
   letters: [],
   coreProfiles: [],
+  voiceBindingStatus: null,  // loaded from GET /voice-bindings/status
 };
 
 function el(id) {
@@ -470,9 +471,20 @@ async function loadBootstrap() {
   renderStatusPill(state.bootstrap.providerStatus);
   renderProviderStatus(state.bootstrap.providerStatus);
   updateHomeStartButton();
+  // Load voice binding status for Step 3 display
+  await loadVoiceBindingStatus();
   if (state.mode === "dev") {
     await loadCoreProfiles();
   }
+}
+
+async function loadVoiceBindingStatus() {
+  const response = await apiFetch("/api/xiangta/voice-bindings/status");
+  if (!response) {
+    state.voiceBindingStatus = null;
+    return;
+  }
+  state.voiceBindingStatus = response.data || null;
 }
 
 async function loadCoreProfiles() {
@@ -760,22 +772,51 @@ function renderVoicePicker() {
   node.innerHTML = "";
   buildVoiceOptions().forEach((voice) => {
     const selected = voice.id === state.selectedVoice;
+    // Look up binding status for this voice preset
+    const bindingInfo = getVoiceBindingInfo(voice.id);
+    const isBound = bindingInfo && bindingInfo.bound;
+    // Disable unbound voices in formal H5 (dev mode can still use unbound)
+    const disabled = state.mode !== "dev" && !isBound;
     const option = document.createElement("button");
     option.type = "button";
-    option.className = "voice-option" + (selected ? " selected" : "");
+    option.disabled = disabled;
+    option.className = "voice-option" + (selected ? " selected" : "") + (disabled ? " disabled" : "");
+    option.title = disabled ? "此声音尚未绑定 Core profile，请先在 Admin 配置页绑定" : (voice.desc || "");
+
+    let badgeHtml = "";
+    if (bindingInfo) {
+      if (!bindingInfo.bound) {
+        const badgeClass = bindingInfo.reason && bindingInfo.reason.includes("失效") ? "voice-bind-badge invalid" : "voice-bind-badge unbound";
+        badgeHtml = '<span class="' + badgeClass + '">' + escHtml(bindingInfo.reason || "待绑定") + '</span>';
+      } else if (bindingInfo.coreAvailable === false) {
+        badgeHtml = '<span class="voice-bind-badge invalid">绑定失效</span>';
+      } else {
+        badgeHtml = '<span class="voice-bind-badge bound">已绑定</span>';
+      }
+    }
+
     option.innerHTML =
       '<span class="voice-wave"><span class="voice-wave-bar" style="height:12px"></span><span class="voice-wave-bar" style="height:18px"></span><span class="voice-wave-bar" style="height:10px"></span><span class="voice-wave-bar" style="height:20px"></span><span class="voice-wave-bar" style="height:14px"></span></span>' +
       '<span class="voice-option-info">' +
       `<span class="voice-option-name">${escHtml(voice.name)}</span>` +
-      `<span class="voice-option-desc">${escHtml(voice.desc)}</span>` +
+      `<span class="voice-option-desc">${escHtml(voice.desc || "")}</span>` +
+      badgeHtml +
       "</span>" +
       `<span class="voice-option-check">${selected ? "✓" : ""}</span>`;
     option.addEventListener("click", () => {
+      if (disabled) return;
       state.selectedVoice = voice.id;
       renderVoicePicker();
+      updateGenTtsButton();
     });
     node.appendChild(option);
   });
+}
+
+function getVoiceBindingInfo(voicePresetId) {
+  if (!state.voiceBindingStatus) return null;
+  const items = state.voiceBindingStatus.items || [];
+  return items.find(function(item) { return item.voicePreset === voicePresetId; }) || null;
 }
 
 function renderToneChips() {
@@ -805,11 +846,50 @@ function renderDurationEstimate() {
   node.textContent = `预计时长 · ${min}:${sec}`;
 }
 
+async function autoSelectBoundVoice() {
+  if (!state.voiceBindingStatus) return;
+  const items = state.voiceBindingStatus.items || [];
+  const currentBound = items.find(function(item) {
+    return item.voicePreset === state.selectedVoice && item.bound;
+  });
+  if (currentBound) return; // current voice is bound, no change needed
+  // Find first bound voice preset
+  const firstBound = items.find(function(item) { return item.bound; });
+  if (firstBound) {
+    state.selectedVoice = firstBound.voicePreset;
+  }
+}
+
+function updateGenTtsButton() {
+  const btn = el("btnGenTtsTask");
+  if (!btn) return;
+  // Check if selected voice is bound
+  if (!state.voiceBindingStatus) {
+    btn.disabled = false;
+    return;
+  }
+  const items = state.voiceBindingStatus.items || [];
+  const currentBinding = items.find(function(item) {
+    return item.voicePreset === state.selectedVoice;
+  });
+  if (!currentBinding || !currentBinding.bound) {
+    btn.disabled = true;
+    btn.title = "当前声音尚未绑定 Core profile，请先在 Admin 配置页绑定";
+  } else {
+    btn.disabled = false;
+    btn.title = "";
+  }
+}
+
 function goVoice() {
   if (!state.finalText) {
     setStatus("先选一条最像你的表达", "warn");
     return;
   }
+  // Refresh voice binding status before entering Step 3
+  await loadVoiceBindingStatus();
+  // Auto-select first bound voice preset if current is unbound
+  autoSelectBoundVoice();
   renderStepDots("voiceStepDots", 2, STEP_LABELS);
   el("voiceSubtitle").textContent = `${getBootstrapSceneLabel(state.selectedScene)} · ${STYLE_LABELS[state.selectedStyle] || "温柔版"}`;
   state.ttsTask = null;
@@ -820,6 +900,7 @@ function goVoice() {
   renderVoicePicker();
   renderToneChips();
   renderDurationEstimate();
+  updateGenTtsButton();
   showScreen("voice");
 }
 

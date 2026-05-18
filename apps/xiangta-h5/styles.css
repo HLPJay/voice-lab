@@ -983,6 +983,39 @@ body {
   color: white;
 }
 
+.voice-option.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.voice-option.disabled:hover {
+  background: transparent;
+}
+
+.voice-bind-badge {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.voice-bind-badge.bound {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.voice-bind-badge.unbound {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.voice-bind-badge.invalid {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .tone-chip-list {
   display: flex;
   flex-wrap: wrap;

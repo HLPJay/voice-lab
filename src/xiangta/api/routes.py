@@ -42,6 +42,7 @@ from src.xiangta.api.schemas import (
     TtsResponse,
     TtsTaskCreateResponse,
     TtsTaskStatusResponse,
+    VoiceBindingsStatusResponse,
     VoicePresetsResponse,
 )
 from src.xiangta.config.product_config_writer import (
@@ -107,6 +108,21 @@ async def voice_presets():
     svc = create_product_service()
     data = svc.list_public_voice_presets()
     return VoicePresetsResponse(data=data)
+
+
+@router.get("/voice-bindings/status", response_model=VoiceBindingsStatusResponse)
+async def voice_bindings_status():
+    """
+    Public: return voice preset binding status for formal H5 Step 3.
+
+    Does NOT expose coreProfileId.
+    - bound=true when coreProfileId is set and not a placeholder.
+    - coreAvailable=True/False only when Core is connected and reachable.
+    - When Core is not connected, coreAvailable=null and reason reflects connection state.
+    """
+    svc = create_product_service()
+    data = await svc.get_voice_binding_status()
+    return VoiceBindingsStatusResponse(data=data)
 
 
 @router.get("/bootstrap", response_model=BootstrapResponse)

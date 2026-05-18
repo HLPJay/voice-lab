@@ -1,0 +1,242 @@
+/* Admin Voice Bindings Page */
+
+.admin-token-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.token-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.token-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.token-status.ok {
+  color: var(--accent);
+}
+
+.token-status.error {
+  color: var(--error);
+}
+
+.core-status-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.core-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.core-status-dot.connected {
+  background: var(--ok, #22c55e);
+}
+
+.core-status-dot.disconnected {
+  background: var(--text-faint);
+}
+
+.core-status-dot.error {
+  background: var(--error);
+}
+
+.core-profiles-summary {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.error-banner {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.bindings-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.binding-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.binding-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.binding-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.binding-card-desc {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.binding-status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.binding-status-badge.bound {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.binding-status-badge.unbound {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.binding-status-badge.invalid {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.binding-status-badge.core-offline {
+  background: var(--surface-raised);
+  color: var(--text-faint);
+}
+
+.binding-select-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.binding-select-label {
+  font-size: 12px;
+  color: var(--text-faint);
+  min-width: 80px;
+}
+
+.binding-select {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.binding-notes-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.binding-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.btn-bind-save {
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent, #6d28d9);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-bind-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-bind-save:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.core-profile-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--surface-raised);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.loading-hint {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.empty-hint {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.save-success-toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 100;
+  pointer-events: none;
+}

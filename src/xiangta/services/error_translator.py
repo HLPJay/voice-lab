@@ -51,8 +51,8 @@ class PresetNotFoundError(XiangTaError):
 class VoicePresetProfileNotConfiguredError(XiangTaError):
     def __init__(self, detail: str = "") -> None:
         super().__init__(
-            "profile_not_configured",
-            detail or "该声线还没有完成配置，请先绑定可用的声音档案。",
+            "voice_preset_not_bound",
+            detail or "当前声音尚未绑定 Core profile，请先在 Admin 配置页绑定。",
             retryable=False,
         )
 

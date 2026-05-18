@@ -110,6 +110,8 @@ class TtsTaskService:
             "taskId": task_id,
             "status": _TASKS[task_id]["status"],
             "pollUrl": f"/api/xiangta/tts/tasks/{task_id}",
+            "errorKind": _TASKS[task_id].get("errorKind"),
+            "message": _TASKS[task_id].get("message"),
         }
 
     def get_task(self, task_id: str) -> dict | None:

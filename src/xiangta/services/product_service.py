@@ -54,7 +54,81 @@ class ProductService:
     async def get_provider_status(self) -> dict:
         return await self._provider_status.get_status()
 
-    async def list_core_profiles(self) -> dict:
+    async def get_voice_binding_status(self) -> dict:
+        """
+        Return public voice binding status for each voice preset.
+
+        Checks:
+        - bound: coreProfileId is non-empty and not a placeholder
+        - coreAvailable: when Core is connected, whether the bound profile still exists
+        - reason: explicit reason when not bound or unavailable
+        """
+        if self._config_repository is None:
+            return {"items": [], "allBound": False, "source": "config"}
+
+        from src.xiangta.services.voice_preset_mapping_service import (
+            _is_placeholder_profile_id,
+        )
+
+        # Get current voice mappings
+        mappings = self._config_repository.list_voice_mappings()
+
+        # Try to get Core profile ids for availability check
+        core_profile_ids: set[str] = set()
+        core_available = False
+
+        if self._tts is not None and self._tts._gw is not None:
+            from src.xiangta.services.voice_lab_gateway import (
+                CoreProfilesUnavailableError,
+                CoreProfilesResponseError,
+            )
+            try:
+                raw_profiles = await self._tts._gw.list_profiles()
+                core_profile_ids = {p.get("id", "") for p in raw_profiles}
+                core_available = True
+            except (CoreProfilesUnavailableError, CoreProfilesResponseError, Exception):
+                core_available = False
+
+        items = []
+        all_bound = True
+
+        for m in mappings:
+            if not m.enabled:
+                continue
+
+            core_profile_id = m.core_profile_id or ""
+            is_placeholder = _is_placeholder_profile_id(core_profile_id)
+            bound = not is_placeholder and bool(core_profile_id.strip())
+
+            if not bound:
+                all_bound = False
+
+            reason: str | None = None
+            core_avail: bool | None = None
+
+            if bound:
+                if core_available:
+                    core_avail = core_profile_id in core_profile_ids
+                    if not core_avail:
+                        reason = "绑定的 Core profile 已不存在"
+                else:
+                    core_avail = None
+                    reason = "Core 未连接，无法验证 profile 是否有效"
+            else:
+                if core_profile_id.strip() == "":
+                    reason = "未绑定"
+                else:
+                    reason = f"coreProfileId 为占位值：{core_profile_id}"
+
+            items.append({
+                "voicePreset": m.id,
+                "label": m.label,
+                "bound": bound,
+                "coreAvailable": core_avail,
+                "reason": reason,
+            })
+
+        return {"items": items, "allBound": all_bound, "source": "config"}
         """Query Core profiles via VoiceLabGateway.list_profiles() with stable degradation."""
         if self._tts is None or self._tts._gw is None:
             return {

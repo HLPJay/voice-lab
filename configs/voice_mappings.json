@@ -1,0 +1,62 @@
+[
+  {
+    "id": "female-gentle",
+    "label": "温柔女声",
+    "desc": "适合想念、晚安、轻声表达",
+    "genderStyle": "female",
+    "suitableRecipients": ["lover", "friend"],
+    "recommendedScenes": ["miss", "night", "thanks", "comfort"],
+    "defaultTone": "gentle",
+    "enabled": true,
+    "sortOrder": 10,
+    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "providerPolicy": "default",
+    "renderOverrides": {},
+    "notes": null
+  },
+  {
+    "id": "male-gentle",
+    "label": "温和男声",
+    "desc": "更沉静，也更像夜里的电话",
+    "genderStyle": "male",
+    "suitableRecipients": ["lover", "friend"],
+    "recommendedScenes": ["miss", "sorry", "comfort"],
+    "defaultTone": "gentle",
+    "enabled": true,
+    "sortOrder": 20,
+    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "providerPolicy": "default",
+    "renderOverrides": {},
+    "notes": null
+  },
+  {
+    "id": "female-bright",
+    "label": "明亮女声",
+    "desc": "适合更轻盈、更直接的表达",
+    "genderStyle": "female",
+    "suitableRecipients": ["friend", "self"],
+    "recommendedScenes": ["thanks", "comfort"],
+    "defaultTone": "gentle",
+    "enabled": true,
+    "sortOrder": 30,
+    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "providerPolicy": "default",
+    "renderOverrides": {},
+    "notes": null
+  },
+  {
+    "id": "male-mature",
+    "label": "沉稳男声",
+    "desc": "更稳，更像一封慢慢打开的信",
+    "genderStyle": "male",
+    "suitableRecipients": ["family", "friend"],
+    "recommendedScenes": ["comfort", "sorry", "thanks"],
+    "defaultTone": "restrained",
+    "enabled": true,
+    "sortOrder": 40,
+    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "providerPolicy": "default",
+    "renderOverrides": {},
+    "notes": null
+  }
+]
