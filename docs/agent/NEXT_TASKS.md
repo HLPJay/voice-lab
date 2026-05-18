@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-ARCHITECTURE-SYNC-B9-DOCFIX（已完成）→ 下一步：P17-XIANGTA-H5-MAIN-FLOW-POLISH-C1**
+**P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1（已完成）→ 下一步：P17-XIANGTA-RUNTIME-CONFIG-C2**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -14,7 +14,7 @@
 | P17-XIANGTA-INIT-A0-FIX1 | 清理产品层底层参数泄露，修正 voicePreset/Core 边界 | ✅ |
 | P17-XIANGTA-A1 | 配置协议 + bootstrap/status 只读接口，不接真实 TTS | ✅ |
 | P17-XIANGTA-A1-FIX1 | 抽离配置加载（config/loader.py）与 Bootstrap 组装（BootstrapService），消除 product_service.py 责任膨胀 | ✅ |
-| P17-XIANGTA-A2 | TtsOrchestrator + VoiceLabGateway dry-run 合约：产品层 → Core 边界完整 dry-run，不调用真实 Provider | ✅ |
+| P17-XIANGTA-A2 | TtsOrchestrator + VoiceLabGateway dry-run 合约 | ✅ |
 | P17-XIANGTA-DOCS-FIX1 | 修正 docs/xiangta 路径、示例值和 XiangTa→Core 调用边界 | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1 | 产品配置模型落地总阶段 | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1-1 | ProductConfigRepository 与产品配置模型基础落地 | ✅ |
@@ -42,22 +42,28 @@
 | P17-XIANGTA-CORE-AUDIO-LINK-B9-FIX2 | Core HTTP URL 重复拼接修复 | ✅ |
 | P17-XIANGTA-CORE-AUDIO-LINK-B9-FIX3 | Core audioUrl 绝对路径修复 | ✅ |
 | P17-XIANGTA-ARCHITECTURE-SYNC-B9-DOCFIX | B9 文档固化与架构同步 | ✅ |
-| P17-XIANGTA-H5-MAIN-FLOW-POLISH-C1 | H5 polish（favicon/UX细节） | Next |
-| P17-XIANGTA-PROFILE-MAPPING-DESIGN-C2 | voicePreset → coreProfileId 映射产品化 | Next |
-| P17-XIANGTA-TTS-TASK-ORCHESTRATION-DESIGN-C3 | 异步 TTS task 设计 | Next |
-| P17-XIANGTA-TTS-ERROR-UX-C4 | 错误UX收口 | Next |
+| P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1 | 产品后端能力路线图：配置/存储/队列/LLM/安全/错误/观测/用户 | ✅ |
+| P17-XIANGTA-RUNTIME-CONFIG-C2 | Runtime Config 设计 + 实现（runtime.json + env override） | Next |
+| P17-XIANGTA-STORAGE-DESIGN-C3 | Storage 设计（SQLite schema + migration） | Next |
+| P17-XIANGTA-TTS-TASK-ORCHESTRATION-DESIGN-C4 | 异步 TTS task 设计（async API + queue strategy） | Next |
+| P17-XIANGTA-COPYWRITING-LLM-DESIGN-C5 | LLM Copywriting 设计（gateway + fallback + security） | Next |
+| P17-XIANGTA-BACKEND-ERROR-CONTRACT-C6 | Error Contract 设计（统一错误 schema） | Next |
+| P17-XIANGTA-PROFILE-MAPPING-DESIGN-C7 | voicePreset → coreProfileId 映射产品化设计 | Next |
+| P17-XIANGTA-H5-DESIGN-ALIGNMENT-C8 | H5 设计对齐（适配新 API 契约） | Next |
 | P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 LLM 接入 | Parked |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | Parked |
 
 ## 本阶段约束
 
-**不要在当前阶段直接做：**
-- LLM 文案接入（待 B9 smoke 稳定后评估）
-- 持久化（letters 当前为进程内内存，重启丢失）
-- 高并发架构（当前 B9 为同步单用户链路）
-- 异步 task（后续在 TTS-TASK-ORCHESTRATION-DESIGN-C3 中设计）
-- 修改 Core（Core 是底座，XiangTa 只通过 HTTP API 使用）
+**先后端能力设计，再前端独立优化。不要直接进入 H5 实现。不要直接接 LLM。不要直接做用户系统。**
+
+- C1（Backend Capability Plan）已完成
+- C2-C8 为设计 + 实现的混合阶段
+- C9+ 才开始 Storage 实现
+- 不修改 Core
+- 不实现 Redis / Celery（第一阶段）
+- 不实现多用户（user_id 设计预留）
 
 ## Core Contract Gap 登记区
 
