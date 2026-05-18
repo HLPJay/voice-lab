@@ -120,6 +120,7 @@ class XiangTaRuntimeConfig:
     copywriting_fallback_to_template: bool = True
     minimax_copywriting_base_url: str | None = None
     minimax_copywriting_model: str | None = None
+    minimax_copywriting_endpoint_path: str = "/v1/chat/completions"
     minimax_copywriting_api_key: str | None = None
 
     # TTS
@@ -260,6 +261,8 @@ def _apply_env_overrides(config: dict) -> dict:
         config.setdefault("copywriting", {})["minimaxBaseUrl"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_BASE_URL")
     if _get_env("XIANGTA_MINIMAX_COPYWRITING_MODEL"):
         config.setdefault("copywriting", {})["minimaxModel"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_MODEL")
+    if _get_env("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH"):
+        config.setdefault("copywriting", {})["minimaxEndpointPath"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH")
     # Note: XIANGTA_MINIMAX_COPYWRITING_API_KEY is read directly in return statement (never stored in config dict)
 
     # TTS
@@ -357,6 +360,7 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
 
     # MiniMax: nested copywriting.minimax.* preferred over flat minimaxBaseUrl/minimaxModel
     _minimax = copywriting.get("minimax") or {}
+    _env_endpoint_path = _get_env("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH")
     _minimax_base_url = (
         str(_minimax["baseUrl"]) if _minimax.get("baseUrl")
         else (str(copywriting["minimaxBaseUrl"]) if copywriting.get("minimaxBaseUrl") else None)
@@ -364,6 +368,12 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
     _minimax_model = (
         str(_minimax["model"]) if _minimax.get("model")
         else (str(copywriting["minimaxModel"]) if copywriting.get("minimaxModel") else None)
+    )
+    # Env always wins; then nested local config; then flat local config; then default
+    _minimax_endpoint_path = (
+        str(_env_endpoint_path) if _env_endpoint_path
+        else (str(_minimax["endpointPath"]) if _minimax.get("endpointPath")
+        else (str(copywriting["minimaxEndpointPath"]) if copywriting.get("minimaxEndpointPath") else "/v1/chat/completions"))
     )
     # apiKey: read directly from local config file only — never from merged runtime.json
     _local_config_api_key: str | None = None
@@ -395,6 +405,7 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
         copywriting_fallback_to_template=bool(copywriting.get("fallbackToTemplate", True)),
         minimax_copywriting_base_url=_minimax_base_url,
         minimax_copywriting_model=_minimax_model,
+        minimax_copywriting_endpoint_path=_minimax_endpoint_path,
         # apiKey: env wins over local config over none
         minimax_copywriting_api_key=_env_api_key or _local_config_api_key,
         # TTS

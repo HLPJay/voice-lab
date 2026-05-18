@@ -36,14 +36,17 @@ default → runtime.json → configs/xiangta.runtime.local.json → XIANGTA_* en
     "timeoutSecs": 20,
     "fallbackToTemplate": true,
     "minimax": {
-      "baseUrl": "https://api.minimax.chat/v1/text/chatcompletion_v2",
-      "model": "MiniMax-Text-01"
+      "baseUrl": "https://api.minimaxi.com",
+      "endpointPath": "/v1/chat/completions",
+      "model": "MiniMax-M2.7"
     }
   }
 }
 ```
 
-**注意**：`apiKey` 不应写入 runtime.json（即使写入也不会生效）。
+**注意**：
+- `apiKey` 不应写入 runtime.json（即使写入也不会生效）
+- `baseUrl` 必须是 host/base，不包含 endpoint path
 
 ---
 
@@ -78,12 +81,14 @@ cp configs/xiangta.runtime.local.example.json configs/xiangta.runtime.local.json
     "timeoutSecs": 20,
     "fallbackToTemplate": true,
     "minimax": {
-      "baseUrl": "https://api.minimax.chat/v1/text/chatcompletion_v2",
-      "model": "MiniMax-Text-01",
+      "baseUrl": "https://api.minimaxi.com",
+      "endpointPath": "/v1/chat/completions",
+      "model": "MiniMax-M2.7",
       "apiKey": "your_real_key_here"
     }
   }
 }
+```
 ```
 
 ### 3. 确认文件被忽略

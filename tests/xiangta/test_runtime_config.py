@@ -523,3 +523,50 @@ class TestLocalRuntimeConfig:
             str_str = str(cfg)
             assert "SUPER_SECRET_KEY_12345" not in repr_str
             assert "SUPER_SECRET_KEY_12345" not in str_str
+
+    def test_local_config_provides_endpoint_path(self, monkeypatch):
+        """Local config can provide minimax endpointPath."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "copywriting": {
+                        "minimax": {
+                            "baseUrl": "https://api.minimaxi.com",
+                            "endpointPath": "/v1/chat/completions",
+                            "model": "MiniMax-M2.7",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            cfg = load_runtime_config()
+            assert cfg.minimax_copywriting_base_url == "https://api.minimaxi.com"
+            assert cfg.minimax_copywriting_endpoint_path == "/v1/chat/completions"
+            assert cfg.minimax_copywriting_model == "MiniMax-M2.7"
+
+    def test_env_overrides_local_endpoint_path(self, monkeypatch):
+        """XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH env overrides local config."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "copywriting": {
+                        "minimax": {
+                            "endpointPath": "/v1/chat/completions_v2",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            os.environ["XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH"] = "/v1/chat/completions"
+            try:
+                cfg = load_runtime_config()
+                assert cfg.minimax_copywriting_endpoint_path == "/v1/chat/completions"
+            finally:
+                os.environ.pop("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH", None)
+
+    def test_default_endpoint_path(self):
+        """Without any config, default endpoint_path is /v1/chat/completions."""
+        cfg = load_runtime_config()
+        assert cfg.minimax_copywriting_endpoint_path == "/v1/chat/completions"

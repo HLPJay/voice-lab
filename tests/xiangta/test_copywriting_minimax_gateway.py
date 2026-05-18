@@ -9,6 +9,8 @@ from src.xiangta.services.copywriting_minimax_gateway import (
     MiniMaxCopywritingGateway,
     MiniMaxCopywritingResponseError,
     MiniMaxHttpError,
+    MiniMaxConfigError,
+    build_minimax_chat_completion_url,
     parse_minimax_copywriting_response,
 )
 
@@ -23,11 +25,12 @@ class FakeMiniMaxHttpClient:
         self.last_call = None
 
     async def create_chat_completion(
-        self, *, base_url, api_key, model, messages, timeout_seconds
+        self, *, base_url, endpoint_path, api_key, model, messages, timeout_seconds
     ):
         self.call_count += 1
         self.last_call = {
             "base_url": base_url,
+            "endpoint_path": endpoint_path,
             "api_key": api_key,
             "model": model,
             "messages": messages,
@@ -150,8 +153,9 @@ class TestMiniMaxGateway:
         client = FakeMiniMaxHttpClient(valid_response())
         gw = MiniMaxCopywritingGateway(
             api_key="fake-key",
-            base_url="https://api.minimax.chat",
+            base_url="https://api.minimaxi.com",
             model="MiniMax-Text-01",
+            endpoint_path="/v1/chat/completions",
             timeout_seconds=20,
             _http_client=client,
         )
@@ -159,7 +163,8 @@ class TestMiniMaxGateway:
         asyncio.run(gw.generate(self._req()))
         assert client.call_count == 1
         call = client.last_call
-        assert call["base_url"] == "https://api.minimax.chat"
+        assert call["base_url"] == "https://api.minimaxi.com"
+        assert call["endpoint_path"] == "/v1/chat/completions"
         assert call["model"] == "MiniMax-Text-01"
         assert call["timeout_seconds"] == 20
         user_msg = next(m["content"] for m in call["messages"] if m["role"] == "user")
@@ -203,3 +208,54 @@ class TestMiniMaxGateway:
         assert len(result.suggestions) == 3
         styles = {s.style for s in result.suggestions}
         assert styles == {"restrained", "gentle", "sincere"}
+
+    def test_endpoint_path_passed_to_client(self):
+        client = FakeMiniMaxHttpClient(valid_response())
+        gw = MiniMaxCopywritingGateway(
+            api_key="k",
+            base_url="https://api.minimaxi.com",
+            model="m",
+            endpoint_path="/v1/chat/completions",
+            _http_client=client,
+        )
+        import asyncio
+        asyncio.run(gw.generate(self._req()))
+        assert client.last_call["endpoint_path"] == "/v1/chat/completions"
+        assert client.last_call["base_url"] == "https://api.minimaxi.com"
+
+
+# ── URL builder tests ───────────────────────────────────────────────────────
+
+class TestBuildUrl:
+    def test_standard_url(self):
+        url = build_minimax_chat_completion_url(
+            "https://api.minimaxi.com", "/v1/chat/completions"
+        )
+        assert url == "https://api.minimaxi.com/v1/chat/completions"
+
+    def test_trailing_slash_stripped(self):
+        url = build_minimax_chat_completion_url(
+            "https://api.minimaxi.com/", "/v1/chat/completions"
+        )
+        assert url == "https://api.minimaxi.com/v1/chat/completions"
+
+    def test_endpoint_without_leading_slash_fixed(self):
+        url = build_minimax_chat_completion_url(
+            "https://api.minimaxi.com", "v1/chat/completions"
+        )
+        assert url == "https://api.minimaxi.com/v1/chat/completions"
+
+    def test_base_url_with_endpoint_raises_config_error(self):
+        with pytest.raises(MiniMaxConfigError, match="must not include the endpoint path"):
+            build_minimax_chat_completion_url(
+                "https://api.minimaxi.com/v1/chat/completions",
+                "/v1/chat/completions",
+            )
+
+    def test_empty_base_url_raises_config_error(self):
+        with pytest.raises(MiniMaxConfigError, match="base_url is required"):
+            build_minimax_chat_completion_url("", "/v1/chat/completions")
+
+    def test_empty_endpoint_raises_config_error(self):
+        with pytest.raises(MiniMaxConfigError, match="endpoint_path is required"):
+            build_minimax_chat_completion_url("https://api.minimaxi.com", "")

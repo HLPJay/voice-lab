@@ -36,6 +36,7 @@ class MiniMaxHttpClient(Protocol):
         self,
         *,
         base_url: str,
+        endpoint_path: str,
         api_key: str,
         model: str,
         messages: list[dict],
@@ -53,6 +54,7 @@ class UrllibMiniMaxHttpClient:
         self,
         *,
         base_url: str,
+        endpoint_path: str,
         api_key: str,
         model: str,
         messages: list[dict],
@@ -63,8 +65,9 @@ class UrllibMiniMaxHttpClient:
 
         Returns parsed JSON response dict.
         Raises MiniMaxHttpError on network or HTTP error.
+        Raises MiniMaxConfigError on malformed base_url or endpoint_path.
         """
-        url = f"{base_url.rstrip('/')}/v1/chat/completions"
+        url = build_minimax_chat_completion_url(base_url, endpoint_path)
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
@@ -97,6 +100,47 @@ class UrllibMiniMaxHttpClient:
 
 class MiniMaxHttpError(Exception):
     """Raised on network or HTTP error from MiniMax API."""
+
+
+class MiniMaxConfigError(Exception):
+    """Raised on invalid MiniMax configuration (e.g. malformed base URL or endpoint path)."""
+
+
+def build_minimax_chat_completion_url(base_url: str, endpoint_path: str) -> str:
+    """
+    Build the full MiniMax chat-completion URL from base URL and endpoint path.
+
+    Args:
+        base_url: must be the API host base, e.g. ``https://api.minimaxi.com``.
+                  Must NOT include ``/v1/chat/completions``.
+        endpoint_path: the API path, e.g. ``/v1/chat/completions``.
+
+    Returns:
+        Full URL such as ``https://api.minimaxi.com/v1/chat/completions``.
+
+    Raises MiniMaxConfigError if base_url already contains the endpoint path
+    (indicating the caller tried to pass a full URL as base_url).
+    """
+    base = (base_url or "").strip().rstrip("/")
+    path = (endpoint_path or "").strip()
+
+    if not base:
+        raise MiniMaxConfigError("MiniMax base_url is required")
+    if not path:
+        raise MiniMaxConfigError("MiniMax endpoint_path is required")
+
+    # Guard against accidentally passing a full URL as base_url
+    if "/v1/chat/completions" in base:
+        raise MiniMaxConfigError(
+            "MiniMax base_url must not include the endpoint path; "
+            "use baseUrl='https://api.minimaxi.com' and "
+            "endpointPath='/v1/chat/completions' separately"
+        )
+
+    if not path.startswith("/"):
+        path = "/" + path
+
+    return base + path
 
 
 # ── Response parse error ─────────────────────────────────────────────────────────
@@ -289,12 +333,14 @@ class MiniMaxCopywritingGateway:
     - Validates output with parse_minimax_copywriting_response()
     - Raises MiniMaxCopywritingResponseError on invalid response
     - Raises MiniMaxHttpError on network error
+    - Raises MiniMaxConfigError on malformed base_url or endpoint_path
 
     The caller (CopywritingService) handles fallback when these are raised.
     """
     api_key: str
     base_url: str
     model: str
+    endpoint_path: str = "/v1/chat/completions"
     timeout_seconds: float = 20.0
     _http_client: MiniMaxHttpClient | None = None
 
@@ -332,6 +378,7 @@ class MiniMaxCopywritingGateway:
         messages = self._to_chat_messages(contract)
         payload = await self._client.create_chat_completion(
             base_url=self.base_url,
+            endpoint_path=self.endpoint_path,
             api_key=self.api_key,
             model=self.model,
             messages=messages,

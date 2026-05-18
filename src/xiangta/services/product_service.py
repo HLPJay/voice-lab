@@ -369,6 +369,7 @@ def create_product_service() -> "ProductService":
             api_key=runtime_config.minimax_copywriting_api_key,
             base_url=runtime_config.minimax_copywriting_base_url,
             model=runtime_config.minimax_copywriting_model,
+            endpoint_path=runtime_config.minimax_copywriting_endpoint_path,
             timeout_seconds=runtime_config.copywriting_timeout_secs,
         )
     else:

@@ -1,5 +1,10 @@
 # MiniMax Official API Reference C10D-FIX2
 
+> **C10D-FIX3 更新**：C10D-FIX3 已将 baseUrl 和 endpointPath 语义拆分：
+> - `baseUrl` = `https://api.minimaxi.com`（host/base，不含 path）
+> - `endpointPath` = `/v1/chat/completions`（单独配置）
+> - 完整 URL = `https://api.minimaxi.com/v1/chat/completions`
+
 ## 1. 文档访问情况
 
 - `text-chat-openai`: 已访问并作为本任务唯一权威来源

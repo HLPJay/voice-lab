@@ -1,5 +1,11 @@
 # MiniMax Copywriting Adapter Gap Analysis C10D-FIX2
 
+> **C10D-FIX3 更新**：A-1（baseUrl/endpoint path 语义冲突）已由 C10D-FIX3 修复。
+> 新策略：`baseUrl` 只能是 host/base（如 `https://api.minimaxi.com`），`endpointPath` 单独配置（默认 `/v1/chat/completions`）。
+> 旧风险：用户把完整 endpoint 填入 baseUrl 会导致重复拼接。
+> 新行为：`build_minimax_chat_completion_url()` 在 baseUrl 包含 `/v1/chat/completions` 时主动抛 `MiniMaxConfigError`。
+> adapter 现在显式使用 `base_url + endpoint_path`，不再硬编码拼接。
+
 ## 1. 当前 adapter 实现摘要
 
 当前文件：[`copywriting_minimax_gateway.py`](D:\claude_code\20260511_minimax声音模块扩展项目\voice_lab\src\xiangta\services\copywriting_minimax_gateway.py)
@@ -10,11 +16,8 @@
 - 使用：
   - `Authorization` bearer-token 鉴权
   - `Content-Type: application/json`
-- 请求 URL 组装方式：
-
-```text
-base_url.rstrip("/") + "/v1/chat/completions"
-```
+- 请求 URL 通过 `build_minimax_chat_completion_url(base_url, endpoint_path)` 显式拼接
+- baseUrl 不允许包含 `/v1/chat/completions`，否则抛 `MiniMaxConfigError`
 
 - 当前请求体最小字段：
   - `model`
@@ -33,12 +36,12 @@ base_url.rstrip("/") + "/v1/chat/completions"
 
 - `minimax_copywriting_base_url`
 - `minimax_copywriting_model`
+- `minimax_copywriting_endpoint_path` — C10D-FIX3 新增
 - `minimax_copywriting_api_key`
 
 当前没有：
 
-- `endpoint_path`
-- `timeout_seconds`
+- `timeout_seconds` — 通过 `copywriting_timeout_secs` 提供
 - `temperature`
 - `max_completion_tokens`
 
@@ -46,21 +49,27 @@ base_url.rstrip("/") + "/v1/chat/completions"
 
 当前文件：[`xiangta.runtime.local.example.json`](D:\claude_code\20260511_minimax声音模块扩展项目\voice_lab\configs\xiangta.runtime.local.example.json)
 
-当前示例结构：
+当前示例结构（C10D-FIX3 已修正）：
 
 ```json
 {
-  "llm": {
-    "minimaxCopywriting": {
-      "baseUrl": "<MINIMAX_TEXT_CHAT_OPENAI_BASE_URL>",
-      "model": "<MINIMAX_MODEL_NAME>",
-      "apiKey": "<LOCAL_TOKEN>"
+  "features": {
+    "llmCopywritingEnabled": true
+  },
+  "copywriting": {
+    "mode": "llm",
+    "provider": "minimax",
+    "minimax": {
+      "baseUrl": "https://api.minimaxi.com",
+      "endpointPath": "/v1/chat/completions",
+      "model": "MiniMax-M2.7",
+      "apiKey": "<DO_NOT_COMMIT_REAL_KEY>"
     }
   }
 }
 ```
 
-问题不在字段名，而在 `baseUrl` 占位语义不够明确，容易被误填为完整 endpoint。
+baseUrl 明确只能是 host/base，不包含 endpoint path。
 
 ## 4. 与官方 text-chat-openai 的差异
 
@@ -79,31 +88,19 @@ base_url.rstrip("/") + "/v1/chat/completions"
 | Request body | `model`, `messages`, optional `stream/temperature/top_p/max_completion_tokens` | 仅 `model/messages` | 最小可用，但不完整 |
 | Response parse | `choices[0].message.content` | 支持该路径，也支持多种猜测路径 | 主路径正确，旁路过宽 |
 
-## 5. A 类必须修复项
+## 5. A 类修复状态（C10D-FIX3 已修复）
 
-### A-1. `baseUrl` / endpoint path 语义冲突
+### A-1. `baseUrl` / endpoint path 语义冲突 — 已由 C10D-FIX3 修复
 
-这是当前最明确的 blocker。
+**修复方式**：
+- 新增 `endpointPath` 配置字段，单独管理 API path
+- `baseUrl` 只能是 host/base，不允许包含 `/v1/chat/completions`
+- `build_minimax_chat_completion_url()` 在 baseUrl 包含 endpoint path 时主动抛 `MiniMaxConfigError`
+- adapter 现在显式接收 `base_url + endpoint_path`，不再隐式拼接
 
-现状：
-
-- 官方文档已经确认：
-  - base host：`https://api.minimaxi.com`
-  - endpoint path：`/v1/chat/completions`
-- 当前 adapter 会在 `base_url` 后面继续拼接 `/v1/chat/completions`
-- 但当前项目旧文档和示例里，曾把完整 endpoint 填进 `baseUrl`
-
-风险：
-
-```text
-如果 baseUrl 被配置为 https://api.minimaxi.com/v1/chat/completions
-当前代码会拼成
-https://api.minimaxi.com/v1/chat/completions/v1/chat/completions
-```
-
-结论：
-
-- 这是 C10E 前必须处理的 A 类问题
+**验证**：
+- `baseUrl = https://api.minimaxi.com` + `endpointPath = /v1/chat/completions` → `https://api.minimaxi.com/v1/chat/completions`
+- `baseUrl = https://api.minimaxi.com/v1/chat/completions` → 抛 `MiniMaxConfigError`
 
 ### A-2. 旧文档中的 URL 示例已不再安全
 
@@ -179,10 +176,10 @@ choices[0].message.content
 
 ### C10E 前必须先处理
 
-1. 明确 `baseUrl` 只允许 host/base，不允许完整 endpoint
-2. 或者新增 `endpointPath`，把路径语义从 `baseUrl` 中分离出来
-3. 更新 local config 示例，避免重复拼接
-4. 将正式响应解析主路径收敛到 `choices[0].message.content`
+1. ~~明确 `baseUrl` 只允许 host/base，不允许完整 endpoint~~ — **C10D-FIX3 已完成**
+2. ~~新增 `endpointPath`，把路径语义从 `baseUrl` 中分离出来~~ — **C10D-FIX3 已完成**
+3. ~~更新 local config 示例，避免重复拼接~~ — **C10D-FIX3 已完成**
+4. 将正式响应解析主路径收敛到 `choices[0].message.content`（B-1 仍待处理）
 
 ### C10E 可同步评估
 
@@ -195,11 +192,12 @@ choices[0].message.content
 
 建议顺序：
 
-1. 先改掉 A 类 URL 语义冲突
+1. ~~先改掉 A 类 URL 语义冲突~~ — **C10D-FIX3 已完成**
 2. 用本地私有配置填：
-   - host/base
-   - model
-   - apiKey
+   - `baseUrl = https://api.minimaxi.com`
+   - `endpointPath = /v1/chat/completions`
+   - `model`
+   - `apiKey`
 3. 只做单次、非流式、最小 messages 联调
 4. 先验证：
    - URL 正确
@@ -209,10 +207,10 @@ choices[0].message.content
 
 ## 10. 结论
 
-### A 类必须修复项
+### A 类必须修复项 — C10D-FIX3 已全部完成
 
-- `baseUrl` / endpoint path 语义冲突
-- 旧文档和示例对 `baseUrl` 的误导
+- ~~`baseUrl` / endpoint path 语义冲突~~ — **已由 C10D-FIX3 修复**
+- ~~旧文档和示例对 `baseUrl` 的误导~~ — **已由 C10D-FIX3 修复**
 
 ### B 类联调前建议修复项
 
