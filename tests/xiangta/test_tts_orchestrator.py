@@ -14,6 +14,10 @@ from src.xiangta.services.error_translator import (
 )
 from src.xiangta.services.tone_preset_service import TonePresetDisabled, TonePresetNotFound
 from src.xiangta.services.tts_orchestrator import TtsOrchestrator
+from src.xiangta.services.voice_lab_gateway import (
+    CoreRenderResponseError,
+    CoreRenderUnavailableError,
+)
 from src.xiangta.services.voice_preset_mapping_service import (
     VoicePresetDisabled,
     VoicePresetNotFound,
@@ -420,9 +424,6 @@ class TestGatewayErrors:
     async def test_core_render_unavailable_is_translated_to_no_provider(
         self, mock_gateway, mock_voice_mapping_service, mock_tone_preset_service
     ):
-        class CoreRenderUnavailableError(Exception):
-            pass
-
         mock_gateway.generate_tts.side_effect = CoreRenderUnavailableError("client missing")
         orch = TtsOrchestrator(
             gateway=mock_gateway,
@@ -443,9 +444,6 @@ class TestGatewayErrors:
     async def test_core_render_response_error_is_translated_to_tts_failed(
         self, mock_gateway, mock_voice_mapping_service, mock_tone_preset_service
     ):
-        class CoreRenderResponseError(Exception):
-            pass
-
         mock_gateway.generate_tts.side_effect = CoreRenderResponseError("bad response")
         orch = TtsOrchestrator(
             gateway=mock_gateway,

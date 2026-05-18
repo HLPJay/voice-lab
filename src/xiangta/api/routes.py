@@ -4,13 +4,15 @@ XiangTa API 路由定义。
 NOTE: 本模块不注册到主应用（app/main.py）。
       通过 include_router 在独立 XiangTa 入口或测试中挂载。
 
-实现状态（P17-XIANGTA-A2）：
-  GET  /bootstrap       ✅ 可用（读取配置，固定 not_integrated）
-  GET  /provider/status ✅ 可用（固定 not_integrated）
-  POST /tts             ✅ dry-run 合约（不调用真实 Provider）
-  POST /suggestions     ⏳ 未实现（A4）
-  POST /letters         ⏳ 未实现（A4+）
-  GET  /letters         ⏳ 未实现（A4+）
+实现状态：
+  GET  /bootstrap             ✅ 可用
+  GET  /provider/status       ✅ 可用（固定 not_integrated）
+  GET  /core/profiles         ✅ B9 可用，读取 Core profiles
+  POST /tts                   ✅ B9 可用，支持 profileId → Core render
+  POST /suggestions           ✅ 可用，当前为模板文案，不调用真实 LLM
+  POST /letters               ✅ 可用，当前为进程内内存存储
+  GET  /letters               ✅ 可用，当前为进程内内存存储
+  /admin/*                    ✅ 本地/Admin 配置接口，生产前需鉴权或 dev-only gate
 """
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse

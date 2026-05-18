@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1（已完成）→ 下一步：P17-XIANGTA-CODE-CLEANUP-C2B + P17-XIANGTA-STORAGE-DESIGN-C3**
+**P17-XIANGTA-CODE-CLEANUP-C2B（已完成）→ 下一步：P17-XIANGTA-STORAGE-DESIGN-C3**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -45,7 +45,7 @@
 | P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1 | 产品后端能力路线图：配置/存储/队列/LLM/安全/错误/观测/用户 | ✅ |
 | P17-XIANGTA-RUNTIME-CONFIG-C2 | Runtime Config 设计 + 实现（runtime.json + env override） | ✅ |
 | P17-XIANGTA-CODE-AUDIT-C2A | 只读代码审查：边界/可维护性/安全/配置/错误/并发/存储/H5/测试覆盖 | ✅ |
-| P17-XIANGTA-CODE-CLEANUP-C2B | 小步清理：异常字符串匹配/docstring/dataclass位置/runtime警告日志/H5防重复点击 | Next |
+| P17-XIANGTA-CODE-CLEANUP-C2B | 小步清理：异常字符串匹配/docstring/dataclass位置/runtime警告日志 | ✅ |
 | P17-XIANGTA-STORAGE-DESIGN-C3 | Storage 设计（SQLite schema + migration） | Next |
 | P17-XIANGTA-TTS-TASK-ORCHESTRATION-DESIGN-C4 | 异步 TTS task 设计（async API + queue strategy） | Next |
 | P17-XIANGTA-COPYWRITING-LLM-DESIGN-C5 | LLM Copywriting 设计（gateway + fallback + security） | Next |
@@ -55,6 +55,8 @@
 | P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 LLM 接入 | Parked |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | Parked |
+
+**C2A 遗留未处理**：CA-06（H5 防重复点击）deferred to C8；CA-01（Admin 鉴权）deferred to C6 or security task；CA-04（CoreHttpClient 错误上下文）deferred to C6；CA-02（ProductService 私有字段访问）deferred to C2B 后续或 C3。
 
 ## 本阶段约束
 

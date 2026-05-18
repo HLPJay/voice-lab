@@ -8,10 +8,14 @@ XiangTa Runtime Configuration — layered config: default → runtime.json → e
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 # ── Paths ────────────────────────────────────────────────────────────────────────
@@ -69,6 +73,56 @@ def _parse_bool(value: str) -> bool | None:
     return None
 
 
+# ── Config model ────────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class XiangTaRuntimeConfig:
+    """
+    只读运行时配置 — 不包含任何真实 Provider API key。
+
+    Backward-compatible fields (kept for product_service.py compatibility):
+      core_base_url: str | None
+      core_timeout_secs: float
+
+    New fields:
+      core_enabled: bool
+      core_url: str | None
+      copywriting_*
+      tts_*
+      storage_*
+      feature_*
+    """
+    # Backward-compatible core fields
+    core_base_url: str | None = None
+    core_timeout_secs: float = 20.0
+
+    # Core (new)
+    core_enabled: bool = False
+    core_url: str | None = None
+
+    # Copywriting
+    copywriting_mode: str = "template"
+    copywriting_provider: str = "none"
+    copywriting_timeout_secs: float = 20.0
+    copywriting_fallback_to_template: bool = True
+
+    # TTS
+    tts_mode: str = "sync"
+    tts_max_concurrent: int = 1
+    tts_queue_enabled: bool = False
+    tts_timeout_secs: float = 120.0
+
+    # Storage
+    storage_type: str = "memory"
+    storage_database_url: str | None = None
+
+    # Features
+    feature_dev_core_profile_select: bool = True
+    feature_letters_enabled: bool = True
+    feature_llm_copywriting_enabled: bool = False
+    feature_tts_task_enabled: bool = False
+
+
 # ── Deep merge ────────────────────────────────────────────────────────────────
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -91,8 +145,12 @@ def _load_runtime_json(path: Path | None = None) -> dict:
         if p.exists():
             with open(p, encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "Failed to load XiangTa runtime config from %s; using defaults: %s",
+            str(path or _RUNTIME_JSON_PATH),
+            exc,
+        )
     return {}
 
 
@@ -265,51 +323,3 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
         feature_llm_copywriting_enabled=bool(features.get("llmCopywritingEnabled", False)),
         feature_tts_task_enabled=bool(features.get("ttsTaskEnabled", False)),
     )
-
-
-@dataclass(frozen=True)
-class XiangTaRuntimeConfig:
-    """
-    只读运行时配置 — 不包含任何真实 Provider API key。
-
-    Backward-compatible fields (kept for product_service.py compatibility):
-      core_base_url: str | None
-      core_timeout_secs: float
-
-    New fields:
-      core_enabled: bool
-      core_url: str | None
-      copywriting_*
-      tts_*
-      storage_*
-      feature_*
-    """
-    # Backward-compatible core fields
-    core_base_url: str | None = None
-    core_timeout_secs: float = 20.0
-
-    # Core (new)
-    core_enabled: bool = False
-    core_url: str | None = None
-
-    # Copywriting
-    copywriting_mode: str = "template"
-    copywriting_provider: str = "none"
-    copywriting_timeout_secs: float = 20.0
-    copywriting_fallback_to_template: bool = True
-
-    # TTS
-    tts_mode: str = "sync"
-    tts_max_concurrent: int = 1
-    tts_queue_enabled: bool = False
-    tts_timeout_secs: float = 120.0
-
-    # Storage
-    storage_type: str = "memory"
-    storage_database_url: str | None = None
-
-    # Features
-    feature_dev_core_profile_select: bool = True
-    feature_letters_enabled: bool = True
-    feature_llm_copywriting_enabled: bool = False
-    feature_tts_task_enabled: bool = False

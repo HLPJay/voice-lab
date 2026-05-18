@@ -323,3 +323,21 @@ class TestRuntimeJsonLoading:
             assert cfg.core_enabled is False
             assert cfg.core_base_url is None
             assert cfg.tts_mode == "sync"
+
+    def test_corrupt_runtime_json_returns_defaults_and_logs_warning(self, monkeypatch, caplog):
+        """Corrupt runtime.json returns defaults and emits a warning log."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td) / "corrupt_runtime.json"
+            tmp_path.write_text("{ invalid json content", encoding="utf-8")
+            monkeypatch.setattr(rc_module, "_RUNTIME_JSON_PATH", tmp_path)
+            cfg = load_runtime_config()
+            # Should fall back to defaults (core disabled)
+            assert cfg.core_enabled is False
+            assert cfg.core_base_url is None
+            # Warning should be logged
+            assert len(caplog.records) >= 1
+            assert any(
+                "Failed to load" in r.message or "corrupt_runtime.json" in r.message
+                for r in caplog.records
+            )

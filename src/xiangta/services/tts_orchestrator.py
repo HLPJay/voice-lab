@@ -24,6 +24,10 @@ from src.xiangta.services.error_translator import (
     TextTooLongError,
     TtsFailedError,
 )
+from src.xiangta.services.voice_lab_gateway import (
+    CoreRenderUnavailableError,
+    CoreRenderResponseError,
+)
 
 if TYPE_CHECKING:
     from src.xiangta.services.tone_preset_service import TonePresetService
@@ -166,13 +170,10 @@ class TtsOrchestrator:
                     scene=scene,
                     metadata=metadata,
                 )
-        except Exception as exc:
-            name = exc.__class__.__name__
-            if name == "CoreRenderUnavailableError":
-                raise NoProviderError() from exc
-            if name == "CoreRenderResponseError":
-                raise TtsFailedError() from exc
-            raise
+        except CoreRenderUnavailableError as exc:
+            raise NoProviderError() from exc
+        except CoreRenderResponseError as exc:
+            raise TtsFailedError() from exc
 
         return {
             "taskId":      result["taskId"],

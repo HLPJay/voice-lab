@@ -125,3 +125,17 @@ These require design or larger refactors and are assigned to future phases:
 - **Can development proceed?** Yes. All 610 tests pass. No blocking defects. Admin auth (CA-01) is a pre-production requirement but not blocking MVP iterations.
 
 **Overall**: XiangTa product layer is well-structured with correct Core boundary enforcement, good forbidden-field hygiene, and appropriate layering (`ProductService` facade → sub-services). The identified findings are either small cleanup (C2B), design-phase items (C3–C8), or pre-production hardening (admin auth). No blocking issues.
+
+## 10. C2B Cleanup Status
+
+| Finding | Status | Notes |
+|---|---|---|
+| CA-03 | Fixed in C2B | Replaced exception class-name string matching with isinstance/type-specific handling |
+| CA-05 | Fixed in C2B | Updated routes.py module docstring to reflect current implementation state |
+| CA-09 | Fixed in C2B | Moved XiangTaRuntimeConfig dataclass before functions for readability |
+| CA-10 | Fixed in C2B | Added warning log when runtime.json fails to load; falls back to defaults safely |
+| CA-06 | Deferred | H5 duplicate-click guard deferred to C8 or dedicated H5 cleanup |
+| CA-01 | Deferred | Admin auth requires design decision; deferred to C6 or security task |
+| CA-04 | Deferred | CoreHttpClient error context loss belongs to C6 Error Contract |
+| CA-02 | Deferred | ProductService private gateway access requires constructor refactor |
+
