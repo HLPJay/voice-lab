@@ -377,3 +377,28 @@ class TestResultSaveCeremony:
         assert "20px" in section, \
             ".result-save-seal-stamp should have border-radius 20px"
 
+
+class TestResultSaveButtonBehavior:
+    """P22H: Result save button shows 查信笺 when returning after save."""
+
+    def test_update_result_save_button_shows_view_letter_when_saved(self):
+        """updateResultSaveButton shows 查看信笺 when state.resultSaved is true."""
+        js = _read(H5_APP)
+        start = js.find("function updateResultSaveButton")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        assert "查看信笺" in section, \
+            "updateResultSaveButton must show 查看信笺 when saved"
+        assert "openLetterDetail" in section, \
+            "updateResultSaveButton must call openLetterDetail when saved button clicked"
+
+    def test_result_saved_button_navigates_to_letter_detail(self):
+        """When saved, result save button onclick calls openLetterDetail."""
+        js = _read(H5_APP)
+        start = js.find("function updateResultSaveButton")
+        end = js.find("\n}", start)
+        section = js[start:end]
+        # When resultSaved, onclick should call openLetterDetail
+        assert "openLetterDetail" in section, \
+            "Saved button must call openLetterDetail"
+

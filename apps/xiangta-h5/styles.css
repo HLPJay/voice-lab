@@ -245,11 +245,61 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 22px 0 6px;
+  margin: 6px 0 0;
   color: var(--text-faint);
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.16em;
+}
+
+.home-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+
+.home-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--xt-text-2);
+}
+
+.home-brand-seal {
+  color: var(--xt-text-2);
+  flex-shrink: 0;
+}
+
+.home-brand-name {
+  font-family: var(--xt-serif, serif);
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--xt-text-2);
+}
+
+.home-brand-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--xt-text-3);
+}
+
+.icon-button-ghost {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--xt-text-3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.icon-button-ghost:hover {
+  color: var(--xt-text-2);
 }
 
 .literary-greeting::before {
@@ -1749,6 +1799,7 @@ body {
 /* Result Screen */
 .result-screen {
   padding-bottom: 36px;
+  background-image: radial-gradient(140% 50% at 50% -10%, var(--xt-accent-soft), transparent 70%);
 }
 
 .result-appbar {

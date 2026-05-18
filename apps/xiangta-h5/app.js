@@ -252,6 +252,9 @@ function showScreen(screen) {
   if (screen === "settings") {
     renderSettingsScreen();
   }
+  if (screen === "result") {
+    renderResultScreen();
+  }
   if (screen === "letterDetail") {
     // Pause history audio to avoid conflict
     const histAudio = el("historyAudio");
@@ -1188,12 +1191,20 @@ function updateResultSaveButton() {
   if (!btn || !label) return;
   if (state.resultSaved) {
     btn.classList.add("saved");
-    label.textContent = "已保存";
-    btn.disabled = true;
+    label.textContent = "查看信笺";
+    btn.disabled = false;
+    btn.onclick = function() {
+      if (state.activeLetterDetailId) {
+        openLetterDetail(state.activeLetterDetailId);
+      } else {
+        showScreen("history");
+      }
+    };
   } else {
     btn.classList.remove("saved");
     label.textContent = "保存到信笺夹";
     btn.disabled = false;
+    btn.onclick = function() { resultSave(); };
   }
 }
 

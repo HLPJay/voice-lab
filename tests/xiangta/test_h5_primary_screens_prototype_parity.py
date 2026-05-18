@@ -221,3 +221,89 @@ class TestPrototypeStyleTokens:
         """styles.css contains --xt-bg variable."""
         css = _read(H5_CSS)
         assert "--xt-bg:" in css, "--xt-bg token not found"
+
+
+class TestHomeScreenVisualParity:
+    """P22H: Home screen visual parity with prototype."""
+
+    def test_home_brand_row_exists(self):
+        """index.html screenHome has home-brand-row element."""
+        html = _read(H5_INDEX)
+        # screenHome ends at the next section id
+        home_start = html.find('id="screenHome"')
+        screen_compose = html.find('id="screenCompose"')
+        section = html[home_start:screen_compose]
+        assert "home-brand-row" in section, \
+            "home-brand-row not found in screenHome"
+
+    def test_home_brand_has_seal_svg(self):
+        """screenHome brand row has LetterSeal SVG icon."""
+        html = _read(H5_INDEX)
+        home_start = html.find('id="screenHome"')
+        screen_compose = html.find('id="screenCompose"')
+        section = html[home_start:screen_compose]
+        assert "home-brand-seal" in section, \
+            "home-brand-seal SVG not found"
+
+    def test_home_brand_has_name(self):
+        """screenHome brand row has 想Ta了 text."""
+        html = _read(H5_INDEX)
+        home_start = html.find('id="screenHome"')
+        screen_compose = html.find('id="screenCompose"')
+        section = html[home_start:screen_compose]
+        assert "想Ta了" in section, \
+            "想Ta了 brand name not found"
+
+    def test_home_brand_has_history_button(self):
+        """screenHome brand row has history navigation button."""
+        html = _read(H5_INDEX)
+        home_start = html.find('id="screenHome"')
+        screen_compose = html.find('id="screenCompose"')
+        section = html[home_start:screen_compose]
+        # Check in the brand row area (before the literary-greeting)
+        brand_row_end = section.find('id="literaryGreeting"')
+        brand_row = section[:brand_row_end] if brand_row_end != -1 else section
+        # HTML uses single quotes: onclick="showScreen('history')"
+        assert "showScreen('history')" in brand_row, \
+            "history button not found in home brand row"
+
+    def test_home_brand_has_settings_button(self):
+        """screenHome brand row has settings navigation button."""
+        html = _read(H5_INDEX)
+        home_start = html.find('id="screenHome"')
+        screen_compose = html.find('id="screenCompose"')
+        section = html[home_start:screen_compose]
+        # Check in the brand row area (before the literary-greeting)
+        brand_row_end = section.find('id="literaryGreeting"')
+        brand_row = section[:brand_row_end] if brand_row_end != -1 else section
+        # HTML uses single quotes: onclick="showScreen('settings')"
+        assert "showScreen('settings')" in brand_row, \
+            "settings button not found in home brand row"
+
+
+class TestResultScreenVisualParity:
+    """P22H: Result screen visual parity with prototype."""
+
+    def test_result_screen_has_gradient_background(self):
+        """.result-screen has radial-gradient background-image."""
+        css = _read(H5_CSS)
+        result_start = css.find(".result-screen")
+        result_end = css.find("}", result_start)
+        section = css[result_start:result_end]
+        assert "background-image" in section and "gradient" in section, \
+            ".result-screen should have radial-gradient background"
+
+    def test_show_screen_calls_render_result_screen(self):
+        """showScreen('result') calls renderResultScreen."""
+        js = _read(H5_APP)
+        show_start = js.find("function showScreen")
+        show_end = js.find("\n}", show_start)
+        section = js[show_start:show_end]
+        assert 'screen === "result"' in section or 'screen === \"result\"' in section, \
+            "showScreen must handle 'result'"
+        # Also check it calls renderResultScreen
+        idx = section.find('screen === "result"')
+        if idx != -1:
+            rest = section[idx:]
+            assert "renderResultScreen" in rest, \
+                "showScreen must call renderResultScreen for result screen"
