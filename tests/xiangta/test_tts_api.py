@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.xiangta.api.routes import router
+from src.xiangta.config.product_config_models import ProductVoiceMapping
 from src.xiangta.services.voice_lab_gateway import VoiceLabGateway
+from src.xiangta.services.voice_preset_mapping_service import VoicePresetMappingService
 
 FORBIDDEN_KEYS = {
     "voice_id",
@@ -95,18 +97,43 @@ async def _fake_generate_tts_with_profile(self, *, text, target, tone, scene, st
     }
 
 
+def _allow_configured_voice_mapping(monkeypatch):
+    def fake_resolve(self, voice_preset_id):
+        assert voice_preset_id == "female-gentle"
+        return ProductVoiceMapping(
+            id="female-gentle",
+            label="温柔女声",
+            desc="适合想念、晚安、轻声表达",
+            gender_style="female",
+            suitable_recipients=["lover", "friend"],
+            recommended_scenes=["miss", "night"],
+            default_tone="gentle",
+            enabled=True,
+            sort_order=10,
+            core_profile_id="deep_night_programmer",
+            provider_policy="mock",
+            render_overrides={},
+            notes=None,
+        )
+
+    monkeypatch.setattr(VoicePresetMappingService, "resolve", fake_resolve)
+
+
 class TestTtsHappyPath:
     def test_status_200(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         r = client.post("/api/xiangta/tts", json=VALID_PAYLOAD)
         assert r.status_code == 200
 
     def test_ok_true(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         r = client.post("/api/xiangta/tts", json=VALID_PAYLOAD)
         assert r.json()["ok"] is True
 
     def test_has_safe_contract(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         data = client.post("/api/xiangta/tts", json=VALID_PAYLOAD).json()["data"]
         assert data["contract"]["voicePresetId"] == "female-gentle"
@@ -115,18 +142,21 @@ class TestTtsHappyPath:
         assert data["contract"]["mode"] == "core_render_mock"
 
     def test_old_request_field_voice_preset_still_works(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         r = client.post("/api/xiangta/tts", json=VALID_PAYLOAD)
         assert r.status_code == 200
         assert r.json()["data"]["voicePreset"] == "female-gentle"
 
     def test_response_does_not_expose_core_fields(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         body = client.post("/api/xiangta/tts", json=VALID_PAYLOAD).json()
         bad = _collect_keys(body) & FORBIDDEN_KEYS
         assert not bad, f"POST /tts 响应包含禁止字段：{bad}"
 
     def test_audio_url_and_duration_are_mapped(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         data = client.post("/api/xiangta/tts", json=VALID_PAYLOAD).json()["data"]
         assert data["audioUrl"] == "/api/voice/assets/audio_123/download"
@@ -134,6 +164,7 @@ class TestTtsHappyPath:
         assert data["status"] == "completed"
 
     def test_tts_with_profile_id_uses_direct_profile_path(self, client, monkeypatch):
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts_with_profile)
         payload = {**VALID_PAYLOAD, "profileId": "deep_night_programmer"}
         r = client.post("/api/xiangta/tts", json=payload)
@@ -144,12 +175,14 @@ class TestTtsHappyPath:
 
     def test_tts_without_profile_id_uses_voice_preset_mapping_path(self, client, monkeypatch):
         """Without profileId, should still use voicePreset mapping path (backward compatible)."""
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         r = client.post("/api/xiangta/tts", json=VALID_PAYLOAD)
         assert r.status_code == 200
 
     def test_tts_profile_id_omitted_from_response(self, client, monkeypatch):
         """profileId is an input field, not exposed in output."""
+        _allow_configured_voice_mapping(monkeypatch)
         monkeypatch.setattr(VoiceLabGateway, "generate_tts", _fake_generate_tts)
         body = client.post("/api/xiangta/tts", json={**VALID_PAYLOAD, "profileId": "test_profile"}).json()
         bad = _collect_keys(body) & {"profileId", "profile_id", "provider_voice_id", "binding_id"}
@@ -222,5 +255,16 @@ class TestValidationAndBusinessErrors:
         monkeypatch.setattr(service_module.TonePresetService, "resolve", broken_resolve)
         payload = {**VALID_PAYLOAD, "tone": "bedtime"}
         r = client.post("/api/xiangta/tts", json=payload)
+        assert r.status_code == 400
+        assert r.json()["ok"] is False
+
+    def test_unconfigured_voice_preset_returns_400_without_core_call(self, client, monkeypatch):
+        async def fail_if_called(*args, **kwargs):
+            raise AssertionError("Gateway must not be called when coreProfileId is not configured")
+
+        monkeypatch.setattr(VoiceLabGateway, "generate_tts", fail_if_called)
+
+        r = client.post("/api/xiangta/tts", json=VALID_PAYLOAD)
+
         assert r.status_code == 400
         assert r.json()["ok"] is False

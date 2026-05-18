@@ -48,6 +48,15 @@ class PresetNotFoundError(XiangTaError):
         super().__init__("preset_not_found", detail or "声线或语气配置不存在。", retryable=False)
 
 
+class VoicePresetProfileNotConfiguredError(XiangTaError):
+    def __init__(self, detail: str = "") -> None:
+        super().__init__(
+            "profile_not_configured",
+            detail or "该声线还没有完成配置，请先绑定可用的声音档案。",
+            retryable=False,
+        )
+
+
 class TtsFailedError(XiangTaError):
     def __init__(self, detail: str = "") -> None:
         super().__init__("tts_failed", f"生成声音时遇到了问题，可以再试一次。{detail}", retryable=True)
@@ -61,9 +70,12 @@ class LlmFailedError(XiangTaError):
 def translate(exc: Exception) -> XiangTaError:
     """将 Core 抛出的技术异常映射为 XiangTaError。"""
     from src.xiangta.services.preset_mapper import PresetMappingError  # local import to avoid cycle
+    from src.xiangta.services.voice_preset_mapping_service import VoicePresetProfileNotConfigured
 
     if isinstance(exc, XiangTaError):
         return exc
+    if isinstance(exc, VoicePresetProfileNotConfigured):
+        return VoicePresetProfileNotConfiguredError(str(exc))
     if isinstance(exc, PresetMappingError):
         return PresetNotFoundError(str(exc))
     return XiangTaError("unknown", "出了点小问题，可以再试一次。", retryable=True)
