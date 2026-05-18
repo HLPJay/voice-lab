@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- 状态提示区 -->
+  <!-- Header with mode indicator -->
   <header class="app-header">
     <h1 class="app-title">想Ta了</h1>
     <div id="statusBar" class="status-bar status-idle">准备就绪</div>
@@ -16,94 +16,121 @@
 
   <main class="app-main">
 
-    <!-- Provider 状态区 -->
-    <section class="card" id="providerCard">
-      <div class="card-label">语音服务</div>
-      <div id="providerStatus" class="provider-status">检查中…</div>
-    </section>
-
-    <!-- 步骤 1：选择参数 -->
-    <section class="card">
-      <div class="card-label">步骤 1 — 告诉我这条消息</div>
-
-      <div class="field-row">
-        <label for="recipientSelect">发给谁</label>
-        <select id="recipientSelect"></select>
+    <!-- ── screenHome ─────────────────────────────────────── -->
+    <section id="screenHome" class="screen active">
+      <div class="hero-card">
+        <p class="hero-subtitle">把想说的话，变成一段可以发出去的文字和声音</p>
       </div>
 
-      <div class="field-row">
-        <label for="sceneSelect">场景</label>
-        <select id="sceneSelect"></select>
+      <!-- Scene quick picks -->
+      <div class="choice-section">
+        <div class="choice-label">此刻的心情</div>
+        <div class="choice-grid" id="sceneGrid"></div>
       </div>
 
-      <div class="field-row">
-        <label for="voicePresetSelect">音色</label>
-        <select id="voicePresetSelect"></select>
+      <!-- Recipient selection -->
+      <div class="choice-section">
+        <div class="choice-label">想说给</div>
+        <div class="choice-grid" id="recipientGrid"></div>
       </div>
 
-      <div class="field-row">
-        <label for="toneSelect">语调</label>
-        <select id="toneSelect"></select>
+      <div class="bottom-actions">
+        <button id="btnStartCompose" class="btn btn-primary" onclick="goCompose()">开始写给 Ta</button>
+        <button class="btn btn-ghost" onclick="showScreen('history')">查看历史</button>
       </div>
 
-      <!-- B9: Dev-only Core profile selection -->
+      <!-- Dev-only: provider status hint -->
       <div id="devPanel" class="dev-panel hidden">
         <div class="dev-panel-title">Dev Mode</div>
         <div class="field-row">
           <label for="coreProfileSelect">人设（Core）</label>
-          <select id="coreProfileSelect">
-            <option value="">加载中…</option>
-          </select>
+          <select id="coreProfileSelect"><option value="">加载中…</option></select>
         </div>
+        <div id="providerStatus" class="provider-status">检查中…</div>
+      </div>
+    </section>
+
+    <!-- ── screenCompose ─────────────────────────────────── -->
+    <section id="screenCompose" class="screen">
+      <div class="screen-nav">
+        <button class="btn btn-icon" onclick="showScreen('home')">←</button>
+        <span class="screen-title">写给 Ta</span>
       </div>
 
+      <!-- Current selections summary -->
+      <div class="meta-chip-row" id="composeMetaRow"></div>
+
       <div class="field-col">
-        <label for="rawTextArea">你想说什么（原始心情）</label>
-        <textarea id="rawTextArea" rows="4" maxlength="500"
+        <label for="rawTextArea">此刻的心情</label>
+        <textarea id="rawTextArea" rows="5" maxlength="500"
           placeholder="随便写，比如：我今天突然很想你…"></textarea>
         <div class="char-count"><span id="rawTextCount">0</span> / 500</div>
       </div>
+
+      <div class="bottom-actions">
+        <button id="btnGenSuggestions" class="btn btn-primary" onclick="generateSuggestions()">生成文案建议</button>
+      </div>
     </section>
 
-    <!-- 步骤 2：生成文案建议 -->
-    <section class="card">
-      <div class="card-label">步骤 2 — 生成文案建议</div>
-      <button id="genSuggestionsBtn" class="btn btn-primary" onclick="generateSuggestions()">
-        生成文案建议
-      </button>
-      <div id="suggestionsArea" class="suggestions-area hidden"></div>
-    </section>
+    <!-- ── screenSuggest ──────────────────────────────────── -->
+    <section id="screenSuggest" class="screen">
+      <div class="screen-nav">
+        <button class="btn btn-icon" onclick="showScreen('compose')">←</button>
+        <span class="screen-title">选择文案</span>
+      </div>
 
-    <!-- 步骤 3：生成语音 -->
-    <section class="card">
-      <div class="card-label">步骤 3 — 生成语音（dry-run 合约）</div>
-      <div class="field-col">
-        <label for="finalTextArea">最终文案</label>
+      <div id="suggSummary" class="sugg-summary"></div>
+
+      <div id="suggestionsArea" class="suggestions-area"></div>
+
+      <div class="field-col" style="margin-top:12px;">
+        <label for="finalTextArea">最终文案（可编辑）</label>
         <textarea id="finalTextArea" rows="4" maxlength="800"
-          placeholder="选择上方建议后自动填入，或手动编辑"></textarea>
+          placeholder="选择上方建议或直接编辑"></textarea>
       </div>
-      <button id="genTtsBtn" class="btn btn-primary" onclick="generateTts()">
-        生成语音
-      </button>
+
+      <div class="bottom-actions">
+        <button id="btnToVoice" class="btn btn-primary" onclick="goVoice()">生成语音</button>
+      </div>
+    </section>
+
+    <!-- ── screenVoice ───────────────────────────────────── -->
+    <section id="screenVoice" class="screen">
+      <div class="screen-nav">
+        <button class="btn btn-icon" onclick="showScreen('suggest')">←</button>
+        <span class="screen-title">生成语音</span>
+      </div>
+
+      <div id="voiceMeta" class="meta-chip-row"></div>
+
+      <div id="ttsTaskArea" class="tts-task-area">
+        <button id="btnGenTtsTask" class="btn btn-primary" onclick="generateTtsTask()">生成语音</button>
+      </div>
+
       <div id="ttsResult" class="tts-result hidden"></div>
-    </section>
 
-    <!-- 步骤 4：保存信笺 -->
-    <section class="card">
-      <div class="card-label">步骤 4 — 保存信笺</div>
-      <div class="field-row">
-        <label for="titleInput">标题（选填）</label>
-        <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+      <div id="saveLetterSection" class="card hidden">
+        <div class="field-col">
+          <label for="titleInput">标题（选填）</label>
+          <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+        </div>
+        <button id="btnSaveLetter" class="btn btn-accent" onclick="saveLetter()">保存信笺</button>
       </div>
-      <button id="saveLetterBtn" class="btn btn-accent" onclick="saveLetter()">
-        保存信笺
-      </button>
+
+      <div id="devTtsSection" class="dev-panel hidden">
+        <div class="dev-panel-title">Dev: 旧接口</div>
+        <button class="btn btn-ghost" onclick="generateTts()">/tts（dry-run）</button>
+      </div>
     </section>
 
-    <!-- 步骤 5：历史记录 -->
-    <section class="card">
-      <div class="card-label">历史记录</div>
-      <button class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
+    <!-- ── screenHistory ─────────────────────────────────── -->
+    <section id="screenHistory" class="screen">
+      <div class="screen-nav">
+        <button class="btn btn-icon" onclick="showScreen('home')">←</button>
+        <span class="screen-title">历史信笺</span>
+      </div>
+
+      <button id="btnRefreshHistory" class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
       <div id="lettersArea" class="letters-area"></div>
     </section>
 

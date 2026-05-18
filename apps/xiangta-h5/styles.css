@@ -318,3 +318,221 @@ textarea {
   text-transform: uppercase;
   letter-spacing: .08em;
 }
+
+/* ── Screen system ─────────────────────────────────────────────────────── */
+
+.screen {
+  display: none;
+  animation: screenFadeIn .2s ease;
+}
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────── */
+
+.hero-card {
+  background: var(--c-surface);
+  border-radius: var(--radius);
+  padding: 24px var(--gap);
+  border: 1px solid var(--c-border);
+  text-align: center;
+}
+
+.hero-subtitle {
+  font-size: 0.95rem;
+  color: var(--c-muted);
+  line-height: 1.7;
+  margin-top: 8px;
+}
+
+/* ── Choice chips (scene/recipient) ──────────────────────────────────── */
+
+.choice-section {
+  background: var(--c-surface);
+  border-radius: var(--radius);
+  padding: var(--gap);
+  border: 1px solid var(--c-border);
+}
+
+.choice-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 12px;
+}
+
+.choice-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--c-border);
+  background: var(--c-bg);
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--c-text);
+  transition: border-color .15s, background .15s, color .15s;
+}
+.choice-chip:hover {
+  border-color: var(--c-primary);
+  background: #eef3fb;
+}
+.choice-chip.selected {
+  border-color: var(--c-primary);
+  background: var(--c-primary);
+  color: #fff;
+}
+
+/* ── Screen nav bar ───────────────────────────────────────────────────── */
+
+.screen-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.screen-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text);
+  flex-shrink: 0;
+}
+.btn-icon:active { background: var(--c-bg); }
+
+/* ── Meta chip row ────────────────────────────────────────────────────── */
+
+.meta-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meta-chip {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #eef3fb;
+  color: var(--c-primary);
+}
+
+/* ── Bottom actions ───────────────────────────────────────────────────── */
+
+.bottom-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2d2d2d;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 0.85rem;
+  z-index: 100;
+  white-space: nowrap;
+  animation: toastIn .2s ease;
+}
+.toast.hidden { display: none; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Suggestion screen ───────────────────────────────────────────────── */
+
+.sugg-summary {
+  font-size: 0.82rem;
+  color: #666;
+  padding: 4px 0;
+}
+
+.sugg-empty {
+  text-align: center;
+  color: var(--c-muted);
+  font-size: 0.85rem;
+  padding: 16px 0;
+}
+
+/* ── TTS task area ───────────────────────────────────────────────────── */
+
+.tts-task-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── TTS error ───────────────────────────────────────────────────────── */
+
+.tts-error {
+  background: #fde8e8;
+  border: 1px solid #ebb;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tts-error-kind {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-err);
+}
+.tts-error-msg {
+  font-size: 0.82rem;
+  color: var(--c-muted);
+}
+
+/* ── Letters history ─────────────────────────────────────────────────── */
+
+.letters-count {
+  font-size: 0.78rem;
+  color: var(--c-muted);
+  margin-bottom: 4px;
+}
+
+.letter-audio {
+  margin-top: 8px;
+}
+.letter-audio audio {
+  width: 100%;
+  height: 36px;
+}
