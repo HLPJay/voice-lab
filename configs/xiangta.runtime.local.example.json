@@ -1,0 +1,16 @@
+{
+  "features": {
+    "llmCopywritingEnabled": true
+  },
+  "copywriting": {
+    "mode": "llm",
+    "provider": "minimax",
+    "timeoutSecs": 20,
+    "fallbackToTemplate": true,
+    "minimax": {
+      "baseUrl": "<MINIMAX_TEXT_CHAT_OPENAI_BASE_URL>",
+      "model": "<MINIMAX_MODEL_NAME>",
+      "apiKey": "<DO_NOT_COMMIT_REAL_KEY>"
+    }
+  }
+}

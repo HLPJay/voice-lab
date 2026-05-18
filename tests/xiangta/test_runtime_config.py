@@ -341,3 +341,185 @@ class TestRuntimeJsonLoading:
                 "Failed to load" in r.message or "corrupt_runtime.json" in r.message
                 for r in caplog.records
             )
+
+
+# ── Local runtime config tests ────────────────────────────────────────────────
+
+class TestLocalRuntimeConfig:
+    """Tests for configs/xiangta.runtime.local.json (gitignored, may contain secrets)."""
+
+    def teardown_method(self):
+        for key in [
+            "XIANGTA_MINIMAX_COPYWRITING_API_KEY",
+            "XIANGTA_MINIMAX_COPYWRITING_BASE_URL",
+            "XIANGTA_MINIMAX_COPYWRITING_MODEL",
+            "XIANGTA_FEATURE_LLM_COPYWRITING_ENABLED",
+            "XIANGTA_COPYWRITING_MODE",
+            "XIANGTA_COPYWRITING_PROVIDER",
+        ]:
+            os.environ.pop(key, None)
+
+    def test_local_config_not_required(self, monkeypatch):
+        """load_runtime_config works normally when local config does not exist."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            nonexistent = Path(td) / "does_not_exist.json"
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", nonexistent)
+            # Must not raise
+            cfg = load_runtime_config()
+            assert cfg.feature_llm_copywriting_enabled is False
+            assert cfg.copywriting_mode == "template"
+
+    def test_local_config_provides_minimax_fields(self, monkeypatch):
+        """Local config can provide minimax baseUrl, model, and apiKey."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "features": {"llmCopywritingEnabled": True},
+                    "copywriting": {
+                        "mode": "llm",
+                        "provider": "minimax",
+                        "minimax": {
+                            "baseUrl": "https://api.minimax.chat/v1/text/chatcompletion_v2",
+                            "model": "MiniMax-Text-01",
+                            "apiKey": "my-secret-key",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            cfg = load_runtime_config()
+            assert cfg.feature_llm_copywriting_enabled is True
+            assert cfg.copywriting_mode == "llm"
+            assert cfg.copywriting_provider == "minimax"
+            assert cfg.minimax_copywriting_base_url == "https://api.minimax.chat/v1/text/chatcompletion_v2"
+            assert cfg.minimax_copywriting_model == "MiniMax-Text-01"
+            assert cfg.minimax_copywriting_api_key == "my-secret-key"
+
+    def test_env_overrides_local_config(self, monkeypatch):
+        """XIANGTA_MINIMAX_COPYWRITING_API_KEY env overrides local config apiKey."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "copywriting": {
+                        "minimax": {
+                            "apiKey": "local-key",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            os.environ["XIANGTA_MINIMAX_COPYWRITING_API_KEY"] = "env-key"
+            cfg = load_runtime_config()
+            assert cfg.minimax_copywriting_api_key == "env-key"
+
+    def test_local_config_nested_minimax_wins_over_flat(self, monkeypatch):
+        """Nested copywriting.minimax.baseUrl wins over flat minimaxBaseUrl."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "copywriting": {
+                        "minimaxBaseUrl": "https://old.flat.url",
+                        "minimax": {
+                            "baseUrl": "https://new.nested.url",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            cfg = load_runtime_config()
+            assert cfg.minimax_copywriting_base_url == "https://new.nested.url"
+
+    def test_runtime_json_api_key_ignored(self, monkeypatch):
+        """apiKey written in runtime.json (non-local) is NOT read."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            runtime_path = Path(td) / "runtime.json"
+            with open(runtime_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "copywriting": {
+                        "minimax": {
+                            "apiKey": "key-from-runtime-json",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_JSON_PATH", runtime_path)
+            # Local config does not exist — key must not be set
+            nonexistent_local = Path(td) / "no-local.json"
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", nonexistent_local)
+            cfg = load_runtime_config()
+            assert cfg.minimax_copywriting_api_key is None
+
+    def test_corrupt_local_config_does_not_crash(self, monkeypatch, caplog):
+        """Corrupt local config logs warning but does not crash."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            corrupt_path = Path(td) / "corrupt_local.json"
+            corrupt_path.write_text("{ invalid", encoding="utf-8")
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", corrupt_path)
+            cfg = load_runtime_config()
+            # Falls back gracefully — minimax fields use defaults
+            assert cfg.minimax_copywriting_api_key is None
+            assert cfg.minimax_copywriting_base_url is None
+            assert any("local runtime" in r.message for r in caplog.records)
+
+    def test_default_still_disables_minimax(self):
+        """Without any config, MiniMax is disabled by default."""
+        cfg = load_runtime_config()
+        assert cfg.feature_llm_copywriting_enabled is False
+        assert cfg.copywriting_mode == "template"
+        assert cfg.minimax_copywriting_api_key is None
+
+    def test_local_config_enables_full_minimax_path(self, monkeypatch):
+        """Local config with all minimax fields produces complete minimax config."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "features": {"llmCopywritingEnabled": True},
+                    "copywriting": {
+                        "mode": "llm",
+                        "provider": "minimax",
+                        "timeoutSecs": 30,
+                        "fallbackToTemplate": True,
+                        "minimax": {
+                            "baseUrl": "https://api.minimax.chat/v1/text/chatcompletion_v2",
+                            "model": "MiniMax-Text-01",
+                            "apiKey": "real-key",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            cfg = load_runtime_config()
+            assert cfg.feature_llm_copywriting_enabled is True
+            assert cfg.copywriting_mode == "llm"
+            assert cfg.copywriting_provider == "minimax"
+            assert cfg.copywriting_timeout_secs == 30.0
+            assert cfg.copywriting_fallback_to_template is True
+            assert cfg.minimax_copywriting_base_url == "https://api.minimax.chat/v1/text/chatcompletion_v2"
+            assert cfg.minimax_copywriting_model == "MiniMax-Text-01"
+            assert cfg.minimax_copywriting_api_key == "real-key"
+
+    def test_api_key_not_in_repr(self, monkeypatch):
+        """apiKey value never appears in XiangTaRuntimeConfig repr / str output."""
+        import src.xiangta.config.runtime_config as rc_module
+        with tempfile.TemporaryDirectory() as td:
+            local_path = Path(td) / "xiangta.runtime.local.json"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "copywriting": {
+                        "minimax": {
+                            "apiKey": "SUPER_SECRET_KEY_12345",
+                        },
+                    },
+                }, f)
+            monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", local_path)
+            cfg = load_runtime_config()
+            repr_str = repr(cfg)
+            str_str = str(cfg)
+            assert "SUPER_SECRET_KEY_12345" not in repr_str
+            assert "SUPER_SECRET_KEY_12345" not in str_str

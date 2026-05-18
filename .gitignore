@@ -42,3 +42,8 @@ tmp/
 
 # Generated cleanup plans
 docs/generated/
+
+# Local runtime config (contains secrets — never commit)
+configs/xiangta.runtime.local.json
+*.runtime.local.json
+*.local.secret.json
