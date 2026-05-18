@@ -8,139 +8,160 @@
 </head>
 <body>
 
-  <!-- Header with mode indicator -->
-  <header class="app-header">
-    <h1 class="app-title">想Ta了</h1>
+  <div class="phone-shell">
+
+    <!-- App topbar -->
+    <header class="app-topbar">
+      <div class="topbar-brand">
+        <svg class="letter-seal" width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="2" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M2 6l9 6 9-6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+        <span class="topbar-title">想Ta了</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn" onclick="showScreen('history')" aria-label="历史">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.3"/><path d="M9 5v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Operational status bar (used by setStatus) -->
     <div id="statusBar" class="status-bar status-idle">准备就绪</div>
-  </header>
 
-  <main class="app-main">
+    <main class="app-main">
 
-    <!-- ── screenHome ─────────────────────────────────────── -->
-    <section id="screenHome" class="screen active">
-      <!-- Literary greeting -->
-      <div class="hero-greeting">
-        <div class="hero-title">想Ta了</div>
-        <div class="hero-question">
-          今晚，<br/>
-          想对谁说话？
+      <!-- ── screenHome ─────────────────────────────────────── -->
+      <section id="screenHome" class="screen active">
+        <!-- Literary greeting with date/time -->
+        <div class="literary-greeting" id="literaryGreeting"></div>
+
+        <div class="hero-greeting">
+          <div class="hero-question">
+            今晚，<br/>想对谁说话？
+          </div>
+          <p class="hero-subtitle">把想说的话，<br/>变成更合适的文字和语音。</p>
         </div>
-        <p class="hero-subtitle">把想说的话，<br/>变成更合适的文字和语音。</p>
-      </div>
 
-      <!-- Recipient selection -->
-      <div class="choice-section">
-        <div class="choice-label">说给谁</div>
-        <div class="choice-grid" id="recipientGrid"></div>
-      </div>
-
-      <!-- Scene quick picks -->
-      <div class="choice-section">
-        <div class="choice-label">想表达什么</div>
-        <div class="choice-grid" id="sceneGrid"></div>
-      </div>
-
-      <div class="bottom-actions">
-        <button id="btnStartCompose" class="btn btn-primary" onclick="goCompose()">开始表达</button>
-        <button class="btn btn-ghost" onclick="showScreen('history')">查看历史</button>
-      </div>
-
-      <!-- Dev-only: provider status hint -->
-      <div id="devPanel" class="dev-panel hidden">
-        <div class="dev-panel-title">Dev Mode</div>
-        <div class="field-row">
-          <label for="coreProfileSelect">人设（Core）</label>
-          <select id="coreProfileSelect"><option value="">加载中…</option></select>
+        <!-- Recipient selection (2×2 cards with icons) -->
+        <div class="choice-section">
+          <div class="section-heading">说给谁</div>
+          <div class="recipient-grid" id="recipientGrid"></div>
         </div>
-        <div id="providerStatus" class="provider-status">检查中…</div>
-      </div>
-    </section>
 
-    <!-- ── screenCompose ─────────────────────────────────── -->
-    <section id="screenCompose" class="screen">
-      <div class="screen-nav">
-        <button class="btn btn-icon" onclick="showScreen('home')">←</button>
-        <span class="screen-title">写给 Ta</span>
-      </div>
+        <!-- Scene quick picks (2-col chips with hints) -->
+        <div class="choice-section">
+          <div class="section-heading">想表达什么</div>
+          <div class="scene-grid" id="sceneGrid"></div>
+        </div>
 
-      <!-- Current selections summary -->
-      <div class="meta-chip-row" id="composeMetaRow"></div>
+        <!-- Sticky CTA -->
+        <div class="bottom-actions">
+          <button id="btnStartCompose" class="btn btn-cta" onclick="goCompose()">开始表达</button>
+          <button class="btn btn-ghost" onclick="showScreen('history')">查看历史</button>
+        </div>
 
-      <div class="field-col">
-        <label for="rawTextArea">此刻的心情</label>
-        <textarea id="rawTextArea" rows="5" maxlength="500"
-          placeholder="随便写，比如：我今天突然很想你…"></textarea>
-        <div class="char-count"><span id="rawTextCount">0</span> / 500</div>
-      </div>
+        <!-- Bottom status pill -->
+        <div class="status-pill-bar">
+          <div class="status-pill" id="statusPill">MiniMax · 检查中…</div>
+          <div class="status-note">本机保存 · 不替你发送</div>
+        </div>
 
-      <div class="bottom-actions">
-        <button id="btnGenSuggestions" class="btn btn-primary" onclick="generateSuggestions()">生成文案建议</button>
-      </div>
-    </section>
+        <!-- Dev-only: provider status + core profiles -->
+        <div id="devPanel" class="dev-panel hidden">
+          <div class="dev-panel-title">Dev Mode</div>
+          <div class="field-row">
+            <label for="coreProfileSelect">人设（Core）</label>
+            <select id="coreProfileSelect"><option value="">加载中…</option></select>
+          </div>
+          <div id="providerStatus" class="provider-status">检查中…</div>
+        </div>
+      </section>
 
-    <!-- ── screenSuggest ──────────────────────────────────── -->
-    <section id="screenSuggest" class="screen">
-      <div class="screen-nav">
-        <button class="btn btn-icon" onclick="showScreen('compose')">←</button>
-        <span class="screen-title">选择文案</span>
-      </div>
+      <!-- ── screenCompose ─────────────────────────────────── -->
+      <section id="screenCompose" class="screen">
+        <div class="screen-nav">
+          <button class="btn btn-icon" onclick="showScreen('home')">←</button>
+          <span class="screen-title">写给 Ta</span>
+        </div>
 
-      <div id="suggSummary" class="sugg-summary"></div>
+        <div class="meta-chip-row" id="composeMetaRow"></div>
 
-      <div id="suggestionsArea" class="suggestions-area"></div>
-
-      <div class="field-col" style="margin-top:12px;">
-        <label for="finalTextArea">最终文案（可编辑）</label>
-        <textarea id="finalTextArea" rows="4" maxlength="800"
-          placeholder="选择上方建议或直接编辑"></textarea>
-      </div>
-
-      <div class="bottom-actions">
-        <button id="btnToVoice" class="btn btn-primary" onclick="goVoice()">生成语音</button>
-      </div>
-    </section>
-
-    <!-- ── screenVoice ───────────────────────────────────── -->
-    <section id="screenVoice" class="screen">
-      <div class="screen-nav">
-        <button class="btn btn-icon" onclick="showScreen('suggest')">←</button>
-        <span class="screen-title">生成语音</span>
-      </div>
-
-      <div id="voiceMeta" class="meta-chip-row"></div>
-
-      <div id="ttsTaskArea" class="tts-task-area">
-        <button id="btnGenTtsTask" class="btn btn-primary" onclick="generateTtsTask()">生成语音</button>
-      </div>
-
-      <div id="ttsResult" class="tts-result hidden"></div>
-
-      <div id="saveLetterSection" class="card hidden">
         <div class="field-col">
-          <label for="titleInput">标题（选填）</label>
-          <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+          <label for="rawTextArea">此刻的心情</label>
+          <textarea id="rawTextArea" rows="5" maxlength="500"
+            placeholder="随便写，比如：我今天突然很想你…"></textarea>
+          <div class="char-count"><span id="rawTextCount">0</span> / 500</div>
         </div>
-        <button id="btnSaveLetter" class="btn btn-accent" onclick="saveLetter()">保存信笺</button>
-      </div>
 
-      <div id="devTtsSection" class="dev-panel hidden">
-        <div class="dev-panel-title">Dev: 旧接口</div>
-        <button class="btn btn-ghost" onclick="generateTts()">/tts（dry-run）</button>
-      </div>
-    </section>
+        <div class="bottom-actions">
+          <button id="btnGenSuggestions" class="btn btn-primary" onclick="generateSuggestions()">生成文案建议</button>
+        </div>
+      </section>
 
-    <!-- ── screenHistory ─────────────────────────────────── -->
-    <section id="screenHistory" class="screen">
-      <div class="screen-nav">
-        <button class="btn btn-icon" onclick="showScreen('home')">←</button>
-        <span class="screen-title">历史信笺</span>
-      </div>
+      <!-- ── screenSuggest ──────────────────────────────────── -->
+      <section id="screenSuggest" class="screen">
+        <div class="screen-nav">
+          <button class="btn btn-icon" onclick="showScreen('compose')">←</button>
+          <span class="screen-title">选择文案</span>
+        </div>
 
-      <button id="btnRefreshHistory" class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
-      <div id="lettersArea" class="letters-area"></div>
-    </section>
+        <div id="suggSummary" class="sugg-summary"></div>
+        <div id="suggestionsArea" class="suggestions-area"></div>
 
-  </main>
+        <div class="field-col" style="margin-top:12px;">
+          <label for="finalTextArea">最终文案（可编辑）</label>
+          <textarea id="finalTextArea" rows="4" maxlength="800"
+            placeholder="选择上方建议或直接编辑"></textarea>
+        </div>
+
+        <div class="bottom-actions">
+          <button id="btnToVoice" class="btn btn-primary" onclick="goVoice()">生成语音</button>
+        </div>
+      </section>
+
+      <!-- ── screenVoice ───────────────────────────────────── -->
+      <section id="screenVoice" class="screen">
+        <div class="screen-nav">
+          <button class="btn btn-icon" onclick="showScreen('suggest')">←</button>
+          <span class="screen-title">生成语音</span>
+        </div>
+
+        <div id="voiceMeta" class="meta-chip-row"></div>
+
+        <div id="ttsTaskArea" class="tts-task-area">
+          <button id="btnGenTtsTask" class="btn btn-primary" onclick="generateTtsTask()">生成语音</button>
+        </div>
+
+        <div id="ttsResult" class="tts-result hidden"></div>
+
+        <div id="saveLetterSection" class="card hidden">
+          <div class="field-col">
+            <label for="titleInput">标题（选填）</label>
+            <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+          </div>
+          <button id="btnSaveLetter" class="btn btn-accent" onclick="saveLetter()">保存信笺</button>
+        </div>
+
+        <div id="devTtsSection" class="dev-panel hidden">
+          <div class="dev-panel-title">Dev: 旧接口</div>
+          <button class="btn btn-ghost" onclick="generateTts()">/tts（dry-run）</button>
+        </div>
+      </section>
+
+      <!-- ── screenHistory ─────────────────────────────────── -->
+      <section id="screenHistory" class="screen">
+        <div class="screen-nav">
+          <button class="btn btn-icon" onclick="showScreen('home')">←</button>
+          <span class="screen-title">历史信笺</span>
+        </div>
+
+        <button id="btnRefreshHistory" class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
+        <div id="lettersArea" class="letters-area"></div>
+      </section>
+
+    </main>
+  </div>
 
   <script src="app.js"></script>
 </body>

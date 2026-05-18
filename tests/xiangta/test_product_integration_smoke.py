@@ -415,7 +415,7 @@ class TestMobileCss:
 
     def test_choice_chip_style(self):
         css = (_H5_DIR / "styles.css").read_text(encoding="utf-8")
-        assert ".choice-chip" in css
+        assert ".choice-chip" in css or ".recipient-card" in css or ".scene-chip" in css
 
     def test_bottom_actions_style(self):
         css = (_H5_DIR / "styles.css").read_text(encoding="utf-8")

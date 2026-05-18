@@ -4,9 +4,38 @@
 
 const API_BASE = "";
 
+// ── UI meta maps (from prototype tokens/screens) ─────────────────────────────
+
+var RECIPIENT_META = {
+  lover:  {
+    label: "恋人", hint: "想他想她",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="10" cy="13" r="6" stroke="currentColor" stroke-width="1.1" opacity="0.55"/><circle cx="16" cy="13" r="6" stroke="currentColor" stroke-width="1.1"/><circle cx="13" cy="13" r="1" fill="currentColor"/></svg>'
+  },
+  family: {
+    label: "父母", hint: "爸妈",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M4 21V11l9-6 9 6v10" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M10 21v-5h6v5" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>'
+  },
+  friend: {
+    label: "朋友", hint: "老友",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M5 19v-5a4 4 0 014-4M21 19v-5a4 4 0 00-4-4M9 10V8a2 2 0 014 0M13 8a2 2 0 014 0v2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  },
+  self:   {
+    label: "自己", hint: "独白",
+    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="9" stroke="currentColor" stroke-width="1.1" opacity="0.45"/><path d="M13 6v14M6 13h14" stroke="currentColor" stroke-width="1.1" opacity="0.45"/><circle cx="13" cy="13" r="2.5" fill="currentColor"/></svg>'
+  },
+};
+
+var SCENE_META = {
+  miss:    { label: "想念", hint: "想你了" },
+  sorry:   { label: "道歉", hint: "对不起" },
+  thanks:  { label: "感谢", hint: "谢谢你" },
+  comfort: { label: "安慰", hint: "会好的" },
+  night:   { label: "晚安", hint: "好好休息" },
+};
+
 // ── 应用状态 ──────────────────────────────────────────────────────────────────
 
-const state = {
+var state = {
   mode:            "formal",
   screen:          "home",
   bootstrap:       null,
@@ -23,14 +52,18 @@ const state = {
 // ── Mode detection ─────────────────────────────────────────────────────────────
 
 function getAppMode() {
-  const params = new URLSearchParams(window.location.search || "");
+  var params = new URLSearchParams(window.location.search || "");
   return params.get("mode") === "dev" ? "dev" : "formal";
 }
 
 function applyModeUi() {
-  const devPanel = el("devPanel");
+  var devPanel = el("devPanel");
   if (devPanel) {
     devPanel.classList.toggle("hidden", state.mode !== "dev");
+  }
+  var devTts = el("devTtsSection");
+  if (devTts) {
+    devTts.classList.toggle("hidden", state.mode !== "dev");
   }
   document.body.setAttribute("data-mode", state.mode);
 }
@@ -41,14 +74,13 @@ function showScreen(screen) {
   document.querySelectorAll(".screen").forEach(function(s) {
     s.classList.remove("active");
   });
-  const target = el("screen" + capitalize(screen));
+  var target = el("screen" + capitalize(screen));
   if (target) {
     target.classList.add("active");
   }
   state.screen = screen;
   setStatus("准备就绪", "idle");
 
-  // Per-screen init
   if (screen === "history") {
     loadLetters();
   }
@@ -61,7 +93,7 @@ function capitalize(s) {
 // ── 按钮锁 ───────────────────────────────────────────────────────────────────
 
 function setBusy(buttonId, busy, text) {
-  const btn = el(buttonId);
+  var btn = el(buttonId);
   if (!btn) return;
   if (text !== undefined) {
     btn.textContent = text;
@@ -72,7 +104,7 @@ function setBusy(buttonId, busy, text) {
 // ── 工具函数 ──────────────────────────────────────────────────────────────────
 
 function setStatus(message, kind) {
-  const bar = document.getElementById("statusBar");
+  var bar = document.getElementById("statusBar");
   if (!bar) return;
   bar.textContent = message;
   bar.className = "status-bar status-" + (kind || "idle");
@@ -81,13 +113,13 @@ function setStatus(message, kind) {
 async function apiFetch(path, options) {
   setStatus("请求中…", "loading");
   try {
-    const res = await fetch(API_BASE + path, {
+    var res = await fetch(API_BASE + path, {
       headers: { "Content-Type": "application/json" },
       ...options,
     });
-    const body = await res.json();
+    var body = await res.json();
     if (!res.ok || body.ok === false) {
-      const msg = body.message || body.errorKind || body.detail || ("HTTP " + res.status);
+      var msg = body.message || body.errorKind || body.detail || ("HTTP " + res.status);
       setStatus("错误：" + msg, "error");
       showToast("错误：" + msg);
       return null;
@@ -114,7 +146,6 @@ function escHtml(str) {
 }
 
 function showToast(msg) {
-  // Lightweight toast - create if not exists
   var existing = document.getElementById("toastEl");
   if (existing) {
     existing.textContent = msg;
@@ -131,23 +162,71 @@ function showToast(msg) {
   }, 3000);
 }
 
-// ── Bootstrap ─────────────────────────────────────────────────────────────────
+// ── Literary greeting (date/time) ────────────────────────────────────────────
+
+function renderLiteraryGreeting() {
+  var container = el("literaryGreeting");
+  if (!container) return;
+
+  var now = new Date();
+  var month = now.getMonth() + 1;
+  var day = now.getDate();
+  var weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  var weekday = weekdays[now.getDay()];
+  var hour = now.getHours();
+  var minute = String(now.getMinutes()).padStart(2, "0");
+
+  var period;
+  if (hour >= 5 && hour < 8) period = "清晨";
+  else if (hour >= 8 && hour < 11) period = "上午";
+  else if (hour >= 11 && hour < 13) period = "中午";
+  else if (hour >= 13 && hour < 17) period = "下午";
+  else if (hour >= 17 && hour < 19) period = "傍晚";
+  else if (hour >= 19 && hour < 22) period = "晚上";
+  else period = "深夜";
+
+  container.textContent = month + "月" + day + "日 · " + weekday + " · " + period + " · " + hour + ":" + minute;
+}
+
+// ── Status pill (provider status) ────────────────────────────────────────────
+
+function renderStatusPill(ps) {
+  var pill = el("statusPill");
+  if (!pill) return;
+
+  if (!ps) {
+    pill.textContent = "MiniMax · 检查中…";
+    pill.className = "status-pill pill-mute";
+    return;
+  }
+
+  var kindMap = {
+    ok:             { cls: "",          prefix: "MiniMax" },
+    not_integrated: { cls: "pill-warn", prefix: "MiniMax" },
+    degraded:       { cls: "pill-warn", prefix: "MiniMax" },
+    quota:          { cls: "pill-warn", prefix: "MiniMax" },
+    error:          { cls: "pill-error", prefix: "MiniMax" },
+    unknown:        { cls: "pill-mute",  prefix: "MiniMax" },
+  };
+
+  var info = kindMap[ps.kind] || kindMap.unknown;
+  pill.className = "status-pill " + info.cls;
+  pill.textContent = info.prefix + " · " + (ps.label || ps.detail || "");
+}
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
 
 async function loadBootstrap() {
   setStatus("加载配置…", "loading");
-  const res = await apiFetch("/api/xiangta/bootstrap");
+  var res = await apiFetch("/api/xiangta/bootstrap");
   if (!res) return;
 
   state.bootstrap = res.data;
   var data = res.data;
 
-  // Render scene grid on home
+  renderRecipientGrid(data.recipients || []);
   renderSceneGrid(data.scenes || []);
 
-  // Render recipient grid on home
-  renderRecipientGrid(data.recipients || []);
-
-  // Populate compose selects (for later use)
   populateSelect("sceneSelect", data.scenes, function(s) { return s.id; }, function(s) { return s.label; });
   populateSelect("recipientSelect", data.recipients, function(r) { return r.id; }, function(r) { return r.label; });
   populateSelect("voicePresetSelect", data.voicePresets,
@@ -160,41 +239,73 @@ async function loadBootstrap() {
   );
 
   renderProviderStatus(data.providerStatus);
+  renderStatusPill(data.providerStatus);
   setStatus("就绪", "ok");
 
-  // Load Core profiles only in dev mode
   if (state.mode === "dev") {
     loadCoreProfiles();
   }
-}
-
-function renderSceneGrid(scenes) {
-  var container = el("sceneGrid");
-  if (!container) return;
-  container.innerHTML = "";
-  scenes.forEach(function(scene) {
-    var chip = document.createElement("button");
-    chip.className = "choice-chip";
-    chip.setAttribute("data-scene", scene.id);
-    chip.textContent = scene.label;
-    chip.addEventListener("click", function() {
-      selectScene(scene.id, scene.label);
-    });
-    container.appendChild(chip);
-  });
 }
 
 function renderRecipientGrid(recipients) {
   var container = el("recipientGrid");
   if (!container) return;
   container.innerHTML = "";
+
   recipients.forEach(function(r) {
-    var chip = document.createElement("button");
-    chip.className = "choice-chip";
-    chip.setAttribute("data-recipient", r.id);
-    chip.textContent = r.label;
-    chip.addEventListener("click", function() {
+    var meta = RECIPIENT_META[r.id] || {};
+    var card = document.createElement("div");
+    card.className = "recipient-card";
+    card.setAttribute("data-recipient", r.id);
+
+    var iconDiv = document.createElement("div");
+    iconDiv.className = "recipient-card-icon";
+    iconDiv.innerHTML = meta.icon || "";
+
+    var textDiv = document.createElement("div");
+    var labelDiv = document.createElement("div");
+    labelDiv.className = "recipient-card-label";
+    labelDiv.textContent = r.label || meta.label || r.id;
+    var hintDiv = document.createElement("div");
+    hintDiv.className = "recipient-card-hint";
+    hintDiv.textContent = meta.hint || "";
+    textDiv.appendChild(labelDiv);
+    textDiv.appendChild(hintDiv);
+
+    card.appendChild(iconDiv);
+    card.appendChild(textDiv);
+
+    card.addEventListener("click", function() {
       selectRecipient(r.id, r.label);
+    });
+    container.appendChild(card);
+  });
+}
+
+function renderSceneGrid(scenes) {
+  var container = el("sceneGrid");
+  if (!container) return;
+  container.innerHTML = "";
+
+  scenes.forEach(function(scene) {
+    var meta = SCENE_META[scene.id] || {};
+    var chip = document.createElement("button");
+    chip.className = "scene-chip";
+    chip.setAttribute("data-scene", scene.id);
+
+    var labelDiv = document.createElement("div");
+    labelDiv.className = "scene-chip-label";
+    labelDiv.textContent = scene.label || meta.label || scene.id;
+
+    var hintDiv = document.createElement("div");
+    hintDiv.className = "scene-chip-hint";
+    hintDiv.textContent = meta.hint || "";
+
+    chip.appendChild(labelDiv);
+    chip.appendChild(hintDiv);
+
+    chip.addEventListener("click", function() {
+      selectScene(scene.id, scene.label);
     });
     container.appendChild(chip);
   });
@@ -241,7 +352,7 @@ function populateSelect(selectId, items, valueFn, labelFn) {
   });
 }
 
-// ── Core Profiles (dev mode) ──────────────────────────────────────────────────
+// ── Core Profiles (dev mode) ─────────────────────────────────────────────────
 
 async function loadCoreProfiles() {
   setStatus("加载人设…", "loading");
@@ -293,7 +404,7 @@ function renderCoreProfileSelect(data) {
   });
 }
 
-// ── Navigation helpers ────────────────────────────────────────────────────────
+// ── Navigation helpers ───────────────────────────────────────────────────────
 
 function goCompose() {
   if (!state.selectedScene) {
@@ -305,7 +416,6 @@ function goCompose() {
     return;
   }
 
-  // Render meta info on compose screen
   var metaRow = el("composeMetaRow");
   if (metaRow) {
     var scene = (state.bootstrap && state.bootstrap.scenes || [])
@@ -317,7 +427,6 @@ function goCompose() {
       + '<span class="meta-chip">' + escHtml(recipient ? recipient.label : state.selectedRecipient) + '</span>';
   }
 
-  // Reset compose state
   el("rawTextArea").value = "";
   el("rawTextCount").textContent = "0";
 
@@ -331,7 +440,6 @@ function goVoice() {
     return;
   }
 
-  // Render meta on voice screen
   var metaRow = el("voiceMeta");
   if (metaRow) {
     var scene = (state.bootstrap && state.bootstrap.scenes || [])
@@ -349,7 +457,6 @@ function goVoice() {
       + '<span class="meta-chip">' + escHtml(tone ? tone.label : "") + '</span>';
   }
 
-  // Reset voice screen state
   state.ttsTask = null;
   state.ttsResult = null;
   el("ttsResult").classList.add("hidden");
@@ -360,7 +467,7 @@ function goVoice() {
   showScreen("voice");
 }
 
-// ── Suggestions ───────────────────────────────────────────────────────────────
+// ── Suggestions ──────────────────────────────────────────────────────────────
 
 async function generateSuggestions() {
   var rawText = (el("rawTextArea").value || "").trim();
@@ -436,7 +543,7 @@ function selectSuggestion(index) {
   setStatus("已选择「" + (sugg ? sugg.styleLabel : "") + "」", "ok");
 }
 
-// ── TTS Task API (C7) ─────────────────────────────────────────────────────────
+// ── TTS Task API (C7) ────────────────────────────────────────────────────────
 
 async function generateTtsTask() {
   var finalText = (el("finalTextArea").value || "").trim();
@@ -462,7 +569,6 @@ async function generateTtsTask() {
     scene:       state.selectedScene,
   };
 
-  // Pass profileId only in dev mode when explicitly selected
   if (state.mode === "dev" && profileId) {
     payload.profileId = profileId;
   }
@@ -499,7 +605,6 @@ async function pollTtsTask(task) {
     return;
   }
 
-  // pending/running/queued - poll
   setBusy("btnGenTtsTask", true, "生成中…（" + status + "）");
 
   var res = await apiFetch(pollUrl);
@@ -509,14 +614,13 @@ async function pollTtsTask(task) {
   }
 
   var updated = res.data || res;
-  updated.pollUrl = pollUrl; // preserve
+  updated.pollUrl = pollUrl;
 
   if (updated.status === "completed" || updated.status === "failed") {
     state.ttsTask = updated;
     renderTtsTask(updated);
     setBusy("btnGenTtsTask", false, "生成语音");
   } else {
-    // Schedule next poll
     state.ttsTask = updated;
     setTimeout(function() { pollTtsTask(updated); }, 1500);
   }
@@ -534,7 +638,6 @@ function renderTtsTask(d) {
   div.innerHTML = "";
   div.classList.remove("hidden");
 
-  // Always allow saving text letter for any terminal state
   state.ttsResult = d;
 
   if (d.status === "failed") {
@@ -578,7 +681,6 @@ function renderTtsTask(d) {
     div.insertAdjacentHTML("beforeend", html);
   }
 
-  // Allow saving text letter even without audioUrl
   revealSaveLetterSection();
 }
 
@@ -590,7 +692,6 @@ function row(key, val) {
 // ── TTS dry-run (dev only alias) ─────────────────────────────────────────────
 
 async function generateTts() {
-  // Dev-only fallback - not used in formal path
   var finalText = (el("finalTextArea").value || "").trim();
   var rawText   = (el("rawTextArea").value   || "").trim();
   var text      = finalText || rawText;
@@ -620,7 +721,7 @@ async function generateTts() {
   renderTtsTask(res.data);
 }
 
-// ── Save Letter ───────────────────────────────────────────────────────────────
+// ── Save Letter ──────────────────────────────────────────────────────────────
 
 async function saveLetter() {
   var finalText   = (el("finalTextArea").value || "").trim();
@@ -665,7 +766,7 @@ async function saveLetter() {
   el("titleInput").value = "";
 }
 
-// ── Letters history ────────────────────────────────────────────────────────────
+// ── Letters history ──────────────────────────────────────────────────────────
 
 async function loadLetters() {
   setBusy("btnRefreshHistory", true, "加载中…");
@@ -740,5 +841,6 @@ document.addEventListener("DOMContentLoaded", function() {
   state.mode = getAppMode();
   applyModeUi();
   initCharCounter();
+  renderLiteraryGreeting();
   loadBootstrap();
 });

@@ -139,7 +139,7 @@ class TestStyles:
         """styles.css has hero/choice-chip/bottom-actions/toast styles."""
         css = _read(H5_CSS)
         assert ".hero-card" in css or ".hero" in css, "hero style not found"
-        assert ".choice-chip" in css, "choice-chip style not found"
+        assert ".choice-chip" in css or ".recipient-card" in css or ".scene-chip" in css, "choice card/chip style not found"
         assert ".bottom-actions" in css, "bottom-actions style not found"
         assert ".toast" in css, "toast style not found"
 
