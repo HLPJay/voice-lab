@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-BACKEND-ERROR-CONTRACT-C6（已完成）→ 下一步：P17-XIANGTA-PROFILE-MAPPING-DESIGN-C7**
+**P17-XIANGTA-PROFILE-MAPPING-DESIGN-C7（已完成）→ 下一步：P17-XIANGTA-H5-DESIGN-ALIGNMENT-C8**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -50,7 +50,7 @@
 | P17-XIANGTA-TTS-TASK-ORCHESTRATION-DESIGN-C4 | 异步 TTS task 设计（async API + queue strategy） | ✅ |
 | P17-XIANGTA-COPYWRITING-LLM-DESIGN-C5 | LLM Copywriting 设计（gateway + fallback + security） | ✅ |
 | P17-XIANGTA-BACKEND-ERROR-CONTRACT-C6 | Error Contract 设计（统一错误 schema + errorKind 枚举） | ✅ |
-| P17-XIANGTA-PROFILE-MAPPING-DESIGN-C7 | voicePreset → coreProfileId 映射产品化设计 | Next |
+| P17-XIANGTA-PROFILE-MAPPING-DESIGN-C7 | voicePreset → coreProfileId 映射产品化设计 | ✅ |
 | P17-XIANGTA-H5-DESIGN-ALIGNMENT-C8 | H5 设计对齐（适配新 API 契约） | Next |
 | P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | Next |
 | P17-XIANGTA-A3 | 历史占位：真实 LLM 接入 | Parked |
