@@ -15,7 +15,7 @@ NOTE: 本模块不注册到主应用（app/main.py）。
   GET  /letters               ✅ 可用，当前为进程内内存存储
   /admin/*                    ✅ 本地/Admin 配置接口，生产前需鉴权或 dev-only gate
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import JSONResponse
 
 from src.xiangta.api.schemas import (
@@ -45,10 +45,33 @@ from src.xiangta.config.product_config_writer import (
     InvalidCoreProfileError,
     InvalidRenderOverrideError,
 )
+from src.xiangta.config.runtime_config import load_runtime_config
 from src.xiangta.services.error_translator import XiangTaError
 from src.xiangta.services.product_service import create_product_service
 
 router = APIRouter(prefix="/api/xiangta", tags=["xiangta"])
+
+
+def _admin_forbidden() -> HTTPException:
+    return HTTPException(
+        status_code=403,
+        detail={
+            "ok": False,
+            "errorKind": "admin_forbidden",
+            "message": "Admin API is not enabled or token is invalid.",
+            "retryable": False,
+        },
+    )
+
+
+async def require_admin(x_xiangta_admin_token: str | None = Header(default=None)) -> None:
+    config = load_runtime_config()
+    if not config.admin_enabled:
+        raise _admin_forbidden()
+    if not config.admin_token:
+        raise _admin_forbidden()
+    if x_xiangta_admin_token != config.admin_token:
+        raise _admin_forbidden()
 
 
 @router.get("/core/profiles", response_model=CoreProfilesResponse)
@@ -100,7 +123,7 @@ async def provider_status():
     return ProviderStatusResponse(data=data)
 
 
-@router.get("/admin/config", response_model=AdminConfigResponse)
+@router.get("/admin/config", response_model=AdminConfigResponse, dependencies=[Depends(require_admin)])
 async def admin_config():
     """Admin-only: return full config snapshot including Core mapping fields."""
     svc = create_product_service()
@@ -108,14 +131,14 @@ async def admin_config():
     return AdminConfigResponse(data=data)
 
 
-@router.get("/admin/voice-mappings", response_model=AdminVoiceMappingsResponse)
+@router.get("/admin/voice-mappings", response_model=AdminVoiceMappingsResponse, dependencies=[Depends(require_admin)])
 async def admin_voice_mappings():
     """Admin-only: return all voice mappings with Core fields."""
     svc = create_product_service()
     return AdminVoiceMappingsResponse(data=svc.get_admin_voice_mappings())
 
 
-@router.get("/admin/tone-presets", response_model=AdminTonePresetsResponse)
+@router.get("/admin/tone-presets", response_model=AdminTonePresetsResponse, dependencies=[Depends(require_admin)])
 async def admin_tone_presets():
     """Admin-only: return all tone presets with render overrides."""
     svc = create_product_service()
@@ -130,7 +153,7 @@ def _write_error_response(exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"ok": False, "errorKind": "write_failed", "message": str(exc)})
 
 
-@router.put("/admin/voice-mappings/{id}", response_model=AdminVoiceMappingItemResponse)
+@router.put("/admin/voice-mappings/{id}", response_model=AdminVoiceMappingItemResponse, dependencies=[Depends(require_admin)])
 async def admin_update_voice_mapping(id: str, body: AdminVoiceMappingUpdateRequest):
     """Admin-only: update a voice mapping by id."""
     svc = create_product_service()
@@ -141,7 +164,7 @@ async def admin_update_voice_mapping(id: str, body: AdminVoiceMappingUpdateReque
         return _write_error_response(exc)
 
 
-@router.patch("/admin/voice-mappings/{id}/enabled", response_model=AdminVoiceMappingItemResponse)
+@router.patch("/admin/voice-mappings/{id}/enabled", response_model=AdminVoiceMappingItemResponse, dependencies=[Depends(require_admin)])
 async def admin_toggle_voice_mapping_enabled(id: str, body: AdminToggleEnabledRequest):
     """Admin-only: toggle enabled state of a voice mapping."""
     svc = create_product_service()
@@ -152,7 +175,7 @@ async def admin_toggle_voice_mapping_enabled(id: str, body: AdminToggleEnabledRe
         return _write_error_response(exc)
 
 
-@router.put("/admin/tone-presets/{id}", response_model=AdminTonePresetItemResponse)
+@router.put("/admin/tone-presets/{id}", response_model=AdminTonePresetItemResponse, dependencies=[Depends(require_admin)])
 async def admin_update_tone_preset(id: str, body: AdminTonePresetUpdateRequest):
     """Admin-only: update a tone preset by id."""
     svc = create_product_service()
@@ -163,7 +186,7 @@ async def admin_update_tone_preset(id: str, body: AdminTonePresetUpdateRequest):
         return _write_error_response(exc)
 
 
-@router.patch("/admin/tone-presets/{id}/enabled", response_model=AdminTonePresetItemResponse)
+@router.patch("/admin/tone-presets/{id}/enabled", response_model=AdminTonePresetItemResponse, dependencies=[Depends(require_admin)])
 async def admin_toggle_tone_preset_enabled(id: str, body: AdminToggleEnabledRequest):
     """Admin-only: toggle enabled state of a tone preset."""
     svc = create_product_service()

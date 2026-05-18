@@ -27,6 +27,9 @@ _RUNTIME_JSON_PATH = _CONFIG_DIR / "runtime.json"
 # ── Default config ─────────────────────────────────────────────────────────────
 
 _DEFAULT_CONFIG: dict[str, Any] = {
+    "admin": {
+        "enabled": False,
+    },
     "core": {
         "enabled": False,
         "baseUrl": "",
@@ -96,6 +99,10 @@ class XiangTaRuntimeConfig:
     core_base_url: str | None = None
     core_timeout_secs: float = 20.0
 
+    # Admin
+    admin_enabled: bool = False
+    admin_token: str | None = None
+
     # Core (new)
     core_enabled: bool = False
     core_url: str | None = None
@@ -164,6 +171,15 @@ def _apply_env_overrides(config: dict) -> dict:
     Apply XIANGTA_* env vars on top of config dict.
     Priority: explicit env > config file > default.
     """
+    # Admin
+    admin = dict(config.get("admin", {}))
+    admin_enabled_env_str = _get_env("XIANGTA_ADMIN_ENABLED")
+    if admin_enabled_env_str is not None:
+        parsed = _parse_bool(admin_enabled_env_str)
+        admin["enabled"] = parsed if parsed is not None else False
+    config = dict(config)
+    config["admin"] = admin
+
     # Core
     core_base_url_env = _get_env("XIANGTA_CORE_BASE_URL")
     core_timeout_env = _get_env("XIANGTA_CORE_TIMEOUT_SECS")
@@ -187,7 +203,6 @@ def _apply_env_overrides(config: dict) -> dict:
         except ValueError:
             pass  # fall back to file/default
 
-    config = dict(config)
     config["core"] = core
 
     # Copywriting
@@ -284,6 +299,7 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
     config = _apply_env_overrides(config)
 
     # Extract core settings
+    admin = config.get("admin", {})
     core = config.get("core", {})
     copywriting = config.get("copywriting", {})
     tts = config.get("tts", {})
@@ -301,6 +317,9 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
         # Core (backward-compatible)
         core_base_url=core_base_url,
         core_timeout_secs=core_timeout,
+        # Admin
+        admin_enabled=bool(admin.get("enabled", False)),
+        admin_token=_get_env("XIANGTA_ADMIN_TOKEN"),
         # Core (new fields)
         core_enabled=bool(core.get("enabled", False)),
         core_url=(str(core["baseUrl"]) if core.get("baseUrl") else None),
