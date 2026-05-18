@@ -246,6 +246,13 @@ async def suggestions(body: SuggestionsRequest):
             message=str(exc),
             retryable=False,
         )
+    except XiangTaError as exc:
+        return error_response(
+            status_code=400,
+            error_kind=exc.kind,
+            message=exc.message,
+            retryable=exc.retryable,
+        )
 
 
 @router.post("/tts")
