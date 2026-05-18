@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-CORE-AUDIO-LINK-B9（已完成）→ 下一步：P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2 或 P17-XIANGTA-MERGE-DEV-EXECUTE**
+**P17-XIANGTA-ARCHITECTURE-SYNC-B9-DOCFIX（已完成）→ 下一步：P17-XIANGTA-H5-MAIN-FLOW-POLISH-C1**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -16,33 +16,48 @@
 | P17-XIANGTA-A1-FIX1 | 抽离配置加载（config/loader.py）与 Bootstrap 组装（BootstrapService），消除 product_service.py 责任膨胀 | ✅ |
 | P17-XIANGTA-A2 | TtsOrchestrator + VoiceLabGateway dry-run 合约：产品层 → Core 边界完整 dry-run，不调用真实 Provider | ✅ |
 | P17-XIANGTA-DOCS-FIX1 | 修正 docs/xiangta 路径、示例值和 XiangTa→Core 调用边界 | ✅ |
-| P17-XIANGTA-PRODUCT-CONFIG-B1 | 产品配置模型落地总阶段：先仓储，再 bootstrap，再映射服务，再状态收口 | Active |
+| P17-XIANGTA-PRODUCT-CONFIG-B1 | 产品配置模型落地总阶段 | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1-1 | ProductConfigRepository 与产品配置模型基础落地 | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1-2 | BootstrapService 接入 ProductConfigRepository | ✅ |
-| P17-XIANGTA-PRODUCT-CONFIG-B1-3 | VoicePresetMappingService / TonePresetService 接入 ProductConfigRepository，并切换 TTS dry-run 主链路 | ✅ |
+| P17-XIANGTA-PRODUCT-CONFIG-B1-3 | VoicePresetMappingService / TonePresetService 接入 ProductConfigRepository | ✅ |
 | P17-XIANGTA-PRODUCT-CONFIG-B1-4 | ProviderStatus / limits / tone 配置读取边界收口 | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-A0 | Core render 接入前置审查与 mock 策略确认 | ✅ |
-| P17-XIANGTA-CORE-RENDER-B2-B1a | VoiceLabGateway 接 Core render HTTP contract mock path（仅 Gateway，不切 TtsOrchestrator） | ✅ |
+| P17-XIANGTA-CORE-RENDER-B2-B1a | VoiceLabGateway 接 Core render HTTP contract mock path | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-B1b | TtsOrchestrator 切到 VoiceLabGateway.generate_tts() | ✅ |
-| P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test with app route + DB fixtures | ✅ |
+| P17-XIANGTA-CORE-RENDER-B2-B2 | Core render mock integration test | ✅ |
 | P17-XIANGTA-CORE-RENDER-B2-B3 | XiangTa app-level Core mock integration test | ✅ |
 | P17-XIANGTA-PROVIDER-STATUS-B3 | ProviderStatus runtime/status mock path | ✅ |
-| P17-XIANGTA-ADMIN-CONFIG-B4-1 | 配置管理只读 API（voice-mappings / tone-presets / config） | ✅ |
+| P17-XIANGTA-ADMIN-CONFIG-B4-1 | 配置管理只读 API | ✅ |
 | P17-XIANGTA-ADMIN-CONFIG-B4-2 | 配置管理写接口设计与安全边界 | ✅ |
-| P17-XIANGTA-ADMIN-CONFIG-B4-3 | 配置管理写接口最小实现（update existing + enable/disable） | ✅ |
-| P17-XIANGTA-COPYWRITING-B5-1 | CopywritingService 模板文案建议，POST /suggestions 闭环 | ✅ |
-| P17-XIANGTA-LETTERS-B6-1 | letters/history 进程内内存闭环（POST/GET /letters） | ✅ |
-| P17-XIANGTA-H5-B7-1 | H5 静态前端主流程（bootstrap→suggestions→tts→letters） | ✅ |
-| P17-XIANGTA-H5-B7-1-FIX1 | 移动 serve.py 到 apps/xiangta-h5/，补充 DESIGN_REFERENCE.md 设计来源文档 | ✅ |
-| P17-XIANGTA-MVP-CLOSEOUT-B7 | 后端 + H5 MVP closeout / 合并前验收，生成 MVP_CLOSEOUT_REPORT.md，512 tests 全绿 | ✅ |
-| P17-XIANGTA-MERGE-DEV-REVIEW | 合并 p17/xiangta-product-init → dev 前代码审查，结论：PASS_WITH_NOTES | ✅ |
-| P17-XIANGTA-RUNTIME-B8-1 | 新增 apps/xiangta_runtime/main.py，同源挂载 H5 + /api/xiangta/*，scoped 530 tests 全绿 | ✅ |
-| P17-XIANGTA-CORE-AUDIO-LINK-B9 | XiangTa → Core HTTP API 链路：GET /api/voice/profiles、POST /api/voice/render、profileId 直传、H5 audio 展示，572 tests 全绿 | ✅ |
-| P17-XIANGTA-CORE-AUDIO-LINK-B9-MANUAL-SMOKE | 本地双服务联调（Core + XiangTa），验证完整音频链路 | Next |
-| P17-XIANGTA-RUNTIME-MANUAL-SMOKE-B8-2 | 本地浏览器手工冒烟测试（可选） | Next |
+| P17-XIANGTA-ADMIN-CONFIG-B4-3 | 配置管理写接口最小实现 | ✅ |
+| P17-XIANGTA-COPYWRITING-B5-1 | CopywritingService 模板文案建议 | ✅ |
+| P17-XIANGTA-LETTERS-B6-1 | letters/history 进程内内存闭环 | ✅ |
+| P17-XIANGTA-H5-B7-1 | H5 静态前端主流程 | ✅ |
+| P17-XIANGTA-H5-B7-1-FIX1 | serve.py 迁移 + DESIGN_REFERENCE.md | ✅ |
+| P17-XIANGTA-MVP-CLOSEOUT-B7 | MVP closeout，512 tests 全绿 | ✅ |
+| P17-XIANGTA-MERGE-DEV-REVIEW | 合并前代码审查，PASS_WITH_NOTES | ✅ |
+| P17-XIANGTA-RUNTIME-B8-1 | apps/xiangta_runtime/main.py，530 tests 全绿 | ✅ |
+| P17-XIANGTA-CORE-AUDIO-LINK-B9 | Core HTTP API 链路打通，583 tests 全绿 | ✅ |
+| P17-XIANGTA-CORE-AUDIO-LINK-B9-FIX1 | H5 渲染修复 + tone 异常转换 | ✅ |
+| P17-XIANGTA-CORE-AUDIO-LINK-B9-FIX2 | Core HTTP URL 重复拼接修复 | ✅ |
+| P17-XIANGTA-CORE-AUDIO-LINK-B9-FIX3 | Core audioUrl 绝对路径修复 | ✅ |
+| P17-XIANGTA-ARCHITECTURE-SYNC-B9-DOCFIX | B9 文档固化与架构同步 | ✅ |
+| P17-XIANGTA-H5-MAIN-FLOW-POLISH-C1 | H5 polish（favicon/UX细节） | Next |
+| P17-XIANGTA-PROFILE-MAPPING-DESIGN-C2 | voicePreset → coreProfileId 映射产品化 | Next |
+| P17-XIANGTA-TTS-TASK-ORCHESTRATION-DESIGN-C3 | 异步 TTS task 设计 | Next |
+| P17-XIANGTA-TTS-ERROR-UX-C4 | 错误UX收口 | Next |
 | P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | Next |
-| P17-XIANGTA-A3 | 历史占位：真实 Core TTS 接入，已后移到配置模型落地之后 | Parked |
-| P17-XIANGTA-A5 | 前端工程化与主路径联调 | TODO |
+| P17-XIANGTA-A3 | 历史占位：真实 LLM 接入 | Parked |
+| P17-XIANGTA-A5 | 前端工程化与主路径联调 | Parked |
+
+## 本阶段约束
+
+**不要在当前阶段直接做：**
+- LLM 文案接入（待 B9 smoke 稳定后评估）
+- 持久化（letters 当前为进程内内存，重启丢失）
+- 高并发架构（当前 B9 为同步单用户链路）
+- 异步 task（后续在 TTS-TASK-ORCHESTRATION-DESIGN-C3 中设计）
+- 修改 Core（Core 是底座，XiangTa 只通过 HTTP API 使用）
 
 ## Core Contract Gap 登记区
 

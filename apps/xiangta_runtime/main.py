@@ -5,8 +5,10 @@
   /h5/*           — H5 静态页面（apps/xiangta-h5/）
   /               — 重定向到 /h5/index.html
 
-不接真实 Provider / LLM / Core http client。
-/tts 默认返回稳定 400 no_provider，是当前 MVP 预期行为。
+runtime 本身不直接调用真实 Provider，不读取真实 Provider API key。
+当配置 XIANGTA_CORE_BASE_URL 环境变量时，src/xiangta 通过 HTTP 调用 Voice Lab Core 上层 API。
+Core 作为独立服务运行（port 8000），XiangTa runtime 作为产品入口（port 5174）。
+/tts 链路：H5 → XiangTa runtime → Core HTTP API → audioUrl → H5 audio player。
 """
 from pathlib import Path
 

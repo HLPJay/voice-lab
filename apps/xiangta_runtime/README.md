@@ -2,9 +2,20 @@
 
 ## 定位
 
-XiangTa 本地开发运行入口（P17-XIANGTA-RUNTIME-B8-1），让 H5 和 `/api/xiangta/*` 可以在同一个 FastAPI app 下同源运行。
+XiangTa 本地开发运行入口（P17-XIANGTA-RUNTIME-B8-1），让 H5 和 `/api/xiangta/*` 在同一个 FastAPI app 下同源运行。
 
-不修改 Voice Lab Core（`app/main.py`）。
+**不修改 Voice Lab Core（`app/main.py`）。**
+
+## 架构关系
+
+```
+apps/xiangta_runtime  — 运行入口（壳），挂载路由和静态文件
+apps/xiangta-h5      — 静态前端（HTML/JS/CSS）
+src/xiangta          — 产品后端服务层（routes, services, schemas）
+app/**               — Voice Lab Core 底座（独立运行）
+```
+
+apps 是应用壳，src/xiangta 是产品服务层，app 是音频能力底座。
 
 ## 路由结构
 
@@ -13,40 +24,90 @@ XiangTa 本地开发运行入口（P17-XIANGTA-RUNTIME-B8-1），让 H5 和 `/ap
 | `/` | 重定向到 `/h5/index.html` |
 | `/h5/*` | H5 静态页面（`apps/xiangta-h5/` 目录） |
 | `/api/xiangta/bootstrap` | XiangTa bootstrap API |
-| `/api/xiangta/suggestions` | 文案建议 |
-| `/api/xiangta/tts` | TTS（默认返回 400 no_provider，见下） |
-| `/api/xiangta/letters` | 信笺历史 |
-| `/api/xiangta/admin/config` | Admin 配置 |
+| `/api/xiangta/suggestions` | 文案建议（模板版） |
+| `/api/xiangta/tts` | TTS（B9：支持 profileId 直传 Core render） |
+| `/api/xiangta/core/profiles` | 读取 Core profiles（B9 新增） |
+| `/api/xiangta/letters` | 信笺历史（进程内内存） |
+| `/api/xiangta/admin/*` | Admin 配置管理 |
+| `/api/voice/*` | **不在 XiangTa runtime**，属于 Core 服务（port 8000） |
 
 ## 启动命令
 
+### 终端 1：Voice Lab Core
+
 ```bash
-# 在项目根目录 voice_lab/ 下执行
-python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5173
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### 终端 2：XiangTa Runtime
+
+PowerShell：
+```powershell
+$env:XIANGTA_CORE_BASE_URL="http://127.0.0.1:8000"
+python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5174
+```
+
+CMD：
+```cmd
+set XIANGTA_CORE_BASE_URL=http://127.0.0.1:8000
+python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5174
+```
+
+Linux / macOS：
+```bash
+export XIANGTA_CORE_BASE_URL=http://127.0.0.1:8000
+python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5174
 ```
 
 访问：
-- 主页面：<http://127.0.0.1:5173/>
-- Bootstrap API：<http://127.0.0.1:5173/api/xiangta/bootstrap>
-- H5 页面：<http://127.0.0.1:5173/h5/index.html>
+- 主页面：<http://127.0.0.1:5174/>
+- Bootstrap API：<http://127.0.0.1:5174/api/xiangta/bootstrap>
+- Core profiles：<http://127.0.0.1:5174/api/xiangta/core/profiles>
+- H5 页面：<http://127.0.0.1:5174/h5/index.html>
 
-> 注意：H5 `app.js` 使用 `API_BASE = ""`（相对路径），会请求 `/api/xiangta/*`，与本 runtime 同源，无 CORS 问题。
+> H5 `app.js` 使用 `API_BASE = ""`（相对路径），会请求 `/api/xiangta/*`，与本 runtime 同源，无 CORS 问题。
 
-## MVP 限制
+## B9 Core Audio Link
 
-- **`/tts` 默认返回 `400 no_provider`**：runtime 没有注入 Core http_client，TTS 流程稳定降级。这是当前 MVP 预期行为，不是 bug。
-- **`/letters` 进程内内存**：重启丢失，不适合生产。
-- **`/suggestions` 模板版**：不调用真实 LLM。
-- **不接真实 Provider / LLM**。真实 Provider 接入是后续独立阶段。
+B9 已打通完整链路：
+
+```
+H5
+→ GET /api/xiangta/core/profiles
+→ Core GET /api/voice/profiles
+→ H5 coreProfileSelect 展示人设
+→ POST /api/xiangta/tts {profileId, text, ...}
+→ Core HTTP POST /api/voice/render
+→ Core 返回 audio_asset.url
+→ VoiceLabGateway.absolute_url() 转换为 Core 绝对 URL
+→ XiangTa 返回 audioUrl
+→ H5 <audio controls> 播放
+```
+
+## 注意事项
+
+- **XiangTa runtime 不挂载 Core**。Core 运行在独立进程（port 8000），XiangTa 通过 `XIANGTA_CORE_BASE_URL` 环境变量配置的 HTTP 地址访问。
+- **XiangTa runtime 不代理 Core assets**。audioUrl 由 `CoreHttpClient.absolute_url()` 转换为 `http://127.0.0.1:8000/api/voice/assets/...`，浏览器直接请求 Core。
+- **`/favicon.ico 404` 非阻塞**。浏览器自动请求，不影响 TTS 和 audio 播放。
+- **`/letters` 进程内内存**。重启丢失，不适合生产。
+- **`/suggestions` 模板版**。不调用真实 LLM。
 
 ## 本地调试
 
 ```bash
-# 单独测试 bootstrap
-curl http://127.0.0.1:5173/api/xiangta/bootstrap | python -m json.tool
+# 测试 bootstrap
+curl http://127.0.0.1:5174/api/xiangta/bootstrap | python -m json.tool
+
+# 测试 Core profiles
+curl http://127.0.0.1:5174/api/xiangta/core/profiles | python -m json.tool
 
 # 测试 suggestions
-curl -X POST http://127.0.0.1:5173/api/xiangta/suggestions \
+curl -X POST http://127.0.0.1:5174/api/xiangta/suggestions \
   -H "Content-Type: application/json" \
   -d '{"recipient":"lover","scene":"miss","rawText":"好想你呀今天"}' | python -m json.tool
+
+# 测试 TTS（需先配置 XIANGTA_CORE_BASE_URL）
+curl -X POST http://127.0.0.1:5174/api/xiangta/tts \
+  -H "Content-Type: application/json" \
+  -d '{"text":"想念你","voicePreset":"female-gentle","tone":"gentle","recipient":"lover","scene":"miss","profileId":"<core_profile_id>"}' | python -m json.tool
 ```
