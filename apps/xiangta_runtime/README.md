@@ -41,6 +41,8 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ### 终端 2：XiangTa Runtime
 
+**方法一：环境变量（推荐本地开发）**
+
 PowerShell：
 ```powershell
 $env:XIANGTA_CORE_BASE_URL="http://127.0.0.1:8000"
@@ -58,6 +60,26 @@ Linux / macOS：
 export XIANGTA_CORE_BASE_URL=http://127.0.0.1:8000
 python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5174
 ```
+
+**方法二：runtime.json（无需环境变量）**
+
+编辑 `src/xiangta/configs/runtime.json`：
+```json
+{
+  "core": {
+    "enabled": true,
+    "baseUrl": "http://127.0.0.1:8000",
+    "timeoutSecs": 20
+  }
+}
+```
+
+然后直接启动：
+```bash
+python -m uvicorn apps.xiangta_runtime.main:app --reload --host 127.0.0.1 --port 5174
+```
+
+**优先级**：环境变量 > runtime.json > 代码默认值（`core.enabled=false`）
 
 访问：
 - 主页面：<http://127.0.0.1:5174/>

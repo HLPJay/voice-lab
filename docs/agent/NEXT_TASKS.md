@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1（已完成）→ 下一步：P17-XIANGTA-RUNTIME-CONFIG-C2**
+**P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1（已完成）→ 下一步：P17-XIANGTA-STORAGE-DESIGN-C3**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -43,7 +43,7 @@
 | P17-XIANGTA-CORE-AUDIO-LINK-B9-FIX3 | Core audioUrl 绝对路径修复 | ✅ |
 | P17-XIANGTA-ARCHITECTURE-SYNC-B9-DOCFIX | B9 文档固化与架构同步 | ✅ |
 | P17-XIANGTA-BACKEND-CAPABILITY-PLAN-C1 | 产品后端能力路线图：配置/存储/队列/LLM/安全/错误/观测/用户 | ✅ |
-| P17-XIANGTA-RUNTIME-CONFIG-C2 | Runtime Config 设计 + 实现（runtime.json + env override） | Next |
+| P17-XIANGTA-RUNTIME-CONFIG-C2 | Runtime Config 设计 + 实现（runtime.json + env override） | ✅ |
 | P17-XIANGTA-STORAGE-DESIGN-C3 | Storage 设计（SQLite schema + migration） | Next |
 | P17-XIANGTA-TTS-TASK-ORCHESTRATION-DESIGN-C4 | 异步 TTS task 设计（async API + queue strategy） | Next |
 | P17-XIANGTA-COPYWRITING-LLM-DESIGN-C5 | LLM Copywriting 设计（gateway + fallback + security） | Next |

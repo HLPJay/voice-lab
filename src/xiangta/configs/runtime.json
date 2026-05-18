@@ -1,0 +1,29 @@
+{
+  "core": {
+    "enabled": false,
+    "baseUrl": "",
+    "timeoutSecs": 20
+  },
+  "copywriting": {
+    "mode": "template",
+    "provider": "none",
+    "timeoutSecs": 20,
+    "fallbackToTemplate": true
+  },
+  "tts": {
+    "mode": "sync",
+    "maxConcurrent": 1,
+    "queueEnabled": false,
+    "timeoutSecs": 120
+  },
+  "storage": {
+    "type": "memory",
+    "databaseUrl": ""
+  },
+  "features": {
+    "devCoreProfileSelect": true,
+    "lettersEnabled": true,
+    "llmCopywritingEnabled": false,
+    "ttsTaskEnabled": false
+  }
+}
