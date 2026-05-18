@@ -276,6 +276,26 @@ class TestGenerateTtsContract:
                 metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
             )
 
+    @pytest.mark.asyncio
+    async def test_generate_tts_passes_relative_path_to_http_client(self):
+        """B9-FIX2: generate_tts passes /api/voice/render (not full URL) to http_client."""
+        fake_client = FakeCoreClient(_success_payload())
+        gateway = VoiceLabGateway(http_client=fake_client)
+
+        await gateway.generate_tts(
+            text="想念你",
+            target=CoreRenderTarget(profile_id="profile_001", provider=None),
+            tone="gentle",
+            scene="miss",
+            metadata={"voicePresetId": "female-gentle", "toneHint": "soft"},
+        )
+
+        path, _ = fake_client.requests[0]
+        assert path == "/api/voice/render", (
+            f"Expected relative path '/api/voice/render' but got '{path}'. "
+            "VoiceLabGateway must not pass full URL when http_client has base_url."
+        )
+
 
 STATUS_FORBIDDEN_KEYS = {
     "api_key",

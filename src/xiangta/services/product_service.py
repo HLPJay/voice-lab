@@ -269,7 +269,6 @@ def create_product_service() -> "ProductService":
                 timeout=runtime_config.core_timeout_secs,
             )
             gateway = VoiceLabGateway(
-                core_base_url=runtime_config.core_base_url,
                 http_client=core_http_client,
             )
         except Exception:
