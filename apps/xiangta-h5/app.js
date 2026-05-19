@@ -1200,23 +1200,20 @@ function getBootstrapToneLabel(toneId) {
 function updateResultSaveButton() {
   const btn = el("btnResultSave");
   const label = el("resultSaveLabel");
+  const viewHistoryBtn = el("resultViewHistoryBtn");
   if (!btn || !label) return;
   if (state.resultSaved) {
     btn.classList.add("saved");
-    label.textContent = "查看信笺";
-    btn.disabled = false;
-    btn.onclick = function() {
-      if (state.activeLetterDetailId) {
-        openLetterDetail(state.activeLetterDetailId);
-      } else {
-        showScreen("history");
-      }
-    };
+    label.textContent = "已保存";
+    btn.disabled = true;
+    btn.onclick = null;
+    if (viewHistoryBtn) viewHistoryBtn.classList.remove("hidden");
   } else {
     btn.classList.remove("saved");
     label.textContent = "保存到信笺夹";
     btn.disabled = false;
     btn.onclick = function() { resultSave(); };
+    if (viewHistoryBtn) viewHistoryBtn.classList.add("hidden");
   }
 }
 
@@ -1383,7 +1380,7 @@ async function resultSave() {
     setStatus("没有可保存的文字", "warn");
     return;
   }
-  setBusy("btnResultSave", true, "保存中...");
+  setBusy("btnResultSave", true, "正在保存...");
   const suggestion = state.suggestions[state.selectedIndex];
   const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
   const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
@@ -1413,8 +1410,12 @@ async function resultSave() {
 
   const savedLetter = buildSavedLetterViewModel(response);
   upsertLetterIntoState(savedLetter);
+  state.activeLetterDetailId = savedLetter.id || savedLetter.letterId;
+  state.activeLetterDetail = savedLetter;
+  state.letterDetailFavoritedMap[state.activeLetterDetailId] = true;
 
-  showResultSaveSealThenOpenDetail(savedLetter);
+  showToast("已保存到信笺夹");
+  updateResultSaveButton();
 }
 
 async function generateTts() {

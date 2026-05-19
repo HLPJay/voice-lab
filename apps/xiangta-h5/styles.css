@@ -2202,6 +2202,23 @@ body {
   background: var(--accent-soft);
   color: var(--accent-ink);
   border: 1px solid rgba(217, 149, 74, 0.42);
+  cursor: not-allowed;
+}
+
+.result-view-history-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: var(--xt-accent-ink);
+  font-size: 14px;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
 }
 
 .result-bottom-note {
