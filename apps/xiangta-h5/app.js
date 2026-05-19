@@ -153,6 +153,31 @@ function setStatus(message, kind) {
   node.className = "status-bar status-" + (kind || "idle");
 }
 
+/**
+ * Normalize an audio URL to a same-origin proxy URL when the original URL is
+ * a localhost / 127.0.0.1 / 0.0.0.0 address that is unreachable from mobile.
+ *
+ * Rules:
+ *   "" / null / undefined  → ""
+ *   Already a proxy URL    → unchanged
+ *   localhost / 127.0.0.1 / 0.0.0.0 (any scheme+port) → /api/xiangta/audio/proxy?url=<encoded>
+ *   Everything else        → unchanged
+ */
+function normalizePlayableAudioUrl(audioUrl) {
+  if (!audioUrl) return "";
+  if (audioUrl.startsWith("/api/xiangta/audio/proxy")) return audioUrl;
+  try {
+    const parsed = new URL(audioUrl);
+    const host = parsed.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+      return "/api/xiangta/audio/proxy?url=" + encodeURIComponent(audioUrl);
+    }
+  } catch (_) {
+    // Not a parseable absolute URL — return as-is
+  }
+  return audioUrl;
+}
+
 function showToast(message) {
   let toast = el("toastEl");
   if (!toast) {
@@ -1100,7 +1125,7 @@ function renderTtsTask(result) {
   if (result.message) html += `<div class="tts-meta-row"><span class="tts-meta-key">说明</span><span class="tts-meta-value">${escHtml(result.message)}</span></div>`;
   html += "</div>";
   if (result.audioUrl) {
-    html += `<div class="tts-audio"><audio controls preload="none" src="${escHtml(result.audioUrl)}"></audio></div>`;
+    html += `<div class="tts-audio"><audio controls preload="none" src="${escHtml(normalizePlayableAudioUrl(result.audioUrl))}"></audio></div>`;
   } else if (result.status === "completed") {
     html += '<div class="tts-hint">任务已完成，但没有返回可播放音频地址。请检查 Core render 返回的 audio_asset.url。</div>';
   } else {
@@ -1136,7 +1161,7 @@ function renderResultMetaPills() {
 
 function renderResultScreen(result) {
   const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
-  const audioUrl = result.audioUrl || "";
+  const audioUrl = normalizePlayableAudioUrl(result.audioUrl || "");
   const durationMs = result.durationMs || 0;
   const durationSecs = durationMs / 1000;
 
@@ -1435,7 +1460,7 @@ function buildSavedLetterViewModel(responseData) {
     finalText: state.finalText || (el("finalTextArea")?.value || "").trim(),
     voicePreset: state.selectedVoice || src.voicePreset || null,
     tone: state.selectedTone || src.tone || null,
-    audioUrl: state.ttsResult ? (state.ttsResult.audioUrl || null) : (src.audioUrl || null),
+    audioUrl: normalizePlayableAudioUrl(state.ttsResult ? (state.ttsResult.audioUrl || "") : (src.audioUrl || "")) || null,
     durationSecs: state.ttsResult ? (state.ttsResult.durationMs ? state.ttsResult.durationMs / 1000 : null) : (src.durationSecs || null),
     title: src.title || null,
     createdAt: src.createdAt || new Date().toISOString(),
@@ -1538,7 +1563,7 @@ async function resultSave() {
   }
   setResultSaveBusy(true, "正在收好...");
   const suggestion = state.suggestions[state.selectedIndex];
-  const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
+  const audioUrl = normalizePlayableAudioUrl(state.ttsResult ? (state.ttsResult.audioUrl || "") : "") || null;
   const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
 
   const response = await apiFetch("/api/xiangta/letters", {
@@ -1614,7 +1639,7 @@ async function saveLetter() {
   }
   setBusy("btnSaveLetter", true, "保存中...");
   const suggestion = state.suggestions[state.selectedIndex];
-  const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
+  const audioUrl = normalizePlayableAudioUrl(state.ttsResult ? (state.ttsResult.audioUrl || "") : "") || null;
   const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
   const response = await apiFetch("/api/xiangta/letters", {
     method: "POST",
@@ -2118,7 +2143,7 @@ function playHistoryLetter(letterOrId) {
 
   setupHistoryAudioListeners();
 
-  audio.src = letter.audioUrl;
+  audio.src = normalizePlayableAudioUrl(letter.audioUrl);
   state.activeHistoryLetterId = letterId;
   state.historyAudioPlaying = false;
   state.historyAudioCurrentTime = 0;
@@ -2155,7 +2180,7 @@ function playHomeRecentLetter(letter) {
 
   state.homeRecentLetterId = letterId;
   state.homeRecentAudioPlaying = false;
-  audio.src = letter.audioUrl;
+  audio.src = normalizePlayableAudioUrl(letter.audioUrl);
   audio.currentTime = 0;
 
   audio.play().then(function() {
@@ -2530,7 +2555,7 @@ function renderLetterDetailScreen(letter) {
     if (audioSection) audioSection.classList.remove("hidden");
     if (emptyAudio) emptyAudio.classList.add("hidden");
     if (audio) {
-      audio.src = letter.audioUrl || "";
+      audio.src = normalizePlayableAudioUrl(letter.audioUrl || "");
       audio.load();
     }
     // Voice name and time

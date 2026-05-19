@@ -18,8 +18,11 @@ NOTE: 本模块不注册到主应用（app/main.py）。
   PATCH /letters/{id}/favorite ✅ 可用
   /admin/*                    ✅ 本地/Admin 配置接口，生产前需鉴权或 dev-only gate
 """
-from fastapi import APIRouter, Header
-from fastapi.responses import JSONResponse
+import urllib.parse
+
+import httpx
+from fastapi import APIRouter, Header, Query, Request
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from src.xiangta.api.error_contract import error_response
 from src.xiangta.api.schemas import (
@@ -369,3 +372,108 @@ async def update_letter_favorite(letter_id: str, body: UpdateLetterFavoriteReque
             retryable=False,
         )
     return UpdateLetterFavoriteResponse(data=updated)
+
+
+# ---------------------------------------------------------------------------
+# Same-origin audio proxy (P25V-FIX1)
+#
+# Mobile browsers cannot reach 127.0.0.1 / localhost audio URLs returned by
+# Core.  This endpoint fetches the audio server-side and streams it back
+# through the same origin as the H5 page.
+#
+# Security: only URLs whose host:port match core_base_url are allowed.
+# ---------------------------------------------------------------------------
+
+def _parse_core_netloc(core_base_url: str) -> str:
+    """Return 'host:port' or 'host' from the configured core_base_url."""
+    parsed = urllib.parse.urlparse(core_base_url)
+    return parsed.netloc  # e.g. '127.0.0.1:8000'
+
+
+@router.get("/audio/proxy")
+async def audio_proxy(
+    request: Request,
+    url: str = Query(default=""),
+):
+    """
+    Proxy a Core audio asset URL through the same origin so that mobile
+    browsers can play it without hitting a localhost address.
+
+    Only URLs whose host:port match the configured core_base_url are
+    allowed — this is NOT an open proxy.
+    """
+    # 1. Require url parameter
+    if not url:
+        return error_response(
+            status_code=400,
+            error_kind="bad_request",
+            message="Missing required query parameter: url",
+            retryable=False,
+        )
+
+    # 2. Require http/https scheme
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except Exception:
+        parsed = None
+
+    if not parsed or parsed.scheme not in ("http", "https"):
+        return error_response(
+            status_code=400,
+            error_kind="bad_request",
+            message="url must be an http or https URL",
+            retryable=False,
+        )
+
+    # 3. Validate against core_base_url allowlist — prevent open proxy
+    config = load_runtime_config()
+    core_base_url = config.core_base_url
+    if not core_base_url:
+        return error_response(
+            status_code=503,
+            error_kind="not_configured",
+            message="Core base URL is not configured; audio proxy unavailable",
+            retryable=False,
+        )
+
+    allowed_netloc = _parse_core_netloc(core_base_url)
+    if parsed.netloc != allowed_netloc:
+        return error_response(
+            status_code=403,
+            error_kind="forbidden",
+            message="Target URL host is not on the allowlist",
+            retryable=False,
+        )
+
+    # 4. Forward the request to Core
+    headers: dict[str, str] = {}
+    if "range" in request.headers:
+        headers["Range"] = request.headers["range"]
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            upstream = await client.get(url, headers=headers)
+    except httpx.RequestError as exc:
+        return error_response(
+            status_code=502,
+            error_kind="upstream_error",
+            message=f"Failed to fetch audio from Core: {type(exc).__name__}",
+            retryable=True,
+        )
+
+    # 5. Build response headers to forward
+    forward_headers: dict[str, str] = {}
+    content_type = upstream.headers.get("content-type", "audio/mpeg")
+    forward_headers["Content-Type"] = content_type
+    if "content-length" in upstream.headers:
+        forward_headers["Content-Length"] = upstream.headers["content-length"]
+    if "content-range" in upstream.headers:
+        forward_headers["Content-Range"] = upstream.headers["content-range"]
+    if "accept-ranges" in upstream.headers:
+        forward_headers["Accept-Ranges"] = upstream.headers["accept-ranges"]
+
+    return Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        headers=forward_headers,
+    )
