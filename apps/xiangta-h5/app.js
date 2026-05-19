@@ -2012,118 +2012,114 @@ function renderSettingsScreen() {
   const voiceStatus = state.voiceBindingStatus;
   const lettersCount = (state.letters || []).length;
 
-  // Provider status display
+  // Provider status
   const providerKind = providerStatus?.kind || "unknown";
-  const providerLabel = providerStatus?.label || "检查中";
-  const providerDetail = providerStatus?.detail || "";
-  const providerOk = providerKind === "ok";
+  const providerOk   = providerKind === "ok";
   const providerWarn = providerKind === "quota" || providerKind === "degraded" || providerKind === "not_integrated";
   const providerError = providerKind === "error";
+  const providerLabel = providerOk ? "正常" : providerWarn ? "额度紧张" : providerError ? "未连接" : "检查中";
+  const providerDetail = providerStatus?.detail || "";
+  const pillTone = providerOk ? "ok" : providerWarn ? "warn" : providerError ? "error" : "mute";
   const providerDotClass = providerOk ? "status-dot-ok" : providerWarn ? "status-dot-warn" : providerError ? "status-dot-error" : "status-dot-idle";
+  const quotaPct = providerStatus?.quotaPct ?? 1;
+  const quotaDisplay = providerKind === "quota" ? "不足" : providerKind === "no_provider" ? "—" : Math.round(quotaPct * 100) + "%";
+  const quotaBarColor = providerWarn ? "var(--warn)" : providerError ? "var(--danger)" : "var(--xt-accent)";
 
-  // Voice binding display
+  // Voice binding
   const bindingItems = voiceStatus?.items || [];
-  const boundCount = bindingItems.filter(function(item) { return item.bound; }).length;
+  const boundCount = bindingItems.filter(function(i) { return i.bound; }).length;
   const totalVoices = 4;
-
-  // Build voice binding rows
-  const voiceNames = {
-    "female-gentle": "温柔女声",
-    "male-gentle": "温柔男声",
-    "female-bright": "明亮女声",
-    "male-mature": "成熟男声",
-  };
+  const voiceNames = { "female-gentle": "温柔女声", "male-gentle": "温柔男声", "female-bright": "明亮女声", "male-mature": "成熟男声" };
   const voiceOrder = ["female-gentle", "male-gentle", "female-bright", "male-mature"];
 
   let bindingRowsHtml = "";
   voiceOrder.forEach(function(voiceId) {
     const item = bindingItems.find(function(i) { return i.voicePreset === voiceId; });
-    const bound = item?.bound || false;
+    const bound = item ? item.bound : false;
     const badgeClass = bound ? "binding-badge-ok" : "binding-badge-warn";
-    const badgeText = bound ? "已绑定" : "未绑定";
-    const name = voiceNames[voiceId] || voiceId;
+    const badgeText  = bound ? "已绑定" : "未绑定";
     bindingRowsHtml +=
       "<div class=\"settings-binding-row\">" +
-        "<span class=\"settings-binding-name\">" + escHtml(name) + "</span>" +
+        "<span class=\"settings-binding-name\">" + escHtml(voiceNames[voiceId] || voiceId) + "</span>" +
         "<span class=\"settings-binding-badge " + badgeClass + "\">" + badgeText + "</span>" +
       "</div>";
   });
-
-  if (bindingRowsHtml === "") {
-    bindingRowsHtml = "<div class=\"settings-binding-empty\">加载中...</div>";
-  }
-
-  // Local save note
-  const localNoteHtml =
-    "<div class=\"settings-card\">" +
-      "<div class=\"settings-card-title\">本地保存说明</div>" +
-      "<div class=\"settings-card-body\">" +
-        "<div class=\"settings-note-row\">" +
-          "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\"><path d=\"M3 7l3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
-          "<span>本机保存，不替你发送</span>" +
-        "</div>" +
-        "<div class=\"settings-note-row\">" +
-          "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\"><path d=\"M3 7l3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
-          "<span>不自动分享给对方</span>" +
-        "</div>" +
-        "<div class=\"settings-note-row\">" +
-          "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\"><path d=\"M3 7l3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>" +
-          "<span>信笺仅保存在这台设备</span>" +
-        "</div>" +
-      "</div>" +
-    "</div>";
-
-  // Quota percentage for progress bar
-  const quotaPct = providerStatus?.quotaPct ?? 1;
-  const quotaDisplay = providerKind === "quota" ? "不足" : providerKind === "no_provider" ? "—" : Math.round(quotaPct * 100) + "%";
-  const quotaBarColor = providerKind === "quota" ? "var(--warn)" : providerKind === "error" ? "var(--danger)" : "var(--xt-accent)";
+  if (!bindingRowsHtml) bindingRowsHtml = "<div class=\"settings-binding-empty\">加载中...</div>";
 
   container.innerHTML =
-    // Status overview cards
-    "<div class=\"settings-status-grid\">" +
-      "<div class=\"settings-status-card\">" +
-        "<div class=\"settings-status-label\">文案生成</div>" +
-        "<div class=\"settings-status-value\">" +
-          "<span class=\"settings-status-dot " + providerDotClass + "\"></span>" +
-          escHtml(providerLabel) +
+    // ── 服务连接
+    "<div class=\"xt-section-h\">服务连接</div>" +
+    "<div style=\"padding: 0 16px;\">" +
+      "<div class=\"xt-card\" style=\"padding: 16px;\">" +
+        "<div class=\"settings-provider-row\">" +
+          "<div>" +
+            "<div class=\"settings-provider-name\">语音与文案服务</div>" +
+            (providerDetail ? "<div class=\"settings-provider-detail\">" + escHtml(providerDetail) + "</div>" : "") +
+          "</div>" +
+          "<span class=\"settings-status-pill settings-status-pill-" + pillTone + "\">" +
+            "<span class=\"settings-status-dot " + providerDotClass + "\"></span>" +
+            escHtml(providerLabel) +
+          "</span>" +
         "</div>" +
-        providerDetail ? "<div class=\"settings-status-detail\">" + escHtml(providerDetail) + "</div>" : "" +
-      "</div>" +
-      "<div class=\"settings-status-card\">" +
-        "<div class=\"settings-status-label\">声音绑定</div>" +
-        "<div class=\"settings-status-value\">" +
-          boundCount + " / " + totalVoices + " 已绑定" +
+        "<div class=\"settings-hairline\"></div>" +
+        "<div class=\"settings-quota-label\">" +
+          "<span>本月剩余额度</span>" +
+          "<span class=\"settings-quota-pct\">" + quotaDisplay + "</span>" +
+        "</div>" +
+        "<div class=\"settings-quota-track\" style=\"margin-top: 8px;\">" +
+          "<div class=\"settings-quota-fill\" style=\"width:" + Math.round(quotaPct * 100) + "%;background:" + quotaBarColor + ";\"></div>" +
         "</div>" +
       "</div>" +
-      "<div class=\"settings-status-card\">" +
-        "<div class=\"settings-status-label\">本地信笺</div>" +
-        "<div class=\"settings-status-value\">" + lettersCount + " 封</div>" +
+    "</div>" +
+
+    // ── 声线绑定
+    "<div class=\"xt-section-h\">声线绑定</div>" +
+    "<div style=\"padding: 0 16px;\">" +
+      "<div class=\"xt-card\" style=\"padding: 16px;\">" +
+        "<div class=\"settings-provider-row\" style=\"margin-bottom: 12px;\">" +
+          "<div class=\"settings-provider-name\">声线绑定状态</div>" +
+          "<span style=\"font-size: 12px; color: var(--xt-text-3);\">" + boundCount + " / " + totalVoices + " 已绑定</span>" +
+        "</div>" +
+        "<div class=\"settings-binding-list\">" + bindingRowsHtml + "</div>" +
+        "<button class=\"ghost-button settings-voice-bind-btn\" type=\"button\" onclick=\"window.location.href='/h5/admin-voice-bindings.html'\">" +
+          "打开声线绑定配置页" +
+        "</button>" +
       "</div>" +
     "</div>" +
 
-    // Quota progress bar (prototype parity)
-    "<div class=\"settings-quota-bar\">" +
-      "<div class=\"settings-quota-label\">" +
-        "<span>本月剩余额度</span>" +
-        "<span class=\"settings-quota-pct\">" + quotaDisplay + "</span>" +
-      "</div>" +
-      "<div class=\"settings-quota-track\">" +
-        "<div class=\"settings-quota-fill\" style=\"width:" + Math.round(quotaPct * 100) + "%;background:" + quotaBarColor + ";\"></div>" +
+    // ── 云同步（即将开放）
+    "<div class=\"xt-section-h\">云同步 · 即将开放</div>" +
+    "<div style=\"padding: 0 16px;\">" +
+      "<div class=\"settings-sync-card\">" +
+        "<div class=\"settings-provider-row\">" +
+          "<span class=\"settings-provider-name\" style=\"opacity: 0.7;\">多设备同步</span>" +
+          "<span class=\"xt-pill\" style=\"font-size: 10px; padding: 3px 8px;\">之后开放</span>" +
+        "</div>" +
+        "<div class=\"settings-provider-detail\" style=\"margin-top: 6px; opacity: 0.7;\">" +
+          "信笺会在你自己的设备之间安静地同步，不会被任何人读到。" +
+        "</div>" +
       "</div>" +
     "</div>" +
 
-    // Voice binding detail
-    "<div class=\"settings-card\">" +
-      "<div class=\"settings-card-title\">声线绑定状态</div>" +
-      "<div class=\"settings-card-subtitle\">选择你最想听到的声音风格</div>" +
-      "<div class=\"settings-binding-list\">" + bindingRowsHtml + "</div>" +
-      "<button class=\"ghost-button settings-voice-bind-btn\" type=\"button\" onclick=\"window.location.href='/h5/admin-voice-bindings.html'\">" +
-        "打开声线绑定配置页" +
-      "</button>" +
+    // ── 本地数据
+    "<div class=\"xt-section-h\">本地数据</div>" +
+    "<div style=\"padding: 0 16px;\">" +
+      "<div class=\"xt-card\" style=\"padding: 0; overflow: hidden;\">" +
+        "<div class=\"settings-data-row\" style=\"border-bottom: 1px solid var(--xt-hairline);\">" +
+          "<span>已保存信笺</span>" +
+          "<span style=\"font-family: var(--xt-mono); font-size: 12px; color: var(--xt-text-3);\">" + lettersCount + " 封</span>" +
+        "</div>" +
+        "<div class=\"settings-data-row\" style=\"border-bottom: 1px solid var(--xt-hairline);\">" +
+          "<span style=\"color: var(--xt-text-2);\">本机保存 · 不上传</span>" +
+        "</div>" +
+        "<div class=\"settings-data-row\">" +
+          "<span style=\"color: var(--xt-text-3); font-size: 12px;\">信笺仅保存在这台设备</span>" +
+        "</div>" +
+      "</div>" +
     "</div>" +
 
-    // Local save note
-    localNoteHtml;
+    // ── 版本
+    "<div class=\"settings-version\">想他了 · v0.1 · 本机保存</div>";
 }
 
 async function refreshSettingsStatus() {

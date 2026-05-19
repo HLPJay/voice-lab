@@ -2267,6 +2267,130 @@ body {
   z-index: 40;
 }
 
+/* ── History screen prototype header ──────────────────────────────── */
+.history-screen-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 54px 16px 6px;
+}
+
+.history-screen-header-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-screen-title {
+  font-family: var(--xt-serif, serif);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--xt-text);
+  line-height: 1.2;
+}
+
+.history-screen-count {
+  font-size: 12px;
+  color: var(--xt-text-3);
+  margin-top: 6px;
+}
+
+/* ── Settings screen prototype header ─────────────────────────────── */
+.settings-screen-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 54px 16px 6px;
+}
+
+.settings-screen-header-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-screen-title {
+  font-family: var(--xt-serif, serif);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--xt-text);
+  line-height: 1.2;
+}
+
+.settings-screen-subtitle {
+  font-size: 12px;
+  color: var(--xt-text-3);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* ── Settings content components ──────────────────────────────────── */
+.settings-provider-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-provider-name {
+  font-size: 14px;
+  color: var(--xt-text);
+  font-weight: 500;
+}
+
+.settings-provider-detail {
+  font-size: 11px;
+  color: var(--xt-text-3);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.settings-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.settings-status-pill-ok    { background: var(--ok-soft);    color: var(--ok); }
+.settings-status-pill-warn  { background: var(--warn-soft);  color: var(--warn); }
+.settings-status-pill-error { background: var(--error-soft); color: var(--error); }
+.settings-status-pill-mute  { background: rgba(255,255,255,0.04); color: var(--xt-text-3); }
+
+.settings-hairline {
+  height: 1px;
+  background: var(--xt-hairline);
+  margin: 14px 0;
+}
+
+.settings-sync-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--xt-hairline-2);
+  background: transparent;
+  opacity: 0.7;
+}
+
+.settings-data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--xt-text);
+}
+
+.settings-version {
+  font-size: 10px;
+  color: var(--xt-text-4);
+  text-align: center;
+  margin-top: 22px;
+  font-family: var(--xt-mono, monospace);
+  letter-spacing: 0.2em;
+  padding-bottom: 8px;
+}
+
 /* Settings Screen */
 .settings-screen {
   padding-bottom: 32px;
