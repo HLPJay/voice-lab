@@ -245,15 +245,6 @@
           </section>
 
           <div id="durationEstimate" class="duration-estimate"></div>
-          </div>
-
-          <div class="step-screen-cta">
-          <div class="sticky-cta sticky-cta-voice bottom-actions">
-            <button id="btnGenTtsTask" class="cta-button btn-cta" type="button" onclick="generateTtsTask()">生成语音</button>
-          </div>
-          </div>
-
-          <div class="step-screen-content">
           <div id="ttsResult" class="tts-result hidden"></div>
 
           <section id="saveLetterSection" class="save-letter-card hidden">
@@ -269,6 +260,12 @@
           <div id="devTtsSection" class="dev-panel hidden">
             <div class="dev-panel-title">Dev: 旧 /tts 调试入口</div>
             <button class="ghost-button" type="button" onclick="generateTts()">调用 /api/xiangta/tts</button>
+          </div>
+          </div>
+
+          <div class="step-screen-cta">
+          <div class="sticky-cta sticky-cta-voice bottom-actions">
+            <button id="btnGenTtsTask" class="cta-button btn-cta" type="button" onclick="generateTtsTask()">生成语音</button>
           </div>
           </div>
         </div>

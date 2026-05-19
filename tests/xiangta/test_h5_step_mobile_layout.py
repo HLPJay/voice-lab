@@ -28,6 +28,28 @@ def test_step_screen_structure_exists_for_compose_suggest_voice():
         assert 'class="step-screen-cta"' in section
 
 
+def test_voice_has_single_content_block_and_correct_order():
+    html = read(INDEX_HTML_PATH)
+    start = html.find('<section id="screenVoice" class="screen">')
+    end = html.find('<section id="screenHistory" class="screen">', start + 1)
+    assert start >= 0 and end > start
+    section = html[start:end]
+
+    assert section.count('class="step-screen-content"') == 1
+    assert section.count('class="step-screen-cta"') == 1
+
+    content_pos = section.find('class="step-screen-content"')
+    cta_pos = section.find('class="step-screen-cta"')
+    assert content_pos >= 0 and cta_pos > content_pos
+
+    tts_pos = section.find('id="ttsResult"')
+    save_pos = section.find('id="saveLetterSection"')
+    dev_pos = section.find('id="devTtsSection"')
+    assert content_pos < tts_pos < cta_pos
+    assert content_pos < save_pos < cta_pos
+    assert content_pos < dev_pos < cta_pos
+
+
 def test_business_ids_preserved():
     html = read(INDEX_HTML_PATH)
     required_ids = [
