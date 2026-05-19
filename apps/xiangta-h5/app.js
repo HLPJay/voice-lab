@@ -1,234 +1,5 @@
 "use strict";
 
-const API_BASE = "";
-const STEP_LABELS = ["整理想法", "挑选表达", "生成语音"];
-const PLACEHOLDER_PROFILE = "<coreProfileIdFromCoreProfiles>";
-
-const RECIPIENT_META = {
-  lover: {
-    label: "恋人",
-    hint: "想他 / 想她",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="9.5" cy="13" r="5.5" stroke="currentColor" stroke-width="1.2" opacity="0.6"></circle><circle cx="16.5" cy="13" r="5.5" stroke="currentColor" stroke-width="1.2"></circle><circle cx="13" cy="13" r="1.1" fill="currentColor"></circle></svg>',
-  },
-  family: {
-    label: "父母",
-    hint: "爸爸 / 妈妈",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M4 21v-9.2L13 5l9 6.8V21" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path><path d="M10 21v-5h6v5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path></svg>',
-  },
-  friend: {
-    label: "朋友",
-    hint: "老朋友 / 新朋友",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M7 18v-2.2A3.8 3.8 0 0110.8 12h4.4A3.8 3.8 0 0119 15.8V18M10 10.5a2.5 2.5 0 105 0 2.5 2.5 0 00-5 0z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path></svg>',
-  },
-  self: {
-    label: "自己",
-    hint: "写给自己",
-    icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="8.5" stroke="currentColor" stroke-width="1.2" opacity="0.58"></circle><circle cx="13" cy="13" r="2.4" fill="currentColor"></circle></svg>',
-  },
-};
-
-const SCENE_META = {
-  miss: { label: "想念", hint: "不知不觉就想起你" },
-  sorry: { label: "道歉", hint: "那天，是我不好" },
-  thanks: { label: "感谢", hint: "一直没有好好说" },
-  comfort: { label: "安慰", hint: "陪你一会儿" },
-  night: { label: "晚安", hint: "睡前的一句话" },
-};
-
-const RAW_EXAMPLES = {
-  miss: "今天下雨了，我突然想起你。那天一起淋雨的时候，其实我心里很安静，也很想靠近你。",
-  sorry: "昨天那句话我说重了。后来我一直在想，我不是想伤害你，只是当时没处理好自己的情绪。",
-  thanks: "那天你没有问太多，就一直在我身边。后来我想了很久，还是想认真跟你说一声谢谢。",
-  comfort: "如果你今天很累，就先不用解释。想说的时候我会听，不想说也没有关系。",
-  night: "今天先到这里吧。别再想工作和烦心事了，先把自己交给夜晚，好好睡一觉。",
-};
-
-const GUIDANCE_PROMPTS = {
-  miss: [
-    "你希望 Ta 听完之后，感受到什么？",
-    "有没有不想说得太重、太直接的部分？",
-    "你们上一次好好说话，是什么时候？",
-  ],
-  sorry: [
-    "你想为哪件事认真道歉？",
-    "你希望对方知道，你看到了哪些做得不好的地方？",
-    "你不想把这段话说成找借口，最该避开的是什么？",
-  ],
-  thanks: [
-    "你最想感谢的是哪一个细节？",
-    "那件事对你来说，到底意味着什么？",
-    "有没有一直没说出口的那一句谢谢？",
-  ],
-  comfort: [
-    "对方现在在经历什么？",
-    "你想让对方感受到被怎样接住？",
-    "有什么是你不想说成说教的？",
-  ],
-  night: [
-    "今天的晚安里，你最想留下什么感觉？",
-    "有没有一句话是想让对方放松下来的？",
-    "今晚不说重话的话，你会怎么收尾？",
-  ],
-};
-
-const STYLE_LABELS = {
-  restrained: "克制版",
-  gentle: "温柔版",
-  sincere: "真诚版",
-};
-
-const TONE_META = [
-  { id: "restrained", label: "克制" },
-  { id: "gentle", label: "温柔" },
-  { id: "sincere", label: "真诚" },
-  { id: "whisper", label: "轻声" },
-  { id: "bedtime", label: "睡前" },
-];
-
-// Full-flow examples: when user clicks "用一个例子开始"，pre-fill entire 3-step flow
-const FLOW_EXAMPLES = {
-  miss: {
-    recipient: "lover",
-    scene: "miss",
-    rawText: "今天下雨了，我突然想起你。那天一起淋雨的时候，其实我心里很安静，也很想靠近你。",
-    preferredStyle: "gentle",
-    preferredVoice: "female-gentle",
-    preferredTone: "gentle",
-    title: "雨天的想念",
-    sampleGoal: "把模糊的想念说成一句温柔的话",
-  },
-  sorry: {
-    recipient: "lover",
-    scene: "sorry",
-    rawText: "昨天那句话我说重了。后来我一直在想，我不是想伤害你，只是当时没处理好自己的情绪。",
-    preferredStyle: "sincere",
-    preferredVoice: "male-gentle",
-    preferredTone: "sincere",
-    title: "认真的道歉",
-    sampleGoal: "把道歉说成更真诚、更清楚的一句",
-  },
-  thanks: {
-    recipient: "friend",
-    scene: "thanks",
-    rawText: "那天你没有问太多，就一直在我身边。后来我想了很久，还是想认真跟你说一声谢谢。",
-    preferredStyle: "gentle",
-    preferredVoice: "female-gentle",
-    preferredTone: "gentle",
-    title: "一句迟到的谢谢",
-    sampleGoal: "把感谢说成温暖的陪伴",
-  },
-  comfort: {
-    recipient: "friend",
-    scene: "comfort",
-    rawText: "如果你今天很累，就先不用解释。想说的时候我会听，不想说也没有关系。",
-    preferredStyle: "restrained",
-    preferredVoice: "male-gentle",
-    preferredTone: "restrained",
-    title: "陪你一会儿",
-    sampleGoal: "把安慰说成不带压力的陪伴",
-  },
-  night: {
-    recipient: "lover",
-    scene: "night",
-    rawText: "今天先到这里吧。别再想工作和烦心的事了，先把自己交给夜晚，好好睡一觉。",
-    preferredStyle: "gentle",
-    preferredVoice: "female-gentle",
-    preferredTone: "gentle",
-    title: "今晚，说晚安",
-    sampleGoal: "把晚安说成温柔的结束语",
-  },
-};
-
-const state = {
-  mode: "formal",
-  screen: "home",
-  bootstrap: null,
-  selectedRecipient: null,
-  selectedScene: null,
-  suggestions: [],
-  suggestionMeta: null,
-  selectedIndex: -1,
-  selectedStyle: "gentle",
-  selectedVoice: "female-gentle",
-  selectedTone: "gentle",
-  finalText: "",
-  ttsTask: null,
-  ttsResult: null,
-  letters: [],
-  coreProfiles: [],
-  voiceBindingStatus: null,  // loaded from GET /voice-bindings/status
-  resultSaved: false,
-  // History page state
-  historyFilter: "all",
-  historySearchOpen: false,
-  historySearchQuery: "",
-  activeHistoryLetterId: null,
-  historyAudioPlaying: false,
-  historyAudioCurrentTime: 0,
-  historyAudioDuration: 0,
-  // Letter detail state
-  activeLetterDetailId: null,
-  activeLetterDetail: null,
-  letterDetailFavoritedMap: {},
-};
-
-function el(id) {
-  return document.getElementById(id);
-}
-
-function escHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-// Normalize Chinese emotional copy text:
-// 1. Clean duplicate punctuation: 。。→。， ！！→！，？？→？，，→，
-// 2. Split into readable paragraphs (1-2 sentences each, max 3 paragraphs)
-function normalizeCopyText(text) {
-  if (!text) return text;
-  // Step 1: clean duplicate punctuation
-  let result = text;
-  result = result.replace(/。。/g, "。");
-  result = result.replace(/！！/g, "！");
-  result = result.replace(/？？/g, "？");
-  result = result.replace(/，，/g, "，");
-  result = result.replace(/、、/g, "、");
-  // Step 2: paragraph splitting
-  const sentences = [];
-  let current = "";
-  for (let i = 0; i < result.length; i++) {
-    const ch = result[i];
-    if ("。！？".includes(ch)) {
-      current += ch;
-      sentences.push(current);
-      current = "";
-    } else if (ch === "\n" || ch === "\r") {
-      if (current) {
-        sentences.push(current);
-        current = "";
-      }
-    } else {
-      current += ch;
-    }
-  }
-  if (current) sentences.push(current);
-  // Group into paragraphs: 1-2 sentences each, max 3 paragraphs
-  const paragraphs = [];
-  for (let i = 0; i < sentences.length; i += 2) {
-    const chunk = sentences.slice(i, i + 2).join("");
-    if (chunk.trim()) paragraphs.push(chunk.trim());
-  }
-  return paragraphs.slice(0, 3).join("\n");
-}
-
-function getAppMode() {
-  const params = new URLSearchParams(window.location.search || "");
-  return params.get("mode") === "dev" ? "dev" : "formal";
-}
-
 function applyModeUi() {
   const isDev = state.mode === "dev";
   const devPanel = el("devPanel");
@@ -309,28 +80,6 @@ function showToast(message) {
   showToast._timer = window.setTimeout(() => toast.classList.add("hidden"), 2800);
 }
 
-async function apiFetch(path, options) {
-  setStatus("正在请求...", "loading");
-  try {
-    const response = await fetch(API_BASE + path, {
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
-    const body = await response.json();
-    if (!response.ok || body.ok === false) {
-      const message = body.message || body.errorKind || body.detail || ("HTTP " + response.status);
-      setStatus("请求失败：" + message, "error");
-      showToast(message);
-      return null;
-    }
-    setStatus("已更新", "ok");
-    return body;
-  } catch (error) {
-    setStatus("网络错误：" + error.message, "error");
-    showToast("网络错误，请稍后再试");
-    return null;
-  }
-}
 
 function renderHomeDateLine() {
   const node = el("homeDateLine");
@@ -435,17 +184,6 @@ function renderRiskHint(containerId, text) {
   node.innerHTML = `<div>${escHtml(risk)}</div>`;
 }
 
-function getBootstrapRecipientLabel(recipientId) {
-  const recipients = state.bootstrap?.recipients || [];
-  const found = recipients.find((item) => item.id === recipientId);
-  return found?.label || RECIPIENT_META[recipientId]?.label || "";
-}
-
-function getBootstrapSceneLabel(sceneId) {
-  const scenes = state.bootstrap?.scenes || [];
-  const found = scenes.find((item) => item.id === sceneId);
-  return found?.label || SCENE_META[sceneId]?.label || "";
-}
 
 function updateHomeStartButton() {
   const button = el("btnStartCompose");
@@ -1181,33 +919,6 @@ function renderResultScreen(result) {
   updateResultSaveButton();
 }
 
-function getBootstrapVoiceLabel(voiceId) {
-  const presets = state.bootstrap?.voicePresets || [];
-  const found = presets.find(p => p.id === voiceId);
-  if (found) return found.label;
-  // Fallback hardcoded names
-  const names = {
-    "female-gentle": "温柔女声",
-    "male-gentle": "温柔男声",
-    "female-bright": "清亮女声",
-    "male-mature": "成熟男声",
-  };
-  return names[voiceId] || "温柔女声";
-}
-
-function getBootstrapToneLabel(toneId) {
-  const tones = state.bootstrap?.tonePresets || TONE_META;
-  const found = tones.find(t => t.id === toneId);
-  if (found) return found.label;
-  const names = {
-    "restrained": "克制",
-    "gentle": "温柔",
-    "sincere": "真诚",
-    "whisper": "轻声",
-    "bedtime": "睡前",
-  };
-  return names[toneId] || "温柔";
-}
 
 function updateResultSaveButton() {
   const btn = el("btnResultSave");
@@ -1677,28 +1388,6 @@ function renderHomeRecentLetter() {
     </div>`;
 }
 
-function formatDuration(secs) {
-  const s = Math.round(secs);
-  const m = Math.floor(s / 60);
-  const ss = s % 60;
-  return `${m}:${String(ss).padStart(2, "0")}`;
-}
-
-function letterTime(timestamp) {
-  if (!timestamp) return "";
-  const d = new Date(timestamp);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  if (isToday) {
-    return `今天 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  }
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) {
-    return `昨天 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  }
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
 
 function getFilteredLetters() {
   let letters = state.letters || [];
@@ -1963,13 +1652,6 @@ function updateHistoryPlayIcon(isPlaying) {
   }
 }
 
-function formatTime(secs) {
-  if (!secs || isNaN(secs)) return "0:00";
-  const s = Math.round(secs);
-  const m = Math.floor(s / 60);
-  const ss = s % 60;
-  return `${m}:${String(ss).padStart(2, "0")}`;
-}
 
 function initComposeListeners() {
   const textarea = el("rawTextArea");
