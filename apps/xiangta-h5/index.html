@@ -301,24 +301,26 @@
 
           <audio id="historyAudio" preload="metadata" class="hidden"></audio>
 
-          <div id="historyMiniPlayer" class="history-mini-player hidden">
-            <div class="history-mini-player-row">
-              <button class="history-mini-player-btn" type="button" onclick="toggleHistoryPlayback()">
-                <svg id="historyPlayIcon" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3 2l9 5-9 5V2z" fill="white"/>
-                </svg>
-              </button>
-              <div class="history-mini-player-info">
-                <div class="history-mini-player-title" id="historyMiniTitle">信笺标题</div>
-                <div class="history-mini-player-subtitle" id="historyMiniSubtitle">恋人 · 想念 · 0:00 / 0:00</div>
-              </div>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color: var(--xt-text-3); flex-shrink: 0">
-                <path d="M6 12l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </div><!-- /.screen-scroll.history-screen -->
+
+        <!-- Mini player lives outside scroll — absolute bottom dock inside #screenHistory -->
+        <div id="historyMiniPlayer" class="history-mini-player hidden">
+          <div class="history-mini-player-row">
+            <button class="history-mini-player-btn" type="button" onclick="toggleHistoryPlayback()">
+              <svg id="historyPlayIcon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 2l9 5-9 5V2z" fill="white"/>
               </svg>
+            </button>
+            <div class="history-mini-player-info">
+              <div class="history-mini-player-title" id="historyMiniTitle">信笺标题</div>
+              <div class="history-mini-player-subtitle" id="historyMiniSubtitle">恋人 · 想念 · 0:00 / 0:00</div>
             </div>
-            <div class="history-mini-player-progress">
-              <div class="history-mini-player-progress-fill" id="historyMiniProgress" style="width: 0%"></div>
-            </div>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color: var(--xt-text-3); flex-shrink: 0">
+              <path d="M6 12l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="history-mini-player-progress">
+            <div class="history-mini-player-progress-fill" id="historyMiniProgress" style="width: 0%"></div>
           </div>
         </div>
       </section>
