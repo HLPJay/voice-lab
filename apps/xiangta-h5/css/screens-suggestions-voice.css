@@ -1,6 +1,6 @@
 .suggestion-card {
-  padding: 18px;
-  border-radius: 18px;
+  padding: clamp(12px, 3vw, 18px);
+  border-radius: clamp(14px, 3.5vw, 18px);
   border: 1px solid var(--xt-hairline);
   background: var(--xt-surface);
   cursor: pointer;
@@ -170,8 +170,8 @@
 .voice-option {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--h5-card-gap);
+  padding: var(--h5-card-pad);
 }
 
 .voice-wave {
@@ -285,7 +285,7 @@
 .tone-chip-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--h5-chip-gap);
 }
 
 .tone-chip {

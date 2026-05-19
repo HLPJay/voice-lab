@@ -78,17 +78,17 @@
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--h5-card-gap);
 }
 
 .prompt-card {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 14px;
+  padding: var(--h5-card-pad);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-card);
+  border-radius: var(--h5-card-radius);
 }
 
 .prompt-index {

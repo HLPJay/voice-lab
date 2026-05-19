@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px 0;
+  padding: max(env(safe-area-inset-top), 14px) var(--h5-page-x) 0;
 }
 
 .home-brand-left {
@@ -63,7 +63,7 @@
 }
 
 .home-hero {
-  padding: 44px 0 12px;
+  padding: clamp(28px, 6svh, 44px) 0 clamp(8px, 2svh, 12px);
 }
 
 .home-title,
@@ -77,7 +77,7 @@
 }
 
 .home-title {
-  font-size: 34px;
+  font-size: clamp(26px, 8vw, 34px);
   line-height: 1.35;
 }
 
@@ -94,11 +94,11 @@
 }
 
 .content-section {
-  margin-top: 16px;
+  margin-top: clamp(10px, 2svh, 16px);
 }
 
 .content-section-tight {
-  margin-top: 18px;
+  margin-top: clamp(12px, 2.2svh, 18px);
 }
 
 .section-eyebrow {
@@ -122,7 +122,7 @@
 .recipient-grid,
 .scene-grid {
   display: grid;
-  gap: 10px;
+  gap: var(--h5-card-gap);
 }
 
 .recipient-grid {
@@ -161,7 +161,7 @@
 .recipient-card,
 .scene-chip {
   text-align: left;
-  padding: 16px 14px;
+  padding: var(--h5-card-pad);
 }
 
 .prompt-card,
@@ -267,9 +267,9 @@
 .home-recent-empty {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 14px;
-  border-radius: var(--radius-card);
+  gap: var(--h5-card-gap);
+  padding: var(--h5-card-pad);
+  border-radius: var(--h5-card-radius);
   background: transparent;
   border: 1px dashed var(--line-strong);
   cursor: pointer;

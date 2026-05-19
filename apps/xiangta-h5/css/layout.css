@@ -191,7 +191,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
-  padding: 0 16px calc(var(--home-bottom-cta-height, 118px) + env(safe-area-inset-bottom) + 24px);
+  padding: 0 var(--h5-page-x) calc(var(--home-bottom-cta-height, 118px) + env(safe-area-inset-bottom) + 24px);
 }
 
 .home-content::-webkit-scrollbar {
@@ -221,7 +221,8 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
-  padding: 0 16px var(--xt-bottom-safe);
+  /* Horizontal padding from density token; vertical from bottom-safe default */
+  padding: 0 var(--h5-page-x) var(--xt-bottom-safe);
 }
 
 .screen-scroll-step {
@@ -248,7 +249,7 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
-  padding: 0 16px 24px;
+  padding: 0 var(--h5-page-x) 24px;
 }
 
 .step-screen-cta {
