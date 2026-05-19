@@ -9,11 +9,10 @@
   text-align: left;
 }
 
-.suggestion-card,
-.small-pill-btn,
-.expr-select-btn {
+.small-pill-btn {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  min-width: 56px;
 }
 
 .suggestion-card.selected {

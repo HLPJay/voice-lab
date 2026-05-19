@@ -543,51 +543,6 @@ function markSuggestionCopyButtonCopied(button) {
   }, 1000);
 }
 
-async function copySuggestionLegacy(index, event, button) {
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
-  const suggestion = state.suggestions[index];
-  if (!suggestion?.text) {
-    showToast("没有可复制的内容");
-    return;
-  }
-  const textToCopy = normalizeCopyText(suggestion.text);
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(textToCopy);
-      showToast("已复制");
-      return;
-    }
-  } catch (error) {
-    // Fallback below.
-  }
-
-  let area = null;
-  try {
-    area = document.createElement("textarea");
-    area.value = textToCopy;
-    area.setAttribute("readonly", "readonly");
-    area.style.position = "fixed";
-    area.style.left = "-9999px";
-    area.style.top = "0";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.focus();
-    area.select();
-    if (typeof area.setSelectionRange === "function") {
-      area.setSelectionRange(0, area.value.length);
-    }
-    const ok = document.execCommand("copy");
-    showToast(ok ? "已复制" : "复制失败，请长按文字手动复制");
-  } catch (error) {
-    showToast("复制失败，请长按文字手动复制");
-  } finally {
-    if (area && area.parentNode) {
-      area.parentNode.removeChild(area);
-    }
-  }
-}
-
 async function copySuggestion(index, event, button) {
   event?.preventDefault?.();
   event?.stopPropagation?.();
