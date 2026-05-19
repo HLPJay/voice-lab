@@ -214,12 +214,18 @@
 }
 
 .screen-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   padding: 0 16px var(--xt-bottom-safe);
-  min-height: calc(100dvh - 58px);
 }
 
 .screen-scroll-step {
-  padding-bottom: var(--xt-bottom-safe);
+  padding-bottom: calc(var(--xt-bottom-safe) + 112px);
 }
 
 .literary-greeting {
