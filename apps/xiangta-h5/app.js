@@ -1683,13 +1683,20 @@ function renderHomeRecentLetter() {
   const sceneLabel = SCENE_META[recent.scene]?.label || "";
   const timeStr = letterTime(recent.createdAt);
   const hasAudio = !!recent.audioUrl;
+  const recentId = recent.id || recent.letterId;
+  const isRecentPlaying =
+    hasAudio &&
+    state.homeRecentLetterId === recentId &&
+    state.homeRecentAudioPlaying;
   const metaText = [recipientLabel, sceneLabel, timeStr].filter(Boolean).join(" · ");
 
   container.innerHTML = `
     <div class="home-recent-card" onclick="openHistoryFromHome()">
-      <button class="home-recent-icon ${hasAudio ? 'has-audio' : ''}" type="button" ${hasAudio ? 'aria-label="play-recent-letter"' : 'aria-label="recent-letter-no-audio" disabled'}>
+      <button class="home-recent-icon ${hasAudio ? 'has-audio' : ''}" type="button" ${hasAudio ? `aria-label="${isRecentPlaying ? "pause-recent-letter" : "play-recent-letter"}"` : 'aria-label="recent-letter-no-audio" disabled'}>
         ${hasAudio
-          ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg>'
+          ? (isRecentPlaying
+            ? '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" fill="currentColor"/><rect x="8" y="2" width="3" height="10" fill="currentColor"/></svg>'
+            : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg>')
           : '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="3" y="4" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3 6l6 4 6-4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>'}
       </button>
       <div class="home-recent-info">

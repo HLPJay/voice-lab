@@ -27,6 +27,11 @@ def test_render_home_recent_has_clickable_play_control():
     body = get_function_body(read_app_js(), "renderHomeRecentLetter")
     assert 'class="home-recent-icon' in body
     assert 'type="button"' in body
+    assert "state.homeRecentAudioPlaying" in body
+    assert "state.homeRecentLetterId" in body
+    assert "pause-recent-letter" in body
+    assert "play-recent-letter" in body
+    assert "<rect x=\"3\" y=\"2\" width=\"3\" height=\"10\"" in body
 
 
 def test_play_control_click_stops_propagation_and_calls_player():
