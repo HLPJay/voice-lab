@@ -12,6 +12,10 @@
     "ttsTaskEnabled": true,
     "devCoreProfileSelect": true
   },
+  "storage": {
+    "type": "sqlite",
+    "databaseUrl": "sqlite:///data/xiangta_letters.sqlite3"
+  },
   "copywriting": {
     "mode": "llm",
     "provider": "minimax",

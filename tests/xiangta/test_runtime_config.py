@@ -79,6 +79,60 @@ class TestDeepMerge:
 
 # ── Default config ─────────────────────────────────────────────────────────
 
+class TestDefaultStorageConfig:
+    """Default storage must be SQLite (P23C)."""
+
+    def _make_empty_json(self, tmp_path: Path) -> Path:
+        p = tmp_path / "empty.json"
+        import json
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        return p
+
+    def test_storage_type_defaults_to_sqlite(self, monkeypatch, tmp_path):
+        """Without any env or file config, storage_type must be 'sqlite'."""
+        import src.xiangta.config.runtime_config as rc_module
+        empty = self._make_empty_json(tmp_path)
+        monkeypatch.setattr(rc_module, "_RUNTIME_JSON_PATH", empty)
+        monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", empty)
+        monkeypatch.delenv("XIANGTA_STORAGE_TYPE", raising=False)
+        monkeypatch.delenv("XIANGTA_STORAGE_DATABASE_URL", raising=False)
+        cfg = load_runtime_config()
+        assert cfg.storage_type == "sqlite"
+
+    def test_storage_database_url_default_is_non_empty(self, monkeypatch, tmp_path):
+        """Default storage_database_url is set and contains a SQLite path."""
+        import src.xiangta.config.runtime_config as rc_module
+        empty = self._make_empty_json(tmp_path)
+        monkeypatch.setattr(rc_module, "_RUNTIME_JSON_PATH", empty)
+        monkeypatch.setattr(rc_module, "_RUNTIME_LOCAL_JSON_PATH", empty)
+        monkeypatch.delenv("XIANGTA_STORAGE_TYPE", raising=False)
+        monkeypatch.delenv("XIANGTA_STORAGE_DATABASE_URL", raising=False)
+        cfg = load_runtime_config()
+        assert cfg.storage_database_url is not None
+        assert cfg.storage_database_url != ""
+        assert "sqlite" in cfg.storage_database_url.lower() or cfg.storage_database_url.endswith(".sqlite3")
+
+    def test_runtime_json_uses_sqlite(self):
+        """The committed runtime.json (src/xiangta/configs/runtime.json) must specify sqlite."""
+        cfg = load_runtime_config()
+        assert cfg.storage_type == "sqlite", \
+            "runtime.json must set storage.type=sqlite for server-side persistence"
+
+    def test_storage_type_memory_env_override(self, monkeypatch):
+        """XIANGTA_STORAGE_TYPE=memory overrides the sqlite default."""
+        monkeypatch.setenv("XIANGTA_STORAGE_TYPE", "memory")
+        cfg = load_runtime_config()
+        assert cfg.storage_type == "memory"
+
+    def test_storage_database_url_env_override(self, monkeypatch):
+        """XIANGTA_STORAGE_DATABASE_URL env sets storage_database_url."""
+        monkeypatch.setenv("XIANGTA_STORAGE_TYPE", "sqlite")
+        monkeypatch.setenv("XIANGTA_STORAGE_DATABASE_URL", "/tmp/custom.db")
+        cfg = load_runtime_config()
+        assert cfg.storage_database_url == "/tmp/custom.db"
+
+
 class TestDefaultConfig:
     def test_core_defaults_to_disabled(self, monkeypatch):
         """Without env or runtime.json, core should be disabled."""

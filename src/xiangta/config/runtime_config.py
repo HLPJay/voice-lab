@@ -54,8 +54,8 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "timeoutSecs": 120,
     },
     "storage": {
-        "type": "memory",
-        "databaseUrl": "",
+        "type": "sqlite",
+        "databaseUrl": "sqlite:///data/xiangta_letters.sqlite3",
     },
     "features": {
         "devCoreProfileSelect": True,
@@ -130,8 +130,8 @@ class XiangTaRuntimeConfig:
     tts_timeout_secs: float = 120.0
 
     # Storage
-    storage_type: str = "memory"
-    storage_database_url: str | None = None
+    storage_type: str = "sqlite"
+    storage_database_url: str | None = "sqlite:///data/xiangta_letters.sqlite3"
 
     # Features
     feature_dev_core_profile_select: bool = True

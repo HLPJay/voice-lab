@@ -17,8 +17,8 @@
     "timeoutSecs": 120
   },
   "storage": {
-    "type": "memory",
-    "databaseUrl": ""
+    "type": "sqlite",
+    "databaseUrl": "sqlite:///data/xiangta_letters.sqlite3"
   },
   "features": {
     "devCoreProfileSelect": true,

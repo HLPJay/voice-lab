@@ -132,9 +132,26 @@ class TestStorageIntegration:
         svc2 = ps_module.create_product_service()
         assert _loop().run_until_complete(svc2.list_letters())["total"] == 1
 
-    def test_create_product_service_defaults_to_memory(self, monkeypatch):
-        """create_product_service with no STORAGE_TYPE env uses memory."""
+    def test_create_product_service_defaults_to_sqlite(self, monkeypatch, tmp_path):
+        """create_product_service with no STORAGE_TYPE env uses SQLite by default."""
         monkeypatch.delenv("XIANGTA_STORAGE_TYPE", raising=False)
+        monkeypatch.setenv("XIANGTA_STORAGE_DATABASE_URL", str(tmp_path / "default.db"))
+
+        import importlib
+        import src.xiangta.services.product_service as ps_module
+        importlib.reload(ps_module)
+        svc = ps_module.create_product_service()
+        result = _loop().run_until_complete(svc.create_letter(_SAMPLE))
+        assert "letterId" in result
+
+        # Second instance at same path: letter is still there (persisted)
+        svc2 = ps_module.create_product_service()
+        result2 = _loop().run_until_complete(svc2.list_letters())
+        assert result2["total"] == 1
+
+    def test_create_product_service_memory_override(self, monkeypatch):
+        """Explicit XIANGTA_STORAGE_TYPE=memory overrides SQLite default."""
+        monkeypatch.setenv("XIANGTA_STORAGE_TYPE", "memory")
         monkeypatch.delenv("XIANGTA_STORAGE_DATABASE_URL", raising=False)
 
         import importlib
