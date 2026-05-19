@@ -24,7 +24,13 @@ function showScreen(screen) {
     renderSettingsScreen();
   }
   if (screen === "result") {
-    renderResultScreen();
+    if (state.ttsResult && state.ttsResult.status === "completed" && state.ttsResult.audioUrl) {
+      renderResultScreen(state.ttsResult);
+    } else {
+      showToast("还没有生成可查看的信笺");
+      showScreen("voice");
+      return;
+    }
   }
   if (screen === "letterDetail") {
     // Pause history audio to avoid conflict
