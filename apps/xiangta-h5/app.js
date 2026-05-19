@@ -955,6 +955,20 @@ function updateGenTtsButton() {
   }
 }
 
+function resetVoiceTransientUi() {
+  setBusy("btnGenTtsTask", false, "生成语音");
+  const ttsResult = el("ttsResult");
+  if (ttsResult) {
+    ttsResult.classList.add("hidden");
+    ttsResult.innerHTML = "";
+  }
+  const saveSection = el("saveLetterSection");
+  if (saveSection) {
+    saveSection.classList.add("hidden");
+  }
+  updateGenTtsButton();
+}
+
 async function goVoice() {
   if (!state.finalText) {
     setStatus("先选一条最像你的表达", "warn");
@@ -968,13 +982,11 @@ async function goVoice() {
   el("voiceSubtitle").textContent = `${getBootstrapSceneLabel(state.selectedScene)} · ${STYLE_LABELS[state.selectedStyle] || "温柔版"}`;
   state.ttsTask = null;
   state.ttsResult = null;
-  el("ttsResult").classList.add("hidden");
-  el("saveLetterSection").classList.add("hidden");
+  resetVoiceTransientUi();
   renderVoiceTextPreview();
   renderVoicePicker();
   renderToneChips();
   renderDurationEstimate();
-  updateGenTtsButton();
   showScreen("voice");
 }
 
@@ -1306,6 +1318,9 @@ function resultReEdit() {
 function resultChangeTone() {
   // Go back to voice screen, reset saved state
   state.resultSaved = false;
+  state.ttsTask = null;
+  state.ttsResult = null;
+  resetVoiceTransientUi();
   showScreen("voice");
 }
 
