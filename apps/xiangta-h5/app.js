@@ -410,6 +410,7 @@ function renderSuggestionCards(meta) {
     const selected = state.selectedIndex === index;
     const delay = (0.2 + index * 0.13).toFixed(2);
     const card = document.createElement("article");
+    card.setAttribute("data-suggestion-index", String(index));
     card.className = "suggestion-card" + (selected ? " selected" : "");
     card.style.animation = `spaCardIn 0.42s ${delay}s both`;
     const dotHtml = selected ? '<span class="suggestion-dot"></span>' : "";
@@ -439,6 +440,49 @@ function renderSuggestionCards(meta) {
     });
     list.appendChild(card);
   });
+}
+
+function updateSuggestionCardContent(index) {
+  const suggestion = state.suggestions[index];
+  if (!suggestion) return;
+  const card = document.querySelector(`.suggestion-card[data-suggestion-index="${index}"]`);
+  if (!card) return;
+  const countNode = card.querySelector(".suggestion-count");
+  if (countNode) countNode.textContent = `${suggestion.charCount}字`;
+  const textNode = card.querySelector(".suggestion-text");
+  if (textNode) textNode.textContent = suggestion.text;
+}
+
+function updateSuggestionSelectionUi(prevIndex, nextIndex) {
+  const list = el("suggestionsArea");
+  if (!list) return;
+  const updateCard = function(card, selected) {
+    if (!card) return;
+    card.classList.toggle("selected", selected);
+    const styleRow = card.querySelector(".suggestion-style-row");
+    if (styleRow) {
+      const existingDot = styleRow.querySelector(".suggestion-dot");
+      if (selected) {
+        if (!existingDot) {
+          const dot = document.createElement("span");
+          dot.className = "suggestion-dot";
+          styleRow.appendChild(dot);
+        }
+      } else if (existingDot) {
+        existingDot.remove();
+      }
+    }
+    const selectBtn = card.querySelector('[data-action="select"]');
+    if (selectBtn) {
+      selectBtn.textContent = selected ? "已选择" : "选这条";
+    }
+  };
+  if (typeof prevIndex === "number" && prevIndex >= 0) {
+    updateCard(list.querySelector(`.suggestion-card[data-suggestion-index="${prevIndex}"]`), false);
+  }
+  if (typeof nextIndex === "number" && nextIndex >= 0) {
+    updateCard(list.querySelector(`.suggestion-card[data-suggestion-index="${nextIndex}"]`), true);
+  }
 }
 
 async function copySuggestion(index, event) {
@@ -492,6 +536,7 @@ function editSuggestion(index, event) {
     text: normalizedText,
     charCount: normalizedText.length,
   };
+  updateSuggestionCardContent(index);
   selectSuggestion(index);
 }
 
@@ -561,17 +606,16 @@ async function generateSuggestions() {
 }
 
 function selectSuggestion(index) {
+  const prevIndex = state.selectedIndex;
   state.selectedIndex = index;
   const suggestion = state.suggestions[index];
   if (!suggestion) return;
   const normalizedText = normalizeCopyText(suggestion.text);
   state.finalText = normalizedText;
   state.selectedStyle = suggestion.style;
-  el("finalTextArea").value = normalizedText;
-  renderSuggestionCards({
-    summary: state.suggestionMeta?.summary || "你已经选中一个更接近此刻心情的版本。",
-    intent: state.suggestionMeta?.intent || "下一步可以直接进入语音生成。",
-  });
+  const finalTextArea = el("finalTextArea");
+  if (finalTextArea) finalTextArea.value = normalizedText;
+  updateSuggestionSelectionUi(prevIndex, index);
   const button = el("btnToVoice");
   if (button) button.disabled = false;
 }
@@ -1122,18 +1166,26 @@ function upsertLetterIntoState(letter) {
 function initOpeningOverlay() {
   const overlay = el("openingOverlay");
   if (!overlay) return;
+  overlay.classList.add("hidden");
+  overlay.classList.remove("visible");
   try {
-    if (localStorage.getItem("xiangta_opening_seen") === "1") {
-      overlay.classList.add("hidden");
+    if (localStorage.getItem("xiangta_opening_seen") !== "1") {
+      overlay.classList.remove("hidden");
+      overlay.classList.add("visible");
     }
   } catch (e) {
+    // fail open: keep overlay hidden to avoid blocking app
     overlay.classList.add("hidden");
+    overlay.classList.remove("visible");
   }
 }
 
 function dismissOpeningOverlay() {
   const overlay = el("openingOverlay");
-  if (overlay) overlay.classList.add("hidden");
+  if (overlay) {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("visible");
+  }
   try {
     localStorage.setItem("xiangta_opening_seen", "1");
   } catch (e) {
@@ -1899,6 +1951,31 @@ function openLetterDetail(letterId) {
   showScreen("letterDetail");
 }
 
+function renderLetterDetailMetaPills(letter) {
+  const pillsEl = el("letterDetailMetaPills");
+  if (!pillsEl || !letter) return;
+  const recipientLabel = getBootstrapRecipientLabel(letter.recipient) || RECIPIENT_META[letter.recipient]?.label || "";
+  const sceneLabel = getBootstrapSceneLabel(letter.scene) || SCENE_META[letter.scene]?.label || "";
+  const styleLabel = letter.style ? (STYLE_LABELS[letter.style] || getBootstrapToneLabel(letter.style)) : "";
+  const voiceLabel = letter.voicePreset ? getBootstrapVoiceLabel(letter.voicePreset) : "";
+  const toneLabel = letter.tone ? getBootstrapToneLabel(letter.tone) : "";
+  const isFavorited = !!(state.letterDetailFavoritedMap[letter.id || letter.letterId]);
+  const parts = [
+    { text: "给" + recipientLabel, accent: true },
+    { text: sceneLabel, accent: false },
+    { text: styleLabel, accent: false },
+    { text: voiceLabel, accent: false },
+    { text: toneLabel, accent: false },
+  ].filter(function(p) { return p.text; });
+  if (isFavorited) {
+    parts.push({ text: "★ 收藏", accent: false, favorited: true });
+  }
+  pillsEl.innerHTML = parts.map(function(p) {
+    var cls = "letter-meta-pill" + (p.accent ? " letter-meta-pill-accent" : "") + (p.favorited ? " letter-meta-pill-favorited" : "");
+    return "<span class=\"" + cls + "\">" + escHtml(p.text) + "</span>";
+  }).join("");
+}
+
 function renderLetterDetailScreen(letter) {
   // Title in appbar
   const titleEl = el("letterDetailTitle");
@@ -1913,28 +1990,7 @@ function renderLetterDetailScreen(letter) {
   const subtitleEl = el("letterDetailSubtitle");
   if (subtitleEl) subtitleEl.textContent = subtitle;
 
-  // Meta pills — prototype order: 给{recipient}(accent) · {scene} · {styleLabel} · {voiceLabel} · {toneLabel} [+ ★ 收藏]
-  const pillsEl = el("letterDetailMetaPills");
-  if (pillsEl) {
-    const styleLabel = letter.style ? (STYLE_LABELS[letter.style] || getBootstrapToneLabel(letter.style)) : "";
-    const voiceLabel = letter.voicePreset ? getBootstrapVoiceLabel(letter.voicePreset) : "";
-    const toneLabel = letter.tone ? getBootstrapToneLabel(letter.tone) : "";
-    const isFavorited = !!(letter.favorited || state.letterDetailFavoritedMap[letter.id || letter.letterId]);
-    const parts = [
-      { text: "给" + recipientLabel, accent: true },
-      { text: sceneLabel, accent: false },
-      { text: styleLabel, accent: false },
-      { text: voiceLabel, accent: false },
-      { text: toneLabel, accent: false },
-    ].filter(function(p) { return p.text; });
-    if (isFavorited) {
-      parts.push({ text: "★ 收藏", accent: false, favorited: true });
-    }
-    pillsEl.innerHTML = parts.map(function(p) {
-      var cls = "letter-meta-pill" + (p.accent ? " letter-meta-pill-accent" : "") + (p.favorited ? " letter-meta-pill-favorited" : "");
-      return "<span class=\"" + cls + "\">" + escHtml(p.text) + "</span>";
-    }).join("");
-  }
+  renderLetterDetailMetaPills(letter);
 
   // Date with separator line
   const dateRowEl = el("letterDetailDate");
@@ -2029,6 +2085,7 @@ function toggleLetterDetailFavorite() {
   if (letter) letter.favorited = newValue;
   if (state.activeLetterDetail) state.activeLetterDetail.favorited = newValue;
   renderLetterDetailFavoriteButton();
+  renderLetterDetailMetaPills(state.activeLetterDetail);
   showToast(newValue ? "已收藏" : "已取消收藏");
 }
 

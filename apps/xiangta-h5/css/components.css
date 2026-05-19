@@ -350,7 +350,7 @@
 .recipient-card:not(:disabled):active,
 .scene-chip:not(:disabled):active,
 .suggestion-card:active,
-.voice-option:active,
+.voice-option:not(.disabled):not(:disabled):active,
 .tone-chip:not(:disabled):active,
 .small-pill-btn:not(:disabled):active {
   transform: scale(0.97);

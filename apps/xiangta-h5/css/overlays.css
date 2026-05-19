@@ -22,11 +22,15 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   background: var(--bg, #100D14);
   animation: spaFadeOverlay 0.3s ease both;
+}
+
+.opening-overlay.visible {
+  display: flex;
 }
 
 .opening-overlay-content {

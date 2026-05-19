@@ -74,9 +74,9 @@
 
 .suggestion-actions {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 
 .suggestion-action-left {
