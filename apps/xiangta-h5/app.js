@@ -657,12 +657,18 @@ function renderSuggestionCards(meta) {
   list.innerHTML = "";
   state.suggestions.forEach((item, index) => {
     const selected = state.selectedIndex === index;
+    const delay = (0.2 + index * 0.13).toFixed(2);
     const card = document.createElement("article");
     card.className = "suggestion-card" + (selected ? " selected" : "");
+    card.style.animation = `spaCardIn 0.42s ${delay}s both`;
+    const dotHtml = selected ? '<span class="suggestion-dot"></span>' : "";
     card.innerHTML =
       '<div class="suggestion-meta">' +
+      '<div class="suggestion-style-row">' +
       `<span class="suggestion-style">${escHtml(item.styleLabel)}</span>` +
-      `<span class="suggestion-count">${item.charCount} 字</span>` +
+      dotHtml +
+      "</div>" +
+      `<span class="suggestion-count">${item.charCount}字</span>` +
       "</div>" +
       `<div class="suggestion-text">${escHtml(item.text)}</div>` +
       `<div class="suggestion-fit">适合：${escHtml(item.fitsFor)}</div>` +
@@ -811,7 +817,7 @@ function renderVoiceTextPreview() {
   node.innerHTML =
     '<div class="voice-copy-meta">' +
     `<span class="voice-copy-tag">给${escHtml(recLabel)} · ${escHtml(sceneLabel)} · ${escHtml(styleLabel)}</span>` +
-    '<button class="voice-copy-edit" type="button" onclick="showScreen(\'suggest\')">返回改字</button>' +
+    '<button class="voice-copy-edit" type="button" onclick="showScreen(\'suggest\')">编辑文字</button>' +
     "</div>" +
     `<div class="voice-copy-text">${escHtml(state.finalText)}</div>`;
 }
@@ -845,14 +851,17 @@ function renderVoicePicker() {
       }
     }
 
+    const checkSvg = selected
+      ? '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5l2 2 4-4" stroke="white" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      : "";
     option.innerHTML =
-      '<span class="voice-wave"><span class="voice-wave-bar" style="height:12px"></span><span class="voice-wave-bar" style="height:18px"></span><span class="voice-wave-bar" style="height:10px"></span><span class="voice-wave-bar" style="height:20px"></span><span class="voice-wave-bar" style="height:14px"></span></span>' +
+      '<span class="voice-wave"><span class="voice-wave-bar" style="height:40%"></span><span class="voice-wave-bar" style="height:80%"></span><span class="voice-wave-bar" style="height:50%"></span><span class="voice-wave-bar" style="height:100%"></span><span class="voice-wave-bar" style="height:60%"></span></span>' +
       '<span class="voice-option-info">' +
       `<span class="voice-option-name">${escHtml(voice.name)}</span>` +
       `<span class="voice-option-desc">${escHtml(voice.desc || "")}</span>` +
       badgeHtml +
       "</span>" +
-      `<span class="voice-option-check">${selected ? "✓" : ""}</span>`;
+      `<span class="voice-option-check">${checkSvg}</span>`;
     option.addEventListener("click", () => {
       if (disabled) return;
       state.selectedVoice = voice.id;
@@ -906,7 +915,9 @@ function renderDurationEstimate() {
   const seconds = Math.max(3, Math.round((state.finalText || "").length * 0.28 + 1.5));
   const min = Math.floor(seconds / 60);
   const sec = String(seconds % 60).padStart(2, "0");
-  node.textContent = `预计时长 · ${min}:${sec}`;
+  node.innerHTML =
+    '<span class="duration-estimate-label">预计时长</span>' +
+    `<span class="duration-estimate-value">≈ ${min}:${sec}</span>`;
 }
 
 function autoSelectBoundVoice() {

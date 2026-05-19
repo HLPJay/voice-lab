@@ -507,10 +507,14 @@ body {
 }
 
 .recipient-card.selected,
-.scene-chip.selected,
-.voice-option.selected {
+.scene-chip.selected {
   border-color: var(--xt-accent);
   background: var(--accent-soft);
+}
+
+.voice-option.selected {
+  border-color: var(--xt-accent-deep);
+  background: var(--xt-accent-soft);
 }
 
 /* Home screen: recipient/scene use purple selected state */
@@ -996,66 +1000,65 @@ body {
 
 .insight-card {
   margin-top: 10px;
-  padding: 18px 18px 16px;
-  background: linear-gradient(180deg, rgba(43, 31, 57, 0.94), rgba(32, 23, 43, 0.98));
-  border-color: rgba(217, 149, 74, 0.14);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 16px;
+  background: var(--xt-surface-2);
+  border: 1px solid var(--xt-hairline-2);
+  border-radius: 20px;
+  animation: spaCardIn 0.4s 0.05s both;
 }
 
 .insight-label {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
   font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--accent-ink);
+  letter-spacing: 0.12em;
+  color: var(--xt-text-3);
+  text-transform: uppercase;
 }
 
 .insight-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(217, 149, 74, 0.12);
+  background: var(--xt-accent-ink);
+  flex-shrink: 0;
 }
 
 .insight-summary {
-  margin-top: 10px;
   font-family: var(--font-serif);
-  font-size: 16px;
-  line-height: 1.88;
+  font-size: 15px;
+  line-height: 1.75;
   color: var(--text);
 }
 
 .insight-divider {
   height: 1px;
   margin: 12px 0 10px;
-  background: var(--line);
+  background: var(--xt-hairline);
 }
 
 .insight-intent {
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--xt-text-3);
+  line-height: 1.7;
 }
 
 .suggestion-card {
-  padding: 18px 18px 16px;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(32, 24, 41, 0.98), rgba(24, 18, 30, 0.98));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--xt-hairline);
+  background: var(--xt-surface);
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition: all 0.18s ease;
   color: var(--text);
   text-align: left;
 }
 
 .suggestion-card.selected {
-  border-color: rgba(217, 149, 74, 0.56);
-  background: linear-gradient(180deg, rgba(63, 45, 27, 0.42), rgba(31, 23, 33, 0.98));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(217, 149, 74, 0.08);
+  border-color: var(--xt-accent-deep);
+  background: var(--xt-surface-2);
 }
 
 .suggestion-meta {
@@ -1063,23 +1066,35 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  margin-bottom: 12px;
 }
 
 .suggestion-style {
   font-family: var(--font-serif);
   font-size: 15px;
+  font-weight: 500;
   color: var(--text);
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.suggestion-style::after {
-  content: "";
+.suggestion-card.selected .suggestion-style {
+  color: var(--xt-accent-ink);
+}
+
+.suggestion-style-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-dot {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(217, 149, 74, 0.88);
+  background: var(--xt-accent);
+  flex-shrink: 0;
 }
 
 .suggestion-count {
@@ -1089,26 +1104,26 @@ body {
 }
 
 .suggestion-text {
-  margin-top: 12px;
   font-family: var(--font-serif);
   font-size: 15px;
-  line-height: 1.9;
+  line-height: 1.85;
   color: var(--text);
   white-space: pre-line;
+  margin-bottom: 14px;
 }
 
 .suggestion-fit {
-  margin-top: 12px;
-  color: var(--text-faint);
+  color: var(--xt-text-3);
   font-size: 11px;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
 }
 
 .suggestion-actions {
-  margin-top: 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .suggestion-action-left {
@@ -1118,34 +1133,38 @@ body {
 }
 
 .small-pill-btn {
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--xt-hairline-2);
+  background: transparent;
+  color: var(--xt-text-2);
   cursor: pointer;
+  font-size: 12px;
 }
 
 .small-pill-btn:hover,
 .small-pill-btn:active {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .expr-select-btn {
-  min-width: 92px;
   padding: 8px 14px;
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
   border: none;
-  background: var(--surface-3);
-  color: var(--text);
+  background: var(--xt-surface-3);
+  color: var(--xt-text);
   cursor: pointer;
   text-align: center;
+  font-size: 12px;
 }
 
 .suggestion-card.selected .expr-select-btn {
-  background: var(--accent);
-  color: #fff4e7;
+  background: var(--xt-accent);
+  color: white;
 }
 
 .voice-copy-card,
@@ -1162,21 +1181,24 @@ body {
 }
 
 .voice-copy-tag {
-  color: var(--text-faint);
+  color: var(--xt-text-3);
   font-size: 11px;
+  letter-spacing: 0.12em;
 }
 
 .voice-copy-edit {
-  border: none;
-  background: none;
-  color: var(--accent-ink);
+  background: transparent;
+  border: 1px solid var(--xt-hairline);
+  color: var(--xt-text-2);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
 }
 
 .voice-copy-text {
   font-family: var(--font-serif);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.88;
 }
 
@@ -1207,7 +1229,7 @@ body {
 }
 
 .voice-option.selected .voice-wave-bar {
-  background: var(--accent);
+  background: var(--xt-accent);
 }
 
 .voice-option-info {
@@ -1217,12 +1239,16 @@ body {
 
 .voice-option-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.voice-option.selected .voice-option-name {
+  color: var(--xt-accent-ink);
 }
 
 .voice-option-desc {
   margin-top: 2px;
-  color: var(--text-faint);
+  color: var(--xt-text-3);
   font-size: 11px;
 }
 
@@ -1230,7 +1256,8 @@ body {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--xt-hairline-2);
+  background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1238,9 +1265,8 @@ body {
 }
 
 .voice-option.selected .voice-option-check {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+  background: var(--xt-accent);
+  border-color: var(--xt-accent);
 }
 
 .voice-option.disabled {
@@ -1255,36 +1281,36 @@ body {
 .voice-bind-badge {
   display: inline-block;
   margin-top: 3px;
-  padding: 1px 6px;
-  border-radius: 20px;
+  padding: 2px 8px;
+  border-radius: 999px;
   font-size: 10px;
   font-weight: 500;
 }
 
 .voice-bind-badge.bound {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .voice-bind-badge.unbound {
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .voice-bind-badge.invalid {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--error-soft);
+  color: var(--error);
 }
 
 .voice-bind-hint {
   margin-top: 8px;
-  padding: 8px 12px;
-  background: #fef3c7;
-  border: 1px solid #fde68a;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #92400e;
-  line-height: 1.4;
+  padding: 10px 12px;
+  background: var(--warn-soft);
+  border: 1px solid rgba(224, 168, 123, 0.22);
+  border-radius: 14px;
+  font-size: 12px;
+  color: var(--xt-text-2);
+  line-height: 1.65;
 }
 
 .voice-bind-hint.hidden {
@@ -1315,7 +1341,21 @@ body {
 
 .duration-estimate {
   margin-top: 14px;
+  padding: 0 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 12px;
+}
+
+.duration-estimate-label {
+  color: var(--xt-text-3);
+}
+
+.duration-estimate-value {
+  font-family: var(--xt-mono);
+  font-size: 13px;
+  color: var(--xt-text-2);
 }
 
 .tts-result {
