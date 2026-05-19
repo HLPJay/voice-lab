@@ -314,7 +314,8 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 54px 16px 6px;
+  /* Density token — same ladder as History header */
+  padding: var(--h5-header-top) var(--h5-page-x) var(--h5-header-gap);
 }
 
 .settings-screen-header-body {
@@ -324,14 +325,14 @@
 
 .settings-screen-title {
   font-family: var(--xt-serif, serif);
-  font-size: 26px;
+  font-size: var(--h5-title-size);
   font-weight: 500;
   color: var(--xt-text);
   line-height: 1.2;
 }
 
 .settings-screen-subtitle {
-  font-size: 12px;
+  font-size: var(--h5-subtitle-size);
   color: var(--xt-text-3);
   margin-top: 6px;
   line-height: 1.5;
@@ -726,8 +727,8 @@
 
 .letter-detail-body {
   font-family: var(--xt-serif, serif);
-  font-size: 17px;
-  line-height: 34px;
+  font-size: var(--h5-letter-font);
+  line-height: var(--h5-letter-line);
   color: var(--xt-text);
   /* white-space: normal — line breaks inserted via renderLetterBodyLines() */
   white-space: normal;
@@ -736,10 +737,10 @@
 }
 
 .letter-detail-signature {
-  margin-top: 26px;
+  margin-top: clamp(18px, 3.5svh, 26px);
   text-align: right;
   font-family: var(--xt-serif, serif);
-  font-size: 13px;
+  font-size: clamp(11px, 3vw, 13px);
   color: var(--xt-text-2);
   letter-spacing: 0.16em;
   position: relative;
@@ -776,8 +777,8 @@
 .letter-detail-audio-card audio {
   width: 100%;
   display: block;
-  height: 44px; /* comfortable touch target */
-  margin-bottom: 10px;
+  height: var(--h5-audio-height); /* responsive touch target */
+  margin-bottom: clamp(8px, 1.5svh, 10px);
   accent-color: var(--xt-accent);
   max-width: 100%;
 }
@@ -789,17 +790,17 @@
 
 .letter-detail-empty-audio {
   /* No horizontal margin — parent provides 16px */
-  margin: 0 0 16px;
-  padding: 16px 14px;
+  margin: 0 0 clamp(10px, 2svh, 16px);
+  padding: var(--h5-card-pad);
   background: var(--xt-surface);
   border: 1px dashed var(--xt-hairline-2);
-  border-radius: 16px;
+  border-radius: var(--h5-card-radius);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   color: var(--xt-text-3);
-  font-size: 13px;
+  font-size: clamp(12px, 3.5vw, 13px);
   animation: spaCardIn 0.26s 0.1s both;
 }
 
@@ -824,7 +825,7 @@
   align-items: center;
   gap: 8px;
   width: auto;
-  padding: 0 24px;
+  padding: 0 clamp(16px, 6vw, 24px);
 }
 
 .letter-detail-favorite-btn.favorited {

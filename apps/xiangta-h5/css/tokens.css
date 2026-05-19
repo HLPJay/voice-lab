@@ -104,6 +104,22 @@
   /* Mini player */
   --h5-mini-player-pad-y:        clamp(8px, 1.4svh, 10px);
   --h5-mini-player-bottom-space: calc(80px + env(safe-area-inset-bottom));
+
+  /* Letter body (Result + LetterDetail) */
+  --h5-letter-font: clamp(15.5px, 4.2vw, 17px);
+  --h5-letter-line: clamp(29px,   7.5vw, 34px);
+
+  /* Audio element */
+  --h5-audio-height: clamp(38px, 6svh, 44px);
+
+  /* Action / grid buttons */
+  --h5-action-pad-y:  clamp(9px,  2svh,  14px);
+  --h5-action-pad-x:  clamp(12px, 4vw,   18px);
+  --h5-action-radius: clamp(12px, 3.5vw, 14px);
+
+  /* Save / CTA button */
+  --h5-save-min-height: clamp(48px, 7svh, 54px);
+  --h5-save-radius:     clamp(14px, 4vw,  18px);
 }
 
 /* ── Compact height — address bar visible, ~720px or shorter ─────── */
