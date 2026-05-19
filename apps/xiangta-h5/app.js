@@ -970,6 +970,9 @@ function renderTtsTask(result) {
   // Success case: navigate to result screen instead of showing inline card
   if (result.status === "completed" && result.audioUrl) {
     state.resultSaved = false;
+    state.resultFavorited = false;
+    state.resultSavedLetterId = null;
+    state.resultSavedLetter = null;
     renderResultScreen(result);
     showScreen("result");
     return;
@@ -1018,7 +1021,7 @@ function renderResultMetaPills() {
     `<span class="result-pill">${escHtml(sceneLabel)}</span>` +
     `<span class="result-pill">${escHtml(styleLabel)}</span>`;
 
-  if (state.resultFavorited) {
+  if (state.resultSaved && state.resultFavorited) {
     html += `<span class="result-pill favorited">★ 收藏</span>`;
   }
 
@@ -1821,6 +1824,7 @@ async function toggleHistoryLetterFavorite(letterId) {
   // Sync result screen if this is the current result letter
   if (state.resultSavedLetterId === letterId) {
     state.resultFavorited = newValue;
+    if (state.resultSavedLetter) state.resultSavedLetter.favorited = newValue;
     updateResultSaveButton();
     renderResultMetaPills();
   }
@@ -1828,6 +1832,7 @@ async function toggleHistoryLetterFavorite(letterId) {
   // Sync letter detail if open
   if (state.activeLetterDetailId === letterId) {
     state.letterDetailFavoritedMap[letterId] = newValue;
+    if (state.activeLetterDetail) state.activeLetterDetail.favorited = newValue;
     renderLetterDetailMetaPills(state.activeLetterDetail);
     renderLetterDetailFavoriteButton();
   }
@@ -1848,11 +1853,13 @@ async function toggleHistoryLetterFavorite(letterId) {
     letter.favorited = !newValue;
     if (state.resultSavedLetterId === letterId) {
       state.resultFavorited = !newValue;
+      if (state.resultSavedLetter) state.resultSavedLetter.favorited = !newValue;
       updateResultSaveButton();
       renderResultMetaPills();
     }
     if (state.activeLetterDetailId === letterId) {
       state.letterDetailFavoritedMap[letterId] = !newValue;
+      if (state.activeLetterDetail) state.activeLetterDetail.favorited = !newValue;
       renderLetterDetailMetaPills(state.activeLetterDetail);
       renderLetterDetailFavoriteButton();
     }
@@ -1866,11 +1873,13 @@ async function toggleHistoryLetterFavorite(letterId) {
     letter.favorited = !!response.data.favorited;
     if (state.resultSavedLetterId === letterId) {
       state.resultFavorited = !!response.data.favorited;
+      if (state.resultSavedLetter) state.resultSavedLetter.favorited = !!response.data.favorited;
       updateResultSaveButton();
       renderResultMetaPills();
     }
     if (state.activeLetterDetailId === letterId) {
       state.letterDetailFavoritedMap[letterId] = !!response.data.favorited;
+      if (state.activeLetterDetail) state.activeLetterDetail.favorited = !!response.data.favorited;
       renderLetterDetailMetaPills(state.activeLetterDetail);
       renderLetterDetailFavoriteButton();
     }
