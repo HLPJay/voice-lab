@@ -1,35 +1,52 @@
-# Design Reference — 想Ta了 H5
+# XiangTa H5 Design Reference
 
 ## 设计来源
 
-本 H5 前端（`apps/xiangta-h5/`）基于以下设计稿实现：
+原型目录：
 
-**`design_h5/想他了点击版本/`**
+- `design_h5/想他了点击版本/`
 
-### 设计文件索引
+## 权威来源
 
-| 文件 | 说明 |
-|---|---|
-| `想他了 · Mobile Design.html` | 移动端交互设计总览 |
-| `app.html` | 主应用页面原型 |
-| `screens.jsx` | 各屏幕状态定义 |
-| `components.jsx` | UI 组件设计规范 |
-| `tokens.jsx` | 设计 token（颜色、字体、间距） |
-| `states.jsx` | 交互状态机 |
-| `letters-store.jsx` | 信笺数据结构参考 |
+当前 `apps/xiangta-h5/` 的页面结构与交互效果，统一以 `design_h5/想他了点击版本/` 为准。
+
+本目录下的 H5 不再把旧表单页当作最终结构，而是：
+
+- 以原型的五屏流程作为页面骨架
+- 以项目已有后端 API 作为真实数据来源
+- 用最小 adapter 吃掉接口差异
+
+## 已读取的原型文件
+
+- `design_h5/想他了点击版本/app.html`
+- `design_h5/想他了点击版本/想他了 · Mobile Design.html`
+- `design_h5/想他了点击版本/screens.jsx`
+- `design_h5/想他了点击版本/components.jsx`
+- `design_h5/想他了点击版本/tokens.jsx`
+- `design_h5/想他了点击版本/states.jsx`
+- `design_h5/想他了点击版本/letters-store.jsx`
 
 ## 实现映射
 
-| 设计流程 | H5 实现 |
-|---|---|
-| bootstrap 加载 | `loadBootstrap()` → `GET /api/xiangta/bootstrap` |
-| 文案建议生成 | `generateSuggestions()` → `POST /api/xiangta/suggestions` |
-| 选择建议 | `selectSuggestion(index)` |
-| 语音生成 | `generateTts()` → `POST /api/xiangta/tts` |
-| 保存信笺 | `saveLetter()` → `POST /api/xiangta/letters` |
-| 历史记录 | `loadLetters()` → `GET /api/xiangta/letters` |
+| 原型页面 | 当前真实接线 |
+| --- | --- |
+| Home | `loadBootstrap()` -> `GET /api/xiangta/bootstrap` |
+| Compose | `generateSuggestions()` -> `POST /api/xiangta/suggestions` |
+| Suggest | `selectSuggestion()` -> 前端状态切换 |
+| Voice | `generateTtsTask()` -> `POST /api/xiangta/tts/tasks`，`pollTtsTask()` -> `GET /api/xiangta/tts/tasks/{taskId}` |
+| History | `loadLetters()` -> `GET /api/xiangta/letters` |
 
-## 约束
+## 保留的运行时约束
 
-- B7-1 MVP 为干跑合约（dry-run），不生成真实音频
-- 设计稿为参考依据，H5 实现以后端 API contract 为准
+- formal mode 仍是默认主路径
+- 只有 `?mode=dev` 才显示 Dev Panel
+- formal mode 不调用 `/api/xiangta/core/profiles`
+- formal mode 不传 `profileId`
+- no-audio 仍允许保存文字信笺
+- 正式语音主路径仍是 `/api/xiangta/tts/tasks`
+
+## 不再采用的旧思路
+
+- 不再以旧 `index.html` 表单结构为主继续局部修补
+- 不再因为现有 DOM 方便而改变原型步骤条、卡片形态、底部 CTA 位置
+- 不再把 `/api/xiangta/tts` 作为 formal 主路径

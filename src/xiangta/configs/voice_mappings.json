@@ -4,12 +4,18 @@
     "label": "温柔女声",
     "desc": "适合想念、晚安、轻声表达",
     "genderStyle": "female",
-    "suitableRecipients": ["lover", "friend"],
-    "recommendedScenes": ["miss", "night"],
+    "suitableRecipients": [
+      "lover",
+      "friend"
+    ],
+    "recommendedScenes": [
+      "miss",
+      "night"
+    ],
     "defaultTone": "gentle",
     "enabled": true,
     "sortOrder": 10,
-    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "coreProfileId": "我的测试2",
     "providerPolicy": "default",
     "renderOverrides": {},
     "notes": "coreProfileId must be selected from Core GET /api/voice/profiles before real render"
@@ -19,12 +25,19 @@
     "label": "温和男声",
     "desc": "适合陪伴、安慰和低压表达",
     "genderStyle": "male",
-    "suitableRecipients": ["lover", "friend", "self"],
-    "recommendedScenes": ["comfort", "night"],
+    "suitableRecipients": [
+      "lover",
+      "friend",
+      "self"
+    ],
+    "recommendedScenes": [
+      "comfort",
+      "night"
+    ],
     "defaultTone": "gentle",
     "enabled": true,
     "sortOrder": 20,
-    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "coreProfileId": "小米白桦",
     "providerPolicy": "default",
     "renderOverrides": {},
     "notes": "coreProfileId must be selected from Core GET /api/voice/profiles before real render"
@@ -34,12 +47,18 @@
     "label": "明亮女声",
     "desc": "适合感谢、轻快、带一点笑意的表达",
     "genderStyle": "female",
-    "suitableRecipients": ["friend", "family"],
-    "recommendedScenes": ["thanks", "comfort"],
+    "suitableRecipients": [
+      "friend",
+      "family"
+    ],
+    "recommendedScenes": [
+      "thanks",
+      "comfort"
+    ],
     "defaultTone": "sincere",
     "enabled": true,
     "sortOrder": 30,
-    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "coreProfileId": "deep_night_programmer",
     "providerPolicy": "default",
     "renderOverrides": {},
     "notes": "coreProfileId must be selected from Core GET /api/voice/profiles before real render"
@@ -49,12 +68,20 @@
     "label": "沉稳男声",
     "desc": "适合认真表达、道歉和更稳重的情绪",
     "genderStyle": "male",
-    "suitableRecipients": ["family", "lover", "self"],
-    "recommendedScenes": ["sorry", "thanks", "night"],
+    "suitableRecipients": [
+      "family",
+      "lover",
+      "self"
+    ],
+    "recommendedScenes": [
+      "sorry",
+      "thanks",
+      "night"
+    ],
     "defaultTone": "restrained",
     "enabled": true,
     "sortOrder": 40,
-    "coreProfileId": "<core_profile_id_from_core_profiles>",
+    "coreProfileId": "我的测试3",
     "providerPolicy": "default",
     "renderOverrides": {},
     "notes": "coreProfileId must be selected from Core GET /api/voice/profiles before real render"

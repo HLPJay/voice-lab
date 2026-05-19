@@ -1,8 +1,12 @@
 """
-XiangTa Runtime Configuration — layered config: default → runtime.json → env override.
+XiangTa Runtime Configuration — layered config:
+  default → runtime.json → runtime local config → XIANGTA_* env override
 
 只读取 XiangTa 自有运行时配置变量。
-不读取任何真实 Provider API key.
+默认不读取任何真实 Provider API key；
+仅在显式配置 XIANGTA_MINIMAX_COPYWRITING_API_KEY env
+  或本地私有 configs/xiangta.runtime.local.json 时读取。
+不会将 key 写入可提交的 runtime.json，不会记录日志，不会暴露给前端。
 不引入 Core 内部模块。
 """
 from __future__ import annotations
@@ -22,11 +26,16 @@ logger = logging.getLogger(__name__)
 
 _CONFIG_DIR = Path(__file__).resolve().parents[1] / "configs"
 _RUNTIME_JSON_PATH = _CONFIG_DIR / "runtime.json"
+# Local private config at project root (gitignored — may contain secrets)
+_RUNTIME_LOCAL_JSON_PATH = Path("configs/xiangta.runtime.local.json")
 
 
 # ── Default config ─────────────────────────────────────────────────────────────
 
 _DEFAULT_CONFIG: dict[str, Any] = {
+    "admin": {
+        "enabled": False,
+    },
     "core": {
         "enabled": False,
         "baseUrl": "",
@@ -45,8 +54,8 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "timeoutSecs": 120,
     },
     "storage": {
-        "type": "memory",
-        "databaseUrl": "",
+        "type": "sqlite",
+        "databaseUrl": "sqlite:///data/xiangta_letters.sqlite3",
     },
     "features": {
         "devCoreProfileSelect": True,
@@ -96,6 +105,10 @@ class XiangTaRuntimeConfig:
     core_base_url: str | None = None
     core_timeout_secs: float = 20.0
 
+    # Admin
+    admin_enabled: bool = False
+    admin_token: str | None = None
+
     # Core (new)
     core_enabled: bool = False
     core_url: str | None = None
@@ -105,6 +118,10 @@ class XiangTaRuntimeConfig:
     copywriting_provider: str = "none"
     copywriting_timeout_secs: float = 20.0
     copywriting_fallback_to_template: bool = True
+    minimax_copywriting_base_url: str | None = None
+    minimax_copywriting_model: str | None = None
+    minimax_copywriting_endpoint_path: str = "/v1/chat/completions"
+    minimax_copywriting_api_key: str | None = None
 
     # TTS
     tts_mode: str = "sync"
@@ -113,14 +130,25 @@ class XiangTaRuntimeConfig:
     tts_timeout_secs: float = 120.0
 
     # Storage
-    storage_type: str = "memory"
-    storage_database_url: str | None = None
+    storage_type: str = "sqlite"
+    storage_database_url: str | None = "sqlite:///data/xiangta_letters.sqlite3"
 
     # Features
     feature_dev_core_profile_select: bool = True
     feature_letters_enabled: bool = True
     feature_llm_copywriting_enabled: bool = False
     feature_tts_task_enabled: bool = False
+
+    # Safe repr: never expose apiKey or admin_token
+    def __repr__(self) -> str:
+        cls_name = self.__class__.__name__
+        parts = []
+        for field_name in self.__dataclass_fields__:
+            if field_name in {"minimax_copywriting_api_key", "admin_token"}:
+                parts.append(f"{field_name}=<hidden>")
+            else:
+                parts.append(f"{field_name}={getattr(self, field_name)!r}")
+        return f"{cls_name}({', '.join(parts)})"
 
 
 # ── Deep merge ────────────────────────────────────────────────────────────────
@@ -138,16 +166,27 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 # ── Config loading ────────────────────────────────────────────────────────────
 
-def _load_runtime_json(path: Path | None = None) -> dict:
-    """Load runtime.json from disk. Returns empty dict on error or missing file."""
+def _load_runtime_json(path: Path | None = None, *, is_local: bool = False) -> dict:
+    """
+    Load a runtime JSON config from disk.
+
+    Args:
+        path: file path; defaults to _RUNTIME_JSON_PATH.
+        is_local: if True, the file is the local private config (may contain secrets).
+
+    Returns merged dict, or empty dict on error / missing file.
+    Logs a warning on error but never exposes secret values.
+    """
     try:
         p = path or _RUNTIME_JSON_PATH
         if p.exists():
             with open(p, encoding="utf-8") as f:
                 return json.load(f)
     except Exception as exc:
+        kind = "local runtime" if is_local else "runtime"
         logger.warning(
-            "Failed to load XiangTa runtime config from %s; using defaults: %s",
+            "Failed to load XiangTa %s config from %s; using previous config: %s",
+            kind,
             str(path or _RUNTIME_JSON_PATH),
             exc,
         )
@@ -164,6 +203,15 @@ def _apply_env_overrides(config: dict) -> dict:
     Apply XIANGTA_* env vars on top of config dict.
     Priority: explicit env > config file > default.
     """
+    # Admin
+    admin = dict(config.get("admin", {}))
+    admin_enabled_env_str = _get_env("XIANGTA_ADMIN_ENABLED")
+    if admin_enabled_env_str is not None:
+        parsed = _parse_bool(admin_enabled_env_str)
+        admin["enabled"] = parsed if parsed is not None else False
+    config = dict(config)
+    config["admin"] = admin
+
     # Core
     core_base_url_env = _get_env("XIANGTA_CORE_BASE_URL")
     core_timeout_env = _get_env("XIANGTA_CORE_TIMEOUT_SECS")
@@ -187,7 +235,6 @@ def _apply_env_overrides(config: dict) -> dict:
         except ValueError:
             pass  # fall back to file/default
 
-    config = dict(config)
     config["core"] = core
 
     # Copywriting
@@ -208,6 +255,15 @@ def _apply_env_overrides(config: dict) -> dict:
             v = _parse_bool(env_val)
             if v is not None:
                 config.setdefault("copywriting", {})["fallbackToTemplate"] = v
+
+    # MiniMax copywriting
+    if _get_env("XIANGTA_MINIMAX_COPYWRITING_BASE_URL"):
+        config.setdefault("copywriting", {})["minimaxBaseUrl"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_BASE_URL")
+    if _get_env("XIANGTA_MINIMAX_COPYWRITING_MODEL"):
+        config.setdefault("copywriting", {})["minimaxModel"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_MODEL")
+    if _get_env("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH"):
+        config.setdefault("copywriting", {})["minimaxEndpointPath"] = _get_env("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH")
+    # Note: XIANGTA_MINIMAX_COPYWRITING_API_KEY is read directly in return statement (never stored in config dict)
 
     # TTS
     if _get_env("XIANGTA_TTS_MODE"):
@@ -280,10 +336,15 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
     file_config = _load_runtime_json(_RUNTIME_JSON_PATH)
     config = _deep_merge(config, file_config)
 
-    # 3. Apply env overrides
+    # 3. Overlay runtime local config (gitignored — may contain secrets)
+    local_config = _load_runtime_json(_RUNTIME_LOCAL_JSON_PATH, is_local=True)
+    config = _deep_merge(config, local_config)
+
+    # 4. Apply env overrides
     config = _apply_env_overrides(config)
 
     # Extract core settings
+    admin = config.get("admin", {})
     core = config.get("core", {})
     copywriting = config.get("copywriting", {})
     tts = config.get("tts", {})
@@ -297,10 +358,56 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
 
     core_timeout = _sanitize_timeout(core.get("timeoutSecs"))
 
+    # MiniMax: nested copywriting.minimax.* preferred over flat minimaxBaseUrl/minimaxModel
+    _minimax = copywriting.get("minimax") or {}
+    _env_endpoint_path = _get_env("XIANGTA_MINIMAX_COPYWRITING_ENDPOINT_PATH")
+    _minimax_base_url = (
+        str(_minimax["baseUrl"]) if _minimax.get("baseUrl")
+        else (str(copywriting["minimaxBaseUrl"]) if copywriting.get("minimaxBaseUrl") else None)
+    )
+    _minimax_model = (
+        str(_minimax["model"]) if _minimax.get("model")
+        else (str(copywriting["minimaxModel"]) if copywriting.get("minimaxModel") else None)
+    )
+    # Env always wins; then nested local config; then flat local config; then default
+    _minimax_endpoint_path = (
+        str(_env_endpoint_path) if _env_endpoint_path
+        else (str(_minimax["endpointPath"]) if _minimax.get("endpointPath")
+        else (str(copywriting["minimaxEndpointPath"]) if copywriting.get("minimaxEndpointPath") else "/v1/chat/completions"))
+    )
+    # apiKey: read directly from local config file only — never from merged runtime.json
+    _local_config_api_key: str | None = None
+    try:
+        if _RUNTIME_LOCAL_JSON_PATH.exists():
+            with open(_RUNTIME_LOCAL_JSON_PATH, encoding="utf-8") as f:
+                _local_raw = json.load(f)
+            _local_minimax = _local_raw.get("copywriting", {}).get("minimax") or {}
+            if _local_minimax.get("apiKey"):
+                _local_config_api_key = str(_local_minimax["apiKey"])
+    except Exception:
+        pass  # silent — don't expose in logs
+    _env_api_key = _get_env("XIANGTA_MINIMAX_COPYWRITING_API_KEY")
+
+    # admin_token: read directly from local config file only — never from merged runtime.json
+    _local_admin_token: str | None = None
+    try:
+        if _RUNTIME_LOCAL_JSON_PATH.exists():
+            with open(_RUNTIME_LOCAL_JSON_PATH, encoding="utf-8") as f:
+                _local_raw = json.load(f)
+            _local_admin = _local_raw.get("admin") or {}
+            if _local_admin.get("token"):
+                _local_admin_token = str(_local_admin["token"])
+    except Exception:
+        pass  # silent — don't expose in logs
+    _env_admin_token = _get_env("XIANGTA_ADMIN_TOKEN")
+
     return XiangTaRuntimeConfig(
         # Core (backward-compatible)
         core_base_url=core_base_url,
         core_timeout_secs=core_timeout,
+        # Admin
+        admin_enabled=bool(admin.get("enabled", False)),
+        admin_token=_env_admin_token or _local_admin_token,
         # Core (new fields)
         core_enabled=bool(core.get("enabled", False)),
         core_url=(str(core["baseUrl"]) if core.get("baseUrl") else None),
@@ -309,6 +416,11 @@ def load_runtime_config() -> XiangTaRuntimeConfig:
         copywriting_provider=str(copywriting.get("provider", "none")),
         copywriting_timeout_secs=_sanitize_timeout(copywriting.get("timeoutSecs")),
         copywriting_fallback_to_template=bool(copywriting.get("fallbackToTemplate", True)),
+        minimax_copywriting_base_url=_minimax_base_url,
+        minimax_copywriting_model=_minimax_model,
+        minimax_copywriting_endpoint_path=_minimax_endpoint_path,
+        # apiKey: env wins over local config over none
+        minimax_copywriting_api_key=_env_api_key or _local_config_api_key,
         # TTS
         tts_mode=str(tts.get("mode", "sync")),
         tts_max_concurrent=max(1, int(tts.get("maxConcurrent", 1))),

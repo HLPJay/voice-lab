@@ -37,6 +37,14 @@ _TTS_BODY = {
     "scene": "miss",
 }
 
+_ADMIN_HEADERS = {"X-XiangTa-Admin-Token": "test-admin-token"}
+
+
+@pytest.fixture(autouse=True)
+def _admin_env(monkeypatch):
+    monkeypatch.setenv("XIANGTA_ADMIN_ENABLED", "true")
+    monkeypatch.setenv("XIANGTA_ADMIN_TOKEN", "test-admin-token")
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -132,7 +140,7 @@ class TestRuntimeApi:
         assert r.status_code == 200
 
     def test_admin_config_returns_200(self, client):
-        r = client.get("/api/xiangta/admin/config")
+        r = client.get("/api/xiangta/admin/config", headers=_ADMIN_HEADERS)
         assert r.status_code == 200
 
 

@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.pytest-tmp/
 .mypy_cache/
 .ruff_cache/
 
@@ -18,6 +19,7 @@ __pycache__/
 
 # Generated assets
 storage/
+!src/xiangta/storage/
 
 # Virtual environments
 .venv/
@@ -41,3 +43,8 @@ tmp/
 
 # Generated cleanup plans
 docs/generated/
+
+# Local runtime config (contains secrets — never commit)
+configs/xiangta.runtime.local.json
+*.runtime.local.json
+*.local.secret.json

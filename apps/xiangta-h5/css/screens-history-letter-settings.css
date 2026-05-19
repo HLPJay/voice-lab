@@ -1,0 +1,924 @@
+/* ── History screen layout — dock container ───────────────────────────
+   #screenHistory is position:relative so the absolute mini player dock
+   positions against the H5 screen, not the viewport.
+   overflow:hidden clips the dock to the screen boundary. */
+#screenHistory {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ensure the scroll area fills the full height of #screenHistory */
+#screenHistory .screen-scroll.history-screen {
+  height: 100%;
+}
+
+/* ── History scroll — bottom spacing and scoped density ──────────────
+   Override screen-scroll's --xt-bottom-safe (104px) — history has no
+   fixed CTA. Scoped density tokens keep the list tighter than other
+   screens so more cards are visible on a typical phone browser. */
+.screen-scroll.history-screen {
+  padding-bottom: var(--h5-page-bottom);
+
+  /* Tighter density scoped to history — more cards visible on phone.
+     These local overrides cascade to all children (header, list, chips)
+     without touching other screens' tokens. */
+  --h5-header-top:    clamp(14px, 3svh, 20px);
+  --h5-header-gap:    clamp(2px,  0.8svh, 6px);
+  --h5-title-size:    clamp(19px, 5vw, 21px);
+  --h5-list-pad-y:    clamp(4px,  0.8svh, 6px);
+  --h5-card-pad:      clamp(8px,  2.5vw, 12px);
+  --h5-card-gap:      clamp(5px,  1svh,  7px);
+  --h5-chip-pad-y:    clamp(4px,  0.7svh, 6px);
+  --h5-chip-pad-x:    clamp(8px,  2.5vw, 12px);
+  --h5-icon-size:     clamp(32px, 8.5vw, 36px);
+  --h5-play-size:     clamp(30px, 8vw,   33px);
+
+  /* Local reserve — tuned to actual absolute dock height (~62px).
+     Scoped here so it doesn't affect global --h5-mini-player-bottom-space. */
+  --history-mini-player-reserve: calc(62px + env(safe-area-inset-bottom));
+}
+
+/* When mini player dock is visible — expand so last card can scroll above it.
+   JS adds/removes has-mini-player via renderHistoryMiniPlayer / hideHistoryMiniPlayer. */
+.screen-scroll.history-screen.has-mini-player {
+  padding-bottom: var(--history-mini-player-reserve);
+}
+
+/* History screen prototype styles */
+.history-search {
+  padding: 8px 16px 0;
+}
+
+.history-search input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--xt-surface);
+  border: 1px solid var(--xt-hairline-2);
+  color: var(--xt-text);
+  font-family: var(--xt-sans);
+  font-size: 13px;
+  outline: none;
+}
+
+.history-search input::placeholder {
+  color: var(--xt-text-3);
+}
+
+.history-filter-chips {
+  display: flex;
+  gap: var(--h5-chip-gap);
+  padding: var(--h5-list-pad-y) var(--h5-page-x);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.history-filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.history-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--h5-chip-pad-y) var(--h5-chip-pad-x);
+  border-radius: 999px;
+  font-size: var(--h5-chip-font);
+  border: 1px solid var(--xt-hairline);
+  color: var(--xt-text-2);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.history-filter-chip.active {
+  background: var(--xt-accent-soft);
+  border-color: var(--xt-accent);
+  color: var(--xt-accent-ink);
+}
+
+.history-filter-chip:active {
+  opacity: 0.8;
+}
+
+.prototype-history-list {
+  padding: var(--h5-list-pad-y) var(--h5-page-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--h5-card-gap);
+}
+
+.prototype-history-card {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 3vw, 12px);
+  padding: var(--h5-card-pad);
+  background: var(--xt-surface);
+  border: 1px solid var(--xt-hairline);
+  border-radius: var(--h5-card-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+  animation: spaCardIn 0.26s both;
+}
+
+.prototype-history-card:active {
+  background: var(--xt-surface-2);
+}
+
+.prototype-history-card-icon {
+  width: var(--h5-icon-size);
+  height: var(--h5-icon-size);
+  border-radius: clamp(10px, 3vw, 12px);
+  background: var(--xt-accent-soft);
+  color: var(--xt-accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.prototype-history-card-icon.no-audio {
+  background: var(--xt-surface-3);
+  color: var(--xt-text-3);
+}
+
+.prototype-history-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.prototype-history-card-title {
+  font-family: var(--xt-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--xt-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prototype-history-card-meta {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--xt-text-3);
+  margin-top: 3px;
+}
+
+.prototype-history-card-meta span {
+  white-space: nowrap;
+}
+
+.prototype-history-card-meta .separator {
+  color: var(--xt-text-4);
+}
+
+.prototype-history-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 32px;  /* reserve space so info col never touches right col */
+}
+
+.prototype-history-card-duration {
+  font-family: var(--xt-mono);
+  font-size: 10px;
+  color: var(--xt-text-3);
+}
+
+.prototype-history-card-star {
+  color: var(--xt-text-3);
+  font-size: 14px;
+}
+
+.prototype-history-card-star.active {
+  color: var(--xt-accent);
+}
+
+/* History mini player — absolute bottom dock.
+   Positioned against #screenHistory (position:relative) so it is
+   always fixed at the bottom of the H5 screen regardless of scroll.
+   No bleed-to-edge math needed: the element is no longer inside the
+   padded scroll container. */
+.history-mini-player {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  border-radius: 0;
+  padding: var(--h5-mini-player-pad-y) var(--h5-page-x) calc(var(--h5-mini-player-pad-y) + env(safe-area-inset-bottom));
+  background: rgba(26, 21, 33, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-top: 1px solid var(--xt-hairline);
+  animation: spaMiniPlayerUp 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.history-mini-player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-mini-player-btn {
+  width: var(--h5-icon-size);
+  height: var(--h5-icon-size);
+  border-radius: clamp(10px, 3vw, 12px);
+  border: 0;
+  padding: 0;
+  background: var(--xt-accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px var(--xt-accent-soft);
+  flex-shrink: 0;
+}
+
+.history-mini-player-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-mini-player-title {
+  font-size: 13px;
+  color: var(--xt-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--xt-serif);
+}
+
+.history-mini-player-subtitle {
+  font-size: 11px;
+  color: var(--xt-text-3);
+  margin-top: 1px;
+  letter-spacing: 0.04;
+}
+
+.history-mini-player-progress {
+  height: 2px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--xt-hairline-2);
+  position: relative;
+  overflow: hidden;
+}
+
+.history-mini-player-progress-fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: var(--xt-accent);
+  border-radius: 999px;
+  transition: width 0.22s linear;
+}
+
+.history-empty-state {
+  padding: 36px 22px;
+  text-align: center;
+  border: 1px dashed var(--xt-hairline-2);
+  border-radius: 22px;
+  margin: 16px;
+}
+
+.history-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  margin: 0 auto 18px;
+  background: var(--xt-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--xt-text-3);
+}
+
+.history-empty-title {
+  font-family: var(--xt-serif);
+  font-size: 18px;
+  color: var(--xt-text);
+  margin-bottom: 8px;
+}
+
+.history-empty-body {
+  font-size: 13px;
+  color: var(--xt-text-2);
+  line-height: 1.8;
+}
+
+.history-empty-cta {
+  margin-top: 22px;
+}
+
+/* ── History screen prototype header ──────────────────────────────── */
+.history-screen-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  /* Density token: top shrinks on compact viewport height */
+  padding: var(--h5-header-top) var(--h5-page-x) var(--h5-header-gap);
+}
+
+.history-screen-header-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-screen-title {
+  font-family: var(--xt-serif, serif);
+  font-size: var(--h5-title-size);
+  font-weight: 500;
+  color: var(--xt-text);
+  line-height: 1.2;
+}
+
+.history-screen-count {
+  font-size: var(--h5-subtitle-size);
+  color: var(--xt-text-3);
+  margin-top: 6px;
+}
+
+/* ── Settings screen prototype header ─────────────────────────────── */
+.settings-screen-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  /* Density token — same ladder as History header */
+  padding: var(--h5-header-top) var(--h5-page-x) var(--h5-header-gap);
+}
+
+.settings-screen-header-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-screen-title {
+  font-family: var(--xt-serif, serif);
+  font-size: var(--h5-title-size);
+  font-weight: 500;
+  color: var(--xt-text);
+  line-height: 1.2;
+}
+
+.settings-screen-subtitle {
+  font-size: var(--h5-subtitle-size);
+  color: var(--xt-text-3);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* ── Settings content components ──────────────────────────────────── */
+.settings-provider-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-provider-name {
+  font-size: 14px;
+  color: var(--xt-text);
+  font-weight: 500;
+}
+
+.settings-provider-detail {
+  font-size: 11px;
+  color: var(--xt-text-3);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.settings-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.settings-status-pill-ok    { background: var(--ok-soft);    color: var(--ok); }
+.settings-status-pill-warn  { background: var(--warn-soft);  color: var(--warn); }
+.settings-status-pill-error { background: var(--error-soft); color: var(--error); }
+.settings-status-pill-mute  { background: rgba(255,255,255,0.04); color: var(--xt-text-3); }
+
+.settings-hairline {
+  height: 1px;
+  background: var(--xt-hairline);
+  margin: 14px 0;
+}
+
+.settings-sync-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--xt-hairline-2);
+  background: transparent;
+  opacity: 0.7;
+}
+
+.settings-data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--xt-text);
+}
+
+.settings-version {
+  font-size: 10px;
+  color: var(--xt-text-4);
+  text-align: center;
+  margin-top: 22px;
+  font-family: var(--xt-mono, monospace);
+  letter-spacing: 0.2em;
+  padding-bottom: 8px;
+}
+
+/* Settings Screen */
+.settings-screen {
+  padding-bottom: 32px;
+}
+
+.settings-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+  animation: spaCardIn 0.26s both;
+}
+
+.settings-status-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.settings-status-label {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.settings-status-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.settings-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.status-dot-ok { background: var(--ok); }
+.status-dot-warn { background: var(--warn); }
+.status-dot-error { background: var(--danger); }
+.status-dot-idle { background: var(--text-3); }
+
+.settings-quota-bar {
+  margin-bottom: 16px;
+  animation: spaCardIn 0.26s both;
+}
+
+.settings-quota-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.settings-quota-pct {
+  font-family: var(--xt-mono);
+  font-size: 11px;
+}
+
+.settings-quota-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--xt-hairline-2);
+  overflow: hidden;
+}
+
+.settings-quota-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.settings-status-detail {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 16px 14px;
+  margin-bottom: 12px;
+  animation: spaCardIn 0.26s both;
+}
+
+.settings-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.settings-card-subtitle {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.settings-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.settings-note-row svg {
+  color: var(--ok);
+  flex-shrink: 0;
+}
+
+.settings-binding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings-binding-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-binding-row:last-child {
+  border-bottom: none;
+}
+
+.settings-binding-name {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings-binding-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.binding-badge-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.binding-badge-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.settings-binding-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.settings-voice-bind-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  animation: spaCardIn 0.26s 0.1s both;
+}
+
+.settings-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.settings-home-btn {
+  width: 100%;
+}
+
+/* Letter Detail Screen */
+.letter-detail-screen {
+  /* padding-bottom handled by screen-scroll override below */
+}
+
+/* Override screen-scroll's --xt-bottom-safe (104px) — LetterDetail has no fixed CTA.
+   Uses density token so compact viewports get less dead space. */
+.screen-scroll.letter-detail-screen {
+  padding-bottom: var(--h5-page-bottom);
+}
+
+.letter-detail-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--h5-chip-gap);
+  /* No horizontal padding — parent screen-scroll provides 16px */
+  padding: 0;
+  margin-bottom: clamp(10px, 2svh, 16px);
+  animation: spaCardIn 0.26s both;
+}
+
+.letter-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  color: var(--xt-text-2);
+  border: 1px solid var(--xt-hairline-2);
+  background: transparent;
+}
+
+.letter-meta-pill-accent {
+  background: var(--xt-accent-soft);
+  color: var(--xt-accent-ink);
+  border-color: var(--xt-accent-deep);
+}
+
+.letter-meta-pill-favorited {
+  color: var(--xt-accent-ink);
+}
+
+.letter-detail-title {
+  font-family: var(--xt-serif, serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--xt-text);
+  letter-spacing: 0.02em;
+}
+
+.letter-detail-letter-card {
+  /* No horizontal margin — parent screen-scroll already provides 16px padding */
+  margin: 0 0 clamp(10px, 2svh, 16px);
+  padding: clamp(18px, 4vw, 24px) clamp(18px, 5vw, 26px) clamp(20px, 4vw, 26px);
+  background: linear-gradient(var(--xt-surface-2) 0%, var(--xt-surface) 100%);
+  border: 1px solid var(--xt-hairline-2);
+  border-radius: clamp(16px, 4vw, 22px);
+  position: relative;
+  overflow: hidden;
+  animation: spaCardIn 0.26s 0.05s both;
+}
+
+.letter-detail-letter-card::before {
+  content: "";
+  position: absolute;
+  top: 60px;
+  left: 26px;
+  right: 26px;
+  bottom: 70px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 33px,
+    var(--xt-hairline) 33px,
+    var(--xt-hairline) 34px
+  );
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.letter-detail-seal {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  opacity: 0.45;
+  color: var(--xt-text-3);
+}
+
+.letter-detail-seal.favorited {
+  opacity: 1;
+  color: var(--xt-accent);
+  filter: drop-shadow(0 0 8px rgba(217, 149, 74, 0.28));
+}
+
+.letter-detail-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.letter-detail-date-line {
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  background: var(--xt-text-4);
+  flex-shrink: 0;
+}
+
+.letter-detail-date {
+  font-family: var(--xt-mono, monospace);
+  font-size: 11px;
+  color: var(--xt-text-3);
+  letter-spacing: 0.16em;
+}
+
+.letter-detail-body {
+  font-family: var(--xt-serif, serif);
+  font-size: var(--h5-letter-font);
+  line-height: var(--h5-letter-line);
+  color: var(--xt-text);
+  /* white-space: normal — line breaks inserted via renderLetterBodyLines() */
+  white-space: normal;
+  word-break: break-word;
+  position: relative;
+}
+
+.letter-detail-signature {
+  margin-top: clamp(18px, 3.5svh, 26px);
+  text-align: right;
+  font-family: var(--xt-serif, serif);
+  font-size: clamp(11px, 3vw, 13px);
+  color: var(--xt-text-2);
+  letter-spacing: 0.16em;
+  position: relative;
+}
+
+.letter-detail-audio-card {
+  /* No horizontal margin — parent provides 16px */
+  margin: 0 0 clamp(10px, 2svh, 16px);
+  padding: var(--h5-card-pad);
+  background: var(--xt-surface);
+  border: 1px solid var(--xt-hairline-2);
+  border-radius: var(--h5-card-radius);
+  animation: spaCardIn 0.26s 0.1s both;
+}
+
+.letter-detail-audio-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.letter-detail-voice-name {
+  font-size: 12px;
+  color: var(--xt-text-2);
+}
+
+.letter-detail-audio-time {
+  font-family: var(--xt-mono, monospace);
+  font-size: 11px;
+  color: var(--xt-text-3);
+}
+
+.letter-detail-audio-card audio {
+  width: 100%;
+  display: block;
+  height: var(--h5-audio-height); /* responsive touch target */
+  margin-bottom: clamp(8px, 1.5svh, 10px);
+  accent-color: var(--xt-accent);
+  max-width: 100%;
+}
+
+.letter-detail-audio-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.letter-detail-empty-audio {
+  /* No horizontal margin — parent provides 16px */
+  margin: 0 0 clamp(10px, 2svh, 16px);
+  padding: var(--h5-card-pad);
+  background: var(--xt-surface);
+  border: 1px dashed var(--xt-hairline-2);
+  border-radius: var(--h5-card-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--xt-text-3);
+  font-size: clamp(12px, 3.5vw, 13px);
+  animation: spaCardIn 0.26s 0.1s both;
+}
+
+.letter-detail-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--h5-card-gap);
+  /* No horizontal margin — parent provides 16px */
+  margin: 0 0 clamp(10px, 2svh, 16px);
+  animation: spaCardIn 0.26s 0.15s both;
+}
+
+.letter-detail-favorite-section {
+  /* No horizontal margin — parent provides 16px */
+  margin: 0 0 clamp(10px, 2svh, 16px);
+  text-align: center;
+  animation: spaCardIn 0.26s 0.2s both;
+}
+
+.letter-detail-favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  padding: 0 clamp(16px, 6vw, 24px);
+}
+
+.letter-detail-favorite-btn.favorited {
+  background: var(--xt-accent-soft);
+  color: var(--xt-accent-ink);
+  border-color: var(--xt-accent-deep);
+}
+
+.letter-detail-favorite-hint {
+  font-size: 10px;
+  color: var(--xt-text-4);
+  margin-top: 6px;
+}
+
+.letter-detail-bottom-note {
+  text-align: center;
+  font-size: 11px;
+  color: var(--xt-text-4);
+  line-height: 1.7;
+  padding: 0 16px;
+  margin-top: 8px;
+}
+
+/* History card play button — responsive size, minimum 32px tap target */
+.prototype-history-card-playbtn {
+  width: var(--h5-play-size);
+  height: var(--h5-play-size);
+  border-radius: 999px;
+  background: var(--accent);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.prototype-history-card-playbtn:active {
+  background: var(--accent-ink);
+}
+
+.prototype-history-card-playbtn svg {
+  margin-left: 1px;
+}
+
+/* Favorite star — extend tap area without changing visual size */
+.prototype-history-card-star {
+  padding: 4px;
+  margin: -4px;
+  -webkit-tap-highlight-color: transparent;
+}
+

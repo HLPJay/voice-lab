@@ -1,0 +1,31 @@
+{
+  "admin": {
+    "enabled": true,
+    "token": "change-me-local-only"
+  },
+  "core": {
+    "enabled": true,
+    "baseUrl": "http://127.0.0.1:8000",
+    "timeoutSecs": 20
+  },
+  "features": {
+    "ttsTaskEnabled": true,
+    "devCoreProfileSelect": true
+  },
+  "storage": {
+    "type": "sqlite",
+    "databaseUrl": "sqlite:///data/xiangta_letters.sqlite3"
+  },
+  "copywriting": {
+    "mode": "llm",
+    "provider": "minimax",
+    "timeoutSecs": 20,
+    "fallbackToTemplate": true,
+    "minimax": {
+      "baseUrl": "https://api.minimaxi.com",
+      "endpointPath": "/v1/chat/completions",
+      "model": "<MINIMAX_MODEL_NAME>",
+      "apiKey": "<DO_NOT_COMMIT_REAL_KEY>"
+    }
+  }
+}

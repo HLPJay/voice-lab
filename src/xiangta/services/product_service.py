@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from src.xiangta.services.provider_status_service import ProviderStatusService
     from src.xiangta.config.product_config_repository import ProductConfigRepository
     from src.xiangta.services.admin_config_service import AdminConfigService
+    from src.xiangta.services.tts_task_service import TtsTaskService
 
 
 class ProductService:
@@ -36,6 +37,7 @@ class ProductService:
         letters: "LetterService | None" = None,
         config_repository: "ProductConfigRepository | None" = None,
         admin_config_service: "AdminConfigService | None" = None,
+        tts_tasks: "TtsTaskService | None" = None,
     ) -> None:
         self._bootstrap             = bootstrap
         self._provider_status       = provider_status
@@ -44,6 +46,7 @@ class ProductService:
         self._letters               = letters
         self._config_repository     = config_repository
         self._admin_config_service  = admin_config_service
+        self._tts_tasks            = tts_tasks
 
     async def get_bootstrap(self) -> dict:
         return await self._bootstrap.get_bootstrap()
@@ -51,8 +54,86 @@ class ProductService:
     async def get_provider_status(self) -> dict:
         return await self._provider_status.get_status()
 
+    async def get_voice_binding_status(self) -> dict:
+        """
+        Return public voice binding status for each voice preset.
+
+        Checks:
+        - bound: coreProfileId is non-empty and not a placeholder
+        - coreAvailable: when Core is connected, whether the bound profile still exists
+        - reason: explicit reason when not bound or unavailable
+        """
+        if self._config_repository is None:
+            return {"items": [], "allBound": False, "source": "config"}
+
+        from src.xiangta.services.voice_preset_mapping_service import (
+            _is_placeholder_profile_id,
+        )
+
+        # Get current voice mappings
+        mappings = self._config_repository.list_voice_mappings()
+
+        # Try to get Core profile ids for availability check
+        core_profile_ids: set[str] = set()
+        core_available = False
+
+        if self._tts is not None and self._tts._gw is not None:
+            from src.xiangta.services.voice_lab_gateway import (
+                CoreProfilesUnavailableError,
+                CoreProfilesResponseError,
+            )
+            try:
+                raw_profiles = await self._tts._gw.list_profiles()
+                core_profile_ids = {p.get("id", "") for p in raw_profiles}
+                core_available = True
+            except (CoreProfilesUnavailableError, CoreProfilesResponseError, Exception):
+                core_available = False
+
+        items = []
+        all_bound = True
+
+        for m in mappings:
+            if not m.enabled:
+                continue
+
+            core_profile_id = m.core_profile_id or ""
+            is_placeholder = _is_placeholder_profile_id(core_profile_id)
+            bound = not is_placeholder and bool(core_profile_id.strip())
+
+            if not bound:
+                all_bound = False
+
+            reason: str | None = None
+            core_avail: bool | None = None
+
+            if bound:
+                if core_available:
+                    core_avail = core_profile_id in core_profile_ids
+                    if not core_avail:
+                        reason = "绑定的 Core profile 已不存在"
+                else:
+                    core_avail = None
+                    reason = "Core 未连接，无法验证 profile 是否有效"
+            else:
+                if core_profile_id.strip() == "":
+                    reason = "未绑定"
+                else:
+                    reason = f"coreProfileId 为占位值：{core_profile_id}"
+
+            items.append({
+                "voicePreset": m.id,
+                "label": m.label,
+                "bound": bound,
+                "coreAvailable": core_avail,
+                "reason": reason,
+            })
+
+        return {"items": items, "allBound": all_bound, "source": "config"}
+
     async def list_core_profiles(self) -> dict:
-        """Query Core profiles via VoiceLabGateway.list_profiles() with stable degradation."""
+        """
+        Query Core profiles via VoiceLabGateway.list_profiles() with stable degradation.
+        """
         if self._tts is None or self._tts._gw is None:
             return {
                 "profiles": [],
@@ -89,7 +170,6 @@ class ProductService:
                 "message": "Core is currently unavailable",
             }
 
-        # 转换为 camelCase 安全字段返回给 H5
         def _to_camel(p: dict) -> dict:
             return {
                 "id": p.get("id", ""),
@@ -134,6 +214,26 @@ class ProductService:
             }
             for m in self._config_repository.list_voice_mappings()
         ]
+
+    def list_public_voice_presets(self) -> dict:
+        """Return public voice presets (no Core/Provider/Admin fields) for formal H5."""
+        if self._config_repository is None:
+            return {"presets": [], "total": 0, "source": "config"}
+        items = self._config_repository.list_public_voice_presets()
+        presets = [
+            {
+                "id": p.id,
+                "label": p.label,
+                "desc": p.desc,
+                "genderStyle": p.gender_style,
+                "suitableRecipients": list(p.suitable_recipients),
+                "recommendedScenes": list(p.recommended_scenes),
+                "defaultTone": p.default_tone,
+                "enabled": p.enabled,
+            }
+            for p in items
+        ]
+        return {"presets": presets, "total": len(presets), "source": "config"}
 
     def get_admin_tone_presets(self) -> list[dict]:
         """Return full tone preset data including admin fields (renderOverrides, etc.)."""
@@ -209,6 +309,12 @@ class ProductService:
             raise RuntimeError("letter service not wired")
         return await self._letters.list(limit=limit, offset=offset)
 
+    async def update_letter_favorite(self, letter_id: str, favorited: bool) -> dict | None:
+        """委托给 LetterService 更新收藏状态。"""
+        if self._letters is None:
+            raise RuntimeError("letter service not wired")
+        return await self._letters.update_favorite(letter_id, favorited)
+
     async def get_suggestions(self, recipient: str, scene: str, raw_text: str) -> dict:
         """委托给 CopywritingService；ProductService 只做门面。"""
         if self._copywriting is None:
@@ -233,6 +339,28 @@ class ProductService:
             profile_id=profile_id,
         )
 
+    async def create_tts_task(
+        self, *, text: str, voice_preset: str, tone: str, recipient: str, scene: str,
+        profile_id: str | None = None,
+    ) -> dict:
+        """委托给 TtsTaskService；ProductService 只做门面。"""
+        if self._tts_tasks is None:
+            raise RuntimeError("tts_tasks service not wired")
+        return await self._tts_tasks.create_task(
+            text=text,
+            voice_preset=voice_preset,
+            tone=tone,
+            recipient=recipient,
+            scene=scene,
+            profile_id=profile_id,
+        )
+
+    def get_tts_task(self, task_id: str) -> dict | None:
+        """委托给 TtsTaskService；ProductService 只做门面。"""
+        if self._tts_tasks is None:
+            raise RuntimeError("tts_tasks service not wired")
+        return self._tts_tasks.get_task(task_id)
+
 
 def create_product_service() -> "ProductService":
     """
@@ -253,6 +381,8 @@ def create_product_service() -> "ProductService":
     from src.xiangta.services.admin_config_service import AdminConfigService
     from src.xiangta.services.copywriting_service import CopywritingService
     from src.xiangta.services.letter_service import LetterService
+    from src.xiangta.services.tts_task_service import TtsTaskService
+    from src.xiangta.storage import MemoryLetterRepository, SQLiteLetterRepository
 
     config_repository = ProductConfigRepository()
 
@@ -294,8 +424,55 @@ def create_product_service() -> "ProductService":
     )
     writer = ProductConfigWriter()
     admin_config_svc = AdminConfigService(writer=writer)
-    copywriting = CopywritingService(gateway=gateway)
-    letter_svc = LetterService()
+
+    # Wire copywriting gateway based on runtime config
+    from src.xiangta.services.copywriting_gateway import (
+        CopywritingGateway,
+        FakeLlmCopywritingGateway,
+        TemplateCopywritingGateway,
+    )
+    if (
+        runtime_config.feature_llm_copywriting_enabled
+        and runtime_config.copywriting_mode == "llm"
+        and runtime_config.copywriting_provider == "fake"
+    ):
+        cw_gateway: "CopywritingGateway" = FakeLlmCopywritingGateway()
+    elif (
+        runtime_config.feature_llm_copywriting_enabled
+        and runtime_config.copywriting_mode == "llm"
+        and runtime_config.copywriting_provider == "minimax"
+        and runtime_config.minimax_copywriting_api_key
+        and runtime_config.minimax_copywriting_base_url
+        and runtime_config.minimax_copywriting_model
+    ):
+        from src.xiangta.services.copywriting_minimax_gateway import (
+            MiniMaxCopywritingGateway,
+        )
+        cw_gateway = MiniMaxCopywritingGateway(
+            api_key=runtime_config.minimax_copywriting_api_key,
+            base_url=runtime_config.minimax_copywriting_base_url,
+            model=runtime_config.minimax_copywriting_model,
+            endpoint_path=runtime_config.minimax_copywriting_endpoint_path,
+            timeout_seconds=runtime_config.copywriting_timeout_secs,
+        )
+    else:
+        # Default: template gateway (safe, no external calls)
+        cw_gateway = TemplateCopywritingGateway()
+
+    copywriting = CopywritingService(
+        gateway=cw_gateway,
+        fallback_to_template=runtime_config.copywriting_fallback_to_template,
+    )
+    tts_task_svc = TtsTaskService(tts_orchestrator=tts)
+
+    # Wire letter storage based on runtime config
+    if runtime_config.storage_type == "sqlite":
+        db_url = runtime_config.storage_database_url
+        letter_svc = LetterService(repository=SQLiteLetterRepository(database_url=db_url))
+    else:
+        # Default: memory storage
+        letter_svc = LetterService(repository=None)
+
     return ProductService(
         bootstrap=bootstrap,
         provider_status=provider_status,
@@ -304,4 +481,5 @@ def create_product_service() -> "ProductService":
         admin_config_service=admin_config_svc,
         copywriting=copywriting,
         letters=letter_svc,
+        tts_tasks=tts_task_svc,
     )

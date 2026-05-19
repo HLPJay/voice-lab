@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>声音绑定配置 · Admin</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin-voice-bindings.css" />
+</head>
+<body>
+  <div class="phone-shell">
+    <header class="home-topbar app-topbar">
+      <div class="brand-mark">
+        <span class="brand-text">Admin · 声音绑定</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="screen active">
+        <div class="screen-scroll">
+
+          <!-- Admin Token -->
+          <section class="content-section">
+            <div class="section-eyebrow">Admin 认证</div>
+            <div class="admin-token-box">
+              <input
+                type="password"
+                id="adminTokenInput"
+                class="token-input"
+                placeholder="输入 Admin Token"
+                autocomplete="off"
+              />
+              <button id="btnSaveToken" class="ghost-button" type="button">保存 Token</button>
+              <button id="btnRefreshAll" class="ghost-button" type="button">刷新</button>
+            </div>
+            <div id="tokenStatus" class="token-status"></div>
+          </section>
+
+          <!-- Core 连接状态 -->
+          <section class="content-section">
+            <div class="section-eyebrow">Core 连接状态</div>
+            <div id="coreStatus" class="core-status-card">
+              <span class="core-status-dot" id="coreStatusDot"></span>
+              <span id="coreStatusLabel">检查中...</span>
+            </div>
+            <div id="coreProfilesSummary" class="core-profiles-summary"></div>
+          </section>
+
+          <!-- 错误提示 -->
+          <section id="errorSection" class="content-section hidden">
+            <div id="errorMessage" class="error-banner"></div>
+          </section>
+
+          <!-- 声音绑定表格 -->
+          <section class="content-section">
+            <div class="section-eyebrow">声音绑定配置</div>
+            <div id="bindingsArea" class="bindings-area">
+              <div class="loading-hint">加载中...</div>
+            </div>
+          </section>
+
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="admin-voice-bindings.js"></script>
+</body>
+</html>

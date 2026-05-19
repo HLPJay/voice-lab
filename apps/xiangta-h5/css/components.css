@@ -1,0 +1,366 @@
+.bottom-actions {
+  display: block;
+}
+
+.cta-button,
+.ghost-button,
+.text-link,
+.expr-select-btn,
+.tone-chip,
+.small-pill-btn {
+  font-family: inherit;
+}
+
+.cta-button,
+.ghost-button {
+  width: 100%;
+  border-radius: 18px;
+  cursor: pointer;
+}
+
+.cta-button {
+  min-height: var(--h5-save-min-height);
+  padding: 0 18px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-serif);
+  font-size: clamp(14px, 4vw, 16px);
+  letter-spacing: 0.08em;
+  border-radius: var(--h5-save-radius);
+}
+
+.btn-cta {
+  background: var(--c-cta);
+}
+
+.cta-button:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
+.cta-button-secondary {
+  margin-top: 14px;
+}
+
+.ghost-button {
+  margin-top: 10px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
+  font-size: 14px;
+}
+
+.home-status {
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.status-pill-bar {
+  display: flex;
+}
+
+.status-pill {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-size: 11px;
+  letter-spacing: 0.04;
+}
+
+.status-pill.pill-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.status-pill.pill-error {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+.status-pill.pill-mute {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-faint);
+}
+
+.status-note {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.step-appbar {
+  /* Negative margin mirrors screen-scroll horizontal padding so appbar fills edge-to-edge */
+  margin: 0 calc(var(--h5-page-x) * -1);
+  padding-top: max(env(safe-area-inset-top), 12px);
+}
+
+.step-appbar-center {
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.step-caption {
+  color: var(--text-dim);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.18em;
+}
+
+.step-context {
+  margin-top: 4px;
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.step-progress {
+  margin: 6px 0 20px;
+}
+
+.step-track {
+  position: relative;
+  height: 14px;
+}
+
+.step-track-bg,
+.step-track-fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1px;
+}
+
+.step-track-bg {
+  right: 0;
+  background: var(--line-strong);
+}
+
+.step-track-fill {
+  background: var(--accent);
+  transition: width 0.32s ease;
+}
+
+.step-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+}
+
+.step-dot.done,
+.step-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.step-dot.active {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 4px rgba(217, 149, 74, 0.18);
+}
+
+.step-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.step-label {
+  flex: 1;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.step-label.active {
+  color: var(--text-soft);
+}
+
+.step-hero {
+  padding: clamp(14px, 3.5svh, 24px) var(--h5-page-x) 4px;
+}
+
+.step-title {
+  font-size: clamp(20px, 5.5vw, 22px);
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.step-title-small {
+  font-size: 24px;
+  line-height: 1.42;
+}
+
+.step-hero-compact {
+  padding-top: 8px;
+}
+
+/* Prototype utility classes — mirrors design_h5/想他了点击版本/tokens.jsx */
+.xt-row {
+  display: flex;
+  align-items: center;
+}
+
+.xt-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.xt-grow {
+  flex: 1;
+}
+
+.xt-card {
+  background: var(--xt-surface);
+  border: 1px solid var(--xt-hairline);
+  border-radius: 16px;
+}
+
+.xt-card-elev {
+  background: var(--xt-surface-2);
+  border: 1px solid var(--xt-hairline-2);
+  border-radius: 20px;
+}
+
+.xt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--xt-hairline);
+  color: var(--xt-text-2);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.xt-pill.active {
+  background: var(--xt-accent-soft);
+  border-color: var(--xt-accent-deep);
+  color: var(--xt-accent-ink);
+}
+
+.xt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-family: var(--xt-sans);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: var(--xt-surface-2);
+  color: var(--xt-text);
+  user-select: none;
+}
+
+.xt-btn.primary {
+  background: var(--xt-accent);
+  color: white;
+  border-color: var(--xt-accent);
+  box-shadow: 0 8px 24px var(--xt-accent-soft), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.xt-btn.ghost {
+  background: transparent;
+  color: var(--xt-text-2);
+  border-color: var(--xt-hairline-2);
+}
+
+.xt-btn.full {
+  width: 100%;
+}
+
+.xt-section-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  margin: 22px 0 10px;
+  font-size: 12px;
+  color: var(--xt-text-3);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.xt-section-h::before {
+  content: '';
+  width: 14px;
+  height: 1px;
+  background: var(--xt-text-4);
+}
+
+.xt-letter {
+  font-family: var(--xt-serif);
+  font-size: 17px;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+  color: var(--xt-text);
+}
+
+/* Prototype animations — mirrors design_h5/想他了点击版本/tokens.jsx */
+@keyframes spaCardIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spaSlideInR {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes spaFadeOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spaMiniPlayerUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Lightweight click / pressed feedback ──────────────────────────── */
+.recipient-card,
+.scene-chip,
+.suggestion-card,
+.voice-option,
+.tone-chip,
+.small-pill-btn {
+  transition: transform 0.12s ease;
+}
+
+.recipient-card:not(:disabled):active,
+.scene-chip:not(:disabled):active,
+.suggestion-card:active,
+.voice-option:not(.disabled):not(:disabled):active,
+.tone-chip:not(:disabled):active,
+.small-pill-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.cta-button {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.cta-button:not(:disabled):active {
+  transform: scale(0.97);
+}

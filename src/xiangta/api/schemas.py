@@ -139,6 +139,18 @@ class ProviderStatusResponse(OkResponse):
     data: ProviderStatusData
 
 
+# ── GET /voice-presets (public) ────────────────────────────────────────────────
+
+class VoicePresetsData(BaseModel):
+    presets: list[VoicePresetItem]
+    total: int
+    source: str = "config"
+
+
+class VoicePresetsResponse(OkResponse):
+    data: VoicePresetsData
+
+
 # ── POST /suggestions ─────────────────────────────────────────────────────────
 
 class SuggestionsRequest(BaseModel):
@@ -158,6 +170,13 @@ class SuggestionItem(BaseModel):
 class SuggestionsData(BaseModel):
     summary: str
     intent: str
+    source: str = "template"
+    degraded: bool = False
+    latency_ms: int | None = Field(
+        default=None,
+        validation_alias="latencyMs",
+        serialization_alias="latencyMs",
+    )
     suggestions: list[SuggestionItem]
 
 
@@ -297,6 +316,16 @@ class AdminTonePresetItemResponse(OkResponse):
     data: AdminTonePresetItem
 
 
+# ── PATCH /letters/{letter_id}/favorite ───────────────────────────────────────
+
+class UpdateLetterFavoriteRequest(BaseModel):
+    favorited: bool
+
+
+class UpdateLetterFavoriteResponse(OkResponse):
+    data: LetterItem
+
+
 # ── POST /letters ─────────────────────────────────────────────────────────────
 
 class CreateLetterRequest(BaseModel):
@@ -350,3 +379,68 @@ class ListLettersData(BaseModel):
 
 class ListLettersResponse(OkResponse):
     data: ListLettersData
+
+
+# ── POST /tts/tasks ───────────────────────────────────────────────────────────
+
+class TtsTaskCreateData(BaseModel):
+    """POST /tts/tasks response — includes full task summary so frontend can render without extra GET."""
+    taskId: str
+    status: str                          # "queued" | "running" | "completed" | "failed"
+    pollUrl: str
+    audioUrl: Optional[str] = None        # present when status="completed"
+    durationMs: Optional[int] = None      # present when status="completed"
+    charCount: Optional[int] = None
+    voicePreset: Optional[str] = None
+    tone: Optional[str] = None
+    errorKind: Optional[str] = None       # present when status="failed"
+    message: Optional[str] = None         # present when status="failed"
+    retryable: bool = False
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+
+class TtsTaskCreateResponse(OkResponse):
+    data: TtsTaskCreateData
+
+
+class TtsTaskData(BaseModel):
+    taskId: str
+    status: str                          # "queued" | "running" | "completed" | "failed"
+    audioUrl: Optional[str] = None
+    durationMs: Optional[int] = None
+    charCount: Optional[int] = None
+    voicePreset: Optional[str] = None
+    tone: Optional[str] = None
+    message: Optional[str] = None
+    errorKind: Optional[str] = None
+    retryable: bool = False
+    createdAt: str
+    updatedAt: str
+
+
+class TtsTaskStatusResponse(OkResponse):
+    data: TtsTaskData
+
+
+# ── GET /voice-bindings/status (public) ────────────────────────────────────────
+
+class VoiceBindingStatusItem(BaseModel):
+    """Public voice binding status — no coreProfileId exposed."""
+    model_config = ConfigDict(populate_by_name=True)
+
+    voicePreset: str
+    label: str
+    bound: bool
+    coreAvailable: Optional[bool] = None  # None when Core unavailable
+    reason: Optional[str] = None          # null when bound
+
+
+class VoiceBindingsStatusData(BaseModel):
+    items: list[VoiceBindingStatusItem]
+    allBound: bool
+    source: str = "config"
+
+
+class VoiceBindingsStatusResponse(OkResponse):
+    data: VoiceBindingsStatusData

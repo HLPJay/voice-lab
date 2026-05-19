@@ -30,8 +30,8 @@ class ProductVoiceMapping:
             raise ValueError("ProductVoiceMapping.id 不能为空")
         if not self.label.strip():
             raise ValueError("ProductVoiceMapping.label 不能为空")
-        if not self.core_profile_id.strip():
-            raise ValueError("ProductVoiceMapping.core_profile_id 不能为空")
+        # core_profile_id is allowed to be empty/placeholder — binding resolution
+        # is handled by VoicePresetMappingService._is_placeholder_profile_id()
 
 
 @dataclass(frozen=True)

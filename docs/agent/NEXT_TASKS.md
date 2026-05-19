@@ -1,8 +1,16 @@
 # Next Tasks
 
+## P18 Current Override (2026-05-18)
+
+**P18-XIANGTA-MINIMAX-COPYWRITING-ADAPTER-C10D-FIX3 ✅ → 当前阶段：P18-XIANGTA-MINIMAX-COPYWRITING-EVAL-C10E**
+
+- C10D-FIX3 已修复 A 类 blocker：`baseUrl` / `endpointPath` 语义冲突
+- `baseUrl` = `https://api.minimaxi.com`，`endpointPath` = `/v1/chat/completions` 单独配置
+- adapter 现在显式使用 `build_minimax_chat_completion_url()`，不再隐式拼接
+
 ## 当前阶段
 
-**P17-XIANGTA-H5-DESIGN-ALIGNMENT-C8（已完成）→ 下一步：P17-XIANGTA-MERGE-DEV-EXECUTE**
+**P18-XIANGTA-MINIMAX-COPYWRITING-ADAPTER-C10D-FIX3 ✅ → 当前阶段：P18-XIANGTA-MINIMAX-COPYWRITING-EVAL-C10E**
 
 `docs/xiangta/**` 是 XiangTa 后续产品构建的权威设计文档目录。`docs/product/XIANGTA_*.md` 与 A0-A2 保留为历史阶段记录，不再作为后续实现的主依据。
 
@@ -52,11 +60,46 @@
 | P17-XIANGTA-BACKEND-ERROR-CONTRACT-C6 | Error Contract 设计（统一错误 schema + errorKind 枚举） | ✅ |
 | P17-XIANGTA-PROFILE-MAPPING-DESIGN-C7 | voicePreset → coreProfileId 映射产品化设计 | ✅ |
 | P17-XIANGTA-H5-DESIGN-ALIGNMENT-C8 | H5 设计对齐（适配新 API 契约） | ✅ |
-| P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | Next |
+| P17-XIANGTA-MERGE-DEV-EXECUTE | 执行 merge p17/xiangta-product-init → dev | ✅ |
 | P17-XIANGTA-A3 | 历史占位：真实 LLM 接入 | Parked |
 | P17-XIANGTA-A5 | 前端工程化与主路径联调 | Parked |
 
+## P18 XiangTa Product API Implementation
+
+P18 目标：在不修改 Core 的前提下，把 P17 的设计逐步落地为产品主路径 API。  
+优先顺序：先 voicePreset 产品 API，再 mapping hardening，再 Admin gate，再 Error Contract，再 Storage / TTS Task / H5。
+
+| 任务 | 内容 | 推荐执行工具 | 状态 |
+|---|---|---|---|
+| P18-XIANGTA-POST-MERGE-DOCFIX-C0 | P17 merge 后 NEXT_TASKS 收口，建立 P18 路线图 | MiniMax / Codex | ✅ |
+| P18-XIANGTA-VOICE-PRESETS-API-C1 | 新增 GET /api/xiangta/voice-presets，普通 H5 只看到产品声线字段 | Codex / Claude Code Sonnet | ✅ |
+| P18-XIANGTA-VOICE-PRESET-RESOLUTION-C2 | 强化 voicePreset → coreProfileId 解析，处理占位符/disabled/profile_not_found | Codex | ✅ |
+| P18-XIANGTA-ADMIN-GATE-C3 | Admin dev-only gate / token gate 最小实现 | Codex | ✅ |
+| P18-XIANGTA-ERROR-CONTRACT-MIN-C4 | 最小 Error Contract 实现，兼容 flat/nested error | Codex | ✅ |
+| P18-XIANGTA-H5-DEV-FORMAL-MODE-C5 | H5 formal/dev 模式最小适配，coreProfileSelect 进入 Dev Panel | Claude Code Sonnet | ✅ |
+| P18-XIANGTA-STORAGE-FOUNDATION-C6 | SQLite storage foundation：migration + repository 基础 | Codex / Claude Code | ✅ |
+| P18-XIANGTA-TTS-TASK-MVP-C7 | TTS task MVP：POST /tts/tasks + GET task + in-memory queue | Claude Code Opus / Codex | ✅ |
+| P18-XIANGTA-COPYWRITING-LLM-MVP-C8 | LLM Copywriting Gateway MVP，template fallback 保留 | Codex | ✅ |
+| P18-XIANGTA-H5-PRODUCT-FLOW-C9 | H5 正式产品流实现，对齐 C8 设计稿 | Claude Code | ✅ |
+| P18-XIANGTA-PRODUCT-INTEGRATION-SMOKE-C10 | 产品主路径集成 smoke 测试 | Claude Code | ✅ |
+| P18-XIANGTA-H5-DESIGN-ALIGNMENT-C10A | H5 暗紫色主题对齐 | Claude Code | ✅ |
+| P18-XIANGTA-H5-PROTOTYPE-PORT-C10A-FIX1 | 原型视觉结构移植（phone-shell/topbar/cards/CTA/status-pill） | Claude Code | ✅ |
+| P18-XIANGTA-H5-PROTOTYPE-REBUILD-C10A-FIX2 | 以 design_h5 原型为准重建五屏 H5，保留真实 API wiring 与 no-audio save | Claude Code | ✅ |
+| P18-XIANGTA-H5-PROTOTYPE-REBUILD-C10A-FIX3 | 修复"用一个例子开始"按钮交互 | Claude Code | ✅ |
+| P18-XIANGTA-MANUAL-H5-VALIDATION-C10B | H5 手机端手工验证清单 + 情绪效果矩阵 | — | ✅ |
+| P18-XIANGTA-LLM-PROMPT-CONTRACT-C10C | LLM prompt contract、离线样本和评估结构 | — | ✅ |
+| P18-XIANGTA-MINIMAX-COPYWRITING-ADAPTER-C10D | MiniMax Copywriting adapter behind flag | — | ✅ |
+| P18-XIANGTA-MINIMAX-COPYWRITING-CONFIG-C10D-FIX1 | 本地私有配置支持、apiKey 安全、文档补充 | — | ✅ |
+| P18-XIANGTA-MINIMAX-OFFICIAL-DOCS-VERIFY-C10D-FIX2 | 基于 MiniMax 官方文档核验 text-chat-openai 字段，并整理 adapter gap analysis | — | ✅ |
+| P18-XIANGTA-MINIMAX-COPYWRITING-ADAPTER-C10D-FIX3 | 拆分 baseUrl 与 endpointPath，修复 A 类 URL 语义冲突 | — | ✅ |
+| P18-XIANGTA-MINIMAX-COPYWRITING-EVAL-C10E | 真实 MiniMax 手工联调与 10-case 情绪效果评估 | — | 🔄 |
+
 **C2A 遗留未处理**：CA-06（H5 防重复点击）deferred to C8；CA-01（Admin 鉴权）deferred to C6 or security task；CA-04（CoreHttpClient 错误上下文）deferred to C6；CA-02（ProductService 私有字段访问）deferred to C2B 后续或 C3。
+
+## C10B Follow-up cleanup
+
+- H5 静态测试数量偏多，后续 cleanup 可压缩
+- app.js 仍未拆分 ui-meta/ui-components，待前端方向稳定后再做组件化整理
 
 ## 本阶段约束
 
@@ -64,10 +107,31 @@
 
 - C1（Backend Capability Plan）已完成
 - C2-C8 为设计 + 实现的混合阶段
-- C9+ 才开始 Storage 实现
+- C6 已完成 SQLite letters storage foundation；task 持久化、多用户存储、完整 migration 仍留待后续独立阶段
 - 不修改 Core
 - 不实现 Redis / Celery（第一阶段）
 - 不实现多用户（user_id 设计预留）
+
+## P18 阶段约束
+
+- 不修改 Core：不得修改 `app/**`、`src/voice_lab/**`
+- 不直接接真实 LLM（P18-C8 完成 gateway 抽象；真实 provider 留待后续阶段）
+- 不直接实现 TTS queue（P18-C7 完成）
+- 不直接重构 H5，H5 正式实现必须等 P18-C9
+- 不引入 Redis / Celery
+- 不引入用户系统
+- 不直接公网暴露 Admin API
+- 优先小步实现产品主路径 API
+- 每个实现任务必须有 tests/xiangta 覆盖
+
+## P18 当前已知问题
+
+- `voice_mappings.json` 中 `coreProfileId` 仍为 `<core_profile_id_from_core_profiles>` 占位符；正式 voicePreset 路径尚不能直接用于真实生成。
+- 当前 H5 仍是 B9 smoke page，正式产品页尚未实现。
+- 当前 TTS 已有同步 `/api/xiangta/tts` 和任务化 `/api/xiangta/tts/tasks`（C7 MVP：同步执行 + 进程内 task 状态；非后台队列）。
+- 当前 letters 默认 memory，C6 已支持可选 SQLite（XIANGTA_STORAGE_TYPE=sqlite）；user_id/多用户/task 持久化未实现。
+- 当前 Admin API 已有最小 env token gate，仅适合本地/dev 使用。
+- full-suite 仍存在 Xiaomi MiMo / frontend E2E 历史失败；`tests/xiangta` 是 P18 scoped regression 标准。
 
 ## Core Contract Gap 登记区
 
@@ -89,7 +153,9 @@
 
 ## XiangTa 下一步约束
 
-下一步进入 `P17-XIANGTA-CORE-AUDIO-LINK-B9-MANUAL-SMOKE`（本地双服务联调）或 `P17-XIANGTA-MERGE-DEV-EXECUTE`（直接合并）。
+下一步进入 `P18-XIANGTA-MINIMAX-COPYWRITING-EVAL-C10E`。C10E 做真实 MiniMax behind flag 手工联调与 10-case 情绪效果评估；不得默认启用真实 Provider；不得修改 H5 主流程；联调前必须人工确认 MiniMax text-chat-openai 官方 endpoint/auth/request/response 字段。
+
+在进入 C10E 之前，必须先处理 `docs/xiangta/MINIMAX_COPYWRITING_ADAPTER_GAP_ANALYSIS_C10D_FIX2.md` 中的 A 类问题，尤其是 `baseUrl` / endpoint path 语义冲突；该问题未清理前，不得直接进入真实联调。
 
 B9 已就绪（`apps/xiangta_runtime/main.py` + Core HTTP client），启动命令：
 ```bash

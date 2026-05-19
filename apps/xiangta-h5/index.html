@@ -2,110 +2,595 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#100D14" />
   <title>想Ta了</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/h5/css/tokens.css" />
+  <link rel="stylesheet" href="/h5/css/base.css" />
+  <link rel="stylesheet" href="/h5/css/layout.css" />
+  <link rel="stylesheet" href="/h5/css/components.css" />
+  <link rel="stylesheet" href="/h5/css/screens-home.css" />
+  <link rel="stylesheet" href="/h5/css/screens-compose.css" />
+  <link rel="stylesheet" href="/h5/css/screens-suggestions-voice.css" />
+  <link rel="stylesheet" href="/h5/css/screens-result.css" />
+  <link rel="stylesheet" href="/h5/css/screens-history-letter-settings.css" />
+  <link rel="stylesheet" href="/h5/css/overlays.css" />
 </head>
 <body>
+  <div class="phone-shell">
+    <main class="app-main">
 
-  <!-- 状态提示区 -->
-  <header class="app-header">
-    <h1 class="app-title">想Ta了</h1>
-    <div id="statusBar" class="status-bar status-idle">准备就绪</div>
-  </header>
-
-  <main class="app-main">
-
-    <!-- Provider 状态区 -->
-    <section class="card" id="providerCard">
-      <div class="card-label">语音服务</div>
-      <div id="providerStatus" class="provider-status">检查中…</div>
-    </section>
-
-    <!-- 步骤 1：选择参数 -->
-    <section class="card">
-      <div class="card-label">步骤 1 — 告诉我这条消息</div>
-
-      <div class="field-row">
-        <label for="recipientSelect">发给谁</label>
-        <select id="recipientSelect"></select>
+      <!-- Opening entry overlay — hidden after first visit via localStorage -->
+      <div id="openingOverlay" class="opening-overlay">
+        <div class="opening-overlay-content">
+          <div class="opening-seal" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect x="5" y="8" width="30" height="24" rx="3" stroke="currentColor" stroke-width="1.4"></rect>
+              <path d="M5 12l15 10 15-10" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <p class="opening-headline">有些话不好说，<br>但值得说。</p>
+          <p class="opening-body">想Ta了，帮你把想说的话，<br>整理成更合适的文字和语音。</p>
+          <button class="cta-button btn-cta opening-cta" type="button" onclick="dismissOpeningOverlay()">开始表达</button>
+          <p class="opening-note">保存成你的信笺 · 不会替你发送</p>
+        </div>
       </div>
 
-      <div class="field-row">
-        <label for="sceneSelect">场景</label>
-        <select id="sceneSelect"></select>
-      </div>
+      <section id="screenHome" class="screen active home-screen">
+        <header class="home-topbar" id="appTopbar">
+          <div class="brand-mark">
+            <span class="seal-icon letter-seal" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" stroke-width="1.2"></rect>
+                <path d="M2.5 6l7.5 5 7.5-5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>
+              </svg>
+            </span>
+            <span class="brand-text topbar-title">想Ta了</span>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" aria-label="历史信笺" onclick="openHistoryFromHome()">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M9 4.5v4l2.8 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+                <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.3"></circle>
+              </svg>
+            </button>
+            <button class="icon-button" type="button" aria-label="设置" onclick="showScreen('settings')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.3"></circle>
+                <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+              </svg>
+            </button>
+          </div>
+        </header>
 
-      <div class="field-row">
-        <label for="voicePresetSelect">音色</label>
-        <select id="voicePresetSelect"></select>
-      </div>
+        <div class="home-content">
+          <section class="home-hero hero">
+            <div class="home-date-line" id="homeDateLine"></div>
+            <h1 class="home-title">今晚，<br>想对谁说话？</h1>
+            <p class="home-subtitle">把想说的话，<br>变成更合适的文字和语音</p>
+          </section>
 
-      <div class="field-row">
-        <label for="toneSelect">语调</label>
-        <select id="toneSelect"></select>
-      </div>
+          <section class="content-section">
+            <div class="section-eyebrow">说给谁</div>
+            <div class="recipient-grid" id="recipientGrid"></div>
+          </section>
 
-      <!-- B9: Core profile selection -->
-      <div class="field-row">
-        <label for="coreProfileSelect">人设（Core）</label>
-        <select id="coreProfileSelect">
-          <option value="">加载中…</option>
-        </select>
-      </div>
+          <section class="content-section">
+            <div class="section-eyebrow">想表达什么</div>
+            <div class="scene-grid" id="sceneGrid"></div>
+          </section>
 
-      <div class="field-col">
-        <label for="rawTextArea">你想说什么（原始心情）</label>
-        <textarea id="rawTextArea" rows="4" maxlength="500"
-          placeholder="随便写，比如：我今天突然很想你…"></textarea>
-        <div class="char-count"><span id="rawTextCount">0</span> / 500</div>
-      </div>
-    </section>
+          <section id="homeRecentSection" class="content-section">
+            <div class="section-eyebrow">最近的信笺</div>
+            <div id="homeRecentLetter" class="home-recent-letter-card"></div>
+          </section>
 
-    <!-- 步骤 2：生成文案建议 -->
-    <section class="card">
-      <div class="card-label">步骤 2 — 生成文案建议</div>
-      <button id="genSuggestionsBtn" class="btn btn-primary" onclick="generateSuggestions()">
-        生成文案建议
-      </button>
-      <div id="suggestionsArea" class="suggestions-area hidden"></div>
-    </section>
+          <div id="devPanel" class="dev-panel hidden">
+            <div class="dev-panel-title">Dev Mode</div>
+            <div class="dev-panel-row">
+              <label for="coreProfileSelect">Core 人设</label>
+              <select id="coreProfileSelect">
+                <option value="">加载中...</option>
+              </select>
+            </div>
+            <div id="providerStatus" class="provider-status">检查中...</div>
+          </div>
+        </div>
 
-    <!-- 步骤 3：生成语音 -->
-    <section class="card">
-      <div class="card-label">步骤 3 — 生成语音（dry-run 合约）</div>
-      <div class="field-col">
-        <label for="finalTextArea">最终文案</label>
-        <textarea id="finalTextArea" rows="4" maxlength="800"
-          placeholder="选择上方建议后自动填入，或手动编辑"></textarea>
-      </div>
-      <button id="genTtsBtn" class="btn btn-primary" onclick="generateTts()">
-        生成语音
-      </button>
-      <div id="ttsResult" class="tts-result hidden"></div>
-    </section>
+        <div class="home-bottom-cta">
+          <button id="btnStartCompose" class="cta-button btn-cta" type="button" onclick="goCompose()" disabled>开始表达</button>
+          <div class="home-status">
+            <div class="status-pill-bar">
+              <div class="status-pill" id="statusPill">MiniMax · 检查中</div>
+            </div>
+            <div class="status-note">保存成你的信笺 · 不会替你发送</div>
+          </div>
+        </div>
+      </section>
 
-    <!-- 步骤 4：保存信笺 -->
-    <section class="card">
-      <div class="card-label">步骤 4 — 保存信笺</div>
-      <div class="field-row">
-        <label for="titleInput">标题（选填）</label>
-        <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
-      </div>
-      <button id="saveLetterBtn" class="btn btn-accent" onclick="saveLetter()">
-        保存信笺
-      </button>
-    </section>
+      <section id="screenCompose" class="screen">
+        <div class="step-screen">
+          <div class="step-screen-header">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回上一页" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption">第 1 步 / 共 3 步</div>
+              <div class="step-context" id="composeTitle">想念 · 给恋人</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="关闭" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+              </svg>
+            </button>
+          </div>
 
-    <!-- 步骤 5：历史记录 -->
-    <section class="card">
-      <div class="card-label">历史记录</div>
-      <button class="btn btn-ghost" onclick="loadLetters()">刷新历史</button>
-      <div id="lettersArea" class="letters-area"></div>
-    </section>
+          <div class="step-progress" id="composeStepDots"></div>
+          </div>
 
-  </main>
+          <div class="step-screen-content">
 
-  <script src="app.js"></script>
+          <section class="step-hero">
+            <h2 class="step-title">先说说，<br>你现在最想说的一句话？</h2>
+            <p class="step-subtitle">写得粗糙、不通顺、零碎都没关系 —— 之后会帮你整理。</p>
+          </section>
+
+          <section class="content-section content-section-tight">
+            <div class="composer-box" id="rawTextWrap">
+              <textarea id="rawTextArea" rows="7" maxlength="500" placeholder="比如：今天又下雨了，突然想起我们一起淋雨的那天。那时候我没说，其实那一刻我觉得跟你在一起好幸福。"></textarea>
+            </div>
+            <div class="composer-meta">
+              <button class="text-link" id="fillExampleLink" type="button">用一个例子开始</button>
+              <span class="char-count"><span id="rawTextCount">0</span> / 500</span>
+            </div>
+            <div id="riskHint" class="risk-hint hidden"></div>
+          </section>
+
+          <section class="content-section content-section-tight">
+            <div class="section-eyebrow">想再说几句也可以</div>
+            <div id="guidancePrompts" class="prompt-card-list"></div>
+          </section>
+
+          </div>
+
+          <div class="step-screen-cta">
+          <div class="sticky-cta bottom-actions">
+            <button id="btnGenSuggestions" class="cta-button btn-cta" type="button" onclick="generateSuggestions()" disabled>帮我整理表达</button>
+            <div id="composeCTAHint" class="cta-hint">写几个字试试 · 不用一次写完</div>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenSuggest" class="screen">
+        <div class="step-screen">
+          <div class="step-screen-header">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回输入页" onclick="showScreen('compose')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption" id="suggestSubtitle">给恋人 · 想念</div>
+              <div class="step-context">挑一个最像你的版本</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="更多操作" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="4.5" cy="9" r="1.2" fill="currentColor"></circle>
+                <circle cx="9" cy="9" r="1.2" fill="currentColor"></circle>
+                <circle cx="13.5" cy="9" r="1.2" fill="currentColor"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <div class="step-progress" id="suggestStepDots"></div>
+          </div>
+
+          <div class="step-screen-content">
+
+          <div id="aiUnderstanding" class="insight-card"></div>
+          <div id="suggestRiskHint" class="risk-hint hidden"></div>
+          <div id="suggestionsArea" class="suggestion-list"></div>
+          <textarea id="finalTextArea" class="hidden" rows="6" maxlength="800"></textarea>
+          </div>
+
+          <div class="step-screen-cta">
+          <div class="sticky-cta bottom-actions">
+            <button id="btnToVoice" class="cta-button btn-cta" type="button" onclick="goVoice()" disabled>用这条 · 生成语音</button>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenVoice" class="screen">
+        <div class="step-screen">
+          <div class="step-screen-header">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回建议页" onclick="showScreen('suggest')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="step-caption" id="voiceSubtitle">想念 · 温柔版</div>
+              <div class="step-context">给这段话，配一个声音</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="关闭" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="step-progress" id="voiceStepDots"></div>
+          </div>
+
+          <div class="step-screen-content">
+
+          <div id="voiceTextPreview" class="voice-copy-card"></div>
+
+          <section class="content-section content-section-tight">
+            <div class="section-eyebrow">声音</div>
+            <div id="voicePicker" class="voice-picker"></div>
+            <div id="voiceBindHint" class="voice-bind-hint hidden"></div>
+          </section>
+
+          <section class="content-section content-section-tight">
+            <div class="section-eyebrow">语气</div>
+            <div id="toneChips" class="tone-chip-list"></div>
+          </section>
+
+          <div id="durationEstimate" class="duration-estimate"></div>
+          <div id="ttsResult" class="tts-result hidden"></div>
+
+          <section id="saveLetterSection" class="save-letter-card hidden">
+            <div class="save-letter-copy">
+              <div class="save-letter-title">保存成一封信笺</div>
+              <div class="save-letter-subtitle">语音暂未生成，也可以先保存文字信笺。</div>
+            </div>
+            <label class="field-label" for="titleInput">标题（选填）</label>
+            <input type="text" id="titleInput" maxlength="50" placeholder="给这封信起个名字" />
+            <button id="btnSaveLetter" class="cta-button cta-button-secondary btn-cta" type="button" onclick="saveLetter()">保存信笺</button>
+          </section>
+
+          <div id="devTtsSection" class="dev-panel hidden">
+            <div class="dev-panel-title">Dev: 旧 /tts 调试入口</div>
+            <button class="ghost-button" type="button" onclick="generateTts()">调用 /api/xiangta/tts</button>
+          </div>
+          </div>
+
+          <div class="step-screen-cta">
+          <div class="sticky-cta sticky-cta-voice bottom-actions">
+            <button id="btnGenTtsTask" class="cta-button btn-cta" type="button" onclick="generateTtsTask()">生成语音</button>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenHistory" class="screen">
+        <div class="screen-scroll history-screen">
+          <div class="history-screen-header">
+            <button class="icon-button" type="button" aria-label="返回首页" onclick="handleHistoryBack()">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="history-screen-header-body">
+              <div class="history-screen-title">信笺夹</div>
+              <div class="history-screen-count" id="historyCount">0 封 · 已保存到当前服务</div>
+            </div>
+            <button id="btnHistorySearch" class="icon-button" type="button" aria-label="搜索" onclick="toggleHistorySearch()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/>
+                <path d="m9 9 3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div id="historySearchBox" class="history-search hidden">
+            <input type="text" id="historySearchInput" placeholder="搜索信笺正文 / 标题 / 对象 / 场景" oninput="onHistorySearchInput(this.value)" />
+          </div>
+
+          <div id="historyFilterChips" class="history-filter-chips"></div>
+
+          <div id="lettersArea" class="prototype-history-list"></div>
+
+          <audio id="historyAudio" preload="metadata" class="hidden"></audio>
+
+        </div><!-- /.screen-scroll.history-screen -->
+
+        <!-- Mini player lives outside scroll — absolute bottom dock inside #screenHistory -->
+        <div id="historyMiniPlayer" class="history-mini-player hidden">
+          <div class="history-mini-player-row">
+            <button class="history-mini-player-btn" type="button" onclick="toggleHistoryPlayback()">
+              <svg id="historyPlayIcon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 2l9 5-9 5V2z" fill="white"/>
+              </svg>
+            </button>
+            <div class="history-mini-player-info">
+              <div class="history-mini-player-title" id="historyMiniTitle">信笺标题</div>
+              <div class="history-mini-player-subtitle" id="historyMiniSubtitle">恋人 · 想念 · 0:00 / 0:00</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color: var(--xt-text-3); flex-shrink: 0">
+              <path d="M6 12l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="history-mini-player-progress">
+            <div class="history-mini-player-progress-fill" id="historyMiniProgress" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenResult" class="screen">
+        <div class="screen-scroll result-screen">
+          <div class="result-appbar">
+            <button class="icon-button" type="button" aria-label="返回" onclick="resultGoBack()">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="result-appbar-center">
+              <div class="step-caption">生成完成</div>
+              <div class="result-title">今晚的信笺</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="更多" onclick="showScreen('home')">
+              <svg width="18" height="4" viewBox="0 0 18 4">
+                <circle cx="2" cy="2" r="1.5" fill="currentColor"></circle>
+                <circle cx="9" cy="2" r="1.5" fill="currentColor"></circle>
+                <circle cx="16" cy="2" r="1.5" fill="currentColor"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <div id="resultMetaPills" class="result-meta-pills"></div>
+
+          <div id="resultLetterCard" class="result-letter-card">
+            <div class="result-letter-seal" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                <rect x="2" y="2" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.1"/>
+                <path d="M6 8h10M6 11h10M6 14h7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                <circle cx="11" cy="11" r="5" stroke="currentColor" stroke-width="0.7" stroke-dasharray="1.5 2" opacity="0.6"/>
+              </svg>
+            </div>
+            <div class="result-letter-date" id="resultLetterDate"></div>
+            <div class="result-letter-body" id="resultLetterBody"></div>
+            <div class="result-letter-signature" id="resultLetterSignature"></div>
+          </div>
+
+          <div id="resultAudioCard" class="result-audio-card">
+            <div class="result-audio-meta">
+              <span class="result-voice-name" id="resultVoiceName"></span>
+              <span class="result-audio-time" id="resultAudioTime"></span>
+            </div>
+            <audio id="resultAudio" controls preload="metadata"></audio>
+            <div class="result-audio-actions">
+              <button class="result-action-btn" type="button" onclick="resultRestart()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 8l4-4v3h8v2H6v3l-4-4z" fill="currentColor"></path>
+                </svg>
+                从头听
+              </button>
+              <button class="result-action-btn" type="button" onclick="resultDownload()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2v9m0 0L4 7m4 4l4-4M2 13h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                下载
+              </button>
+            </div>
+          </div>
+
+          <div class="result-actions-grid">
+            <button class="result-grid-btn" type="button" onclick="resultCopy()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="3" y="3" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"></rect>
+                <path d="M6 1h7v9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+              </svg>
+              <span id="resultCopyLabel">复制文字</span>
+            </button>
+            <button class="result-grid-btn" type="button" onclick="resultShare()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2v8m0-8L5 5m3-3l3 3M4 8H3a1 1 0 00-1 1v4a1 1 0 001 1h10a1 1 0 001-1V9a1 1 0 00-1-1h-1" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              分享
+            </button>
+            <button class="result-grid-btn" type="button" onclick="resultReEdit()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 12l1-3 7-7 2 2-7 7-3 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>
+              </svg>
+              重新编辑
+            </button>
+            <button class="result-grid-btn" type="button" onclick="resultChangeTone()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M12 7a5 5 0 11-1.5-3.5M12 1.5V5h-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              换个语气
+            </button>
+          </div>
+
+          <div class="result-save-section">
+            <button id="btnResultSave" class="cta-button btn-cta result-save-button" type="button" onclick="resultSave()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2l1.8 3.7 4.2.6-3 3 .7 4.2L8 11.5l-3.7 2 .7-4.2-3-3 4.2-.6L8 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>
+              </svg>
+              <span id="resultSaveLabel">保存到信笺夹</span>
+            </button>
+            <button id="resultViewHistoryBtn" class="result-view-history-btn hidden" type="button" onclick="openHistoryFromResult()">查看信笺夹</button>
+          </div>
+
+          <div class="result-bottom-note">
+            发送给对方的动作，<br>永远由你自己来按。
+          </div>
+
+          <div id="resultSaveSealOverlay" class="result-save-seal-overlay hidden">
+            <div class="result-save-seal-panel">
+              <div class="result-save-seal-stamp" aria-hidden="true">
+                <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                  <rect x="8" y="8" width="40" height="40" rx="4" stroke="currentColor" stroke-width="1.4"></rect>
+                  <path d="M16 20h24M16 28h24M16 36h16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+                  <circle cx="28" cy="28" r="14" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5"></circle>
+                </svg>
+              </div>
+              <div class="result-save-seal-label">已 · 收 · 好</div>
+              <div class="result-save-seal-subtitle">这封信已经放进信笺夹</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenSettings" class="screen">
+        <div class="screen-scroll settings-screen">
+          <div class="settings-screen-header">
+            <button class="icon-button" type="button" aria-label="返回" onclick="showScreen('home')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="settings-screen-header-body">
+              <div class="settings-screen-title">当前状态</div>
+              <div class="settings-screen-subtitle">这里可以看到服务、声线和信笺保存状态。</div>
+            </div>
+            <div style="width: 36px;"></div>
+          </div>
+
+          <div id="settingsContent"></div>
+
+          <div class="settings-actions">
+            <button class="cta-button btn-cta settings-refresh-btn" type="button" onclick="refreshSettingsStatus()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M12 7a5 5 0 10-1.5 3.5M12 3v3.2h-3.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              刷新状态
+            </button>
+            <button class="ghost-button settings-home-btn" type="button" onclick="showScreen('home')">返回首页</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenLetterDetail" class="screen">
+        <div class="screen-scroll letter-detail-screen">
+          <div class="step-appbar">
+            <button class="icon-button" type="button" aria-label="返回" onclick="showScreen('history')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M10.5 4.5L6 9l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <div class="step-appbar-center">
+              <div class="letter-detail-title" id="letterDetailTitle">信笺</div>
+              <div class="step-context" id="letterDetailSubtitle">—</div>
+            </div>
+            <button class="icon-button" type="button" aria-label="更多" onclick="showToast('更多功能后续支持')">
+              <svg width="18" height="4" viewBox="0 0 18 4">
+                <circle cx="2" cy="2" r="1.5" fill="currentColor"></circle>
+                <circle cx="9" cy="2" r="1.5" fill="currentColor"></circle>
+                <circle cx="16" cy="2" r="1.5" fill="currentColor"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <div id="letterDetailMetaPills" class="letter-detail-meta-pills"></div>
+
+          <div id="letterDetailCard" class="letter-detail-letter-card">
+            <div class="letter-detail-seal" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                <rect x="2" y="2" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.1"/>
+                <path d="M6 8h10M6 11h10M6 14h7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                <circle cx="11" cy="11" r="5" stroke="currentColor" stroke-width="0.7" stroke-dasharray="1.5 2" opacity="0.6"/>
+              </svg>
+            </div>
+            <div class="letter-detail-date-row">
+              <span class="letter-detail-date-line"></span>
+              <span class="letter-detail-date" id="letterDetailDate"></span>
+            </div>
+            <div class="letter-detail-body" id="letterDetailBody"></div>
+            <div class="letter-detail-signature" id="letterDetailSignature"></div>
+          </div>
+
+          <div id="letterDetailAudioSection" class="letter-detail-audio-card">
+            <div class="letter-detail-audio-meta">
+              <span class="letter-detail-voice-name" id="letterDetailVoiceName"></span>
+              <span class="letter-detail-audio-time" id="letterDetailAudioTime"></span>
+            </div>
+            <audio id="letterDetailAudio" controls preload="metadata"></audio>
+            <div class="letter-detail-audio-actions">
+              <button class="result-action-btn" type="button" onclick="restartLetterDetailAudio()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 8l4-4v3h8v2H6v3l-4-4z" fill="currentColor"></path>
+                </svg>
+                从头听
+              </button>
+              <button class="result-action-btn" type="button" onclick="downloadLetterDetailAudio()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2v9m0 0L4 7m4 4l4-4M2 13h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                下载
+              </button>
+            </div>
+          </div>
+
+          <div id="letterDetailEmptyAudio" class="letter-detail-empty-audio hidden">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 4v6l4 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+            <span>这封信笺只有文字</span>
+          </div>
+
+          <div class="letter-detail-actions-grid">
+            <button class="result-grid-btn" type="button" onclick="copyLetterDetailText()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="3" y="3" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"></rect>
+                <path d="M6 1h7v9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+              </svg>
+              <span id="letterDetailCopyLabel">复制文字</span>
+            </button>
+            <button class="result-grid-btn" type="button" onclick="shareLetterDetail()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2v8m0-8L5 5m3-3l3 3M4 8H3a1 1 0 00-1 1v4a1 1 0 001 1h10a1 1 0 001-1V9a1 1 0 00-1-1h-1" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              分享
+            </button>
+            <button class="result-grid-btn" type="button" onclick="retoneLetterDetail()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M12 7a5 5 0 11-1.5-3.5M12 1.5V5h-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+              换个语气
+            </button>
+            <button class="result-grid-btn" type="button" onclick="writeAnotherFromLetterDetail()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 12l1-3 7-7 2 2-7 7-3 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>
+              </svg>
+              重新编辑
+            </button>
+          </div>
+
+          <div id="letterDetailFavoriteSection" class="letter-detail-favorite-section">
+            <button id="btnLetterDetailFavorite" class="cta-button btn-cta letter-detail-favorite-btn" type="button" onclick="toggleLetterDetailFavorite()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2l1.6 3.3 3.6.5-2.6 2.5.6 3.6L7 10.1 3.8 11.9l.6-3.6-2.6-2.5 3.6-.5L7 2z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"></path>
+              </svg>
+              <span id="letterDetailFavoriteLabel">加入收藏</span>
+            </button>
+            <div class="letter-detail-favorite-hint">收藏状态暂存本次会话</div>
+          </div>
+
+          <div class="letter-detail-bottom-note">
+            发送给对方的动作，<br>永远由你自己来按。
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/h5/js/constants.js"></script>
+  <script src="/h5/js/state.js"></script>
+  <script src="/h5/js/dom.js"></script>
+  <script src="/h5/js/api.js"></script>
+  <script src="/h5/js/utils.js"></script>
+  <script src="/h5/js/demo-fixtures.js"></script>
+  <script src="/h5/js/viewport-fit.js"></script>
+  <script src="/h5/app.js"></script>
 </body>
 </html>

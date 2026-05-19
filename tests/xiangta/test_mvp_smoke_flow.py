@@ -29,6 +29,14 @@ _USER_FORBIDDEN = {
     "core_profile_id", "profile_id",
 }
 
+_ADMIN_HEADERS = {"X-XiangTa-Admin-Token": "test-admin-token"}
+
+
+@pytest.fixture(autouse=True)
+def _admin_env(monkeypatch):
+    monkeypatch.setenv("XIANGTA_ADMIN_ENABLED", "true")
+    monkeypatch.setenv("XIANGTA_ADMIN_TOKEN", "test-admin-token")
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -192,25 +200,25 @@ class TestLettersSmoke:
 class TestAdminConfigSmoke:
 
     def test_admin_config_returns_200(self, client):
-        r = client.get("/api/xiangta/admin/config")
+        r = client.get("/api/xiangta/admin/config", headers=_ADMIN_HEADERS)
         assert r.status_code == 200
 
     def test_admin_config_ok_true(self, client):
-        r = client.get("/api/xiangta/admin/config")
+        r = client.get("/api/xiangta/admin/config", headers=_ADMIN_HEADERS)
         assert r.json()["ok"] is True
 
     def test_admin_config_has_voice_mappings(self, client):
-        data = client.get("/api/xiangta/admin/config").json()["data"]
+        data = client.get("/api/xiangta/admin/config", headers=_ADMIN_HEADERS).json()["data"]
         assert "voiceMappings" in data
         assert len(data["voiceMappings"]) > 0
 
     def test_admin_config_has_tone_presets(self, client):
-        data = client.get("/api/xiangta/admin/config").json()["data"]
+        data = client.get("/api/xiangta/admin/config", headers=_ADMIN_HEADERS).json()["data"]
         assert "tonePresets" in data
         assert len(data["tonePresets"]) > 0
 
     def test_admin_config_no_api_key_fields(self, client):
-        body = str(client.get("/api/xiangta/admin/config").json())
+        body = str(client.get("/api/xiangta/admin/config", headers=_ADMIN_HEADERS).json())
         for key in ("api_key", "minimax_api_key", "MINIMAX_API_KEY", "stack_trace", "params_json"):
             assert key not in body, f"admin/config exposes forbidden field: {key}"
 
