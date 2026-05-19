@@ -82,6 +82,18 @@ class LetterService:
             "offset":  offset,
         }
 
+    async def update_favorite(self, letter_id: str, favorited: bool) -> dict | None:
+        """更新信笺收藏状态。"""
+        if self._repository is not None:
+            return await self._repository.update_favorite(letter_id, favorited)
+
+        # Default in-memory fallback
+        for record in _LETTERS:
+            if record["letterId"] == letter_id:
+                record["favorited"] = favorited
+                return record
+        return None
+
     def clear(self) -> None:
         """清空存储。"""
         if self._repository is not None:

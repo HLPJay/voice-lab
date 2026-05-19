@@ -316,6 +316,16 @@ class AdminTonePresetItemResponse(OkResponse):
     data: AdminTonePresetItem
 
 
+# ── PATCH /letters/{letter_id}/favorite ───────────────────────────────────────
+
+class UpdateLetterFavoriteRequest(BaseModel):
+    favorited: bool
+
+
+class UpdateLetterFavoriteResponse(OkResponse):
+    data: LetterItem
+
+
 # ── POST /letters ─────────────────────────────────────────────────────────────
 
 class CreateLetterRequest(BaseModel):

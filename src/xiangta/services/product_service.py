@@ -309,6 +309,12 @@ class ProductService:
             raise RuntimeError("letter service not wired")
         return await self._letters.list(limit=limit, offset=offset)
 
+    async def update_letter_favorite(self, letter_id: str, favorited: bool) -> dict | None:
+        """委托给 LetterService 更新收藏状态。"""
+        if self._letters is None:
+            raise RuntimeError("letter service not wired")
+        return await self._letters.update_favorite(letter_id, favorited)
+
     async def get_suggestions(self, recipient: str, scene: str, raw_text: str) -> dict:
         """委托给 CopywritingService；ProductService 只做门面。"""
         if self._copywriting is None:

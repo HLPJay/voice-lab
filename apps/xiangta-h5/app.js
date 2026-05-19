@@ -1145,15 +1145,17 @@ function openHistoryFromResult() {
   showScreen("history");
 }
 
-function toggleResultFavorite() {
+async function toggleResultFavorite() {
   if (!state.resultSavedLetterId) return;
+  const letterId = state.resultSavedLetterId;
   const newValue = !state.resultFavorited;
-  state.resultFavorited = newValue;
 
-  const letters = state.letters || [];
+  // Optimistic update
+  state.resultFavorited = newValue;
+  var letters = state.letters || [];
   for (var i = 0; i < letters.length; i++) {
     var item = letters[i];
-    if ((item.id || item.letterId) === state.resultSavedLetterId) {
+    if ((item.id || item.letterId) === letterId) {
       item.favorited = newValue;
       break;
     }
@@ -1161,11 +1163,49 @@ function toggleResultFavorite() {
   if (state.resultSavedLetter) {
     state.resultSavedLetter.favorited = newValue;
   }
-
   updateResultSaveButton();
   if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
   if (typeof renderLetters === "function") renderLetters();
   showToast(newValue ? "已收藏" : "已取消收藏");
+
+  // Persist to backend
+  var response = await apiFetch("/api/xiangta/letters/" + encodeURIComponent(letterId) + "/favorite", {
+    method: "PATCH",
+    body: JSON.stringify({ favorited: newValue }),
+  });
+  if (!response) {
+    showToast("收藏更新失败，请稍后重试");
+    // Restore on failure
+    state.resultFavorited = !newValue;
+    for (var j = 0; j < letters.length; j++) {
+      var it = letters[j];
+      if ((it.id || it.letterId) === letterId) {
+        it.favorited = !newValue;
+        break;
+      }
+    }
+    if (state.resultSavedLetter) state.resultSavedLetter.favorited = !newValue;
+    updateResultSaveButton();
+    if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
+    if (typeof renderLetters === "function") renderLetters();
+    return;
+  }
+
+  // Sync with authoritative server data
+  if (response.data) {
+    state.resultFavorited = !!response.data.favorited;
+    for (var k = 0; k < letters.length; k++) {
+      var ltr = letters[k];
+      if ((ltr.id || ltr.letterId) === letterId) {
+        ltr.favorited = !!response.data.favorited;
+        break;
+      }
+    }
+    if (state.resultSavedLetter) state.resultSavedLetter.favorited = !!response.data.favorited;
+    updateResultSaveButton();
+    if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
+    if (typeof renderLetters === "function") renderLetters();
+  }
 }
 
 async function resultRestart() {
@@ -1570,10 +1610,12 @@ function renderLetters() {
     }
   });
 
-  // Set up mini player with first letter that has audio
-  const firstWithAudio = state.letters.find(l => l.audioUrl);
-  if (firstWithAudio) {
-    setupHistoryMiniPlayer(firstWithAudio);
+  // Show mini player only for the currently active letter, not auto-selection
+  const activeLetter = (state.letters || []).find(function(l) {
+    return (l.id || l.letterId) === state.activeHistoryLetterId;
+  });
+  if (activeLetter && activeLetter.audioUrl) {
+    renderHistoryMiniPlayer(activeLetter);
   } else {
     hideHistoryMiniPlayer();
   }
@@ -1748,45 +1790,44 @@ function onHistoryCardClick(letter) {
 
 // History audio playback
 function setupHistoryAudioListeners() {
+  if (state.historyAudioListenersBound) return;
   const audio = el("historyAudio");
   if (!audio) return;
 
-  // Remove old listeners by cloning
-  const newAudio = audio.cloneNode(false);
-  audio.parentNode.replaceChild(newAudio, audio);
-
-  newAudio.addEventListener("loadedmetadata", () => {
-    state.historyAudioDuration = newAudio.duration;
+  audio.addEventListener("loadedmetadata", function() {
+    state.historyAudioDuration = audio.duration;
     renderHistoryMiniPlayer();
   });
 
-  newAudio.addEventListener("timeupdate", () => {
-    state.historyAudioCurrentTime = newAudio.currentTime;
+  audio.addEventListener("timeupdate", function() {
+    state.historyAudioCurrentTime = audio.currentTime;
     renderHistoryMiniPlayerProgress();
   });
 
-  newAudio.addEventListener("play", () => {
+  audio.addEventListener("play", function() {
     state.historyAudioPlaying = true;
     updateHistoryPlayIcon(true);
   });
 
-  newAudio.addEventListener("pause", () => {
+  audio.addEventListener("pause", function() {
     state.historyAudioPlaying = false;
     updateHistoryPlayIcon(false);
   });
 
-  newAudio.addEventListener("ended", () => {
+  audio.addEventListener("ended", function() {
     state.historyAudioPlaying = false;
     state.historyAudioCurrentTime = 0;
     updateHistoryPlayIcon(false);
     renderHistoryMiniPlayerProgress();
   });
 
-  newAudio.addEventListener("error", () => {
+  audio.addEventListener("error", function() {
     state.historyAudioPlaying = false;
     showToast("音频链接暂不可访问");
     hideHistoryMiniPlayer();
   });
+
+  state.historyAudioListenersBound = true;
 }
 
 function playHistoryLetter(letterOrId) {
@@ -2209,20 +2250,68 @@ function renderLetterDetailFavoriteButton() {
   }
 }
 
-function toggleLetterDetailFavorite() {
+async function toggleLetterDetailFavorite() {
   const letterId = state.activeLetterDetailId;
   if (!letterId) return;
   const newValue = !state.letterDetailFavoritedMap[letterId];
+
+  // Optimistic update
   state.letterDetailFavoritedMap[letterId] = newValue;
-  // Sync to letter object and activeLetterDetail so history list reflects the change
-  const letter = (state.letters || []).find(function(item) {
-    return (item.id || item.letterId) === letterId;
-  });
-  if (letter) letter.favorited = newValue;
+  var letters = state.letters || [];
+  for (var i = 0; i < letters.length; i++) {
+    var item = letters[i];
+    if ((item.id || item.letterId) === letterId) {
+      item.favorited = newValue;
+      break;
+    }
+  }
   if (state.activeLetterDetail) state.activeLetterDetail.favorited = newValue;
   renderLetterDetailFavoriteButton();
   renderLetterDetailMetaPills(state.activeLetterDetail);
+  if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
+  if (typeof renderLetters === "function") renderLetters();
   showToast(newValue ? "已收藏" : "已取消收藏");
+
+  // Persist to backend
+  var response = await apiFetch("/api/xiangta/letters/" + encodeURIComponent(letterId) + "/favorite", {
+    method: "PATCH",
+    body: JSON.stringify({ favorited: newValue }),
+  });
+  if (!response) {
+    showToast("收藏更新失败，请稍后重试");
+    // Restore on failure
+    state.letterDetailFavoritedMap[letterId] = !newValue;
+    for (var j = 0; j < letters.length; j++) {
+      var it = letters[j];
+      if ((it.id || it.letterId) === letterId) {
+        it.favorited = !newValue;
+        break;
+      }
+    }
+    if (state.activeLetterDetail) state.activeLetterDetail.favorited = !newValue;
+    renderLetterDetailFavoriteButton();
+    renderLetterDetailMetaPills(state.activeLetterDetail);
+    if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
+    if (typeof renderLetters === "function") renderLetters();
+    return;
+  }
+
+  // Sync with authoritative server data
+  if (response.data) {
+    state.letterDetailFavoritedMap[letterId] = !!response.data.favorited;
+    for (var k = 0; k < letters.length; k++) {
+      var ltr = letters[k];
+      if ((ltr.id || ltr.letterId) === letterId) {
+        ltr.favorited = !!response.data.favorited;
+        break;
+      }
+    }
+    if (state.activeLetterDetail) state.activeLetterDetail.favorited = !!response.data.favorited;
+    renderLetterDetailFavoriteButton();
+    renderLetterDetailMetaPills(state.activeLetterDetail);
+    if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
+    if (typeof renderLetters === "function") renderLetters();
+  }
 }
 
 async function restartLetterDetailAudio() {

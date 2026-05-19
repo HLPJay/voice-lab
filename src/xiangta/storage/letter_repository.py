@@ -43,6 +43,10 @@ class LetterRepository(Protocol):
         """Return letters page, newest first."""
         ...
 
+    async def update_favorite(self, letter_id: str, favorited: bool) -> dict | None:
+        """Update letter favorited flag. Return updated record or None if not found."""
+        ...
+
     def clear(self) -> None:
         """Clear all letters."""
         ...
@@ -94,6 +98,13 @@ class MemoryLetterRepository:
 
     def clear(self) -> None:
         self._letters.clear()
+
+    async def update_favorite(self, letter_id: str, favorited: bool) -> dict | None:
+        for record in self._letters:
+            if record["letterId"] == letter_id:
+                record["favorited"] = favorited
+                return record
+        return None
 
 
 # ── SQLite implementation ──────────────────────────────────────────────────
@@ -203,3 +214,17 @@ class SQLiteLetterRepository:
         conn = self._ensure_connection()
         conn.execute("DELETE FROM letters")
         conn.commit()
+
+    async def update_favorite(self, letter_id: str, favorited: bool) -> dict | None:
+        conn = self._ensure_connection()
+        conn.execute(
+            "UPDATE letters SET favorited = ? WHERE letter_id = ?",
+            (1 if favorited else 0, letter_id),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM letters WHERE letter_id = ?", (letter_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return self._to_api_record(row)

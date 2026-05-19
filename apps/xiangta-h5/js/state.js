@@ -32,6 +32,7 @@ const state = {
   historyAudioPlaying: false,
   historyAudioCurrentTime: 0,
   historyAudioDuration: 0,
+  historyAudioListenersBound: false,
   // Letter detail state
   activeLetterDetailId: null,
   activeLetterDetail: null,

@@ -15,6 +15,7 @@ NOTE: 本模块不注册到主应用（app/main.py）。
   POST /suggestions           ✅ 可用，当前为模板文案，不调用真实 LLM
   POST /letters               ✅ 可用，当前为进程内内存存储
   GET  /letters               ✅ 可用，当前为进程内内存存储
+  PATCH /letters/{id}/favorite ✅ 可用
   /admin/*                    ✅ 本地/Admin 配置接口，生产前需鉴权或 dev-only gate
 """
 from fastapi import APIRouter, Header
@@ -42,6 +43,8 @@ from src.xiangta.api.schemas import (
     TtsResponse,
     TtsTaskCreateResponse,
     TtsTaskStatusResponse,
+    UpdateLetterFavoriteRequest,
+    UpdateLetterFavoriteResponse,
     VoiceBindingsStatusResponse,
     VoicePresetsResponse,
 )
@@ -351,3 +354,18 @@ async def list_letters(limit: int = 50, offset: int = 0):
     svc = create_product_service()
     data = await svc.list_letters(limit=limit, offset=offset)
     return ListLettersResponse(data=data)
+
+
+@router.patch("/letters/{letter_id}/favorite", response_model=UpdateLetterFavoriteResponse)
+async def update_letter_favorite(letter_id: str, body: UpdateLetterFavoriteRequest):
+    """更新信笺收藏状态。"""
+    svc = create_product_service()
+    updated = await svc.update_letter_favorite(letter_id, body.favorited)
+    if updated is None:
+        return error_response(
+            status_code=404,
+            error_kind="not_found",
+            message="Letter not found.",
+            retryable=False,
+        )
+    return UpdateLetterFavoriteResponse(data=updated)
