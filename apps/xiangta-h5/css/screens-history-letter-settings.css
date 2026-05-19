@@ -1,8 +1,23 @@
 /* ── History screen bottom spacing ───────────────────────────────────
    Override screen-scroll's --xt-bottom-safe (104px) — history has no
-   fixed CTA. Uses density tokens so compact mobile gets less dead space. */
+   fixed CTA. Scoped density tokens keep the list tighter than other
+   screens so more cards are visible on a typical phone browser. */
 .screen-scroll.history-screen {
   padding-bottom: var(--h5-page-bottom);
+
+  /* Tighter density scoped to history — more cards visible on phone.
+     These local overrides cascade to all children (header, list, chips,
+     mini player) without touching other screens' tokens. */
+  --h5-header-top:    clamp(14px, 3svh, 20px);
+  --h5-header-gap:    clamp(2px,  0.8svh, 6px);
+  --h5-title-size:    clamp(19px, 5vw, 21px);
+  --h5-list-pad-y:    clamp(4px,  0.8svh, 6px);
+  --h5-card-pad:      clamp(8px,  2.5vw, 12px);
+  --h5-card-gap:      clamp(5px,  1svh,  7px);
+  --h5-chip-pad-y:    clamp(4px,  0.7svh, 6px);
+  --h5-chip-pad-x:    clamp(8px,  2.5vw, 12px);
+  --h5-icon-size:     clamp(32px, 8.5vw, 36px);
+  --h5-play-size:     clamp(30px, 8vw,   33px);
 }
 
 /* When mini player visible — expand so last card scrolls above player.
@@ -165,15 +180,21 @@
   color: var(--xt-accent);
 }
 
-/* History mini player */
+/* History mini player — full-width bottom dock.
+   The scroll container has horizontal padding var(--h5-page-x) so a
+   plain width:100% would be content-area-wide, not viewport-wide.
+   Negative margin-inline bleeds out to the scroll-container edges,
+   giving the dock flush left+right alignment like a real app bottom bar. */
 .history-mini-player {
   position: sticky;
-  bottom: 0;                /* stick to very bottom of scroll viewport */
-  left: 0;
-  right: 0;
+  bottom: 0;
+  z-index: 20;
   box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;          /* never overflow phone width */
+  /* Bleed to container edges — cancel the parent's horizontal padding */
+  margin-inline: calc(var(--h5-page-x) * -1);
+  width: calc(100% + (var(--h5-page-x) * 2));
+  max-width: none;
+  border-radius: 0;
   /* Density token for vertical padding; safe-area counted once inside */
   padding: var(--h5-mini-player-pad-y) var(--h5-page-x) calc(var(--h5-mini-player-pad-y) + env(safe-area-inset-bottom));
   background: rgba(26, 21, 33, 0.92);
