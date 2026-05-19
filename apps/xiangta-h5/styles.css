@@ -412,9 +412,9 @@ body {
 
 .home-subtitle,
 .step-subtitle {
-  margin: 14px 0 0;
+  margin: 8px 0 0;
   color: var(--xt-text-3);
-  line-height: 1.75;
+  line-height: 1.7;
 }
 
 .home-subtitle {
@@ -672,7 +672,7 @@ body {
 }
 
 .cta-button {
-  min-height: 54px;
+  min-height: 52px;
   padding: 0 18px;
   border: none;
   background: var(--accent);
@@ -776,7 +776,7 @@ body {
 }
 
 .step-progress {
-  margin: 10px 0 20px;
+  margin: 6px 0 20px;
 }
 
 .step-track {
@@ -843,12 +843,12 @@ body {
 }
 
 .step-hero {
-  padding: 8px 0 4px;
+  padding: 24px 20px 4px;
 }
 
 .step-title {
-  font-size: 31px;
-  line-height: 1.38;
+  font-size: 22px;
+  line-height: 1.5;
   letter-spacing: 0.01em;
 }
 
@@ -862,18 +862,15 @@ body {
 }
 
 .composer-box {
-  border: 1px solid rgba(217, 149, 74, 0.22);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(31, 24, 38, 0.94), rgba(22, 17, 28, 0.98));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  padding: 18px 16px 14px;
+  border: 1px solid var(--xt-hairline-2);
+  border-radius: 18px;
+  background: var(--xt-surface);
+  padding: 16px;
+  transition: border-color 0.15s;
 }
 
 .composer-box.has-text {
-  border-color: rgba(217, 149, 74, 0.4);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(217, 149, 74, 0.08);
+  border-color: var(--xt-accent-deep);
 }
 
 .composer-box textarea,
@@ -886,11 +883,12 @@ body {
 }
 
 .composer-box textarea {
-  min-height: 184px;
+  background: transparent;
+  min-height: 132px;
   resize: none;
   font-family: var(--font-serif);
   font-size: 16px;
-  line-height: 1.92;
+  line-height: 1.85;
   caret-color: var(--accent);
 }
 
@@ -929,12 +927,12 @@ body {
 .risk-hint {
   margin-top: 10px;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--warn-soft);
-  border: 1px solid rgba(223, 175, 120, 0.26);
-  color: var(--text-soft);
-  font-size: 12px;
-  line-height: 1.7;
+  border: 1px solid rgba(224, 168, 123, 0.22);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.65;
 }
 
 .prompt-card-list,
@@ -949,8 +947,8 @@ body {
 .prompt-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px 14px;
+  gap: 10px;
+  padding: 12px 14px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
@@ -973,8 +971,8 @@ body {
 }
 
 .prompt-tail {
-  color: var(--accent);
-  font-size: 18px;
+  color: var(--xt-accent-ink);
+  font-size: 15px;
   line-height: 1;
 }
 
