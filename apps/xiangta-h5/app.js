@@ -1093,17 +1093,24 @@ function updateResultSaveButton() {
   const { btn, label } = ensureResultSaveButtonDom() || {};
   const viewHistoryBtn = el("resultViewHistoryBtn");
   if (!btn || !label) return;
-  if (state.resultSaved) {
-    btn.classList.add("saved");
-    label.textContent = "已保存";
-    btn.disabled = true;
-    btn.onclick = null;
-    if (viewHistoryBtn) viewHistoryBtn.classList.remove("hidden");
-  } else {
+
+  if (!state.resultSaved) {
     btn.classList.remove("saved");
     label.textContent = "保存到信笺夹";
     btn.disabled = false;
     btn.onclick = function() { resultSave(); };
+    if (viewHistoryBtn) viewHistoryBtn.classList.add("hidden");
+  } else if (!state.resultFavorited) {
+    btn.classList.remove("saved");
+    label.textContent = "加入收藏";
+    btn.disabled = false;
+    btn.onclick = function() { toggleResultFavorite(); };
+    if (viewHistoryBtn) viewHistoryBtn.classList.add("hidden");
+  } else {
+    btn.classList.remove("saved");
+    label.textContent = "已收藏";
+    btn.disabled = false;
+    btn.onclick = function() { toggleResultFavorite(); };
     if (viewHistoryBtn) viewHistoryBtn.classList.add("hidden");
   }
 }
@@ -1111,6 +1118,54 @@ function updateResultSaveButton() {
 // Result screen action handlers
 function resultGoBack() {
   returnToVoiceFresh();
+}
+
+function handleHistoryBack() {
+  if (
+    state.historyReturnTo === "result" &&
+    state.ttsResult &&
+    state.ttsResult.status === "completed" &&
+    state.ttsResult.audioUrl
+  ) {
+    state.historyReturnTo = "home";
+    showScreen("result");
+    return;
+  }
+  state.historyReturnTo = "home";
+  showScreen("home");
+}
+
+function openHistoryFromHome() {
+  state.historyReturnTo = "home";
+  showScreen("history");
+}
+
+function openHistoryFromResult() {
+  state.historyReturnTo = "result";
+  showScreen("history");
+}
+
+function toggleResultFavorite() {
+  if (!state.resultSavedLetterId) return;
+  const newValue = !state.resultFavorited;
+  state.resultFavorited = newValue;
+
+  const letters = state.letters || [];
+  for (var i = 0; i < letters.length; i++) {
+    var item = letters[i];
+    if ((item.id || item.letterId) === state.resultSavedLetterId) {
+      item.favorited = newValue;
+      break;
+    }
+  }
+  if (state.resultSavedLetter) {
+    state.resultSavedLetter.favorited = newValue;
+  }
+
+  updateResultSaveButton();
+  if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
+  if (typeof renderLetters === "function") renderLetters();
+  showToast(newValue ? "已收藏" : "已取消收藏");
 }
 
 async function resultRestart() {
@@ -1281,29 +1336,29 @@ function showResultSavedMoment() {
   }, 900);
 }
 
-function showResultSaveSealThenOpenDetail(letter) {
-  const overlay = el("resultSaveSealOverlay");
+function showResultSaveSealThenOpenHistory(letter) {
+  var letterId = letter.id || letter.letterId;
+  state.resultSavedLetterId = letterId;
+  state.resultSavedLetter = letter;
+  state.resultFavorited = !!letter.favorited;
+
+  var overlay = el("resultSaveSealOverlay");
   if (!overlay) {
-    // Fallback: go directly to detail
-    state.activeLetterDetailId = letter.id || letter.letterId;
-    state.activeLetterDetail = letter;
-    state.letterDetailFavoritedMap[letter.id || letter.letterId] = !!letter.favorited;
-    showScreen("letterDetail");
+    // Fallback: go directly to history
+    state.historyReturnTo = "result";
+    showScreen("history");
     return;
   }
   overlay.classList.remove("hidden");
   overlay.classList.remove("result-save-seal-fadeout");
-  // Force reflow
   void overlay.offsetWidth;
   setTimeout(function() {
     overlay.classList.add("result-save-seal-fadeout");
     setTimeout(function() {
       overlay.classList.add("hidden");
       overlay.classList.remove("result-save-seal-fadeout");
-      state.activeLetterDetailId = letter.id || letter.letterId;
-      state.activeLetterDetail = letter;
-      state.letterDetailFavoritedMap[letter.id || letter.letterId] = !!letter.favorited;
-      showScreen("letterDetail");
+      state.historyReturnTo = "result";
+      showScreen("history");
     }, 240);
   }, 900);
 }
@@ -1346,12 +1401,15 @@ async function resultSave() {
   }
 
   state.resultSaved = true;
+  state.resultSavedLetterId = savedLetter.id || savedLetter.letterId;
+  state.resultSavedLetter = savedLetter;
+  state.resultFavorited = !!savedLetter.favorited;
 
   const savedLetter = buildSavedLetterViewModel(response);
   upsertLetterIntoState(savedLetter);
   showToast("已保存到信笺夹");
   updateResultSaveButton();
-  showResultSaveSealThenOpenDetail(savedLetter);
+  showResultSaveSealThenOpenHistory(savedLetter);
 }
 
 async function generateTts() {

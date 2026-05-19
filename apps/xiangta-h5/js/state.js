@@ -20,6 +20,10 @@ const state = {
   coreProfiles: [],
   voiceBindingStatus: null,  // loaded from GET /voice-bindings/status
   resultSaved: false,
+  resultSavedLetterId: null,
+  resultSavedLetter: null,
+  resultFavorited: false,
+  historyReturnTo: "home",
   // History page state
   historyFilter: "all",
   historySearchOpen: false,
