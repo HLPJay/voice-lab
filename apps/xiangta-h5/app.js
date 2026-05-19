@@ -1584,24 +1584,15 @@ function renderHomeRecentLetter() {
   if (!container) return;
   const letters = state.letters || [];
   const recent = letters[0];
+  const section = el("homeRecentSection");
 
   if (!recent) {
-    container.innerHTML = `
-      <div class="home-recent-empty" onclick="showScreen('history')">
-        <div class="home-recent-icon">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <rect x="2" y="2" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1" opacity="0.4"/>
-            <rect x="6" y="6" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1"/>
-            <path d="M11 8v6M8 11h6" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
-          </svg>
-        </div>
-        <div class="home-recent-info">
-          <div class="home-recent-title">还没有保存的信笺</div>
-          <div class="home-recent-meta">写第一封 → 它会出现在这里</div>
-        </div>
-      </div>`;
+    if (section) section.style.display = "none";
+    container.innerHTML = "";
     return;
   }
+
+  if (section) section.style.display = "";
 
   const title = getLetterTitle(recent);
   const recipientLabel = RECIPIENT_META[recent.recipient]?.label || "";

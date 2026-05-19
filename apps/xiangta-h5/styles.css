@@ -32,6 +32,11 @@
   /* Mobile bottom safe area — CTA height + notch/home-indicator space */
   --xt-bottom-safe: calc(104px + env(safe-area-inset-bottom));
 
+  /* Home card selected state — purple palette, not amber */
+  --home-selected-bg: rgba(93, 48, 119, 0.45);
+  --home-selected-border: rgba(168, 102, 210, 0.58);
+  --home-selected-ink: #E8C8FF;
+
   /* Legacy aliases — kept for P22A result screen compatibility */
   --c-bg: #100d14;
   --c-surface2: #231c2d;
@@ -116,10 +121,23 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px 0;
+  padding: max(env(safe-area-inset-top), 14px) 20px 0;
   position: static;
   background: transparent;
   border-bottom: none;
+}
+
+/* Home topbar icon buttons — lighter, more ghost-like */
+.home-topbar .icon-button {
+  width: 34px;
+  height: 34px;
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--xt-text-3);
+}
+
+.home-topbar .icon-button:active {
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .step-appbar {
@@ -374,7 +392,7 @@ body {
 }
 
 .home-hero {
-  padding: 20px 0 12px;
+  padding: 44px 0 12px;
 }
 
 .home-title,
@@ -405,7 +423,7 @@ body {
 }
 
 .content-section {
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 .content-section-tight {
@@ -416,7 +434,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   color: var(--xt-text-3);
   font-size: 12px;
   letter-spacing: 0.16em;
@@ -495,6 +513,17 @@ body {
   background: var(--accent-soft);
 }
 
+/* Home screen: recipient/scene use purple selected state */
+.home-screen .recipient-card.selected,
+.home-screen .scene-chip.selected {
+  border-color: var(--home-selected-border);
+  background: var(--home-selected-bg);
+}
+
+.home-screen .recipient-card.selected .recipient-card-icon {
+  color: var(--home-selected-ink);
+}
+
 .recipient-card-icon {
   margin-bottom: 12px;
   color: var(--text-soft);
@@ -523,7 +552,7 @@ body {
 .recipient-card-hint,
 .scene-chip-hint {
   margin-top: 4px;
-  color: var(--text-faint);
+  color: var(--xt-text-3);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -651,6 +680,7 @@ body {
   font-family: var(--font-serif);
   font-size: 16px;
   letter-spacing: 0.08em;
+  border-radius: 16px;
 }
 
 .btn-cta {
@@ -686,11 +716,12 @@ body {
 }
 
 .status-pill {
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-pill);
   background: var(--ok-soft);
   color: var(--ok);
   font-size: 11px;
+  letter-spacing: 0.04;
 }
 
 .status-pill.pill-warn {

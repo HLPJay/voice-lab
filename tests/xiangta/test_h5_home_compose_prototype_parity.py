@@ -238,12 +238,19 @@ class TestNoNewBackendApis:
 
 
 class TestHomeRecentLetterRendering:
-    def test_render_home_recent_letter_renders_empty_state(self):
-        """renderHomeRecentLetter renders empty state when no letters."""
+    def test_render_home_recent_letter_hides_section_when_empty(self):
+        """renderHomeRecentLetter hides homeRecentSection when no letters."""
         js = _read(H5_APP)
-        # Should have empty state with "还没有保存的信笺"
-        assert "还没有保存的信笺" in js, \
-            "Empty state text not found in renderHomeRecentLetter"
+        # Should hide section when no letters
+        assert 'section.style.display = "none"' in js, \
+            "homeRecentSection must be hidden when no letters"
+
+    def test_render_home_recent_letter_clears_container_when_empty(self):
+        """renderHomeRecentLetter clears container when no letters."""
+        js = _read(H5_APP)
+        # Should clear container innerHTML when empty
+        assert 'container.innerHTML = ""' in js, \
+            "container must be cleared when no letters"
 
     def test_render_home_recent_letter_renders_letter_card(self):
         """renderHomeRecentLetter renders letter card with title and meta."""
