@@ -248,8 +248,8 @@ async function loadBootstrap() {
   const response = await apiFetch("/api/xiangta/bootstrap");
   if (!response) {
     if (apiFetch.lastErrorKind !== "timeout") {
-      setStatus("这次整理没成功，可以稍后重试", "warn");
-      showToast("这次整理没成功，可以稍后重试");
+      setStatus("启动配置加载失败，请刷新重试", "warn");
+      showToast("启动配置加载失败，请刷新重试");
     }
     return;
   }
@@ -1367,7 +1367,7 @@ function renderLetters() {
   const total = state.letters.length;
 
   if (countNode) {
-    countNode.textContent = total > 0 ? `${total} 封 · 本机保存，不会上传` : "";
+    countNode.textContent = total > 0 ? `${total} 封 · 已保存到当前服务` : "";
   }
 
   if (state.letters.length === 0) {
@@ -1852,12 +1852,12 @@ function renderSettingsScreen() {
 
   container.innerHTML =
     // ── 服务连接
-    "<div class=\"xt-section-h\">服务连接</div>" +
+    "<div class=\"xt-section-h\">服务状态</div>" +
     "<div style=\"padding: 0 16px;\">" +
       "<div class=\"xt-card\" style=\"padding: 16px;\">" +
         "<div class=\"settings-provider-row\">" +
           "<div>" +
-            "<div class=\"settings-provider-name\">语音与文案服务</div>" +
+            "<div class=\"settings-provider-name\">语音与整理服务</div>" +
             (providerDetail ? "<div class=\"settings-provider-detail\">" + escHtml(providerDetail) + "</div>" : "") +
           "</div>" +
           "<span class=\"settings-status-pill settings-status-pill-" + pillTone + "\">" +
@@ -1877,16 +1877,16 @@ function renderSettingsScreen() {
     "</div>" +
 
     // ── 声线绑定
-    "<div class=\"xt-section-h\">声线绑定</div>" +
+    "<div class=\"xt-section-h\">声线配置</div>" +
     "<div style=\"padding: 0 16px;\">" +
       "<div class=\"xt-card\" style=\"padding: 16px;\">" +
         "<div class=\"settings-provider-row\" style=\"margin-bottom: 12px;\">" +
-          "<div class=\"settings-provider-name\">声线绑定状态</div>" +
+          "<div class=\"settings-provider-name\">声线配置状态</div>" +
           "<span style=\"font-size: 12px; color: var(--xt-text-3);\">" + boundCount + " / " + totalVoices + " 已绑定</span>" +
         "</div>" +
         "<div class=\"settings-binding-list\">" + bindingRowsHtml + "</div>" +
         "<button class=\"ghost-button settings-voice-bind-btn\" type=\"button\" onclick=\"window.location.href='/h5/admin-voice-bindings.html'\">" +
-          "打开声线绑定配置页" +
+          "打开声线配置页" +
         "</button>" +
       "</div>" +
     "</div>" +
@@ -1906,7 +1906,7 @@ function renderSettingsScreen() {
     "</div>" +
 
     // ── 本地数据
-    "<div class=\"xt-section-h\">本地数据</div>" +
+    "<div class=\"xt-section-h\">信笺保存</div>" +
     "<div style=\"padding: 0 16px;\">" +
       "<div class=\"xt-card\" style=\"padding: 0; overflow: hidden;\">" +
         "<div class=\"settings-data-row\" style=\"border-bottom: 1px solid var(--xt-hairline);\">" +
@@ -1914,16 +1914,16 @@ function renderSettingsScreen() {
           "<span style=\"font-family: var(--xt-mono); font-size: 12px; color: var(--xt-text-3);\">" + lettersCount + " 封</span>" +
         "</div>" +
         "<div class=\"settings-data-row\" style=\"border-bottom: 1px solid var(--xt-hairline);\">" +
-          "<span style=\"color: var(--xt-text-2);\">本机保存 · 不上传</span>" +
+          "<span style=\"color: var(--xt-text-2);\">保存在当前服务中 · 不会替你发送</span>" +
         "</div>" +
         "<div class=\"settings-data-row\">" +
-          "<span style=\"color: var(--xt-text-3); font-size: 12px;\">信笺仅保存在这台设备</span>" +
+          "<span style=\"color: var(--xt-text-3); font-size: 12px;\">不会自动发给对方，你可以随时回来查看</span>" +
         "</div>" +
       "</div>" +
     "</div>" +
 
     // ── 版本
-    "<div class=\"settings-version\">想他了 · v0.1 · 本机保存</div>";
+    "<div class=\"settings-version\">想Ta了 · v0.1 · 信笺保存已开启</div>";
 }
 
 async function refreshSettingsStatus() {
