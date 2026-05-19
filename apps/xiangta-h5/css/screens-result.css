@@ -90,6 +90,12 @@
   pointer-events: none;
 }
 
+.result-letter-seal.favorited {
+  opacity: 1;
+  color: var(--xt-accent);
+  filter: drop-shadow(0 0 8px rgba(217, 149, 74, 0.28));
+}
+
 .result-letter-card::before {
   content: '';
   position: absolute;

@@ -1177,6 +1177,13 @@ function renderResultMetaPills() {
   }
 
   pillsNode.innerHTML = html;
+  updateResultFavoriteSeal();
+}
+
+function updateResultFavoriteSeal() {
+  const seal = document.querySelector("#resultLetterCard .result-letter-seal");
+  if (!seal) return;
+  seal.classList.toggle("favorited", !!(state.resultSaved && state.resultFavorited));
 }
 
 function renderResultScreen(result) {
@@ -2514,6 +2521,13 @@ function renderLetterDetailMetaPills(letter) {
     var cls = "letter-meta-pill" + (p.accent ? " letter-meta-pill-accent" : "") + (p.favorited ? " letter-meta-pill-favorited" : "");
     return "<span class=\"" + cls + "\">" + escHtml(p.text) + "</span>";
   }).join("");
+  updateLetterDetailFavoriteSeal(isFavorited);
+}
+
+function updateLetterDetailFavoriteSeal(favorited) {
+  const seal = document.querySelector("#screenLetterDetail .letter-detail-seal");
+  if (!seal) return;
+  seal.classList.toggle("favorited", !!favorited);
 }
 
 function renderLetterDetailScreen(letter) {

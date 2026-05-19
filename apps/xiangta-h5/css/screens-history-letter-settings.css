@@ -673,6 +673,12 @@
   color: var(--xt-text-3);
 }
 
+.letter-detail-seal.favorited {
+  opacity: 1;
+  color: var(--xt-accent);
+  filter: drop-shadow(0 0 8px rgba(217, 149, 74, 0.28));
+}
+
 .letter-detail-date-row {
   display: flex;
   align-items: center;
