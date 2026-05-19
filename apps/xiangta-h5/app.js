@@ -1066,9 +1066,31 @@ function renderResultScreen(result) {
 }
 
 
-function updateResultSaveButton() {
+function ensureResultSaveButtonDom() {
   const btn = el("btnResultSave");
-  const label = el("resultSaveLabel");
+  if (!btn) return null;
+  let label = el("resultSaveLabel");
+  if (!label) {
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2l1.8 3.7 4.2.6-3 3 .7 4.2L8 11.5l-3.7 2 .7-4.2-3-3 4.2-.6L8 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>
+      </svg>
+      <span id="resultSaveLabel">保存到信笺夹</span>
+    `;
+    label = el("resultSaveLabel");
+  }
+  return { btn, label };
+}
+
+function setResultSaveBusy(busy, labelText) {
+  const { btn, label } = ensureResultSaveButtonDom() || {};
+  if (!btn || !label) return;
+  label.textContent = labelText;
+  btn.disabled = busy;
+}
+
+function updateResultSaveButton() {
+  const { btn, label } = ensureResultSaveButtonDom() || {};
   const viewHistoryBtn = el("resultViewHistoryBtn");
   if (!btn || !label) return;
   if (state.resultSaved) {
@@ -1293,7 +1315,7 @@ async function resultSave() {
     setStatus("没有可保存的文字", "warn");
     return;
   }
-  setBusy("btnResultSave", true, "正在收好...");
+  setResultSaveBusy(true, "正在收好...");
   const suggestion = state.suggestions[state.selectedIndex];
   const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
   const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
@@ -1319,7 +1341,7 @@ async function resultSave() {
 
   if (!response) {
     state.resultSaved = false;
-    setBusy("btnResultSave", false, "保存到信笺夹");
+    setResultSaveBusy(false, "保存到信笺夹");
     return;
   }
 
