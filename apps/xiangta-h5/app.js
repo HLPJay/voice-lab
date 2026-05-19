@@ -470,10 +470,11 @@ function renderSuggestionCards(meta) {
       "</div>";
     card.addEventListener("click", () => selectSuggestion(index));
     card.querySelector('[data-action="edit"]')?.addEventListener("click", (event) => editSuggestion(index, event));
-    card.querySelector('[data-action="copy"]')?.addEventListener("click", (event) => {
+    const copyBtn = card.querySelector('[data-action="copy"]');
+    copyBtn?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      copySuggestion(index, event);
+      copySuggestion(index, event, copyBtn);
     });
     card.querySelector('[data-action="select"]')?.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -526,7 +527,23 @@ function updateSuggestionSelectionUi(prevIndex, nextIndex) {
   }
 }
 
-async function copySuggestion(index, event) {
+function markSuggestionCopyButtonCopied(button) {
+  if (!button) return;
+  const originalText = button.dataset.copyOriginalText || button.textContent || "复制";
+  button.dataset.copyOriginalText = originalText;
+  button.textContent = "已复制";
+  button.classList.add("copied");
+  if (button._copyRestoreTimer) {
+    clearTimeout(button._copyRestoreTimer);
+  }
+  button._copyRestoreTimer = setTimeout(() => {
+    button.textContent = button.dataset.copyOriginalText || "复制";
+    button.classList.remove("copied");
+    button._copyRestoreTimer = null;
+  }, 1000);
+}
+
+async function copySuggestionLegacy(index, event, button) {
   event?.preventDefault?.();
   event?.stopPropagation?.();
   const suggestion = state.suggestions[index];
@@ -562,6 +579,56 @@ async function copySuggestion(index, event) {
     }
     const ok = document.execCommand("copy");
     showToast(ok ? "已复制" : "复制失败，请长按文字手动复制");
+  } catch (error) {
+    showToast("复制失败，请长按文字手动复制");
+  } finally {
+    if (area && area.parentNode) {
+      area.parentNode.removeChild(area);
+    }
+  }
+}
+
+async function copySuggestion(index, event, button) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  const suggestion = state.suggestions[index];
+  if (!suggestion?.text) {
+    showToast("没有可复制的内容");
+    return;
+  }
+
+  const textToCopy = normalizeCopyText(suggestion.text);
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(textToCopy);
+      markSuggestionCopyButtonCopied(button);
+      return;
+    }
+  } catch (error) {
+    // Fallback below.
+  }
+
+  let area = null;
+  try {
+    area = document.createElement("textarea");
+    area.value = textToCopy;
+    area.setAttribute("readonly", "readonly");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    area.style.top = "0";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    if (typeof area.setSelectionRange === "function") {
+      area.setSelectionRange(0, area.value.length);
+    }
+    const ok = document.execCommand("copy");
+    if (ok) {
+      markSuggestionCopyButtonCopied(button);
+    } else {
+      showToast("复制失败，请长按文字手动复制");
+    }
   } catch (error) {
     showToast("复制失败，请长按文字手动复制");
   } finally {
