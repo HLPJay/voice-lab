@@ -33,6 +33,9 @@ const state = {
   historyAudioCurrentTime: 0,
   historyAudioDuration: 0,
   historyAudioListenersBound: false,
+  homeRecentAudio: null,
+  homeRecentLetterId: null,
+  homeRecentAudioPlaying: false,
   // Letter detail state
   activeLetterDetailId: null,
   activeLetterDetail: null,

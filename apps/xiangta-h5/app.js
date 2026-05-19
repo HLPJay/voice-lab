@@ -62,6 +62,9 @@ function showScreen(screen) {
 
 function cleanupBeforeScreenChange(fromScreen, toScreen) {
   if (fromScreen === toScreen) return;
+  if (fromScreen === "home" && toScreen !== "home") {
+    pauseHomeRecentAudio();
+  }
   if (fromScreen === "result" && toScreen !== "result") {
     const resultAudio = el("resultAudio");
     if (resultAudio) resultAudio.pause();
@@ -1541,6 +1544,9 @@ async function loadLetters() {
   const response = await apiFetch("/api/xiangta/letters?limit=20&offset=0");
   if (!response) return;
   state.letters = response.data.letters || [];
+  if (state.screen === "history") {
+    renderHistoryFilterChips();
+  }
   renderLetters();
   renderHomeRecentLetter();
 }
@@ -1680,18 +1686,26 @@ function renderHomeRecentLetter() {
   const metaText = [recipientLabel, sceneLabel, timeStr].filter(Boolean).join(" · ");
 
   container.innerHTML = `
-    <div class="home-recent-card" onclick="showScreen('history')">
-      <div class="home-recent-icon ${hasAudio ? 'has-audio' : ''}">
+    <div class="home-recent-card" onclick="openHistoryFromHome()">
+      <button class="home-recent-icon ${hasAudio ? 'has-audio' : ''}" type="button" ${hasAudio ? 'aria-label="play-recent-letter"' : 'aria-label="recent-letter-no-audio" disabled'}>
         ${hasAudio
           ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg>'
           : '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="3" y="4" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3 6l6 4 6-4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>'}
-      </div>
+      </button>
       <div class="home-recent-info">
         <div class="home-recent-title">${escHtml(title)}</div>
         <div class="home-recent-meta">${escHtml(metaText)}</div>
       </div>
       ${hasAudio ? `<div class="home-recent-duration">${formatDuration(Math.round((recent.finalText || "").length * 0.28 + 1.5))}</div>` : ""}
     </div>`;
+
+  const playBtn = container.querySelector(".home-recent-icon");
+  if (playBtn) {
+    playBtn.addEventListener("click", function(event) {
+      event.stopPropagation();
+      playHomeRecentLetter(recent);
+    });
+  }
 }
 
 
@@ -1816,6 +1830,7 @@ async function toggleHistoryLetterFavorite(letterId) {
   const letter = letters.find(function(l) { return (l.id || l.letterId) === letterId; });
   if (!letter) return;
 
+  const previousValue = !!letter.favorited;
   const newValue = !letter.favorited;
 
   // Optimistic update
@@ -1837,8 +1852,11 @@ async function toggleHistoryLetterFavorite(letterId) {
     renderLetterDetailFavoriteButton();
   }
 
+  updateHistoryFavoriteStarUi(letterId, newValue);
   renderHistoryFilterChips();
-  renderLetters();
+  if (shouldRenderLettersAfterFavoriteChange(previousValue, newValue)) {
+    renderLetters();
+  }
   showToast(newValue ? "已收藏" : "已取消收藏");
 
   // Persist to backend
@@ -1863,29 +1881,52 @@ async function toggleHistoryLetterFavorite(letterId) {
       renderLetterDetailMetaPills(state.activeLetterDetail);
       renderLetterDetailFavoriteButton();
     }
+    updateHistoryFavoriteStarUi(letterId, !newValue);
     renderHistoryFilterChips();
-    renderLetters();
+    if (shouldRenderLettersAfterFavoriteChange(newValue, !newValue)) {
+      renderLetters();
+    }
     return;
   }
 
   // Sync with authoritative server data
   if (response.data) {
-    letter.favorited = !!response.data.favorited;
+    var authoritativeValue = !!response.data.favorited;
+    letter.favorited = authoritativeValue;
     if (state.resultSavedLetterId === letterId) {
-      state.resultFavorited = !!response.data.favorited;
+      state.resultFavorited = authoritativeValue;
       if (state.resultSavedLetter) state.resultSavedLetter.favorited = !!response.data.favorited;
       updateResultSaveButton();
       renderResultMetaPills();
     }
     if (state.activeLetterDetailId === letterId) {
-      state.letterDetailFavoritedMap[letterId] = !!response.data.favorited;
+      state.letterDetailFavoritedMap[letterId] = authoritativeValue;
       if (state.activeLetterDetail) state.activeLetterDetail.favorited = !!response.data.favorited;
       renderLetterDetailMetaPills(state.activeLetterDetail);
       renderLetterDetailFavoriteButton();
     }
+    updateHistoryFavoriteStarUi(letterId, authoritativeValue);
     renderHistoryFilterChips();
-    renderLetters();
+    if (
+      authoritativeValue !== newValue &&
+      shouldRenderLettersAfterFavoriteChange(newValue, authoritativeValue)
+    ) {
+      renderLetters();
+    }
   }
+}
+
+function shouldRenderLettersAfterFavoriteChange(previousValue, nextValue) {
+  return state.historyFilter === "fav" && previousValue !== nextValue;
+}
+
+function updateHistoryFavoriteStarUi(letterId, favorited) {
+  var stars = document.querySelectorAll(".prototype-history-card-star");
+  stars.forEach(function(star) {
+    if (star.getAttribute("data-letter-id") !== String(letterId)) return;
+    star.classList.toggle("active", !!favorited);
+    star.textContent = favorited ? "★" : "☆";
+  });
 }
 
 function onHistoryCardClick(letter) {
@@ -1943,6 +1984,7 @@ function setupHistoryAudioListeners() {
 }
 
 function playHistoryLetter(letterOrId) {
+  pauseHomeRecentAudio();
   let letter;
   if (typeof letterOrId === "object") {
     letter = letterOrId;
@@ -1979,6 +2021,52 @@ function playHistoryLetter(letterOrId) {
   });
 
   renderHistoryMiniPlayer(letter);
+}
+
+function playHomeRecentLetter(letter) {
+  if (!letter || !letter.audioUrl) {
+    showToast("这封信没有音频");
+    return;
+  }
+
+  if (!state.homeRecentAudio) {
+    state.homeRecentAudio = new Audio();
+  }
+
+  var letterId = letter.id || letter.letterId;
+  var audio = state.homeRecentAudio;
+
+  if (state.homeRecentLetterId === letterId && !audio.paused) {
+    audio.pause();
+    state.homeRecentAudioPlaying = false;
+    renderHomeRecentLetter();
+    return;
+  }
+
+  state.homeRecentLetterId = letterId;
+  state.homeRecentAudioPlaying = false;
+  audio.src = letter.audioUrl;
+  audio.currentTime = 0;
+
+  audio.play().then(function() {
+    state.homeRecentAudioPlaying = true;
+    renderHomeRecentLetter();
+  }).catch(function() {
+    showToast("请手动点击播放");
+    renderHomeRecentLetter();
+  });
+
+  audio.onended = function() {
+    state.homeRecentAudioPlaying = false;
+    renderHomeRecentLetter();
+  };
+}
+
+function pauseHomeRecentAudio() {
+  if (state.homeRecentAudio) {
+    state.homeRecentAudio.pause();
+  }
+  state.homeRecentAudioPlaying = false;
 }
 
 function toggleHistoryPlayback() {
