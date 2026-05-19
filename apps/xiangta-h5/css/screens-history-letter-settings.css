@@ -1,3 +1,15 @@
+/* ── History screen bottom spacing ───────────────────────────────────
+   Override screen-scroll's --xt-bottom-safe (104px) — history has no
+   fixed CTA. Normal state: comfortable 24px. Mini player visible: expand
+   so the last letter card can scroll fully above the player (~72px tall). */
+.screen-scroll.history-screen {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.screen-scroll.history-screen.has-mini-player {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
 /* History screen prototype styles */
 .history-search {
   padding: 8px 16px 0;
@@ -58,6 +70,9 @@
 
 .prototype-history-list {
   padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .prototype-history-card {
@@ -129,8 +144,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+  min-width: 32px;  /* reserve space so info col never touches right col */
 }
 
 .prototype-history-card-duration {
@@ -151,9 +167,13 @@
 /* History mini player */
 .history-mini-player {
   position: sticky;
-  bottom: env(safe-area-inset-bottom);
+  bottom: 0;                /* stick to very bottom of scroll viewport */
   left: 0;
   right: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;          /* never overflow phone width */
+  /* Safe-area counted once inside padding, not via bottom offset */
   padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
   background: rgba(26, 21, 33, 0.92);
   backdrop-filter: blur(20px) saturate(160%);
@@ -825,10 +845,10 @@
   margin-top: 8px;
 }
 
-/* History card play button */
+/* History card play button — 36px for comfortable mobile tap target */
 .prototype-history-card-playbtn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: var(--accent);
   border: none;
@@ -840,6 +860,7 @@
   flex-shrink: 0;
   padding: 0;
   transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .prototype-history-card-playbtn:active {
@@ -848,5 +869,12 @@
 
 .prototype-history-card-playbtn svg {
   margin-left: 1px;
+}
+
+/* Favorite star — extend tap area without changing visual size */
+.prototype-history-card-star {
+  padding: 4px;
+  margin: -4px;
+  -webkit-tap-highlight-color: transparent;
 }
 

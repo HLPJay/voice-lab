@@ -2260,6 +2260,9 @@ function renderHistoryMiniPlayer(letter) {
 
   player.classList.remove("hidden");
   player.style.animation = "spaMiniPlayerUp 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both";
+  // Ensure list bottom padding expands so last card scrolls above mini player
+  const scroll = document.querySelector("#screenHistory .screen-scroll");
+  if (scroll) scroll.classList.add("has-mini-player");
 }
 
 function renderHistoryMiniPlayerProgress() {
@@ -2286,6 +2289,8 @@ function renderHistoryMiniPlayerProgress() {
 function hideHistoryMiniPlayer() {
   const player = el("historyMiniPlayer");
   if (player) player.classList.add("hidden");
+  const scroll = document.querySelector("#screenHistory .screen-scroll");
+  if (scroll) scroll.classList.remove("has-mini-player");
 }
 
 function updateHistoryPlayIcon(isPlaying) {
