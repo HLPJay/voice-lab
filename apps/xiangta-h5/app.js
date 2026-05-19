@@ -193,6 +193,26 @@ function showToast(message) {
 }
 
 
+/**
+ * Render letter body text with line breaks after Chinese punctuation,
+ * mirroring the prototype: finalText.replace(/([。，！？])/g, '$1\n').split('\n')
+ * Uses safe DOM nodes (no innerHTML with raw text).
+ */
+function renderLetterBodyLines(node, text) {
+  if (!node) return;
+  const lines = (text || "")
+    .replace(/([。，！？])/g, "$1\n")
+    .split("\n")
+    .filter(Boolean);
+  node.innerHTML = "";
+  lines.forEach((line, i) => {
+    node.appendChild(document.createTextNode(line));
+    if (i < lines.length - 1) {
+      node.appendChild(document.createElement("br"));
+    }
+  });
+}
+
 function renderHomeDateLine() {
   const node = el("homeDateLine");
   if (!node) return;
@@ -1184,9 +1204,9 @@ function renderResultScreen(result) {
   const dateNode = el("resultLetterDate");
   if (dateNode) dateNode.textContent = dateStr;
 
-  // Render letter body
+  // Render letter body — break at Chinese punctuation like prototype
   const bodyNode = el("resultLetterBody");
-  if (bodyNode) bodyNode.textContent = finalText;
+  renderLetterBodyLines(bodyNode, finalText);
 
   // Render signature
   const sigNode = el("resultLetterSignature");
@@ -2528,11 +2548,9 @@ function renderLetterDetailScreen(letter) {
     }
   }
 
-  // Body - safe text rendering, preserve line breaks via CSS white-space
+  // Body — break at Chinese punctuation like prototype
   const bodyEl = el("letterDetailBody");
-  if (bodyEl) {
-    bodyEl.textContent = letter.finalText || "";
-  }
+  renderLetterBodyLines(bodyEl, letter.finalText || "");
 
   // Signature
   const sigEl = el("letterDetailSignature");

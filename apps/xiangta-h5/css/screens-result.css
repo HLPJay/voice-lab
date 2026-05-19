@@ -1,7 +1,13 @@
 /* Result Screen */
 .result-screen {
-  padding-bottom: 36px;
+  /* background gradient matches prototype LetterScreen */
   background-image: radial-gradient(140% 50% at 50% -10%, var(--xt-accent-soft), transparent 70%);
+}
+
+/* Override screen-scroll's --xt-bottom-safe (104px) which is designed for fixed-CTA
+   screens. Result has no fixed CTA — just safe area + comfortable margin. */
+.screen-scroll.result-screen {
+  padding-bottom: calc(36px + env(safe-area-inset-bottom));
 }
 
 .result-appbar {
@@ -74,6 +80,16 @@
   overflow: hidden;
 }
 
+/* Seal decoration — top-right of letter card, same as LetterDetail and prototype */
+.result-letter-seal {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  opacity: 0.45;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
 .result-letter-card::before {
   content: '';
   position: absolute;
@@ -116,7 +132,9 @@
   line-height: 34px;
   font-weight: 400;
   color: var(--text);
-  white-space: pre-line;
+  /* white-space: normal — line breaks inserted via renderLetterBodyLines() */
+  white-space: normal;
+  word-break: break-word;
   position: relative;
   z-index: 1;
 }
@@ -162,7 +180,10 @@
 .result-audio-card audio {
   width: 100%;
   display: block;
+  height: 44px; /* comfortable touch target on mobile */
+  accent-color: var(--xt-accent); /* brand colour for progress/scrubber on Chrome/Android */
   margin-bottom: 14px;
+  max-width: 100%;
 }
 
 .result-audio-card audio::-webkit-media-controls-panel {
