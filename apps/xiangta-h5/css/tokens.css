@@ -68,4 +68,63 @@
   --font-serif: "Noto Serif SC", "Songti SC", "STSong", serif;
   --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "Consolas", monospace;
+
+  /* ── H5 Mobile Density Tokens ─────────────────────────────────────
+     Responsive ladder: compact → normal → comfortable.
+     clamp() scales continuously; max-height breakpoints snap to
+     compact/very-compact presets (address bar visible, short-screen).
+     svh = small viewport height (excludes browser chrome). ───────── */
+
+  /* Page layout */
+  --h5-page-x:      clamp(12px, 4vw, 16px);
+  --h5-page-bottom: calc(24px + env(safe-area-inset-bottom));
+
+  /* Header / title */
+  --h5-header-top:    clamp(28px, 6svh, 54px);
+  --h5-header-gap:    clamp(4px,  1.2svh, 12px);
+  --h5-title-size:    clamp(22px, 6vw, 26px);
+  --h5-subtitle-size: clamp(11px, 3vw, 13px);
+
+  /* Chips / filter row */
+  --h5-chip-pad-y: clamp(5px,  0.9svh, 7px);
+  --h5-chip-pad-x: clamp(10px, 3vw, 14px);
+  --h5-chip-gap:   clamp(6px,  1.5vw, 8px);
+  --h5-chip-font:  clamp(11px, 3vw, 12px);
+
+  /* Card list */
+  --h5-list-pad-y:  clamp(6px,  1.2svh, 8px);
+  --h5-card-gap:    clamp(6px,  1.2svh, 8px);
+  --h5-card-pad:    clamp(10px, 3vw, 14px);
+  --h5-card-radius: clamp(12px, 3vw, 16px);
+
+  /* Tap targets — never drop below safe minimum */
+  --h5-play-size: clamp(32px, 9vw, 36px);
+  --h5-icon-size: clamp(36px, 10vw, 40px);
+
+  /* Mini player */
+  --h5-mini-player-pad-y:        clamp(8px, 1.4svh, 10px);
+  --h5-mini-player-bottom-space: calc(80px + env(safe-area-inset-bottom));
+}
+
+/* ── Compact height — address bar visible, ~720px or shorter ─────── */
+@media (max-height: 720px) {
+  :root {
+    --h5-header-top:  28px;
+    --h5-header-gap:  4px;
+    --h5-title-size:  22px;
+    --h5-card-pad:    10px;
+    --h5-card-gap:    6px;
+    --h5-chip-pad-y:  5px;
+    --h5-mini-player-bottom-space: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Very compact — short devices or large browser chrome ─────────── */
+@media (max-height: 640px) {
+  :root {
+    --h5-header-top:  18px;
+    --h5-header-gap:  2px;
+    --h5-title-size:  21px;
+    --h5-mini-player-bottom-space: calc(72px + env(safe-area-inset-bottom));
+  }
 }

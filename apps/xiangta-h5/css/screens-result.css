@@ -4,10 +4,10 @@
   background-image: radial-gradient(140% 50% at 50% -10%, var(--xt-accent-soft), transparent 70%);
 }
 
-/* Override screen-scroll's --xt-bottom-safe (104px) which is designed for fixed-CTA
-   screens. Result has no fixed CTA — just safe area + comfortable margin. */
+/* Override screen-scroll's --xt-bottom-safe (104px) — no fixed CTA.
+   Density token shrinks on compact mobile. */
 .screen-scroll.result-screen {
-  padding-bottom: calc(36px + env(safe-area-inset-bottom));
+  padding-bottom: var(--h5-page-bottom);
 }
 
 .result-appbar {
@@ -15,8 +15,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: max(env(safe-area-inset-top), 12px) 16px 12px;
-  margin: 0 -16px;
+  padding: max(env(safe-area-inset-top), var(--h5-header-gap)) var(--h5-page-x) var(--h5-header-gap);
+  margin: 0 calc(var(--h5-page-x) * -1);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -47,8 +47,8 @@
 .result-meta-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--h5-chip-gap);
+  margin-top: clamp(10px, 2svh, 16px);
 }
 
 .result-pill {
@@ -71,11 +71,11 @@
 }
 
 .result-letter-card {
-  margin-top: 16px;
+  margin-top: clamp(10px, 2svh, 16px);
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
   border: 1px solid var(--line-strong);
-  border-radius: 22px;
-  padding: 24px 26px 26px;
+  border-radius: clamp(16px, 4vw, 22px);
+  padding: clamp(18px, 4vw, 24px) clamp(18px, 5vw, 26px) clamp(20px, 4vw, 26px);
   position: relative;
   overflow: hidden;
 }
@@ -157,11 +157,11 @@
 }
 
 .result-audio-card {
-  margin-top: 16px;
+  margin-top: clamp(10px, 2svh, 16px);
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: 20px;
-  padding: 18px;
+  border-radius: clamp(14px, 4vw, 20px);
+  padding: clamp(12px, 3vw, 18px);
 }
 
 .result-audio-meta {
@@ -223,10 +223,10 @@
 }
 
 .result-actions-grid {
-  margin-top: 18px;
+  margin-top: clamp(12px, 2svh, 18px);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--h5-card-gap);
 }
 
 .result-grid-btn {
@@ -249,7 +249,7 @@
 }
 
 .result-save-section {
-  margin-top: 14px;
+  margin-top: clamp(10px, 1.8svh, 14px);
 }
 
 .result-save-button {
