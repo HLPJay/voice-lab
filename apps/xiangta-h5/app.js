@@ -10,6 +10,8 @@ function applyModeUi() {
 }
 
 function showScreen(screen) {
+  const fromScreen = state.screen;
+  cleanupBeforeScreenChange(fromScreen, screen);
   document.querySelectorAll(".screen").forEach((node) => node.classList.remove("active"));
   const target = el("screen" + screen.charAt(0).toUpperCase() + screen.slice(1));
   if (target) target.classList.add("active");
@@ -49,6 +51,26 @@ function showScreen(screen) {
       showScreen("history");
       return;
     }
+  }
+}
+
+function cleanupBeforeScreenChange(fromScreen, toScreen) {
+  if (fromScreen === toScreen) return;
+  if (fromScreen === "result" && toScreen !== "result") {
+    const resultAudio = el("resultAudio");
+    if (resultAudio) resultAudio.pause();
+  }
+  if (fromScreen === "history" && toScreen !== "history") {
+    const historyAudio = el("historyAudio");
+    if (historyAudio) historyAudio.pause();
+    hideHistoryMiniPlayer();
+  }
+  if (fromScreen === "letterDetail" && toScreen !== "letterDetail") {
+    const detailAudio = el("letterDetailAudio");
+    if (detailAudio) detailAudio.pause();
+  }
+  if (fromScreen === "voice" && toScreen !== "voice") {
+    state.ttsPollToken += 1;
   }
 }
 
@@ -807,6 +829,14 @@ function resetVoiceTransientUi() {
   updateGenTtsButton();
 }
 
+function returnToVoiceFresh() {
+  state.ttsPollToken += 1;
+  state.ttsTask = null;
+  state.ttsResult = null;
+  resetVoiceTransientUi();
+  showScreen("voice");
+}
+
 async function goVoice() {
   if (!state.finalText) {
     setStatus("先选一条最像你的表达", "warn");
@@ -818,6 +848,7 @@ async function goVoice() {
   autoSelectBoundVoice();
   renderStepDots("voiceStepDots", 2, STEP_LABELS);
   el("voiceSubtitle").textContent = `${getBootstrapSceneLabel(state.selectedScene)} · ${STYLE_LABELS[state.selectedStyle] || "温柔版"}`;
+  state.ttsPollToken += 1;
   state.ttsTask = null;
   state.ttsResult = null;
   resetVoiceTransientUi();
@@ -835,6 +866,7 @@ async function generateTtsTask() {
     setStatus("先确认要生成语音的文字", "warn");
     return;
   }
+  const token = ++state.ttsPollToken;
   const payload = {
     text: text,
     voicePreset: state.selectedVoice,
@@ -855,11 +887,16 @@ async function generateTtsTask() {
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
   }
+  if (token !== state.ttsPollToken) return;
   // Fetch full task detail to ensure we have audioUrl/durationMs before rendering
   const created = response.data;
   const detailed = await fetchTtsTaskDetail(created);
+  if (token !== state.ttsPollToken) return;
   state.ttsTask = detailed;
   renderTtsTask(detailed);
+  if (detailed && detailed.status !== "completed" && detailed.status !== "failed") {
+    window.setTimeout(() => pollTtsTask(detailed, token), 1500);
+  }
   setBusy("btnGenTtsTask", false, "生成语音");
 }
 
@@ -874,13 +911,15 @@ async function fetchTtsTaskDetail(task) {
   return detail;
 }
 
-async function pollTtsTask(task) {
+async function pollTtsTask(task, token) {
+  if (token !== state.ttsPollToken) return;
   if (!task) return;
   const status = task.status;
   const pollUrl = task.pollUrl || `/api/xiangta/tts/tasks/${task.taskId}`;
   if (status === "completed" || status === "failed") {
     // Completed/failed synchronously — fetch detail to ensure audioUrl is populated
     const detailed = await fetchTtsTaskDetail(task);
+    if (token !== state.ttsPollToken) return;
     state.ttsTask = detailed;
     renderTtsTask(detailed);
     setBusy("btnGenTtsTask", false, "生成语音");
@@ -888,6 +927,7 @@ async function pollTtsTask(task) {
   }
   setBusy("btnGenTtsTask", true, `生成中...（${status}）`);
   const response = await apiFetch(pollUrl);
+  if (token !== state.ttsPollToken) return;
   if (!response) {
     setBusy("btnGenTtsTask", false, "生成语音");
     return;
@@ -899,7 +939,7 @@ async function pollTtsTask(task) {
     renderTtsTask(updated);
     setBusy("btnGenTtsTask", false, "生成语音");
   } else {
-    window.setTimeout(() => pollTtsTask(updated), 1500);
+    window.setTimeout(() => pollTtsTask(updated, token), 1500);
   }
 }
 
@@ -1042,8 +1082,7 @@ function updateResultSaveButton() {
 
 // Result screen action handlers
 function resultGoBack() {
-  // Go back to voice screen
-  showScreen("voice");
+  returnToVoiceFresh();
 }
 
 async function resultRestart() {
@@ -1129,10 +1168,7 @@ function resultReEdit() {
 function resultChangeTone() {
   // Go back to voice screen, reset saved state
   state.resultSaved = false;
-  state.ttsTask = null;
-  state.ttsResult = null;
-  resetVoiceTransientUi();
-  showScreen("voice");
+  returnToVoiceFresh();
 }
 
 function buildSavedLetterViewModel(responseData) {
@@ -1154,7 +1190,7 @@ function buildSavedLetterViewModel(responseData) {
     durationSecs: state.ttsResult ? (state.ttsResult.durationMs ? state.ttsResult.durationMs / 1000 : null) : (src.durationSecs || null),
     title: src.title || null,
     createdAt: src.createdAt || new Date().toISOString(),
-    favorited: true,
+    favorited: !!src.favorited,
   };
   return letter;
 }
@@ -1223,7 +1259,7 @@ function showResultSaveSealThenOpenDetail(letter) {
     // Fallback: go directly to detail
     state.activeLetterDetailId = letter.id || letter.letterId;
     state.activeLetterDetail = letter;
-    state.letterDetailFavoritedMap[letter.id || letter.letterId] = true;
+    state.letterDetailFavoritedMap[letter.id || letter.letterId] = !!letter.favorited;
     showScreen("letterDetail");
     return;
   }
@@ -1238,7 +1274,7 @@ function showResultSaveSealThenOpenDetail(letter) {
       overlay.classList.remove("result-save-seal-fadeout");
       state.activeLetterDetailId = letter.id || letter.letterId;
       state.activeLetterDetail = letter;
-      state.letterDetailFavoritedMap[letter.id || letter.letterId] = true;
+      state.letterDetailFavoritedMap[letter.id || letter.letterId] = !!letter.favorited;
       showScreen("letterDetail");
     }, 240);
   }, 900);
@@ -1270,9 +1306,13 @@ async function resultSave() {
       durationSecs: durationMs ? durationMs / 1000 : null,
       title: null,
     }),
+  }, {
+    timeoutMs: 12000,
+    timeoutMessage: "保存有点慢，请稍后重试",
   });
 
   if (!response) {
+    state.resultSaved = false;
     setBusy("btnResultSave", false, "保存到信笺夹");
     return;
   }

@@ -15,6 +15,7 @@ const state = {
   finalText: "",
   ttsTask: null,
   ttsResult: null,
+  ttsPollToken: 0,
   letters: [],
   coreProfiles: [],
   voiceBindingStatus: null,  // loaded from GET /voice-bindings/status
