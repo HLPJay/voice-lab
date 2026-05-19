@@ -1,0 +1,328 @@
+
+.home-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+
+.home-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--xt-text-2);
+}
+
+.home-brand-seal {
+  color: var(--xt-text-2);
+  flex-shrink: 0;
+}
+
+.home-brand-name {
+  font-family: var(--xt-serif, serif);
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--xt-text-2);
+}
+
+.home-brand-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--xt-text-3);
+}
+
+.icon-button-ghost {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--xt-text-3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.icon-button-ghost:hover {
+  color: var(--xt-text-2);
+}
+
+.literary-greeting::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: var(--text-dim);
+}
+
+.hero,
+.home-hero,
+.step-hero {
+  position: relative;
+}
+
+.home-hero {
+  padding: 44px 0 12px;
+}
+
+.home-title,
+.step-title,
+.step-title-small {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--xt-text);
+  letter-spacing: 0.02em;
+}
+
+.home-title {
+  font-size: 34px;
+  line-height: 1.35;
+}
+
+.home-subtitle,
+.step-subtitle {
+  margin: 8px 0 0;
+  color: var(--xt-text-3);
+  line-height: 1.7;
+}
+
+.home-subtitle {
+  max-width: 280px;
+  font-size: 13px;
+}
+
+.content-section {
+  margin-top: 16px;
+}
+
+.content-section-tight {
+  margin-top: 18px;
+}
+
+.section-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--xt-text-3);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.section-eyebrow::before {
+  content: "";
+  width: 14px;
+  height: 1px;
+  background: var(--xt-text-4);
+}
+
+.recipient-grid,
+.scene-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.recipient-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scene-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recipient-card,
+.scene-chip,
+.prompt-card,
+.voice-option,
+.history-card,
+.insight-card,
+.voice-copy-card,
+.tts-state-card,
+.save-letter-card,
+.dev-panel {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius-card);
+}
+
+.recipient-card,
+.scene-chip,
+.prompt-card,
+.voice-option,
+.suggestion-card,
+.tone-chip {
+  cursor: pointer;
+  animation: spaCardIn 0.26s both;
+}
+
+.recipient-card,
+.scene-chip {
+  text-align: left;
+  padding: 16px 14px;
+}
+
+.prompt-card,
+.suggestion-card,
+.voice-option {
+  text-align: left;
+}
+
+.recipient-card:hover,
+.scene-chip:hover,
+.prompt-card:hover,
+.voice-option:hover {
+  background: var(--surface-2);
+}
+
+.recipient-card.selected,
+.scene-chip.selected {
+  border-color: var(--xt-accent);
+  background: var(--accent-soft);
+}
+
+.voice-option.selected {
+  border-color: var(--xt-accent-deep);
+  background: var(--xt-accent-soft);
+}
+
+/* Home screen: recipient/scene use purple selected state */
+.home-screen .recipient-card.selected,
+.home-screen .scene-chip.selected {
+  border-color: var(--home-selected-border);
+  background: var(--home-selected-bg);
+}
+
+.home-screen .recipient-card.selected .recipient-card-icon {
+  color: var(--home-selected-ink);
+}
+
+.recipient-card-icon {
+  margin-bottom: 12px;
+  color: var(--text-soft);
+}
+
+.recipient-card.selected .recipient-card-icon {
+  color: var(--accent-ink);
+}
+
+.recipient-card-label,
+.scene-chip-label {
+  color: var(--text);
+}
+
+.recipient-card-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.scene-chip-label {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.recipient-card-hint,
+.scene-chip-hint {
+  margin-top: 4px;
+  color: var(--xt-text-3);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.home-actions {
+  /* sticky-cta handles position:sticky and bottom, just add vertical spacing here */
+  margin-top: 24px;
+}
+
+/* Date line — matches prototype: mono font, letter-spaced, with leading dash */
+.home-date-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--xt-text-3);
+  font-family: var(--xt-mono);
+  font-size: 11px;
+  letter-spacing: 0.24;
+}
+
+.home-date-line::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  background: var(--xt-text-4);
+  flex-shrink: 0;
+}
+
+/* Home recent letter card — mirrors prototype xt-card with dashed border */
+.home-recent-letter-card {
+  animation: spaCardIn 0.26s both;
+}
+
+.home-recent-card,
+.home-recent-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px;
+  border-radius: var(--radius-card);
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.home-recent-card:hover,
+.home-recent-empty:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.home-recent-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-recent-icon.has-audio {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.home-recent-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-recent-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-recent-meta {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.home-recent-duration {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+

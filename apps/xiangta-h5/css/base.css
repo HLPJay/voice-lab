@@ -1,0 +1,22 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(80% 40% at 50% -10%, rgba(217, 149, 74, 0.11), transparent 62%),
+    var(--bg-deep);
+  color: var(--text);
+  font-family: var(--font-sans);
+  display: flex;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+}

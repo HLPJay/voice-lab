@@ -1,0 +1,71 @@
+:root {
+  /* Unified prototype tokens — mirrors design_h5/想他了点击版本/tokens.jsx */
+  --xt-bg: #100D14;
+  --xt-bg-deep: #0A080E;
+  --xt-surface: #1A1521;
+  --xt-surface-2: #221C2C;
+  --xt-surface-3: #2C2438;
+  --xt-hairline: rgba(255, 255, 255, 0.07);
+  --xt-hairline-2: rgba(255, 255, 255, 0.12);
+
+  --xt-text: #F4EFE6;
+  --xt-text-2: rgba(244, 239, 230, 0.62);
+  --xt-text-3: rgba(244, 239, 230, 0.38);
+  --xt-text-4: rgba(244, 239, 230, 0.22);
+
+  --xt-accent: #D9954A;
+  --xt-accent-soft: rgba(217, 149, 74, 0.18);
+  --xt-accent-deep: rgba(217, 149, 74, 0.32);
+  --xt-accent-ink: #F4D9A8;
+
+  --xt-ok: #8FBF9F;
+  --xt-ok-soft: rgba(143, 191, 159, 0.14);
+  --xt-warn: #E0A87B;
+  --xt-warn-soft: rgba(224, 168, 123, 0.16);
+  --xt-danger: #D17A7A;
+  --xt-danger-soft: rgba(209, 122, 122, 0.14);
+
+  --xt-serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC", serif;
+  --xt-sans: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --xt-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Mobile bottom safe area — CTA height + notch/home-indicator space */
+  --xt-bottom-safe: calc(104px + env(safe-area-inset-bottom));
+
+  /* Home card selected state — purple palette, not amber */
+  --home-selected-bg: rgba(93, 48, 119, 0.45);
+  --home-selected-border: rgba(168, 102, 210, 0.58);
+  --home-selected-ink: #E8C8FF;
+
+  /* Legacy aliases — kept for P22A result screen compatibility */
+  --c-bg: #100d14;
+  --c-surface2: #231c2d;
+  --c-accent-ink: #f8ddbb;
+  --c-cta: #d9954a;
+  --bg-deep: #0a080e;
+  --bg: #100d14;
+  --surface: #191520;
+  --surface-2: #231c2d;
+  --surface-3: #2d2336;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --text: #f4efe6;
+  --text-soft: rgba(244, 239, 230, 0.72);
+  --text-faint: rgba(244, 239, 230, 0.48);
+  --text-dim: rgba(244, 239, 230, 0.28);
+  --accent: #d9954a;
+  --accent-soft: rgba(217, 149, 74, 0.18);
+  --accent-ink: #f8ddbb;
+  --ok: #90c09f;
+  --ok-soft: rgba(144, 192, 159, 0.18);
+  --warn: #dfaf78;
+  --warn-soft: rgba(223, 175, 120, 0.16);
+  --error: #d67d7d;
+  --error-soft: rgba(214, 125, 125, 0.16);
+  --radius-card: 18px;
+  --radius-pill: 999px;
+  --shadow: 0 18px 60px rgba(0, 0, 0, 0.42);
+  --font-serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", monospace;
+}
