@@ -1005,6 +1005,26 @@ function renderTtsTask(result) {
 // ─────────────────────────────────────────────────────────────
 // Result screen — "今晚的信笺" — rendered after TTS success
 // ─────────────────────────────────────────────────────────────
+function renderResultMetaPills() {
+  const pillsNode = el("resultMetaPills");
+  if (!pillsNode) return;
+
+  const recipientLabel = getBootstrapRecipientLabel(state.selectedRecipient) || RECIPIENT_META[state.selectedRecipient]?.label || "恋人";
+  const sceneLabel = getBootstrapSceneLabel(state.selectedScene) || SCENE_META[state.selectedScene]?.label || "想念";
+  const styleLabel = STYLE_LABELS[state.selectedStyle] || "温柔版";
+
+  let html =
+    `<span class="result-pill active">给${escHtml(recipientLabel)}</span>` +
+    `<span class="result-pill">${escHtml(sceneLabel)}</span>` +
+    `<span class="result-pill">${escHtml(styleLabel)}</span>`;
+
+  if (state.resultFavorited) {
+    html += `<span class="result-pill favorited">★ 收藏</span>`;
+  }
+
+  pillsNode.innerHTML = html;
+}
+
 function renderResultScreen(result) {
   const finalText = state.finalText || (el("finalTextArea")?.value || "").trim();
   const audioUrl = result.audioUrl || "";
@@ -1024,13 +1044,7 @@ function renderResultScreen(result) {
   const signatureStr = now.getHours() >= 18 || now.getHours() < 5 ? "今晚" : "今天";
 
   // Render meta pills
-  const pillsNode = el("resultMetaPills");
-  if (pillsNode) {
-    pillsNode.innerHTML =
-      `<span class="result-pill active">给${escHtml(recipientLabel)}</span>` +
-      `<span class="result-pill">${escHtml(sceneLabel)}</span>` +
-      `<span class="result-pill">${escHtml(styleLabel)}</span>`;
-  }
+  renderResultMetaPills();
 
   // Render letter date
   const dateNode = el("resultLetterDate");
@@ -1164,6 +1178,7 @@ async function toggleResultFavorite() {
     state.resultSavedLetter.favorited = newValue;
   }
   updateResultSaveButton();
+  renderResultMetaPills();
   if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
   if (typeof renderLetters === "function") renderLetters();
   showToast(newValue ? "已收藏" : "已取消收藏");
@@ -1186,6 +1201,7 @@ async function toggleResultFavorite() {
     }
     if (state.resultSavedLetter) state.resultSavedLetter.favorited = !newValue;
     updateResultSaveButton();
+    renderResultMetaPills();
     if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
     if (typeof renderLetters === "function") renderLetters();
     return;
@@ -1203,6 +1219,7 @@ async function toggleResultFavorite() {
     }
     if (state.resultSavedLetter) state.resultSavedLetter.favorited = !!response.data.favorited;
     updateResultSaveButton();
+    renderResultMetaPills();
     if (typeof renderHistoryFilterChips === "function") renderHistoryFilterChips();
     if (typeof renderLetters === "function") renderLetters();
   }
@@ -1593,7 +1610,7 @@ function renderLetters() {
       `</div>` +
       `<div class="prototype-history-card-right">` +
       (durationStr ? `<span class="prototype-history-card-duration">${durationStr}</span>` : `<span class="prototype-history-card-duration" style="color: var(--xt-text-4)">仅文字</span>`) +
-      (letter.favorited ? `<span class="prototype-history-card-star active">★</span>` : `<span class="prototype-history-card-star">☆</span>`) +
+      `<span class="prototype-history-card-star ${letter.favorited ? 'active' : ''}" data-letter-id="${letter.id || letter.letterId}">${letter.favorited ? '★' : '☆'}</span>` +
       `</div>`;
 
     list.appendChild(card);
@@ -1607,6 +1624,15 @@ function renderLetters() {
           playHistoryLetter(letter);
         });
       }
+    }
+
+    // Star click handler — toggle favorite without opening detail
+    const starEl = card.querySelector(".prototype-history-card-star");
+    if (starEl) {
+      starEl.addEventListener("click", function(event) {
+        event.stopPropagation();
+        toggleHistoryLetterFavorite(letter.id || letter.letterId);
+      });
     }
   });
 
@@ -1780,6 +1806,77 @@ function renderHistoryFilterChips() {
     };
     container.appendChild(chip);
   });
+}
+
+async function toggleHistoryLetterFavorite(letterId) {
+  const letters = state.letters || [];
+  const letter = letters.find(function(l) { return (l.id || l.letterId) === letterId; });
+  if (!letter) return;
+
+  const newValue = !letter.favorited;
+
+  // Optimistic update
+  letter.favorited = newValue;
+
+  // Sync result screen if this is the current result letter
+  if (state.resultSavedLetterId === letterId) {
+    state.resultFavorited = newValue;
+    updateResultSaveButton();
+    renderResultMetaPills();
+  }
+
+  // Sync letter detail if open
+  if (state.activeLetterDetailId === letterId) {
+    state.letterDetailFavoritedMap[letterId] = newValue;
+    renderLetterDetailMetaPills(state.activeLetterDetail);
+    renderLetterDetailFavoriteButton();
+  }
+
+  renderHistoryFilterChips();
+  renderLetters();
+  showToast(newValue ? "已收藏" : "已取消收藏");
+
+  // Persist to backend
+  var response = await apiFetch("/api/xiangta/letters/" + encodeURIComponent(letterId) + "/favorite", {
+    method: "PATCH",
+    body: JSON.stringify({ favorited: newValue }),
+  });
+
+  if (!response) {
+    showToast("收藏更新失败，请稍后重试");
+    // Restore on failure
+    letter.favorited = !newValue;
+    if (state.resultSavedLetterId === letterId) {
+      state.resultFavorited = !newValue;
+      updateResultSaveButton();
+      renderResultMetaPills();
+    }
+    if (state.activeLetterDetailId === letterId) {
+      state.letterDetailFavoritedMap[letterId] = !newValue;
+      renderLetterDetailMetaPills(state.activeLetterDetail);
+      renderLetterDetailFavoriteButton();
+    }
+    renderHistoryFilterChips();
+    renderLetters();
+    return;
+  }
+
+  // Sync with authoritative server data
+  if (response.data) {
+    letter.favorited = !!response.data.favorited;
+    if (state.resultSavedLetterId === letterId) {
+      state.resultFavorited = !!response.data.favorited;
+      updateResultSaveButton();
+      renderResultMetaPills();
+    }
+    if (state.activeLetterDetailId === letterId) {
+      state.letterDetailFavoritedMap[letterId] = !!response.data.favorited;
+      renderLetterDetailMetaPills(state.activeLetterDetail);
+      renderLetterDetailFavoriteButton();
+    }
+    renderHistoryFilterChips();
+    renderLetters();
+  }
 }
 
 function onHistoryCardClick(letter) {
