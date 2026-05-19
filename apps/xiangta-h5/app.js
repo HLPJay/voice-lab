@@ -1400,12 +1400,13 @@ async function resultSave() {
     return;
   }
 
+  const savedLetter = buildSavedLetterViewModel(response);
+
   state.resultSaved = true;
   state.resultSavedLetterId = savedLetter.id || savedLetter.letterId;
   state.resultSavedLetter = savedLetter;
   state.resultFavorited = !!savedLetter.favorited;
 
-  const savedLetter = buildSavedLetterViewModel(response);
   upsertLetterIntoState(savedLetter);
   showToast("已保存到信笺夹");
   updateResultSaveButton();
