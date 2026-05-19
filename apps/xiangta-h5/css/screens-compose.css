@@ -178,3 +178,22 @@
   line-height: 1.7;
 }
 
+/* ── Compose-page prototype parity (P25N) ─────────────────────── */
+
+/* Subtitle matches prototype: fontSize 12, text-3 colour */
+#screenCompose .step-subtitle {
+  font-size: 12px;
+}
+
+/* Prompt card tap feedback — shows the card is interactive on mobile */
+.prompt-card {
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s, opacity 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.prompt-card:active {
+  opacity: 0.65;
+  border-color: var(--xt-accent-deep);
+}
+

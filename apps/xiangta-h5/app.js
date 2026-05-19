@@ -352,10 +352,20 @@ function renderGuidancePrompts(sceneId) {
     card.addEventListener("click", () => {
       const textarea = el("rawTextArea");
       if (!textarea) return;
-      const merged = `${textarea.value.trim()}\n\n${prompt}\n`.trim();
-      textarea.value = merged.slice(0, 500);
+      // Preserve trailing newline so cursor lands on a blank line ready to type.
+      // Mirrors prototype appendPrompt: raw ? `${raw}\n\n${p}\n` : `${p}\n`
+      const existing = textarea.value;
+      const newVal = existing.trim()
+        ? `${existing.trimEnd()}\n\n${prompt}\n`
+        : `${prompt}\n`;
+      const clamped = newVal.slice(0, 500);
+      textarea.value = clamped;
       updateComposeState();
-      textarea.focus();
+      // Position cursor at end so user can continue typing immediately.
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(clamped.length, clamped.length);
+      }, 50);
     });
     node.appendChild(card);
   });
