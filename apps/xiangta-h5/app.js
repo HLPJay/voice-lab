@@ -1796,7 +1796,13 @@ function setupHistoryAudioListeners() {
 
   audio.addEventListener("loadedmetadata", function() {
     state.historyAudioDuration = audio.duration;
-    renderHistoryMiniPlayer();
+    var activeLetter = (state.letters || []).find(function(l) {
+      return (l.id || l.letterId) === state.activeHistoryLetterId;
+    });
+    if (activeLetter) {
+      renderHistoryMiniPlayer(activeLetter);
+    }
+    renderHistoryMiniPlayerProgress();
   });
 
   audio.addEventListener("timeupdate", function() {
@@ -1846,15 +1852,23 @@ function playHistoryLetter(letterOrId) {
   const audio = el("historyAudio");
   if (!audio) return;
 
-  audio.src = letter.audioUrl;
-  state.activeHistoryLetterId = letter.id || letter;
-  state.historyAudioPlaying = false;
-  state.historyAudioCurrentTime = 0;
+  const letterId = letter.id || letter.letterId;
+  if (!letterId) {
+    showToast("这封信暂时无法播放");
+    return;
+  }
 
-  audio.load();
   setupHistoryAudioListeners();
 
-  audio.play().catch(e => {
+  audio.src = letter.audioUrl;
+  state.activeHistoryLetterId = letterId;
+  state.historyAudioPlaying = false;
+  state.historyAudioCurrentTime = 0;
+  state.historyAudioDuration = 0;
+
+  audio.load();
+
+  audio.play().catch(function() {
     showToast("请手动点击播放");
   });
 

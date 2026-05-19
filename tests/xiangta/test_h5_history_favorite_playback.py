@@ -111,6 +111,42 @@ class TestAudioListenersFix:
             "playHistoryLetter must call renderHistoryMiniPlayer"
         )
 
+    def test_playHistoryLetter_sets_activeHistoryLetterId_with_letterId(self):
+        content = read_app_js()
+        body = get_function_body(content, "playHistoryLetter")
+        # Must use letter.id || letter.letterId, not letter.id || letter
+        assert "letter.id || letter.letterId" in body, (
+            "activeHistoryLetterId must be set as letter.id || letter.letterId"
+        )
+        assert "letter.id || letter;" not in body, (
+            "Must not use letter.id || letter (wrong fallback)"
+        )
+
+    def test_playHistoryLetter_calls_setupBeforeAudioLoad(self):
+        content = read_app_js()
+        body = get_function_body(content, "playHistoryLetter")
+        # setupHistoryAudioListeners() must appear before audio.load()
+        setup_pos = body.find("setupHistoryAudioListeners")
+        load_pos = body.find("audio.load()")
+        assert setup_pos < load_pos, (
+            "setupHistoryAudioListeners() must be called before audio.load()"
+        )
+
+    def test_loadedmetadata_finds_active_letter_not_bare_call(self):
+        content = read_app_js()
+        body = get_function_body(content, "setupHistoryAudioListeners")
+        # loadedmetadata handler must find active letter, not call bare renderHistoryMiniPlayer()
+        assert "loadedmetadata" in body
+        # Must look up active letter from state.letters
+        assert "activeHistoryLetterId" in body, (
+            "loadedmetadata handler must use activeHistoryLetterId"
+        )
+        # Must not have bare renderHistoryMiniPlayer() with no args in loadedmetadata
+        bare_calls = re.findall(r"renderHistoryMiniPlayer\s*\(\s*\)", body)
+        assert len(bare_calls) == 0, (
+            "loadedmetadata must not call renderHistoryMiniPlayer() with no arguments"
+        )
+
 
 class TestFavoriteAPICalls:
     """Verify favorite toggles call the backend API."""
