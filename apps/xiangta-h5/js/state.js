@@ -31,4 +31,7 @@ const state = {
   activeLetterDetailId: null,
   activeLetterDetail: null,
   letterDetailFavoritedMap: {},
+  // Demo fixture flow — set by fillSceneExample(), cleared when rawText changes
+  demoFixtureKey: null,
+  demoFixtureActive: false,
 };

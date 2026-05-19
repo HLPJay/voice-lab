@@ -328,13 +328,26 @@ function updateComposeState() {
   const textarea = el("rawTextArea");
   if (!textarea) return;
   const value = textarea.value || "";
+  const trimmed = value.trim();
   const count = el("rawTextCount");
   const wrap = el("rawTextWrap");
   const button = el("btnGenSuggestions");
   const hint = el("composeCTAHint");
+  if (
+    state.demoFixtureActive &&
+    state.demoFixtureKey &&
+    typeof DEMO_FIXTURES !== "undefined" &&
+    DEMO_FIXTURES[state.demoFixtureKey]
+  ) {
+    const fixtureRaw = (DEMO_FIXTURES[state.demoFixtureKey].rawText || "").trim();
+    if (trimmed !== fixtureRaw) {
+      state.demoFixtureActive = false;
+      state.demoFixtureKey = null;
+    }
+  }
   if (count) count.textContent = String(value.length);
-  if (wrap) wrap.classList.toggle("has-text", value.trim().length > 0);
-  if (button) button.disabled = value.trim().length < 4;
+  if (wrap) wrap.classList.toggle("has-text", trimmed.length > 0);
+  if (button) button.disabled = trimmed.length < 4;
   if (hint) {
     hint.textContent = value.trim().length >= 4 ? "会给你 3 种表达 · 你来挑一个最像自己的" : "写几个字试试 · 不用一次写完";
   }
@@ -488,6 +501,40 @@ async function generateSuggestions() {
     setStatus("先写下至少 4 个字", "warn");
     return;
   }
+
+  // Demo fixture bypass: use local preset suggestions when rawText matches the example exactly.
+  // If user has edited the text, rawText won't match and we fall through to the real API.
+  if (
+    state.demoFixtureActive &&
+    state.demoFixtureKey &&
+    typeof DEMO_FIXTURES !== "undefined" &&
+    DEMO_FIXTURES[state.demoFixtureKey] &&
+    rawText === DEMO_FIXTURES[state.demoFixtureKey].rawText.trim()
+  ) {
+    const fixture = DEMO_FIXTURES[state.demoFixtureKey];
+    setBusy("btnGenSuggestions", true, "整理中...");
+    state.suggestionMeta = fixture.suggestionMeta;
+    state.suggestions = buildSuggestionViewModel(fixture);
+    state.selectedIndex = -1;
+    state.finalText = "";
+    state.selectedStyle = fixture.suggestions[fixture.preferredIndex]?.style || "gentle";
+    el("suggestSubtitle").textContent = `给${getBootstrapRecipientLabel(state.selectedRecipient)} · ${getBootstrapSceneLabel(state.selectedScene)}`;
+    renderStepDots("suggestStepDots", 1, STEP_LABELS);
+    renderSuggestionCards(fixture.suggestionMeta);
+    renderRiskHint("suggestRiskHint", rawText);
+    setBusy("btnGenSuggestions", false, "帮我整理表达");
+    setBusy("btnToVoice", false, "用这条 · 生成语音");
+    // Auto-select the preferred suggestion
+    const preferredIndex = typeof fixture.preferredIndex === "number" ? fixture.preferredIndex : -1;
+    if (preferredIndex >= 0 && preferredIndex < state.suggestions.length) {
+      selectSuggestion(preferredIndex);
+    } else {
+      el("btnToVoice").disabled = true;
+    }
+    showScreen("suggest");
+    return;
+  }
+
   setBusy("btnGenSuggestions", true, "整理中...");
   const response = await apiFetch("/api/xiangta/suggestions", {
     method: "POST",
@@ -1690,6 +1737,9 @@ function fillSceneExample() {
   if (example.preferredTone) {
     state.selectedTone = example.preferredTone;
   }
+  // Mark demo fixture active — generateSuggestions() will bypass API when rawText matches
+  state.demoFixtureKey = state.selectedScene || "miss";
+  state.demoFixtureActive = true;
   updateComposeState();
   textarea.focus();
   showToast("已放入一个完整例子，可以直接改成你的话");
