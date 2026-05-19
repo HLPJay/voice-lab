@@ -1417,7 +1417,7 @@ async function resultSave() {
     setStatus("没有可保存的文字", "warn");
     return;
   }
-  setBusy("btnResultSave", true, "正在保存...");
+  setBusy("btnResultSave", true, "正在收好...");
   const suggestion = state.suggestions[state.selectedIndex];
   const audioUrl = state.ttsResult ? (state.ttsResult.audioUrl || null) : null;
   const durationMs = state.ttsResult ? (state.ttsResult.durationMs || null) : null;
@@ -1447,13 +1447,9 @@ async function resultSave() {
 
   const savedLetter = buildSavedLetterViewModel(response);
   upsertLetterIntoState(savedLetter);
-  state.activeLetterDetailId = savedLetter.id || savedLetter.letterId;
-  state.activeLetterDetail = savedLetter;
-  state.letterDetailFavoritedMap[state.activeLetterDetailId] = true;
-
   showToast("已保存到信笺夹");
   updateResultSaveButton();
-  showResultSavedMoment();
+  showResultSaveSealThenOpenDetail(savedLetter);
 }
 
 async function generateTts() {
