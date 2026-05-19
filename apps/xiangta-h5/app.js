@@ -1,5 +1,58 @@
 "use strict";
 
+function setBrowserScreenState(screen, mode) {
+  if (!window.history || state.navSuppressPush) return;
+  const hash = "#" + screen;
+  const payload = { xiangtaScreen: screen };
+  if (mode === "replace") {
+    window.history.replaceState(payload, "", hash);
+    return;
+  }
+  if (window.location.hash === hash && window.history.state?.xiangtaScreen === screen) {
+    return;
+  }
+  window.history.pushState(payload, "", hash);
+}
+
+function getBackTargetForScreen(screen) {
+  if (screen === "compose") return "home";
+  if (screen === "suggest") return "compose";
+  if (screen === "voice") return "suggest";
+  if (screen === "result") return "voice";
+  if (screen === "settings") return "home";
+  if (screen === "letterDetail") return "history";
+  if (screen === "history") {
+    if (
+      state.historyReturnTo === "result" &&
+      state.ttsResult &&
+      state.ttsResult.status === "completed" &&
+      state.ttsResult.audioUrl
+    ) {
+      return "result";
+    }
+    return "home";
+  }
+  return null;
+}
+
+function initBrowserNavigation() {
+  if (state.navHistoryReady) return;
+  state.navHistoryReady = true;
+  setBrowserScreenState(state.screen || "home", "replace");
+  window.addEventListener("popstate", function() {
+    const current = state.screen || "home";
+    const target = getBackTargetForScreen(current);
+    if (!target) return;
+    state.navSuppressPush = true;
+    try {
+      showScreen(target, { skipHistory: true });
+    } finally {
+      state.navSuppressPush = false;
+      setBrowserScreenState(target, "replace");
+    }
+  });
+}
+
 function applyModeUi() {
   const isDev = state.mode === "dev";
   const devPanel = el("devPanel");
@@ -9,7 +62,7 @@ function applyModeUi() {
   document.body.setAttribute("data-mode", state.mode);
 }
 
-function showScreen(screen) {
+function showScreen(screen, options = {}) {
   const fromScreen = state.screen;
   cleanupBeforeScreenChange(fromScreen, screen);
   document.querySelectorAll(".screen").forEach((node) => node.classList.remove("active"));
@@ -28,7 +81,7 @@ function showScreen(screen) {
       renderResultScreen(state.ttsResult);
     } else {
       showToast("还没有生成可查看的信笺");
-      showScreen("voice");
+      showScreen("voice", { skipHistory: true });
       return;
     }
   }
@@ -49,14 +102,17 @@ function showScreen(screen) {
         renderLetterDetailScreen(letter);
       } else {
         showToast("没有找到这封信笺");
-        showScreen("history");
+        showScreen("history", { skipHistory: true });
         return;
       }
     } else {
       showToast("没有选择信笺");
-      showScreen("history");
+      showScreen("history", { skipHistory: true });
       return;
     }
+  }
+  if (!options.skipHistory && state.navHistoryReady) {
+    setBrowserScreenState(screen, "push");
   }
 }
 
@@ -2713,6 +2769,7 @@ function initKeyboardSafeInset() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   state.mode = getAppMode();
+  initBrowserNavigation();
   initKeyboardSafeInset();
   applyModeUi();
   initOpeningOverlay();

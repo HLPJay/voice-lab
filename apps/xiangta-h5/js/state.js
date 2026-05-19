@@ -24,6 +24,8 @@ const state = {
   resultSavedLetter: null,
   resultFavorited: false,
   historyReturnTo: "home",
+  navHistoryReady: false,
+  navSuppressPush: false,
   // History page state
   historyFilter: "all",
   historySearchOpen: false,
