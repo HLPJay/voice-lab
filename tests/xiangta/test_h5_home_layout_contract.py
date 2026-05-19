@@ -149,6 +149,25 @@ class TestHomeScreenDisplayFix:
         assert "display: flex" in section or "display:flex" in section, \
             ".screen.home-screen.active must have display:flex"
 
+    def test_screen_active_restores_non_home_display(self):
+        """.screen.active must have display:block for non-Home screens."""
+        css = _read(H5_CSS)
+        idx = css.find(".screen.active {")
+        end = css.find("}", idx)
+        section = css[idx:end]
+        assert "display: block" in section or "display:block" in section, \
+            ".screen.active must have display:block"
+
+    def test_home_active_rule_after_screen_active(self):
+        """.screen.home-screen.active must appear after .screen.active in CSS."""
+        css = _read(H5_CSS)
+        screen_active_idx = css.find(".screen.active")
+        home_active_idx = css.find(".screen.home-screen.active")
+        assert screen_active_idx != -1, ".screen.active rule not found"
+        assert home_active_idx != -1, ".screen.home-screen.active rule not found"
+        assert screen_active_idx < home_active_idx, \
+            ".screen.home-screen.active must appear after .screen.active"
+
     def test_show_screen_no_longer_controls_app_topbar_display(self):
         """showScreen must not manually set appTopbar.style.display."""
         js = _read(H5_APP)

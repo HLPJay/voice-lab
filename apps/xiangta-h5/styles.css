@@ -260,7 +260,7 @@ body {
 }
 
 .screen.active {
-  /* display:block handled by each screen type's specific rule */
+  display: block;
 }
 
 /* Home screen: fixed-height shell with internal scroll + fixed bottom CTA */
