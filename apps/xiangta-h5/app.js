@@ -470,7 +470,11 @@ function renderSuggestionCards(meta) {
       "</div>";
     card.addEventListener("click", () => selectSuggestion(index));
     card.querySelector('[data-action="edit"]')?.addEventListener("click", (event) => editSuggestion(index, event));
-    card.querySelector('[data-action="copy"]')?.addEventListener("click", (event) => copySuggestion(index, event));
+    card.querySelector('[data-action="copy"]')?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      copySuggestion(index, event);
+    });
     card.querySelector('[data-action="select"]')?.addEventListener("click", (event) => {
       event.stopPropagation();
       selectSuggestion(index);
@@ -523,7 +527,8 @@ function updateSuggestionSelectionUi(prevIndex, nextIndex) {
 }
 
 async function copySuggestion(index, event) {
-  event?.stopPropagation();
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
   const suggestion = state.suggestions[index];
   if (!suggestion?.text) {
     showToast("没有可复制的内容");
@@ -540,19 +545,29 @@ async function copySuggestion(index, event) {
     // Fallback below.
   }
 
+  let area = null;
   try {
-    const area = document.createElement("textarea");
+    area = document.createElement("textarea");
     area.value = textToCopy;
     area.setAttribute("readonly", "readonly");
     area.style.position = "fixed";
+    area.style.left = "-9999px";
+    area.style.top = "0";
     area.style.opacity = "0";
     document.body.appendChild(area);
+    area.focus();
     area.select();
+    if (typeof area.setSelectionRange === "function") {
+      area.setSelectionRange(0, area.value.length);
+    }
     const ok = document.execCommand("copy");
-    document.body.removeChild(area);
-    showToast(ok ? "已复制" : "复制失败，请手动复制");
+    showToast(ok ? "已复制" : "复制失败，请长按文字手动复制");
   } catch (error) {
-    showToast("复制失败，请手动复制");
+    showToast("复制失败，请长按文字手动复制");
+  } finally {
+    if (area && area.parentNode) {
+      area.parentNode.removeChild(area);
+    }
   }
 }
 
