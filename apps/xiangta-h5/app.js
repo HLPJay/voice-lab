@@ -246,7 +246,13 @@ function renderSceneGrid(scenes) {
 
 async function loadBootstrap() {
   const response = await apiFetch("/api/xiangta/bootstrap");
-  if (!response) return;
+  if (!response) {
+    if (apiFetch.lastErrorKind !== "timeout") {
+      setStatus("这次整理没成功，可以稍后重试", "warn");
+      showToast("这次整理没成功，可以稍后重试");
+    }
+    return;
+  }
   state.bootstrap = response.data;
   renderRecipientGrid(state.bootstrap.recipients || []);
   renderSceneGrid(state.bootstrap.scenes || []);
@@ -588,6 +594,9 @@ async function generateSuggestions() {
       scene: state.selectedScene,
       rawText: rawText,
     }),
+  }, {
+    timeoutMs: 12000,
+    timeoutMessage: "这次整理超时了，可以稍后重试",
   });
   setBusy("btnGenSuggestions", false, "帮我整理表达");
   if (!response) return;

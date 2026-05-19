@@ -9,6 +9,7 @@ Behind flag, default disabled.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -68,6 +69,26 @@ class UrllibMiniMaxHttpClient:
         Raises MiniMaxHttpError on network or HTTP error.
         Raises MiniMaxConfigError on malformed base_url or endpoint_path.
         """
+        return await asyncio.to_thread(
+            self._create_chat_completion_sync,
+            base_url=base_url,
+            endpoint_path=endpoint_path,
+            api_key=api_key,
+            model=model,
+            messages=messages,
+            timeout_seconds=timeout_seconds,
+        )
+
+    def _create_chat_completion_sync(
+        self,
+        *,
+        base_url: str,
+        endpoint_path: str,
+        api_key: str,
+        model: str,
+        messages: list[dict],
+        timeout_seconds: float,
+    ) -> dict:
         url = build_minimax_chat_completion_url(base_url, endpoint_path)
         headers = {
             "Content-Type": "application/json",
