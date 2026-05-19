@@ -109,7 +109,8 @@
       </section>
 
       <section id="screenCompose" class="screen">
-        <div class="screen-scroll screen-scroll-step">
+        <div class="step-screen">
+          <div class="step-screen-header">
           <div class="step-appbar">
             <button class="icon-button" type="button" aria-label="返回上一页" onclick="showScreen('home')">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -128,6 +129,9 @@
           </div>
 
           <div class="step-progress" id="composeStepDots"></div>
+          </div>
+
+          <div class="step-screen-content">
 
           <section class="step-hero">
             <h2 class="step-title">先说说，<br>你现在最想说的一句话？</h2>
@@ -150,15 +154,20 @@
             <div id="guidancePrompts" class="prompt-card-list"></div>
           </section>
 
+          </div>
+
+          <div class="step-screen-cta">
           <div class="sticky-cta bottom-actions">
             <button id="btnGenSuggestions" class="cta-button btn-cta" type="button" onclick="generateSuggestions()" disabled>帮我整理表达</button>
             <div id="composeCTAHint" class="cta-hint">写几个字试试 · 不用一次写完</div>
+          </div>
           </div>
         </div>
       </section>
 
       <section id="screenSuggest" class="screen">
-        <div class="screen-scroll screen-scroll-step">
+        <div class="step-screen">
+          <div class="step-screen-header">
           <div class="step-appbar">
             <button class="icon-button" type="button" aria-label="返回输入页" onclick="showScreen('compose')">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -179,20 +188,27 @@
           </div>
 
           <div class="step-progress" id="suggestStepDots"></div>
+          </div>
+
+          <div class="step-screen-content">
 
           <div id="aiUnderstanding" class="insight-card"></div>
           <div id="suggestRiskHint" class="risk-hint hidden"></div>
           <div id="suggestionsArea" class="suggestion-list"></div>
           <textarea id="finalTextArea" class="hidden" rows="6" maxlength="800"></textarea>
+          </div>
 
+          <div class="step-screen-cta">
           <div class="sticky-cta bottom-actions">
             <button id="btnToVoice" class="cta-button btn-cta" type="button" onclick="goVoice()" disabled>用这条 · 生成语音</button>
+          </div>
           </div>
         </div>
       </section>
 
       <section id="screenVoice" class="screen">
-        <div class="screen-scroll screen-scroll-step">
+        <div class="step-screen">
+          <div class="step-screen-header">
           <div class="step-appbar">
             <button class="icon-button" type="button" aria-label="返回建议页" onclick="showScreen('suggest')">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -211,6 +227,9 @@
           </div>
 
           <div class="step-progress" id="voiceStepDots"></div>
+          </div>
+
+          <div class="step-screen-content">
 
           <div id="voiceTextPreview" class="voice-copy-card"></div>
 
@@ -226,11 +245,15 @@
           </section>
 
           <div id="durationEstimate" class="duration-estimate"></div>
+          </div>
 
+          <div class="step-screen-cta">
           <div class="sticky-cta sticky-cta-voice bottom-actions">
             <button id="btnGenTtsTask" class="cta-button btn-cta" type="button" onclick="generateTtsTask()">生成语音</button>
           </div>
+          </div>
 
+          <div class="step-screen-content">
           <div id="ttsResult" class="tts-result hidden"></div>
 
           <section id="saveLetterSection" class="save-letter-card hidden">
@@ -246,6 +269,7 @@
           <div id="devTtsSection" class="dev-panel hidden">
             <div class="dev-panel-title">Dev: 旧 /tts 调试入口</div>
             <button class="ghost-button" type="button" onclick="generateTts()">调用 /api/xiangta/tts</button>
+          </div>
           </div>
         </div>
       </section>

@@ -2640,8 +2640,33 @@ function writeAnotherFromLetterDetail() {
   showScreen("compose");
 }
 
+function initKeyboardSafeInset() {
+  var docEl = document.documentElement;
+  function setKbInset(px) {
+    var next = Math.max(0, Number(px) || 0);
+    docEl.style.setProperty("--xt-kb", next + "px");
+  }
+
+  if (!window.visualViewport) {
+    setKbInset(0);
+    return;
+  }
+
+  function syncFromVisualViewport() {
+    var vv = window.visualViewport;
+    var viewportBottom = vv.height + vv.offsetTop;
+    var keyboardHeight = window.innerHeight - viewportBottom;
+    setKbInset(keyboardHeight);
+  }
+
+  window.visualViewport.addEventListener("resize", syncFromVisualViewport);
+  window.visualViewport.addEventListener("scroll", syncFromVisualViewport);
+  syncFromVisualViewport();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   state.mode = getAppMode();
+  initKeyboardSafeInset();
   applyModeUi();
   initOpeningOverlay();
   initComposeListeners();

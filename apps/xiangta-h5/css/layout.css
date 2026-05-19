@@ -228,6 +228,42 @@
   padding-bottom: calc(var(--xt-bottom-safe) + 112px);
 }
 
+.step-screen {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.step-screen-header {
+  flex: 0 0 auto;
+}
+
+.step-screen-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  padding: 0 16px 24px;
+}
+
+.step-screen-cta {
+  flex: 0 0 auto;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom) + var(--xt-kb, 0px));
+  background: linear-gradient(to top, rgba(16, 13, 20, 0.98), rgba(16, 13, 20, 0.9) 70%, rgba(16, 13, 20, 0));
+}
+
+.step-screen-cta .sticky-cta {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .literary-greeting {
   display: flex;
   align-items: center;
