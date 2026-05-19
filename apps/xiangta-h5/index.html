@@ -10,6 +10,23 @@
 <body>
   <div class="phone-shell">
     <main class="app-main">
+
+      <!-- Opening entry overlay — hidden after first visit via localStorage -->
+      <div id="openingOverlay" class="opening-overlay">
+        <div class="opening-overlay-content">
+          <div class="opening-seal" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect x="5" y="8" width="30" height="24" rx="3" stroke="currentColor" stroke-width="1.4"></rect>
+              <path d="M5 12l15 10 15-10" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <p class="opening-headline">有些话不好说，<br>但值得说。</p>
+          <p class="opening-body">想Ta了，帮你把想说的话，<br>整理成更合适的文字和语音。</p>
+          <button class="cta-button btn-cta opening-cta" type="button" onclick="dismissOpeningOverlay()">开始表达</button>
+          <p class="opening-note">本机保存 · 不替你发送</p>
+        </div>
+      </div>
+
       <section id="screenHome" class="screen active home-screen">
         <header class="home-topbar" id="appTopbar">
           <div class="brand-mark">

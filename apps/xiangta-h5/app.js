@@ -1346,6 +1346,43 @@ function upsertLetterIntoState(letter) {
   }
 }
 
+function initOpeningOverlay() {
+  const overlay = el("openingOverlay");
+  if (!overlay) return;
+  try {
+    if (localStorage.getItem("xiangta_opening_seen") === "1") {
+      overlay.classList.add("hidden");
+    }
+  } catch (e) {
+    overlay.classList.add("hidden");
+  }
+}
+
+function dismissOpeningOverlay() {
+  const overlay = el("openingOverlay");
+  if (overlay) overlay.classList.add("hidden");
+  try {
+    localStorage.setItem("xiangta_opening_seen", "1");
+  } catch (e) {
+    // ignore — fail open
+  }
+}
+
+function showResultSavedMoment() {
+  const overlay = el("resultSaveSealOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("hidden");
+  overlay.classList.remove("result-save-seal-fadeout");
+  void overlay.offsetWidth;
+  setTimeout(function() {
+    overlay.classList.add("result-save-seal-fadeout");
+    setTimeout(function() {
+      overlay.classList.add("hidden");
+      overlay.classList.remove("result-save-seal-fadeout");
+    }, 240);
+  }, 900);
+}
+
 function showResultSaveSealThenOpenDetail(letter) {
   const overlay = el("resultSaveSealOverlay");
   if (!overlay) {
@@ -1416,6 +1453,7 @@ async function resultSave() {
 
   showToast("已保存到信笺夹");
   updateResultSaveButton();
+  showResultSavedMoment();
 }
 
 async function generateTts() {
@@ -2369,6 +2407,7 @@ function writeAnotherFromLetterDetail() {
 document.addEventListener("DOMContentLoaded", async () => {
   state.mode = getAppMode();
   applyModeUi();
+  initOpeningOverlay();
   initComposeListeners();
   renderHomeDateLine();
   renderStepDots("composeStepDots", 0, STEP_LABELS);

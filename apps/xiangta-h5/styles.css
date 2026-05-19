@@ -2791,3 +2791,87 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* ── Opening overlay ───────────────────────────────────────────────── */
+.opening-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #100D14);
+  animation: spaFadeOverlay 0.3s ease both;
+}
+
+.opening-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 32px 40px;
+  gap: 18px;
+  max-width: 340px;
+}
+
+.opening-seal {
+  color: var(--xt-accent, #d9954a);
+  opacity: 0.82;
+  margin-bottom: 4px;
+}
+
+.opening-headline {
+  font-family: var(--xt-serif, serif);
+  font-size: 22px;
+  line-height: 1.55;
+  color: var(--xt-text, #f4efe6);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.opening-body {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--xt-text-2, rgba(244, 239, 230, 0.65));
+  margin: 0;
+}
+
+.opening-cta {
+  width: 100%;
+  max-width: 280px;
+  margin-top: 8px;
+}
+
+.opening-note {
+  font-size: 11px;
+  color: var(--xt-text-3, rgba(244, 239, 230, 0.38));
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+/* ── Lightweight click / pressed feedback ──────────────────────────── */
+.recipient-card,
+.scene-chip,
+.suggestion-card,
+.voice-option,
+.tone-chip,
+.small-pill-btn {
+  transition: transform 0.12s ease;
+}
+
+.recipient-card:not(:disabled):active,
+.scene-chip:not(:disabled):active,
+.suggestion-card:active,
+.voice-option:active,
+.tone-chip:not(:disabled):active,
+.small-pill-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.cta-button {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.cta-button:not(:disabled):active {
+  transform: scale(0.97);
+}
